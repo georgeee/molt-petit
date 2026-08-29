@@ -1,0 +1,30 @@
+diff --git a/Thales/Parser/Pratt.lean b/Thales/Parser/Pratt.lean
+index dc3ca57..38f2128 100644
+--- a/Thales/Parser/Pratt.lean
++++ b/Thales/Parser/Pratt.lean
+@@ -1044,10 +1044,14 @@ partial def parseParenExpr (p : ParserState) (startPos : Position)
+   else
+     let p''' ← p''.expect .rparen "Expected ')'"
+     -- Capture optional return-type annotation: (x): T =>
++    -- Only commit to the annotation if '=>' actually follows; otherwise a
++    -- ':' here may belong to an enclosing ternary, e.g. `c ? (x) : y`.
++    let pAfterParen := p'''
+     let (p''', retAnn) ← if p'''.check .colon then do
+       let pa ← p'''.advance
+-      let (pb, ty) ← parseTypeExpression pa
+-      pure (pb, some ({ type := ty } : TypeAnnotation))
++      match parseTypeExpression pa with
++      | .ok (pb, ty) => pure (pb, some ({ type := ty } : TypeAnnotation))
++      | .error _ => pure (p''', none)
+     else pure (p''', none)
+     if p'''.check .arrow then
+       -- Single-param arrow function: (x) => ...
+@@ -1056,7 +1060,7 @@ partial def parseParenExpr (p : ParserState) (startPos : Position)
+       return ← parseArrowBody p'''' startPos params retAnn
+     else
+       -- Regular grouping
+-      return (p''', expr)
++      return (pAfterParen, expr)
+ 
+ /-- Parse array literal [a, b, c] -/
+ partial def parseArrayLiteral (p : ParserState) : ParseResult (ParserState × Expression) := do

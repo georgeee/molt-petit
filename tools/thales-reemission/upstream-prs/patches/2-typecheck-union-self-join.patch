@@ -1,0 +1,25 @@
+diff --git a/Thales/TypeCheck/Synth.lean b/Thales/TypeCheck/Synth.lean
+index 4d69941..a7cffb5 100644
+--- a/Thales/TypeCheck/Synth.lean
++++ b/Thales/TypeCheck/Synth.lean
+@@ -525,11 +525,18 @@ partial def synthJSExpr (expr : Expression) (expected : Option TSType := none) :
+       let elseBindings := Narrowing.applyNegatedGuard guard ctx.bindings
+       let consTyped ← withScope (Narrowing.bindingsDiff thenBindings ctx.bindings) (synthJSExpr consequent)
+       let altTyped ← withScope (Narrowing.bindingsDiff elseBindings ctx.bindings) (synthJSExpr alternate)
+-      return mk (.union [consTyped.type, altTyped.type]) #[testTyped, consTyped, altTyped]
++      -- Collapse the join when both arms agree, so e.g. a ternary over a
++      -- named recursive union keeps that type instead of a 2-way union of it
++      -- with itself (which downstream assignability degrades to 'object').
++      let joined := if consTyped.type == altTyped.type then consTyped.type
++        else .union [consTyped.type, altTyped.type]
++      return mk joined #[testTyped, consTyped, altTyped]
+     | none =>
+       let consTyped ← synthJSExpr consequent
+       let altTyped ← synthJSExpr alternate
+-      return mk (.union [consTyped.type, altTyped.type]) #[testTyped, consTyped, altTyped]
++      let joined := if consTyped.type == altTyped.type then consTyped.type
++        else .union [consTyped.type, altTyped.type]
++      return mk joined #[testTyped, consTyped, altTyped]
+ 
+   -- Array literal
+   | .arrayExpr _ elements => do

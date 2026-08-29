@@ -1,0 +1,42 @@
+name = "MoltPetit"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["MoltPetit", "Rust", "Thales", "Molt"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.30.0-rc2"
+
+# Aeneas Lean backend: the runtime/std model the Rust→Lean extraction
+# (Charon + Aeneas) targets. Analogue of Thales/TS.Runtime for the TS path.
+[[require]]
+name = "aeneas"
+git = "https://github.com/AeneasVerif/aeneas.git"
+rev = "bf13c42e7c34d07fc396baffad39c93023b12914"
+subDir = "backends/lean"
+
+[[lean_lib]]
+name = "MoltPetit"
+
+# The Rust-extracted protocol (Charon+Aeneas output) plus its proofs.
+[[lean_lib]]
+name = "Rust"
+
+[[lean_exe]]
+name = "moltpetit-demo"
+root = "Main"
+
+[[lean_lib]]
+name = "Thales"
+
+# The paper-aligned presentation codebase (2026-08 rewrite): fresh,
+# paper-ordered modules; theorems transported from the MoltPetit core.
+[[lean_lib]]
+name = "Molt"

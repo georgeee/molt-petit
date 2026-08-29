@@ -1,0 +1,140 @@
+diff --git a/Thales/Emit/SubsetCheck.lean b/Thales/Emit/SubsetCheck.lean
+index e2f3128..ae5e78c 100644
+--- a/Thales/Emit/SubsetCheck.lean
++++ b/Thales/Emit/SubsetCheck.lean
+@@ -66,6 +66,13 @@ structure MutCtx where
+       `bindingEnv` on purpose: `bindingEnv` feeds the intentionally
+       conservative (params-only) loop-admission check, which must not widen. -/
+   recvEnv : Std.HashMap String TSType := {}
++  /-- Names switched on via a `scrut.kind`-shaped discriminant in an
++      enclosing `switch`. Inside those arms the emitter destructures the
++      narrowed variant and rewrites `scrut.field` to the arm's `field`
++      binder (`substMemberAccessExpr`) before lowering, so a definedness
++      test on `scrut.field` takes the identifier-subject lowering and must
++      not draw TH0086. -/
++  unionScruts : List String := []
+ 
+ /-- Parameter names of a JS-level function/arrow (typed params live on
+     `annotatedFuncDecl` and are handled separately). -/
+@@ -194,6 +201,30 @@ private def routeIdentMutation (ctx : MutCtx) (loc : Option SourceLocation)
+     else
+       #[mkThalesDiag (.cannotReassignVariable name) loc]
+ 
++/-- The object name of a `scrut.field` definedness-test subject (either
++    operand order): a plain (non-computed) member access on a bare
++    identifier tested against `null`/`undefined`. This is exactly the shape
++    `substMemberAccessExpr` rewrites to the arm's `field` binder inside a
++    switch over `scrut`, where the identifier-subject lowering applies. -/
++private def definednessTestScrutMemberSubject? : Expression → Option String
++  | .binaryExpr _ op l r =>
++      let nullishEqOp := match op with
++        | .seq | .sneq | .eq | .neq => true
++        | _ => false
++      if nullishEqOp then
++        let isNullish : Expression → Bool := fun
++          | .literal _ .null _ => true
++          | .identifier _ "undefined" => true
++          | _ => false
++        let subjOf : Expression → Expression → Option String := fun a b =>
++          match a with
++          | .memberExpr _ (.identifier _ obj) (.identifier _ _) false _ =>
++              if isNullish b && !isNullish a then some obj else none
++          | _ => none
++        subjOf l r <|> subjOf r l
++      else none
++  | _ => none
++
+ mutual
+ 
+ /-- Check an expression for mutation violations. Assignment/update
+@@ -287,10 +318,16 @@ partial def checkExpr (ctx : MutCtx) (expr : Expression) : Array Diagnostic :=
+     -- TH0086: a definedness test whose subject is a non-identifier expression
+     -- (call, member access, computed index) cannot be narrowed by the emitter,
+     -- which would emit a literal `undefined`/`.none`. Independent of TH0084,
+-    -- which only fires on identifier subjects.
++    -- which only fires on identifier subjects. Exception: a `scrut.field`
++    -- subject inside a switch over `scrut` — the emitter rewrites it to the
++    -- arm's `field` binder before lowering, so the identifier path applies.
+     let th86 : Array Diagnostic :=
+       if EscapeAnalysis.definednessTestHasNonIdentifierSubject expr then
+-        #[mkThalesDiag .definednessTestNonIdentifierSubject b.loc]
++        match definednessTestScrutMemberSubject? expr with
++        | some obj =>
++          if ctx.unionScruts.contains obj then #[]
++          else #[mkThalesDiag .definednessTestNonIdentifierSubject b.loc]
++        | none => #[mkThalesDiag .definednessTestNonIdentifierSubject b.loc]
+       else #[]
+     th84 ++ th86 ++ checkExpr ctx left ++ checkExpr ctx right
+   | .logicalExpr _ _ left right =>
+@@ -484,9 +521,15 @@ partial def checkStmt (ctx : MutCtx) (stmt : Statement) : Array Diagnostic :=
+       | none => #[]
+     blockDiags ++ handlerDiags
+   | .switchStmt _ discriminant cases =>
++    -- A `scrut.kind`-shaped discriminant destructures the narrowed variant
++    -- in each arm (see `unionScruts`); record the scrutinee for the arms.
++    let armCtx := match discriminant with
++      | .memberExpr _ (.identifier _ scrut) (.identifier _ _) false _ =>
++          { ctx with unionScruts := scrut :: ctx.unionScruts }
++      | _ => ctx
+     checkExpr ctx discriminant
+       ++ cases.foldl (fun acc (SwitchCase.mk _ _ stmts) =>
+-           stmts.foldl (fun acc2 s => acc2 ++ checkStmt ctx s) acc) #[]
++           stmts.foldl (fun acc2 s => acc2 ++ checkStmt armCtx s) acc) #[]
+   | .labeledStmt _ _ body =>
+     checkStmt ctx body
+   | .withStmt _ obj body =>
+diff --git a/Thales/Parser/Pratt.lean b/Thales/Parser/Pratt.lean
+index dc3ca57..38f2128 100644
+--- a/Thales/Parser/Pratt.lean
++++ b/Thales/Parser/Pratt.lean
+@@ -1044,10 +1044,14 @@ partial def parseParenExpr (p : ParserState) (startPos : Position)
+   else
+     let p''' ← p''.expect .rparen "Expected ')'"
+     -- Capture optional return-type annotation: (x): T =>
++    -- Only commit to the annotation if '=>' actually follows; otherwise a
++    -- ':' here may belong to an enclosing ternary, e.g. `c ? (x) : y`.
++    let pAfterParen := p'''
+     let (p''', retAnn) ← if p'''.check .colon then do
+       let pa ← p'''.advance
+-      let (pb, ty) ← parseTypeExpression pa
+-      pure (pb, some ({ type := ty } : TypeAnnotation))
++      match parseTypeExpression pa with
++      | .ok (pb, ty) => pure (pb, some ({ type := ty } : TypeAnnotation))
++      | .error _ => pure (p''', none)
+     else pure (p''', none)
+     if p'''.check .arrow then
+       -- Single-param arrow function: (x) => ...
+@@ -1056,7 +1060,7 @@ partial def parseParenExpr (p : ParserState) (startPos : Position)
+       return ← parseArrowBody p'''' startPos params retAnn
+     else
+       -- Regular grouping
+-      return (p''', expr)
++      return (pAfterParen, expr)
+ 
+ /-- Parse array literal [a, b, c] -/
+ partial def parseArrayLiteral (p : ParserState) : ParseResult (ParserState × Expression) := do
+diff --git a/Thales/TypeCheck/Synth.lean b/Thales/TypeCheck/Synth.lean
+index 4d69941..a7cffb5 100644
+--- a/Thales/TypeCheck/Synth.lean
++++ b/Thales/TypeCheck/Synth.lean
+@@ -525,11 +525,18 @@ partial def synthJSExpr (expr : Expression) (expected : Option TSType := none) :
+       let elseBindings := Narrowing.applyNegatedGuard guard ctx.bindings
+       let consTyped ← withScope (Narrowing.bindingsDiff thenBindings ctx.bindings) (synthJSExpr consequent)
+       let altTyped ← withScope (Narrowing.bindingsDiff elseBindings ctx.bindings) (synthJSExpr alternate)
+-      return mk (.union [consTyped.type, altTyped.type]) #[testTyped, consTyped, altTyped]
++      -- Collapse the join when both arms agree, so e.g. a ternary over a
++      -- named recursive union keeps that type instead of a 2-way union of it
++      -- with itself (which downstream assignability degrades to 'object').
++      let joined := if consTyped.type == altTyped.type then consTyped.type
++        else .union [consTyped.type, altTyped.type]
++      return mk joined #[testTyped, consTyped, altTyped]
+     | none =>
+       let consTyped ← synthJSExpr consequent
+       let altTyped ← synthJSExpr alternate
+-      return mk (.union [consTyped.type, altTyped.type]) #[testTyped, consTyped, altTyped]
++      let joined := if consTyped.type == altTyped.type then consTyped.type
++        else .union [consTyped.type, altTyped.type]
++      return mk joined #[testTyped, consTyped, altTyped]
+ 
+   -- Array literal
+   | .arrayExpr _ elements => do

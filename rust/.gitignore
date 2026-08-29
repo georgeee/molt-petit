@@ -1,0 +1,4 @@
+/target
+*.llbc
+/lean-out
+Cargo.lock

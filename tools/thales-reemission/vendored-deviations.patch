@@ -1,0 +1,122 @@
+--- a/MoltPetit.emitted.lean
++++ b/MoltPetit.emitted.lean
+@@ -19,7 +19,7 @@
+ inductive Chain where
+   | nil
+   | cons (slot : Int) (height : Int) (prev : (Option Hash)) (id : Hash) (contentsHash : Hash) (keyIndex : Int) (tail : Chain)
+-  deriving Repr
++  deriving Repr, BEq
+ 
+ def quorum (n : Int) : Int :=
+   (((2 * n) + 2) / 3)
+@@ -99,7 +99,7 @@
+ def monoAgainst (n : Int) (slot : Int) (ki : Int) (rest : Chain) : Bool :=
+   match rest with
+     | .nil => true
+-    | .cons slot height prev id contentsHash keyIndex tail => let ok := if ((producerForSlot n slot) == (producerForSlot n slot)) then (ki <= keyIndex) else true
++    | .cons slot' height prev id contentsHash keyIndex tail => let ok := if ((producerForSlot n slot) == (producerForSlot n slot')) then (ki <= keyIndex) else true
+     (ok && (monoAgainst n slot ki tail))
+ 
+ def keyMonoOk (n : Int) (c : Chain) : Bool :=
+@@ -110,13 +110,45 @@
+ def validChainK (n : Int) (c : Chain) : Bool :=
+   ((validChain n c) && (keyMonoOk n c))
+ 
++inductive FloorList where
++  | fnil
++  | fcons (producer : Int) (floor : Int) (tail : FloorList)
++  deriving Repr, BEq
++
++def floorLookup (fl : FloorList) (i : Int) : Int :=
++  match fl with
++    | .fnil => 0
++    | .fcons producer floor tail => if (producer == i) then floor else (floorLookup tail i)
++
++def floorBump (fl : FloorList) (i : Int) (v : Int) : FloorList :=
++  match fl with
++    | .fnil => .fnil
++    | .fcons producer floor tail => let f := if (producer == i) then (if (floor < v) then v else floor) else floor
++    let rest := if (producer == i) then tail else (floorBump tail i v)
++    (.fcons producer f rest)
++
++def floorsShapeFrom (i : Int) (n : Int) (fl : FloorList) : Bool :=
++  match fl with
++    | .fnil => (i == n)
++    | .fcons producer floor tail => (((producer == i) && (0 <= floor)) && (floorsShapeFrom (i + 1) n tail))
++
++def floorsShapeOk (n : Int) (fl : FloorList) : Bool :=
++  (floorsShapeFrom 0 n fl)
++
++def keyMonoFromTs (n : Int) (fl : FloorList) (c : Chain) : Bool :=
++  match c with
++    | .nil => true
++    | .cons slot height prev id contentsHash keyIndex tail => let i := (producerForSlot n slot)
++    let ok := ((floorLookup fl i) <= keyIndex)
++    (ok && (keyMonoFromTs n (floorBump fl i keyIndex) tail))
++
+ def singletonBlock (slot : Int) (height : Int) (prev : Hash) (id : Hash) (contentsHash : Hash) (keyIndex : Int) : Chain :=
+   (.cons slot height prev id contentsHash keyIndex .nil)
+ 
+ def produceBlock (n : Int) (me : Int) (atSlot : Int) (newId : Hash) (contentsHash : Hash) (keyIndex : Int) (c : Chain) : (Option Chain) :=
+   if ((producerForSlot n atSlot) != me) then .none else match c with
+     | .nil => .none
+-    | .cons slot height prev id contentsHash keyIndex tail => let tipHeight := (tipHeightFrom height tail)
++    | .cons slot height prev id contentsHash keyIndex' tail => let tipHeight := (tipHeightFrom height tail)
+     let tipId := (tipIdFrom id tail)
+     let extended := (appendChains c ((singletonBlock atSlot ((tipHeight + 1)) tipId newId contentsHash keyIndex)))
+     if (validChain n extended) then (.some extended) else .none
+@@ -141,38 +173,6 @@
+     let tipSlot := (tipSlotFrom slot tail)
+     ((link && links) && (maturedDense buf lo tipSlot n))
+ 
+-inductive FloorList where
+-  | fnil
+-  | fcons (producer : Int) (floor : Int) (tail : FloorList)
+-  deriving Repr
+-
+-def floorLookup (fl : FloorList) (i : Int) : Int :=
+-  match fl with
+-    | .fnil => 0
+-    | .fcons producer floor tail => if (producer == i) then floor else (floorLookup tail i)
+-
+-def floorBump (fl : FloorList) (i : Int) (v : Int) : FloorList :=
+-  match fl with
+-    | .fnil => .fnil
+-    | .fcons producer floor tail => let f := if (producer == i) then if (floor < v) then v else floor else floor
+-    let rest := if (producer == i) then tail else (floorBump tail i v)
+-    (.fcons fl.producer f rest)
+-
+-def floorsShapeFrom (i : Int) (n : Int) (fl : FloorList) : Bool :=
+-  match fl with
+-    | .fnil => (i == n)
+-    | .fcons producer floor tail => (((producer == i) && (0 <= floor)) && (floorsShapeFrom ((i + 1)) n tail))
+-
+-def floorsShapeOk (n : Int) (fl : FloorList) : Bool :=
+-  (floorsShapeFrom 0 n fl)
+-
+-def keyMonoFromTs (n : Int) (fl : FloorList) (c : Chain) : Bool :=
+-  match c with
+-    | .nil => true
+-    | .cons slot height prev id contentsHash keyIndex tail => let i := (producerForSlot n slot)
+-    let ok := ((floorLookup fl i) <= keyIndex)
+-    (ok && (keyMonoFromTs n ((floorBump fl i keyIndex)) tail))
+-
+ def validateSuffixK (n : Int) (c : CertClaim) (fl : FloorList) (suffix : Chain) : Bool :=
+   (((validateSuffix n c suffix) && (floorsShapeOk n fl)) && (keyMonoFromTs n fl suffix))
+ 
+@@ -185,7 +185,6 @@
+   sign : (RawSecretKey → (Int → (Int → (Hash → (Hash → RawSignature)))))
+   verify : (RawPublicKey → (Int → (Int → ((Option Hash) → (Hash → (RawSignature → Bool))))))
+   keyFor : (Int → (Int → RawPublicKey))
+-  deriving Repr, BEq
+ 
+ def lengthOfSigned (sc : SignedChain) : Int :=
+   match sc with
+@@ -227,7 +226,6 @@
+   verify : (RawCertificate → Bool)
+   claim : (RawCertificate → CertClaim)
+   certFor : (Hash → RawCertificate)
+-  deriving Repr, BEq
+ 
+ inductive CertifiedChain where
+   | invalid

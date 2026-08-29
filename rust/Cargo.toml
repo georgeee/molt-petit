@@ -1,0 +1,8 @@
+[package]
+name = "molt_petit"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "molt_petit"
+path = "src/lib.rs"
