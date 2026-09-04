@@ -43,8 +43,8 @@ $n$-slot window must carry blocks from two thirds of the fixed roster ---
 with no votes and deterministic, fixed-depth finality. All safety claims
 are machine-checked in Lean~4 --- the core claims about the imported
 Rust validator source itself, proved sound against the model and re-used
-as the recursive-proof circuit, and today's rotation-mode results at
-model level --- with a build-enforced axiom audit. Beyond the classical counting argument, we prove that forged
+as the recursive-proof circuit, and today's key-rotation results at
+model level. Beyond the classical counting argument, we prove that forged
 chains advance at half real-time speed --- which makes the verifier's
 recency check a load-bearing safety ingredient --- and we develop key
 rotation inside consensus against an adversary who steals keys and keeps
@@ -93,9 +93,10 @@ consensus}: every block declares its signing-key version, so rotation is
 ordered by the chain like any other event. Against an adversary who
 steals keys outright and keeps them forever, the paper gives three
 rotation modes with exactly stated operator and client duties --- down
-to a theorem that fixes the one rule an actively syncing client must
-obey (sync at least once every $n$ slots,
-Section~\ref{sec:rotation}).
+to a theorem that fixes, in the one mode built for actively syncing
+clients, the single rule such a client must obey (sync at least once
+every $n$ slots, Section~\ref{sec:rotation}); clients of the other two
+modes obey no rule at all.
 
 The engineering claim is as important as the theorems. The validator is
 one Rust file; it is \emph{imported} into Lean~4 (via Charon + Aeneas)
