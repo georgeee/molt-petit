@@ -829,10 +829,13 @@ taller chain, at least $n$ deep there.
 
 \noindent In one sentence: \textbf{sync at least every $n$ slots --- the
 same $n$ as the recency rule --- and no fabricated past can ever be
-accepted, at the price of the standing budget over the last $5n$ slots:
-about two minutes at the prototype's parameters.}
+accepted, at the price of one standing assumption: over the last $5n$
+slots --- about two minutes at the prototype's parameters --- rented
+slots plus producers suffering a theft of a then-live key total at most
+$\fmax$ per window.}
 
-Each summand of the $5n$ is one fact. At sync
+The $5n$ is the reach of that assumption: how far back the anchor can
+sit, plus the one window the counting needs. Each summand is one fact. At sync
 time the freshly verified tip passed the recency rule, so it is at most
 $n$ slots old. The anchor sits fewer than $2n$ \emph{slots} below that
 tip although it is $n$ \emph{blocks} deep --- density leaves no room for
@@ -863,10 +866,13 @@ state, not the chain's age, and an old chain is exactly as protected as
 a young one.
 
 Why the cadence cannot simply be enlarged: \emph{the budget's census is
-retroactive}. A theft counts at every window of the trailing stretch
-that precedes its healing --- including windows before the theft itself
---- so the oldest windows of the stretch carry the \emph{total} theft
-count of the whole stretch, and healing never subtracts from them. A
+retroactive}. The model carries no theft times, so the census at a
+window counts every producer whose version in force there is ever
+stolen and not yet retired by then --- a theft is charged to the
+windows \emph{before} it as well, for as long as the same version was in
+force, and rotating afterwards never subtracts from them. The oldest
+windows of a stretch therefore carry the \emph{total} theft count of the
+whole stretch, and the longer the stretch, the larger that total. A
 client syncing every $10n$ slots would therefore be assuming ``at most
 $T$ producers stolen across ${\approx}\,14n$ slots \emph{in total}'' ---
 and an adversary that quietly collects one key every couple of windows,
