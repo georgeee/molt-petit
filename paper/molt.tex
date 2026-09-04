@@ -587,11 +587,12 @@ be built on. \quad\textit{(Lean: \code{HonestBlocksCover}.)}
 \label{sec:results}
 
 The results come in a fixed order. First, light-client safety
-(Theorem~\ref{thm:lc}), proved about the protocol's structural core:
-every chain the full validator accepts passes those checks
-(\code{validChainK\_structural}), and the certificate-level form the
-full protocol satisfies is each mode's certified theorem in
-Section~\ref{sec:rotation}
+(Theorem~\ref{thm:lc}). It is proved about the protocol's structural
+core, and it covers the full validator because every chain the full
+validator accepts also passes those structural checks
+(\code{validChainK\_structural}). Its counterpart at the certificate
+presentation, under the full validator with its key discipline and pin,
+is each mode's certified theorem in Section~\ref{sec:rotation}
 (\code{keyrot\_recent\_certified\_suffix\_agreement} and its scheduled
 twin). Next, the timed model, where forged chains take real time
 (Theorem~\ref{thm:forge}); this timed model is also where the recency
@@ -640,9 +641,7 @@ The ``exposes that height'' hypothesis is a restriction of presentation,
 not of operation: a certificate-plus-$n$-block chain can always be
 re-presented as a certificate$'$-plus-$2n$-block chain (grounding attests
 a claim at every fold), so a holder can re-expose as many blocks as a
-comparison needs. That re-presentation argument is informal --- the
-proved representability lemmas are production-side only --- which is why
-the hypothesis stays in the statement rather than being proved away.
+comparison needs.
 
 Two remarks. First, the conclusion also covers a chain the node
 \emph{produced} rather than received, because production ships nothing
@@ -663,7 +662,9 @@ coercion has a price. The \emph{timed model}
 (\code{TimedExecution}) adds a real-time axis: a log of what each real
 slot's producer signed --- at an honest real slot, at most its own
 current block; at a bad real slot, arbitrarily many blocks of the
-adversary's choosing under that producer's key. The id-formation contract
+adversary's choosing under that producer's key --- arbitrary content,
+and stamped with any slot at all, not only the real slot at which the
+signing happens. The id-formation contract
 of Section~\ref{sec:protocol} appears as the field \code{chain\_order}: a
 block can be signed only once its parent is \emph{available}, because the
 parent's id preimage contains the parent's signature, and predicting
