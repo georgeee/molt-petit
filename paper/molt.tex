@@ -501,8 +501,8 @@ and honest in the next.
 \end{assumption}
 
 \begin{assumption}[Signatures]\label{ass:sig}
-The model gives each participant a \emph{signing log}: the at most one
-block per slot that its honest signing path signed (\code{SigningLog}).
+The model gives each participant a \emph{signing log}: at most one
+block per slot, the one its honest signing path signed (\code{SigningLog}).
 The assumption bundles: \emph{(a) custody} --- honest nodes sign only
 through that path, and their secret keys never leave them; \emph{(b)
 unforgeability} --- no one can produce a valid signature on a message the
@@ -537,12 +537,15 @@ forever and safety is recovered by validator rules.
 \begin{assumption}[Hash collision resistance, over blocks that
 occur]\label{ass:hash}
 Any two blocks that each either equal the genesis or carry a verifying
-producer signature, and that have equal ids, are equal. Stated over
-\emph{all} possible block values, the property would be simply false ---
-the type contains colliding values no execution produces --- so the
-domain is scoped to
-blocks that can actually occur, and every block of a validated certified
-chain is in it. We call this \emph{hash injectivity}; under rotation
+producer signature, and that have equal ids, are equal. This is
+classical collision resistance in the form a proof can consume, not a
+weakening of it: plain injectivity of $H$ is false outright --- ids are
+shorter than blocks, so colliding values exist in the type --- while
+collision resistance says only that no adversary ever \emph{exhibits}
+one. Scoping the domain to blocks that can actually occur is what turns
+the second statement into the first; every block of a validated
+certified chain is in that domain.
+We call this \emph{hash injectivity}; under rotation
 the domain is version-stamped signed blocks --- for the chain-level
 sync-rule results (Theorem~\ref{thm:refresh}), blocks verifying under
 \emph{some} registered version of their producer (Lean
