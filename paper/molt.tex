@@ -1468,8 +1468,8 @@ close the gap:
 \begin{theorem}[Uniqueness, derived; Lean
 \code{sigUnforgeableRecent\_of\_timed}]\label{thm:timed-uniq}
 In any timed execution satisfying the EUF-CMA bridge and no back-dating,
-Assumption~\ref{ass:sig}(c) holds for the projected log --- at any
-recency window.
+Assumption~\ref{ass:sig}(c) holds for the projected log --- at every
+recency window, the bar being a parameter the proof never uses.
 \end{theorem}
 
 The proof is three steps: the verifying block was signed at some real
@@ -1483,7 +1483,10 @@ forged-time bound of Theorem~\ref{thm:forge}.
 is key custody re-anchored to the stamp: an honest producer's slot-$s$
 signature can only be its genuine slot-$s$ call, \emph{and no bad slot
 of the same producer may mint a block bearing that honest stamp}. The
-second clause is the whole content --- the bare timed model does allow
+constraint is on the \emph{stamp}, not on the signer: a rented or stolen
+key still signs arbitrary content at any real slot, stamped with any
+slot it likes --- any slot except one of its own producer's honest ones.
+The second clause is the whole content --- the bare timed model does allow
 a bad real slot to mint a block stamped for one of its producer's
 honest slots, and we machine-check exactly such an execution
 (\code{noBackdate\_independent}, at $n = 2$): every timed-model field
