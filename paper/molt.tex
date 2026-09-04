@@ -1205,10 +1205,8 @@ is what makes honest blocks coalesce into the single chain the global
 form assumes; a fully multi-chain network model is future work.
 
 One quantity remains: the slot duration $\tau$. It is set by prover
-economics, not network latency --- one recursive proof covering $k$
-blocks costs a large shared baseline plus a small per-block term, so
-proving is naturally batched, and the slot must be long enough for the
-pipeline to keep its uncovered suffix under $n$ blocks forever. The Lean
+economics, not network latency: the slot must be long enough for the
+proving pipeline to keep its uncovered suffix under $n$ blocks forever. The Lean
 development proves a threshold that is sufficient, and necessary over
 the pipeline's steady states
 (\code{slot\_time\_sufficient}, \code{slot\_time\_necessary}); we do not
