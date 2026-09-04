@@ -335,8 +335,7 @@ Structure, density, and this monotone rule together are
 \code{validChainK}: \emph{the} chain validity of this paper. There is
 exactly one protocol here, with key rotation built in from the start; a
 deployment completes it by fixing one of three rotation \emph{pins}
-(Section~\ref{sec:rotation}), and there is no rotation-free variant to
-fall back to.
+(Section~\ref{sec:rotation}).
 
 \subsection{What a node holds}
 
@@ -354,7 +353,7 @@ The rules touch cryptography only through two small interfaces that a
 deployment implements:
 \begin{itemize}
 \item \code{SigOps} --- $\mathit{sign}$ and $\mathit{verify}$ ---
-  together with the versioned key directory $\mathit{keyFor}(i,j)$, the
+  together with the versioned key map $\mathit{keyFor}(i,j)$, the
   public key of seat $i$'s signing key at version $j$ (a separate
   parameter, \code{KeyRegistry}, in the model; the implementation's
   dictionary folds it into \code{SigOps});
@@ -364,7 +363,10 @@ deployment implements:
   held certificates, which compaction uses.
 \end{itemize}
 One deployment note on $\mathit{keyFor}$, because it is where a trusted
-directory service would creep in: there is none. A block's
+directory service would creep in: there is none, and a verifier looks
+nothing up. $\mathit{keyFor}$ is a mathematical parameter of the model
+--- which public key each $(\text{seat},\text{version})$ pair denotes
+--- and a block carries its own witness for it. A block's
 ``signature'' is in practice a bundle --- the signing public key, a
 delegation certificate binding that key to seat $i$ \emph{and version
 $j$}, and the signature proper --- verified against a fixed set of
