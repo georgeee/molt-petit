@@ -888,7 +888,8 @@ concurrency bound}. The operator's half of the rule reads the same way:
 keep rented slots plus thefts within $\fmax$ per window over the
 trailing $5n$ slots, remembering that a theft sits on the books of every
 earlier window of its stretch. The agreement itself also holds at the
-certificate presentation, with the floor carried as a snapshot in the
+certificate presentation, with the floor --- the map sending each seat
+to its version in force --- carried as a snapshot in the
 claim --- the certificate must attest claim and floor \emph{together},
 an unauthenticated floor readmits stolen retired keys
 (\code{keyrot\_recent\_certified\_suffix\_agreement}, over the
@@ -928,7 +929,9 @@ the count falls toward $\fmax + 1$. Certifying one such execution
 end-to-end in Lean is future work. A
 deployment prepared to assume strictly more --- honest producers never
 extending adversarial branches, and theft \emph{times} inside the
-signature assumptions --- could in principle support a larger $F$; that
+signature assumptions, so that a stolen key is charged from the moment
+it is stolen rather than to every window its version was in force
+--- could in principle support a larger $F$; that
 stronger model is outside the present development (future work; honest
 scope below). The sync rule is the $F = n$, $S = 5n$ instance.
 (Engine: \code{client\_refresh\_rule}, parametric in
