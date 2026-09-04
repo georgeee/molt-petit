@@ -103,10 +103,12 @@ one Rust file; it is \emph{imported} into Lean~4 (via Charon + Aeneas)
 and proved sound against the model, so the core safety theorems are
 about the code that runs (the rotation pins are checked at model level
 today, Section~\ref{sec:impl}); the same source is re-used as the recursive-proof
-circuit, so the prover proves the predicate that was verified; and an
-independent
-TypeScript pipeline repeats the exercise to keep the model honest. Every
-headline theorem carries a build-enforced axiom audit. Measured on
+circuit, so the prover proves the predicate that was verified; and a
+separate TypeScript implementation is proved sound against that
+\emph{same} Lean model --- which is what keeps the model
+implementation-agnostic while it is developed by agentic coding. A
+build-enforced audit fixes what every headline theorem may assume: the
+axioms of classical logic, and nothing else. Measured on
 commodity hardware with post-quantum signatures, the verified consensus
 rule is under $2\%$ of any certificate's proving cost
 (Section~\ref{sec:impl}) --- formal consensus is effectively free on top
@@ -177,8 +179,9 @@ discipline the theorems force rather than state: past the cadence the
 theorems' fault-budget assumption becomes one no deployment can stand
 behind --- quiet thefts accumulate until nothing satisfies it
 (\code{no\_budget\_beyond}), and re-joining is a fresh trust event
-outside the formal development. The deployment's duty: keep rented slots (controlled for one slot, then lost) plus stolen
-producers within the fault budget on every window starting in the
+outside the formal development. The deployment stays safe for as long as
+rented slots (controlled for one slot, then lost) plus stolen
+producers stay within the fault budget on every window starting in the
 trailing $5n$ slots or later --- \emph{with thefts counted as totals for
 the whole stretch: rotating a stolen key away caps the damage, it does
 not refund the budget} (Theorem~\ref{thm:refresh}).
@@ -187,11 +190,12 @@ not refund the budget} (Theorem~\ref{thm:refresh}).
 key version in force at any slot is a \emph{public function of the
 slot}, fixed and published before the deployment starts: every producer,
 verifier, and client knows the entire rotation schedule in advance, and
-the validator refuses versions below it. The operator keeps one offline
-master key (a \emph{cold root}) per seat and derives each period's
-signing key --- each \emph{generation} --- just before its scheduled
-span (its \emph{era}) begins: the named operational assumptions
-\emph{not-before} and \emph{cold-root custody}
+the validator refuses versions below it. Every mode signs under keys
+delegated from one offline master key (a \emph{cold root}) per seat
+(Section~\ref{sec:protocol}); what mode~2 adds is \emph{when}: the
+operator derives each period's signing key --- each \emph{generation}
+--- just before its scheduled span (its \emph{era}) begins, the named
+operational assumptions \emph{not-before} and \emph{cold-root custody}
 (Section~\ref{sec:rotation}). The client holds the genesis, a clock,
 and the constant that defines the schedule; it may stay offline
 arbitrarily long and sync whenever it wakes. No anchor, no cadence, no erasure.
