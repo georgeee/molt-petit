@@ -1,0 +1,1888 @@
+{
+ "group": "Key index / in-band key rotation / key-stealing adversary (mode 1) core modules, plus the Molt/ paper re-presentation and the downstream Results/Horizon/Cert modules that the focus identifiers actually live in",
+ "modules": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyIndex.lean",
+   "purpose": "Consensus-maintained per-producer delegate-key index: the in-band monotone rule keyMonoOk, the indexed validator validChainK, the per-producer floor keyFloor (foldl max over the producer's blocks), soundness of the rule (KeyIndexMonotone), no-rollback across extension, keyIndex agreement on finalized blocks, and the static-registry reduction pinAt.",
+   "imports": [
+    "MoltPetit.Model.Safety",
+    "MoltPetit.Model.Soundness"
+   ],
+   "defs": [
+    {
+     "name": "keyMonoOk",
+     "kind": "def",
+     "line": 54,
+     "signature": "def keyMonoOk (n : Nat) : Chain → Bool | [] => true | b :: rest => rest.all (fun b' => decide (producerForSlot n b.slot = producerForSlot n b'.slot → b.keyIndex ≤ b'.keyIndex)) && keyMonoOk n rest",
+     "meaning": "Validator's in-band monotone-index rule: no earlier block of a producer carries a higher keyIndex than a later block of the same producer."
+    },
+    {
+     "name": "KeyIndexMonotone",
+     "kind": "def",
+     "line": 64,
+     "signature": "def KeyIndexMonotone (n : Nat) (c : Chain) : Prop := ∀ ⦃i j : Nat⦄ ⦃B B' : Block⦄, blockAt? c i = some B → blockAt? c j = some B' → i ≤ j → producerForSlot n B.slot = producerForSlot n B'.slot → B.keyIndex ≤ B'.keyIndex",
+     "meaning": "Semantic counterpart of keyMonoOk over chain positions."
+    },
+    {
+     "name": "validChainK",
+     "kind": "def",
+     "line": 71,
+     "signature": "def validChainK (n : Nat) (c : Chain) : Bool := validChain n c && keyMonoOk n c",
+     "meaning": "Indexed validator: structural validity plus monotone-index rule."
+    },
+    {
+     "name": "keyFloor",
+     "kind": "def",
+     "line": 77,
+     "signature": "def keyFloor (n : Nat) (c : Chain) (i : Nat) : Nat := ((c.filter (fun b => decide (producerForSlot n b.slot = i))).map Block.keyIndex).foldl max 0",
+     "meaning": "Participant i's floor: highest keyIndex it used anywhere in c (0 if none)."
+    },
+    {
+     "name": "pinAt",
+     "kind": "def",
+     "line": 223,
+     "signature": "def pinAt {pk : Type} (registry : KeyRegistry pk) (e : Nat → Nat) : KeyRegistry pk := fun i _ => registry i (e i)",
+     "meaning": "Static index-blind directory pinning producer i at index e i."
+    },
+    {
+     "name": "le_foldl_max / mem_le_foldl_max / foldl_max_append",
+     "kind": "private theorem",
+     "line": 84,
+     "signature": "private (lines 84, 91, 101) — foldl-max helpers",
+     "meaning": "PRIVATE, not importable; every downstream module re-proves its own copies (KeyRotation.lean 150-178, KeyStealingCert.lean 55-79, Molt/MaxSync.lean 45-72)."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "keyFloor_le_extend",
+     "line": 113,
+     "hypotheses": [
+      "(n : Nat) (c d : Chain) (i : Nat) explicit, no Prop hypotheses"
+     ],
+     "conclusion": "keyFloor n c i ≤ keyFloor n (c ++ d) i",
+     "notes": "No rollback across chain growth."
+    },
+    {
+     "name": "block_keyIndex_le_floor",
+     "line": 121,
+     "hypotheses": [
+      "(n : Nat) explicit",
+      "h : blockAt? c k = some B"
+     ],
+     "conclusion": "B.keyIndex ≤ keyFloor n c (producerForSlot n B.slot)",
+     "notes": "Positional form; membership form is mem_keyIndex_le_floor in KeyStealingCert.lean:82."
+    },
+    {
+     "name": "keyMonoOk_iff_pairwise",
+     "line": 136,
+     "hypotheses": [
+      "(c : Chain) explicit, n implicit"
+     ],
+     "conclusion": "keyMonoOk n c = true ↔ c.Pairwise (fun a b => producerForSlot n a.slot = producerForSlot n b.slot → a.keyIndex ≤ b.keyIndex)"
+    },
+    {
+     "name": "keyMonoOk_sound",
+     "line": 156,
+     "hypotheses": [
+      "h : keyMonoOk n c = true"
+     ],
+     "conclusion": "KeyIndexMonotone n c"
+    },
+    {
+     "name": "deep_block_keyIndex_agreement",
+     "line": 187,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudget : ByzantineBounded n bad",
+      "hHonest : HonestSlotsUnique bad record",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hGenesis : CommonPrefixUpTo c c' 0",
+      "hB : blockAt? c k = some B",
+      "hB' : blockAt? c' k = some B'",
+      "hD : blockAt? c m = some D",
+      "hD' : blockAt? c' m' = some D'",
+      "hDeep : B.slot + n ≤ D.slot",
+      "hDeep' : B.slot + n ≤ D'.slot"
+     ],
+     "conclusion": "B.keyIndex = B'.keyIndex",
+     "notes": "congrArg Block.keyIndex of Safety.deep_block_agreement; abstract bad/record, not key-stealing specific."
+    },
+    {
+     "name": "validChainK_sound",
+     "line": 215,
+     "hypotheses": [
+      "h : validChainK n c = true"
+     ],
+     "conclusion": "ValidChain n c ∧ KeyIndexMonotone n c"
+    },
+    {
+     "name": "indexed_reduces_to_static",
+     "line": 238,
+     "hypotheses": [
+      "(n : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (e : Nat → Nat) (sb : SignedBlock σ) explicit",
+      "h : sb.block.keyIndex = e (producerForSlot n sb.block.slot)"
+     ],
+     "conclusion": "sigOk n ops registry sb = sigOk n ops (pinAt registry e) sb"
+    },
+    {
+     "name": "sigsOk_reduces_to_static",
+     "line": 249,
+     "hypotheses": [
+      "(n ops registry e sc) explicit",
+      "h : ∀ sb ∈ sc, sb.block.keyIndex = e (producerForSlot n sb.block.slot)"
+     ],
+     "conclusion": "sigsOk n ops registry sc = sigsOk n ops (pinAt registry e) sc"
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotation.lean",
+   "purpose": "Phase 1 of sound key rotation: the confirmed prefix, the in-force index inForce (floor over the confirmed prefix), the ≤-pin inForcePinned, the pinned validators validChainK' / validSignedChainK', soundness/pin extraction, keyFloor/inForce agreement from membership agreement, membership finality deep_block_shared, confirmed_mem_iff, the execution-global inForce_agreement, and the validator-side kill of rotated-out keys (rotated_key_dead, rotated_index_rejected). NOTE: inForce_mono is NOT here; it is Molt.inForce_mono in Molt/MaxSync.lean:79.",
+   "imports": [
+    "MoltPetit.Model.KeyIndex"
+   ],
+   "defs": [
+    {
+     "name": "confirmedPrefix",
+     "kind": "def",
+     "line": 42,
+     "signature": "def confirmedPrefix (Δconf : Nat) (c : Chain) (s : Nat) : Chain := c.filter (fun b => decide (b.slot + Δconf ≤ s))",
+     "meaning": "Blocks of c at least Δconf slots before s."
+    },
+    {
+     "name": "inForce",
+     "kind": "def",
+     "line": 49,
+     "signature": "def inForce (n Δconf : Nat) (c : Chain) (i s : Nat) : Nat := keyFloor n (confirmedPrefix Δconf c s) i",
+     "meaning": "In-force delegate index of participant i as seen from slot s: i's floor over the confirmed prefix of c."
+    },
+    {
+     "name": "inForcePinned",
+     "kind": "def",
+     "line": 79,
+     "signature": "def inForcePinned (n Δconf : Nat) (c : Chain) : Bool := c.all (fun b => decide (inForce n Δconf c (producerForSlot n b.slot) b.slot ≤ b.keyIndex))",
+     "meaning": "The ≤-pin: every block's declared keyIndex is ≥ the in-force index (read off c itself) at its slot. Docstring explains why ≤ not = (equality would freeze rotation)."
+    },
+    {
+     "name": "validChainK'",
+     "kind": "def",
+     "line": 94,
+     "signature": "def validChainK' (n Δconf : Nat) (c : Chain) : Bool := validChainK n c && inForcePinned n Δconf c",
+     "meaning": "Index-pinned unsigned validator (structure + monotone rule + pin)."
+    },
+    {
+     "name": "validSignedChainK'",
+     "kind": "def",
+     "line": 385,
+     "signature": "def validSignedChainK' {σ sk pk : Type} (n Δconf : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChainK' n Δconf (stripSigs sc)",
+     "meaning": "Index-pinned signed validator; sigsOk verifies each block under registry (producer, declared keyIndex)."
+    },
+    {
+     "name": "le_foldl_max / mem_le_foldl_max / foldl_max_le / foldl_max_zero_mono / mem_of_blockAt / commonPrefix_symm",
+     "kind": "private theorem",
+     "line": 150,
+     "signature": "private (lines 150,156,166,176,230,237)",
+     "meaning": "PRIVATE helpers; KeyStealingSafety re-declares mem_of_blockAt' and commonPrefix_symm' locally because these are private."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "validChainK'_sound",
+     "line": 122,
+     "hypotheses": [
+      "h : validChainK' n Δconf c = true"
+     ],
+     "conclusion": "ValidChain n c ∧ KeyIndexMonotone n c",
+     "notes": "Standard idiom downstream: rw [validSignedChainK', Bool.and_eq_true] at hVal; exact (validChainK'_sound hVal.2).1 to get ValidChain n (stripSigs sc)."
+    },
+    {
+     "name": "validChainK'_pinned",
+     "line": 130,
+     "hypotheses": [
+      "h : validChainK' n Δconf c = true"
+     ],
+     "conclusion": "∀ b ∈ c, inForce n Δconf c (producerForSlot n b.slot) b.slot ≤ b.keyIndex"
+    },
+    {
+     "name": "keyFloor_eq_of_mem_iff",
+     "line": 182,
+     "hypotheses": [
+      "h : ∀ b : Block, producerForSlot n b.slot = i → (b ∈ c ↔ b ∈ c')"
+     ],
+     "conclusion": "keyFloor n c i = keyFloor n c' i"
+    },
+    {
+     "name": "inForce_agreement_of_confirmed_eq",
+     "line": 201,
+     "hypotheses": [
+      "hAgree : ∀ b : Block, b.slot + Δconf ≤ s → (b ∈ c ↔ b ∈ c')"
+     ],
+     "conclusion": "inForce n Δconf c i s = inForce n Δconf c' i s",
+     "notes": "The reusable core; all cross-chain inForce reconciliation goes through this."
+    },
+    {
+     "name": "deep_block_shared",
+     "line": 245,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudget : ByzantineBounded n bad",
+      "hHonest : HonestSlotsUnique bad record",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hGenesis : CommonPrefixUpTo c c' 0",
+      "hb : blockAt? c k = some b",
+      "hD : blockAt? c mD = some D",
+      "hD' : blockAt? c' mD' = some D'",
+      "hDeep : b.slot + n ≤ D.slot",
+      "hDeep' : b.slot + n ≤ D'.slot"
+     ],
+     "conclusion": "blockAt? c' k = some b",
+     "notes": "Membership finality; also rules out c' being too short (via StrictSlots)."
+    },
+    {
+     "name": "confirmed_mem_iff",
+     "line": 305,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hBudget : ByzantineBounded n bad",
+      "hHonest : HonestSlotsUnique bad record",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hGenesis : CommonPrefixUpTo c c' 0",
+      "hD : blockAt? c mD = some D",
+      "hD' : blockAt? c' mD' = some D'",
+      "hsD : s ≤ D.slot",
+      "hsD' : s ≤ D'.slot"
+     ],
+     "conclusion": "∀ b : Block, b.slot + Δconf ≤ s → (b ∈ c ↔ b ∈ c')"
+    },
+    {
+     "name": "inForce_agreement",
+     "line": 349,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hBudget : ByzantineBounded n bad",
+      "hHonest : HonestSlotsUnique bad record",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hGenesis : CommonPrefixUpTo c c' 0",
+      "hD : blockAt? c mD = some D",
+      "hD' : blockAt? c' mD' = some D'",
+      "hsD : s ≤ D.slot",
+      "hsD' : s ≤ D'.slot",
+      "(i : Nat) explicit"
+     ],
+     "conclusion": "inForce n Δconf c i s = inForce n Δconf c' i s",
+     "notes": "Needs a global HonestSlotsUnique over an abstract bad — NOT usable directly inside the key-stealing uniqueness induction (circular); that is why KeyStealingSafety/HorizonCore have bounded variants."
+    },
+    {
+     "name": "rotated_key_dead",
+     "line": 401,
+     "hypotheses": [
+      "(n Δconf : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) explicit",
+      "h : validSignedChainK' n Δconf ops registry sc = true",
+      "hmem : sb ∈ sc"
+     ],
+     "conclusion": "ops.verify (registry (producerForSlot n sb.block.slot) sb.block.keyIndex) sb.block sb.sig = true ∧ inForce n Δconf (stripSigs sc) (producerForSlot n sb.block.slot) sb.block.slot ≤ sb.block.keyIndex",
+     "notes": "inForce is read off THIS chain (stripSigs sc); chain-local by design."
+    },
+    {
+     "name": "rotated_index_rejected",
+     "line": 430,
+     "hypotheses": [
+      "(n Δconf ops registry) explicit",
+      "hmem : sb ∈ sc",
+      "hRot : sb.block.keyIndex < inForce n Δconf (stripSigs sc) (producerForSlot n sb.block.slot) sb.block.slot"
+     ],
+     "conclusion": "validSignedChainK' n Δconf ops registry sc = false"
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealing.lean",
+   "purpose": "Phase 2 I1: the key-stealing corruption predicate badKeyrotOn (rented ∨ ∃ j ≥ inForce c₀ i s, Stolen i j) keyed on a fixed witness chain c₀; loss-only collapse; TimedExecution transport across pointwise-iff bad swap; the timed KeyStealingExecution structure and its refinement to plain TimedExecution.",
+   "imports": [
+    "MoltPetit.Model.KeyRotation"
+   ],
+   "defs": [
+    {
+     "name": "badKeyrotOn",
+     "kind": "def",
+     "line": 47,
+     "signature": "def badKeyrotOn (n Δconf : Nat) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (c₀ : Chain) (s : Nat) : Prop := rented s ∨ ∃ j, inForce n Δconf c₀ (producerForSlot n s) s ≤ j ∧ Stolen (producerForSlot n s) j",
+     "meaning": "Slot s is bad iff rented, or its producer holds a stolen key at a version at-or-above the in-force index read off c₀'s confirmed prefix. This is the core-name; Molt.badKeyrot is its rfl-copy."
+    },
+    {
+     "name": "KeyStealingExecution",
+     "kind": "structure",
+     "line": 101,
+     "signature": "structure KeyStealingExecution (n Δconf : Nat) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (StolenMint : Block → Prop) (c₀ : Chain) (log : TimedLog) (G : Block) : Prop where toTimed : TimedExecution n (badKeyrotOn n Δconf rented Stolen c₀) log G; steal_bad : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → StolenMint B → badKeyrotOn n Δconf rented Stolen c₀ r",
+     "meaning": "Timed (bare-Block) execution over the enriched corruption, plus 'a stolen-key block consumes a bad real slot'. Only consumer in repo: keyStealing_refines_timed."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "badKeyrotOn_lossOnly",
+     "line": 67,
+     "hypotheses": [
+      "(n Δconf : Nat) (rented : ByzantineSlots) (c₀ : Chain) explicit; no Prop hypotheses"
+     ],
+     "conclusion": "badKeyrotOn n Δconf rented (fun _ _ => False) c₀ = rented",
+     "notes": "funext + simp; this is what Molt.badKeyrot_lossOnly wraps."
+    },
+    {
+     "name": "timedExecution_of_bad_iff",
+     "line": 79,
+     "hypotheses": [
+      "hiff : ∀ s, bad s ↔ bad' s",
+      "h : TimedExecution n bad log G"
+     ],
+     "conclusion": "TimedExecution n bad' log G"
+    },
+    {
+     "name": "keyStealing_refines_timed",
+     "line": 117,
+     "hypotheses": [
+      "hNoStealLive : ∀ s j, inForce n Δconf c₀ (producerForSlot n s) s ≤ j → ¬ Stolen (producerForSlot n s) j",
+      "h : KeyStealingExecution n Δconf rented Stolen StolenMint c₀ log G"
+     ],
+     "conclusion": "TimedExecution n rented log G"
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingSafety.lean",
+   "purpose": "Phase 2 I2a: bounded (slot-limited) analogues of the Safety/KeyRotation core so honest-slot uniqueness is needed only up to a bound M / strictly below σ — no_deep_fork_le, deep_block_shared_le, and the opt-A confirmed_mem_iff_le (needs 2n ≤ Δconf). Plus helpers quorum_pos, windowCount_pos_block, block_in_minimal_window, strictSlots_unique.",
+   "imports": [
+    "MoltPetit.Model.KeyRotation"
+   ],
+   "defs": [
+    {
+     "name": "mem_of_blockAt' / commonPrefix_symm' / no_deep_fork_aux_le",
+     "kind": "private theorem",
+     "line": 40,
+     "signature": "private (lines 40, 46, 102)",
+     "meaning": "PRIVATE local copies (KeyRotation's are private too)."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "quorum_pos",
+     "line": 51,
+     "hypotheses": [
+      "hn : 1 ≤ n"
+     ],
+     "conclusion": "0 < quorum n"
+    },
+    {
+     "name": "windowCount_pos_block",
+     "line": 55,
+     "hypotheses": [
+      "h : 0 < windowCount c u len"
+     ],
+     "conclusion": "∃ B : Block, B ∈ c ∧ u ≤ B.slot ∧ B.slot < u + len"
+    },
+    {
+     "name": "block_in_minimal_window",
+     "line": 72,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hDense : MaturedWindowsDense n c",
+      "hDtip : blockAt? c m = some Dtip",
+      "hmat : u + n ≤ Dtip.slot + 1"
+     ],
+     "conclusion": "∃ B : Block, B ∈ c ∧ u ≤ B.slot ∧ B.slot < u + n"
+    },
+    {
+     "name": "strictSlots_unique",
+     "line": 86,
+     "hypotheses": [
+      "hS : StrictSlots c",
+      "hB : B ∈ c",
+      "hB' : B' ∈ c",
+      "hslot : B.slot = B'.slot"
+     ],
+     "conclusion": "B = B'"
+    },
+    {
+     "name": "no_deep_fork_le",
+     "line": 152,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudget : ByzantineBounded n bad",
+      "hHonestLe : ∀ τ, τ ≤ M → ¬ bad τ → ∀ ⦃B B' : Block⦄, B ∈ record τ → B' ∈ record τ → B = B'",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hLast : LastCommonHeight c c' h",
+      "hF : blockAt? c h = some F",
+      "hD : blockAt? c m = some D",
+      "hD' : blockAt? c' m' = some D'",
+      "hMD : D.slot ≤ M",
+      "hMD' : D'.slot ≤ M",
+      "hDeep : F.slot + n ≤ D.slot",
+      "hDeep' : F.slot + n ≤ D'.slot"
+     ],
+     "conclusion": "False"
+    },
+    {
+     "name": "deep_block_shared_le",
+     "line": 187,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudget : ByzantineBounded n bad",
+      "hHonestLe : ∀ τ, τ ≤ M → ¬ bad τ → ∀ ⦃B B' : Block⦄, B ∈ record τ → B' ∈ record τ → B = B'",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hGenesis : CommonPrefixUpTo c c' 0",
+      "hb : blockAt? c k = some b",
+      "hD : blockAt? c mD = some D",
+      "hD' : blockAt? c' mD' = some D'",
+      "hMD : D.slot ≤ M",
+      "hMD' : D'.slot ≤ M",
+      "hDeep : b.slot + n ≤ D.slot",
+      "hDeep' : b.slot + n ≤ D'.slot"
+     ],
+     "conclusion": "blockAt? c' k = some b"
+    },
+    {
+     "name": "confirmed_mem_iff_le",
+     "line": 252,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : 2 * n ≤ Δconf",
+      "hBudget : ByzantineBounded n bad",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hGenesis : CommonPrefixUpTo c c' 0",
+      "hBσ : Bσ ∈ c",
+      "hsBσ : Bσ.slot = σ",
+      "hBσ' : Bσ' ∈ c'",
+      "hsBσ' : Bσ'.slot = σ",
+      "hHonestLt : ∀ τ, τ < σ → ¬ bad τ → ∀ ⦃B B' : Block⦄, B ∈ record τ → B' ∈ record τ → B = B'"
+     ],
+     "conclusion": "∀ b : Block, b.slot + Δconf ≤ σ → (b ∈ c ↔ b ∈ c')",
+     "notes": "Needs shared genesis and 2n ≤ Δconf; superseded (subsumed) by confirmed_mem_iff_horizon (n ≤ Δconf, no genesis, budget at one window)."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean",
+   "purpose": "Phase 2 I2b/I2c: the union slot record over two signed chains (chainUnionRecord), id-injectivity from collision resistance, the two crypto surfaces KeyStealingEUFCMA (primitive, assumed) and VersionedUnforgeable (derived via rotated_key_dead), and the strong-induction honest-slot uniqueness honestSlotsUnique_keyrot (2n ≤ Δconf, shared genesis).",
+   "imports": [
+    "MoltPetit.Model.KeyStealing",
+    "MoltPetit.Model.KeyStealingSafety"
+   ],
+   "defs": [
+    {
+     "name": "chainUnionRecord",
+     "kind": "def",
+     "line": 45,
+     "signature": "def chainUnionRecord {σ : Type} (sc sc' : SignedChain σ) : SlotRecord := fun s => ((stripSigs sc ++ stripSigs sc').filter (fun b => b.slot == s)).toFinset",
+     "meaning": "Slot record built from the two stripped chains under test (the record every keyrot agreement theorem uses)."
+    },
+    {
+     "name": "KeyStealingEUFCMA",
+     "kind": "structure",
+     "line": 136,
+     "signature": "structure KeyStealingEUFCMA (n Δconf : Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) : Prop where unforgeable : ∀ {sc : SignedChain Sig} {sb : SignedBlock Sig} {j : Nat}, validSignedChainK' n Δconf ops registry sc = true → sb ∈ sc → (∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ) → ops.verify (registry (producerForSlot n sb.block.slot) j) sb.block sb.sig = true → ¬ rented sb.block.slot → ¬ Stolen (producerForSlot n sb.block.slot) j → honestSigned (producerForSlot n sb.block.slot) sb.block.slot = some sb.block",
+     "meaning": "THE key-stealing signature surface (the only crypto trust surface of every headline mode-1 theorem). ONE field, `unforgeable`, with 6 premises: accepted pinned signed chain; block membership; recent tip (∃-form); explicit verification under version j; slot not rented; version j not stolen. Conclusion: the block is the honest signer's unique slot block. No inForce baked in; no forward security (Stolen not time-indexed)."
+    },
+    {
+     "name": "VersionedUnforgeable",
+     "kind": "structure",
+     "line": 161,
+     "signature": "structure VersionedUnforgeable (n Δconf : Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) : Prop where verified_was_signed : ∀ {sc : SignedChain Sig} {sb : SignedBlock Sig}, validSignedChainK' n Δconf ops registry sc = true → sb ∈ sc → (∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ) → ¬ rented sb.block.slot → (∀ j, inForce n Δconf (stripSigs sc) (producerForSlot n sb.block.slot) sb.block.slot ≤ j → ¬ Stolen (producerForSlot n sb.block.slot) j) → honestSigned (producerForSlot n sb.block.slot) sb.block.slot = some sb.block",
+     "meaning": "Intermediate surface: ONE field `verified_was_signed`, 5 premises (no explicit ops.verify; instead ∀ j ≥ chain-local inForce, ¬Stolen). Derived from KeyStealingEUFCMA, never assumed independently. Consumed by honestSlotsUnique_keyrot / _horizon / _anchored."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "mem_chainUnionRecord",
+     "line": 48,
+     "hypotheses": [
+      "none (all implicit)"
+     ],
+     "conclusion": "x ∈ chainUnionRecord sc sc' s ↔ (x ∈ stripSigs sc ∨ x ∈ stripSigs sc') ∧ x.slot = s"
+    },
+    {
+     "name": "chainInRecord_left",
+     "line": 54,
+     "hypotheses": [
+      "none"
+     ],
+     "conclusion": "ChainInRecord (chainUnionRecord sc sc') (stripSigs sc)"
+    },
+    {
+     "name": "chainInRecord_right",
+     "line": 60,
+     "hypotheses": [
+      "none"
+     ],
+     "conclusion": "ChainInRecord (chainUnionRecord sc sc') (stripSigs sc')"
+    },
+    {
+     "name": "idInjective_keyrot",
+     "line": 70,
+     "hypotheses": [
+      "hHash : SignedHashInjective Signed G",
+      "hSig : ∀ B ∈ stripSigs sc, B = G ∨ Signed B",
+      "hSig' : ∀ B ∈ stripSigs sc', B = G ∨ Signed B"
+     ],
+     "conclusion": "IdInjective (chainUnionRecord sc sc')"
+    },
+    {
+     "name": "versionedUnforgeable_of_keyStealingEUFCMA",
+     "line": 184,
+     "hypotheses": [
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ"
+     ],
+     "conclusion": "VersionedUnforgeable n Δconf ops registry rented Stolen honestSigned now Δ",
+     "notes": "Uses rotated_key_dead: declared version verifies and is ≥ inForce, so the ∀ j ≥ inForce premise covers it."
+    },
+    {
+     "name": "honestSlotsUnique_keyrot",
+     "line": 201,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : 2 * n ≤ Δconf",
+      "hUnf : VersionedUnforgeable n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hBudget : ByzantineBounded n (badKeyrotOn n Δconf rented Stolen (stripSigs sc))",
+      "hId : IdInjective (chainUnionRecord sc sc')",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ",
+      "hGenesis : CommonPrefixUpTo (stripSigs sc) (stripSigs sc') 0"
+     ],
+     "conclusion": "HonestSlotsUnique (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) (chainUnionRecord sc sc')",
+     "notes": "Budget and corruption predicate keyed to sc (the FIRST chain). Proof idiom: `induction s using Nat.strongRecOn with | ind s IH =>`, reconciling inForce of sc' to sc via inForce_agreement_of_confirmed_eq + confirmed_mem_iff_le. Superseded by honestSlotsUnique_keyrot_horizon (n ≤ Δconf, no genesis)."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingBudget.lean",
+   "purpose": "Increment I3: decompose the joint ByzantineBounded n (badKeyrotOn …) into a rent budget R (slots/window) plus a theft rate T (exposed producers/window): theftOn, exposedProducers, union no-double-count bound, producer↔slot injection per window, induced_byzantine_bounded. File has `open Classical`.",
+   "imports": [
+    "MoltPetit.Model.KeyStealing"
+   ],
+   "defs": [
+    {
+     "name": "theftOn",
+     "kind": "def",
+     "line": 42,
+     "signature": "def theftOn (n Δconf : Nat) (Stolen : Nat → Nat → Prop) (c₀ : Chain) (s : Nat) : Prop := ∃ j, inForce n Δconf c₀ (producerForSlot n s) s ≤ j ∧ Stolen (producerForSlot n s) j",
+     "meaning": "The theft disjunct of badKeyrotOn."
+    },
+    {
+     "name": "exposedProducers",
+     "kind": "noncomputable def",
+     "line": 62,
+     "signature": "noncomputable def exposedProducers (n Δconf : Nat) (Stolen : Nat → Nat → Prop) (c₀ : Chain) (u : Nat) : Finset Nat := (Finset.Ico u (u + n)).filter (fun s => theftOn n Δconf Stolen c₀ s) |>.image (producerForSlot n)",
+     "meaning": "Producers holding a stolen not-yet-rotated-out key at their slot in [u, u+n)."
+    },
+    {
+     "name": "window_producer_inj",
+     "kind": "private theorem",
+     "line": 69,
+     "signature": "private theorem window_producer_inj {n u : Nat} {s s' : Nat} (hs : s ∈ Finset.Ico u (u + n)) (hs' : s' ∈ Finset.Ico u (u + n)) (h : producerForSlot n s = producerForSlot n s') : s = s'",
+     "meaning": "PRIVATE; producer is injective on an n-window. Molt/MaxSync.producer_slot_in_window is the public existence counterpart."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "badKeyrotOn_iff_or",
+     "line": 45,
+     "hypotheses": [
+      "(s : Nat) explicit"
+     ],
+     "conclusion": "badKeyrotOn n Δconf rented Stolen c₀ s ↔ rented s ∨ theftOn n Δconf Stolen c₀ s",
+     "notes": "Iff.rfl."
+    },
+    {
+     "name": "badSlotsIn_union_le",
+     "line": 52,
+     "hypotheses": [
+      "(A B : ByzantineSlots) (u n : Nat) explicit"
+     ],
+     "conclusion": "(badSlotsIn (fun s => A s ∨ B s) u n).card ≤ (badSlotsIn A u n).card + (badSlotsIn B u n).card"
+    },
+    {
+     "name": "theftSlots_card_le_exposed",
+     "line": 92,
+     "hypotheses": [
+      "(n Δconf : Nat) (Stolen) (c₀ : Chain) (u : Nat) explicit"
+     ],
+     "conclusion": "(badSlotsIn (theftOn n Δconf Stolen c₀) u n).card ≤ (exposedProducers n Δconf Stolen c₀ u).card"
+    },
+    {
+     "name": "induced_byzantine_bounded",
+     "line": 107,
+     "hypotheses": [
+      "hRent : ∀ u, (badSlotsIn rented u n).card ≤ R",
+      "hExposed : ∀ u, (exposedProducers n Δconf Stolen c₀ u).card ≤ T",
+      "hRT : R + T ≤ maxByzantine n"
+     ],
+     "conclusion": "ByzantineBounded n (badKeyrotOn n Δconf rented Stolen c₀)",
+     "notes": "c₀ is an arbitrary witness chain; instantiate c₀ := stripSigs sc to feed the headline theorems."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingLongRange.lean",
+   "purpose": "Increment I4 provable core: old-key forks are long-range. Single-chain: a same-producer block Δconf past an announcement declares ≥ the announced version. Cross-chain: an accepted fork sharing the canonical prefix through the announcement's height obeys the announced version; contrapositive = fork with an older version branched strictly below the announcement. H-ANCHOR is reduced to excluding pre-anchor branches, stays a named assumption.",
+   "imports": [
+    "MoltPetit.Model.KeyStealingCert"
+   ],
+   "defs": [],
+   "theorems": [
+    {
+     "name": "oldkey_dead_after_confirmed_announcement",
+     "line": 35,
+     "hypotheses": [
+      "hK' : validChainK' n Δconf c = true",
+      "hA : A ∈ c",
+      "hb : b ∈ c",
+      "hprod : producerForSlot n A.slot = producerForSlot n b.slot",
+      "hconf : A.slot + Δconf ≤ b.slot"
+     ],
+     "conclusion": "A.keyIndex ≤ b.keyIndex",
+     "notes": "Uses validChainK'_pinned and mem_keyIndex_le_floor (KeyStealingCert); no budget, no crypto."
+    },
+    {
+     "name": "recent_oldkey_fork_is_longrange",
+     "line": 64,
+     "hypotheses": [
+      "hK' : validChainK' n Δconf c' = true",
+      "hAat : blockAt? c hA = some A",
+      "hshared : CommonPrefixUpTo c c' k",
+      "hAk : hA ≤ k",
+      "hb : b ∈ c'",
+      "hprod : producerForSlot n A.slot = producerForSlot n b.slot",
+      "hconf : A.slot + Δconf ≤ b.slot"
+     ],
+     "conclusion": "A.keyIndex ≤ b.keyIndex",
+     "notes": "Only c' need be validChainK'-accepted; c is any chain carrying A at height hA."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
+   "purpose": "Certificate presentation for the pinned validator: mem_keyIndex_le_floor, keyFloor_append_one, the monotone rule implies the ≤-pin on full chains (inForcePinned_of_validChainK, validChainK'_of_validChainK), the suffix-side floor check keyMonoFrom and its lemmas, SignedDeclared, GroundedCertK/GroundedHistoryK reconstruction, AttestedHistoryK, and the certificate-level keyrot_recent_certified_suffix_agreement (global AttestedHistoryK budget).",
+   "imports": [
+    "MoltPetit.Model.Grounded",
+    "MoltPetit.Results.KeyStealingResults"
+   ],
+   "defs": [
+    {
+     "name": "keyMonoFrom",
+     "kind": "def",
+     "line": 159,
+     "signature": "def keyMonoFrom (n : Nat) : (Nat → Nat) → Chain → Bool | _, [] => true | fl, b :: rest => decide (fl (producerForSlot n b.slot) ≤ b.keyIndex) && keyMonoFrom n (fun i => if producerForSlot n b.slot = i then max (fl i) b.keyIndex else fl i) rest",
+     "meaning": "Suffix monotone check threading a per-producer floor snapshot."
+    },
+    {
+     "name": "SignedDeclared",
+     "kind": "def",
+     "line": 234,
+     "signature": "def SignedDeclared {Sig sk pk : Type} (n : Nat) (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (B : Block) : Prop := ∃ sig : Sig, ops.verify (registry (producerForSlot n B.slot) B.keyIndex) B sig = true",
+     "meaning": "Block verifies under its DECLARED version (stronger than KeyStealingSigned, which is ∃ j)."
+    },
+    {
+     "name": "GroundedCertK",
+     "kind": "inductive",
+     "line": 315,
+     "signature": "inductive GroundedCertK (n : Nat) (Signed : Block → Prop) (G : Block) : CertClaim → (Nat → Nat) → Prop | genesis : genesisOk G = true → G.slot = 0 → Signed G → GroundedCertK n Signed G {tipId := G.id, tipSlot := G.slot, tipHeight := G.height, tail := [G].filter fun x => decide (G.slot + 2 - n ≤ x.slot)} (fun i => if producerForSlot n G.slot = i then max 0 G.keyIndex else 0) | extend (cl : CertClaim) (fl : Nat → Nat) (b : Block) : GroundedCertK n Signed G cl fl → b.height = cl.tipHeight + 1 → cl.tipSlot < b.slot → b.prev = some cl.tipId → Signed b → fl (producerForSlot n b.slot) ≤ b.keyIndex → (∀ u : Nat, cl.tipSlot + 2 ≤ u + n → u + n ≤ b.slot + 1 → quorum n ≤ windowCount (cl.tail ++ [b]) u n) → GroundedCertK n Signed G {tipId := b.id, tipSlot := b.slot, tipHeight := b.height, tail := (cl.tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot)} (fun i => if producerForSlot n b.slot = i then max (fl i) b.keyIndex else fl i)",
+     "meaning": "Grounded-K certificate derivation carrying claim + floor snapshot."
+    },
+    {
+     "name": "GroundedHistoryK",
+     "kind": "structure",
+     "line": 342,
+     "signature": "structure GroundedHistoryK (n : Nat) (Signed : Block → Prop) (G : Block) (cl : CertClaim) (fl : Nat → Nat) (c : Chain) : Prop where valid : validChainK n c = true; head : blockAt? c 0 = some G; tip : ∃ t : Block, c.getLast? = some t ∧ t.id = cl.tipId ∧ t.slot = cl.tipSlot ∧ t.height = cl.tipHeight; tail_eq : cl.tail = c.filter fun x => decide (cl.tipSlot + 2 - n ≤ x.slot); len_eq : c.length = cl.tipHeight + 1; signed : ∀ B ∈ c, Signed B; floors : ∀ i, keyFloor n c i = fl i",
+     "meaning": "What groundedCertK_history reconstructs."
+    },
+    {
+     "name": "AttestedHistoryK",
+     "kind": "def",
+     "line": 541,
+     "signature": "def AttestedHistoryK {Sig sk pk : Type} (n Δconf : Nat) (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (G : Block) (tipHeight : Nat) (suffix c : Chain) : Prop := validChainK' n Δconf c = true ∧ blockAt? c 0 = some G ∧ (∀ B ∈ c, SignedDeclared n ops registry B) ∧ ∃ p : Chain, c = p ++ suffix ∧ p.length = tipHeight + 1",
+     "meaning": "A full chain the certificate could be attesting; the cert-level budget is quantified over all of these."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "mem_keyIndex_le_floor",
+     "line": 82,
+     "hypotheses": [
+      "(n : Nat) explicit",
+      "hB : B ∈ c"
+     ],
+     "conclusion": "B.keyIndex ≤ keyFloor n c (producerForSlot n B.slot)",
+     "notes": "Membership form used by KeyStealingLongRange."
+    },
+    {
+     "name": "keyFloor_append_one",
+     "line": 91,
+     "hypotheses": [
+      "(n c b i) explicit"
+     ],
+     "conclusion": "keyFloor n (c ++ [b]) i = if producerForSlot n b.slot = i then max (keyFloor n c i) b.keyIndex else keyFloor n c i"
+    },
+    {
+     "name": "inForcePinned_of_validChainK",
+     "line": 122,
+     "hypotheses": [
+      "h : validChainK n c = true"
+     ],
+     "conclusion": "inForcePinned n Δconf c = true",
+     "notes": "Δconf implicit; the pin is free on full monotone chains."
+    },
+    {
+     "name": "validChainK'_of_validChainK",
+     "line": 145,
+     "hypotheses": [
+      "h : validChainK n c = true"
+     ],
+     "conclusion": "validChainK' n Δconf c = true"
+    },
+    {
+     "name": "keyMonoFrom_ge",
+     "line": 169,
+     "hypotheses": [
+      "hle : ∀ i, fl i ≤ fl' i",
+      "h : keyMonoFrom n fl' s = true"
+     ],
+     "conclusion": "∀ y ∈ s, fl (producerForSlot n y.slot) ≤ y.keyIndex"
+    },
+    {
+     "name": "keyMonoFrom_pairwise",
+     "line": 192,
+     "hypotheses": [
+      "h : keyMonoFrom n fl s = true"
+     ],
+     "conclusion": "s.Pairwise (fun a b => producerForSlot n a.slot = producerForSlot n b.slot → a.keyIndex ≤ b.keyIndex)"
+    },
+    {
+     "name": "keyMonoOk_append_of_from",
+     "line": 212,
+     "hypotheses": [
+      "hc : keyMonoOk n c = true",
+      "hs : keyMonoFrom n (keyFloor n c) s = true"
+     ],
+     "conclusion": "keyMonoOk n (c ++ s) = true"
+    },
+    {
+     "name": "keyStealingSigned_of_declared",
+     "line": 239,
+     "hypotheses": [
+      "h : SignedDeclared n ops registry B"
+     ],
+     "conclusion": "KeyStealingSigned n ops registry B"
+    },
+    {
+     "name": "exists_signedChain_of_covered",
+     "line": 247,
+     "hypotheses": [
+      "h : ∀ B ∈ c, SignedDeclared n ops registry B"
+     ],
+     "conclusion": "∃ sc : SignedChain Sig, stripSigs sc = c ∧ sigsOk n ops registry sc = true"
+    },
+    {
+     "name": "keyMonoFrom_congr",
+     "line": 263,
+     "hypotheses": [
+      "hfg : ∀ i, f i = g i"
+     ],
+     "conclusion": "∀ s : Chain, keyMonoFrom n f s = keyMonoFrom n g s"
+    },
+    {
+     "name": "keyMonoFrom_congr_lt",
+     "line": 280,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hfg : ∀ i, i < n → f i = g i"
+     ],
+     "conclusion": "∀ s : Chain, keyMonoFrom n f s = keyMonoFrom n g s"
+    },
+    {
+     "name": "groundedCertK_history",
+     "line": 355,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "h : GroundedCertK n Signed G cl fl"
+     ],
+     "conclusion": "∃ c : Chain, GroundedHistoryK n Signed G cl fl c"
+    },
+    {
+     "name": "groundedCertK_suffix_history",
+     "line": 462,
+     "hypotheses": [
+      "(Δconf : Nat) explicit",
+      "hn : 1 ≤ n",
+      "hG : GroundedCertK n Signed G cl fl",
+      "hTipS : (s₁ :: srest).getLast? = some sTip",
+      "hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId",
+      "hLinks : linksOk (s₁ :: srest) = true",
+      "hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n",
+      "hMono : keyMonoFrom n fl (s₁ :: srest) = true",
+      "hSigned : ∀ B ∈ s₁ :: srest, Signed B"
+     ],
+     "conclusion": "∃ c : Chain, validChainK' n Δconf (c ++ s₁ :: srest) = true ∧ blockAt? (c ++ s₁ :: srest) 0 = some G ∧ c.length = cl.tipHeight + 1 ∧ (∀ B ∈ c ++ s₁ :: srest, Signed B)"
+    },
+    {
+     "name": "keyrot_recent_certified_suffix_agreement",
+     "line": 583,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hcl : GroundedCertK n (SignedDeclared n ops registry) G cl fl",
+      "hcl' : GroundedCertK n (SignedDeclared n ops registry) G cl' fl'",
+      "hTipS : (s₁ :: srest).getLast? = some sTip",
+      "hTipS' : (s₁' :: srest').getLast? = some sTip'",
+      "hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId",
+      "hLinks : linksOk (s₁ :: srest) = true",
+      "hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n",
+      "hMono : keyMonoFrom n fl (s₁ :: srest) = true",
+      "hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B",
+      "hLink' / hLinks' / hDense' / hMono' / hSigned' : the primed analogues for cl', fl', s₁' :: srest', sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hBudget : ∀ c : Chain, AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c → ByzantineBounded n (badKeyrotOn n Δconf rented Stolen c)",
+      "hB : blockAt? (s₁ :: srest) i = some B",
+      "hB' : blockAt? (s₁' :: srest') i' = some B'",
+      "hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i'",
+      "hDeep : i + n < (s₁ :: srest).length",
+      "hDeep' : i' + n < (s₁' :: srest').length"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Budget shape: GLOBAL ByzantineBounded over badKeyrotOn keyed on every attestable history c of the FIRST certificate (cl, s₁ :: srest); reconstructs full chains and calls keyrot_deep_block_agreement_of_length. Molt/Rotation.lean:308 aliases it and says the anchored/trailing-window form is future work."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Results/KeyStealingResults.lean",
+   "purpose": "Phase 3 core: KeyStealingSigned (the concrete hash-injectivity domain), validator-discharged coverage, and the chain-level agreement theorems under the key-stealing adversary: keyrot_deep_block_agreement(_of_length), keyrot_recent_tip_ancestor_agreement / _mem, and their loss-only specialisations. Long module docstring is the assumptions ledger.",
+   "imports": [
+    "MoltPetit.Model.KeyStealingUnique",
+    "MoltPetit.Model.KeyStealingHorizonCore"
+   ],
+   "defs": [
+    {
+     "name": "KeyStealingSigned",
+     "kind": "def",
+     "line": 158,
+     "signature": "def KeyStealingSigned {Sig sk pk : Type} (n : Nat) (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (B : Block) : Prop := ∃ (sig : Sig) (j : Nat), ops.verify (registry (producerForSlot n B.slot) j) B sig = true",
+     "meaning": "'Carries a verifying registry signature at SOME version' — the concrete Signed domain of SignedHashInjective in the headline theorems. Molt.KeyStealingSigned is `abbrev KeyStealingSigned := @MoltPetit.Model.KeyStealingSigned`."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "keyStealingSigned_of_mem",
+     "line": 169,
+     "hypotheses": [
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hB : B ∈ stripSigs sc"
+     ],
+     "conclusion": "KeyStealingSigned n ops registry B",
+     "notes": "Discharges hSig/hSig' from validator acceptance: fun b hb => Or.inr (keyStealingSigned_of_mem hVal hb)."
+    },
+    {
+     "name": "keyrot_deep_block_agreement",
+     "line": 204,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective Signed G",
+      "hBudget : ByzantineBounded n (badKeyrotOn n Δconf rented Stolen (stripSigs sc))",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hSig : ∀ B ∈ stripSigs sc, B = G ∨ Signed B",
+      "hSig' : ∀ B ∈ stripSigs sc', B = G ∨ Signed B",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ",
+      "hGenesis : CommonPrefixUpTo (stripSigs sc) (stripSigs sc') 0",
+      "hB : blockAt? (stripSigs sc) k = some B",
+      "hB' : blockAt? (stripSigs sc') k = some B'",
+      "hD : blockAt? (stripSigs sc) m = some D",
+      "hD' : blockAt? (stripSigs sc') m' = some D'",
+      "hDeep : k + n ≤ m",
+      "hDeep' : k + n ≤ m'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Budget shape: ByzantineBounded n over badKeyrotOn keyed on stripSigs sc — the FIRST chain. Record: chainUnionRecord sc sc'. Uses honestSlotsUnique_keyrot_horizon + deep_block_agreement_of_height_depth."
+    },
+    {
+     "name": "keyrot_deep_block_agreement_of_length",
+     "line": 250,
+     "hypotheses": [
+      "same as keyrot_deep_block_agreement through hGenesis",
+      "hB : blockAt? (stripSigs sc) k = some B",
+      "hB' : blockAt? (stripSigs sc') k = some B'",
+      "hLen : k + n < (stripSigs sc).length",
+      "hLen' : k + n < (stripSigs sc').length"
+     ],
+     "conclusion": "B = B'"
+    },
+    {
+     "name": "keyrot_recent_tip_ancestor_agreement",
+     "line": 328,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hBudget : ByzantineBounded n (badKeyrotOn n Δconf rented Stolen (stripSigs sc))",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Genesis is required at POSITION 0 of both stripped chains (hHead/hHead'). Budget: global ByzantineBounded over badKeyrotOn (stripSigs sc)."
+    },
+    {
+     "name": "keyrot_recent_tip_ancestor_mem",
+     "line": 393,
+     "hypotheses": [
+      "hn, hΔ, hEUF, hHash (KeyStealingSigned domain), hBudget (over stripSigs sc), hVal, hVal', hHead, hHead', hTipS, hTipS', hRecent, hRecent' as above",
+      "hLong : n < (stripSigs sc).length",
+      "hLe : sTip.height ≤ sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B"
+     ],
+     "conclusion": "∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B"
+    },
+    {
+     "name": "keyrot_lossonly_recent_tip_ancestor_agreement",
+     "line": 483,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented (fun _ _ => False) honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hBudget : ByzantineBounded n rented",
+      "hVal, hVal', hHead, hHead', hTipS, hTipS', hRecent, hRecent', hLong, hLong', hTipHeight, hB, hB' exactly as keyrot_recent_tip_ancestor_agreement"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Proof: `by rw [badKeyrotOn_lossOnly]; exact hBudget` — the idiom for collapsing the chain-keyed budget."
+    },
+    {
+     "name": "keyrot_lossonly_recent_tip_ancestor_mem",
+     "line": 518,
+     "hypotheses": [
+      "as keyrot_recent_tip_ancestor_mem but hEUF at Stolen := fun _ _ => False and hBudget : ByzantineBounded n rented"
+     ],
+     "conclusion": "∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B"
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizonCore.lean",
+   "purpose": "σ-localized horizon core: the pigeonhole at the top window [σ-n, σ) so only n ≤ Δconf is needed, no shared genesis, and the budget consumed at a single window. Provides sigma_shared_prefix, confirmed_mem_iff_horizon, honestSlotsUnique_keyrot_horizon, and the anchored honestSlotsUnique_keyrot_anchored (budget only on windows ending after the anchor).",
+   "imports": [
+    "MoltPetit.Model.KeyStealingSafety",
+    "MoltPetit.Model.KeyStealingUnique"
+   ],
+   "defs": [
+    {
+     "name": "exists_honest_shared_slot_at",
+     "kind": "private theorem",
+     "line": 58,
+     "signature": "private theorem exists_honest_shared_slot_at {n : Nat} (hn : 1 ≤ n) {bad : ByzantineSlots} {u : Nat} (hBudgetU : (badSlotsIn bad u n).card ≤ maxByzantine n) {S S' : Finset Nat} (hS : S ⊆ Finset.Ico u (u + n)) (hS' : S' ⊆ Finset.Ico u (u + n)) (hCard : quorum n ≤ S.card) (hCard' : quorum n ≤ S'.card) : ∃ s, s ∈ S ∧ s ∈ S' ∧ ¬ bad s",
+     "meaning": "PRIVATE single-window pigeonhole (Safety.exists_honest_shared_slot takes the global budget)."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "sigma_shared_prefix",
+     "line": 91,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudgetU : (badSlotsIn bad (σ - n) n).card ≤ maxByzantine n",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hBσ : Bσ ∈ c",
+      "hsBσ : Bσ.slot = σ",
+      "hBσ' : Bσ' ∈ c'",
+      "hsBσ' : Bσ'.slot = σ",
+      "hHonestLt : ∀ τ, τ < σ → ¬ bad τ → ∀ ⦃B B' : Block⦄, B ∈ record τ → B' ∈ record τ → B = B'",
+      "hb : blockAt? c k = some b",
+      "hdeep : b.slot + n ≤ σ"
+     ],
+     "conclusion": "blockAt? c' k = some b"
+    },
+    {
+     "name": "confirmed_mem_iff_horizon",
+     "line": 151,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hBudgetU : (badSlotsIn bad (σ - n) n).card ≤ maxByzantine n",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hBσ : Bσ ∈ c",
+      "hsBσ : Bσ.slot = σ",
+      "hBσ' : Bσ' ∈ c'",
+      "hsBσ' : Bσ'.slot = σ",
+      "hHonestLt : ∀ τ, τ < σ → ¬ bad τ → ∀ ⦃B B' : Block⦄, B ∈ record τ → B' ∈ record τ → B = B'"
+     ],
+     "conclusion": "∀ b : Block, b.slot + Δconf ≤ σ → (b ∈ c ↔ b ∈ c')"
+    },
+    {
+     "name": "honestSlotsUnique_keyrot_horizon",
+     "line": 183,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hUnf : VersionedUnforgeable n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hBudget : ByzantineBounded n (badKeyrotOn n Δconf rented Stolen (stripSigs sc))",
+      "hId : IdInjective (chainUnionRecord sc sc')",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ"
+     ],
+     "conclusion": "HonestSlotsUnique (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) (chainUnionRecord sc sc')",
+     "notes": "No genesis hypothesis; the version consumed by all current headline theorems."
+    },
+    {
+     "name": "honestSlotsUnique_keyrot_anchored",
+     "line": 258,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hUnf : VersionedUnforgeable n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hA : A ∈ stripSigs sc",
+      "hA' : A ∈ stripSigs sc'",
+      "hBudgetFrom : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) u n).card ≤ maxByzantine n",
+      "hId : IdInjective (chainUnionRecord sc sc')",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ"
+     ],
+     "conclusion": "HonestSlotsUnique (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) (chainUnionRecord sc sc')",
+     "notes": "Windowed budget shape: badSlotsIn card ≤ maxByzantine, only for windows u with A.slot + 1 ≤ u + n; below the anchor both chains are the same list (same_block_same_prefix)."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizon.lean",
+   "purpose": "Genesis-free and anchored tip-ancestor agreement forms for mode 1 (n ≤ Δconf), built on horizon_shared_prefix (from KeyStealingScheduleHorizon) and the HorizonCore uniqueness results. These are what Molt.client_refresh_rule / sync_rule wrap.",
+   "imports": [
+    "MoltPetit.Model.KeyStealingSafety",
+    "MoltPetit.Model.KeyStealingUnique",
+    "MoltPetit.Model.KeyStealingHorizonCore",
+    "MoltPetit.Results.KeyStealingResults",
+    "MoltPetit.Model.KeyStealingScheduleHorizon"
+   ],
+   "defs": [],
+   "theorems": [
+    {
+     "name": "keyrot_recent_tip_ancestor_agreement_horizon",
+     "line": 69,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective Signed G",
+      "hSig : ∀ B ∈ stripSigs sc, B = G ∨ Signed B",
+      "hSig' : ∀ B ∈ stripSigs sc', B = G ∨ Signed B",
+      "hBudget : ByzantineBounded n (badKeyrotOn n Δconf rented Stolen (stripSigs sc))",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "NO hHead/hHead'; G appears only as the genesis exemption in SignedHashInjective."
+    },
+    {
+     "name": "keyrot_recent_tip_ancestor_agreement_anchored",
+     "line": 134,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hA : A ∈ stripSigs sc",
+      "hA' : A ∈ stripSigs sc'",
+      "hBudgetFrom : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) u n).card ≤ maxByzantine n",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "The anchored (key-leak-horizon) form; budget is per-window card bound over badKeyrotOn keyed on stripSigs sc, only for windows ending after A.slot. Wrapped by Molt.client_refresh_rule."
+    },
+    {
+     "name": "keyrot_recent_tip_ancestor_mem_anchored",
+     "line": 222,
+     "hypotheses": [
+      "hn, hΔ, hEUF, hHash (KeyStealingSigned), hA, hA', hBudgetFrom, hVal, hVal', hTipS, hTipS', hRecent, hRecent', hLong, hLong' as above",
+      "hLe : sTip.height ≤ sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B"
+     ],
+     "conclusion": "∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B",
+     "notes": "Wrapped by Molt.sync_rule_mem."
+    },
+    {
+     "name": "keyrot_recent_tip_ancestor_agreement_horizon_of_valid",
+     "line": 310,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hBudget : ByzantineBounded n (badKeyrotOn n Δconf rented Stolen (stripSigs sc))",
+      "hVal, hVal', hTipS, hTipS', hRecent, hRecent', hLong, hLong', hTipHeight, hB, hB' as in the _horizon form"
+     ],
+     "conclusion": "B = B'"
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+   "purpose": "(Only the one lemma the mode-1 horizon module imports is recorded here.) Trailing-window contraction used by KeyStealingHorizon.",
+   "imports": [
+    "(not read in full)"
+   ],
+   "defs": [],
+   "theorems": [
+    {
+     "name": "horizon_shared_prefix",
+     "line": 161,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hHonest : HonestSlotsUnique bad record",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hTip : c.getLast? = some tip",
+      "hTip' : c'.getLast? = some tip'",
+      "hle : tip.slot ≤ tip'.slot",
+      "hBudgetU : (badSlotsIn bad (tip.slot + 1 - n) n).card ≤ maxByzantine n",
+      "hkdeep : k + n < c.length"
+     ],
+     "conclusion": "∃ P : Block, blockAt? c k = some P ∧ blockAt? c' k = some P",
+     "notes": "Abstract bad/record; budget at the single top window of the lower-tipped chain."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
+   "purpose": "Paper §6.3 re-presentation (namespace Molt): fresh paper-named copies of keyMonoOk/validChainK/keyFloor/confirmedPrefix/inForce/inForcePinned/validChainK'/validSignedChainK'/badKeyrot (mode 1), scheduled and lockstep validators (modes 2/3), abbrevs for the surfaces, rfl/pointwise *_eq_core bridges, badKeyrot_lossOnly, client_refresh_rule (Theorem 3 wrapper with explicit anchor age H), and aliases of the certificate/horizon theorems.",
+   "imports": [
+    "Molt.Results",
+    "MoltPetit.Results.KeyStealingResults",
+    "MoltPetit.Results.KeyStealingScheduleResults",
+    "MoltPetit.Model.KeyStealingHorizon",
+    "MoltPetit.Model.KeyStealingLockstep",
+    "MoltPetit.Model.KeyStealingCert",
+    "MoltPetit.Model.KeyStealingScheduleCert"
+   ],
+   "defs": [
+    {
+     "name": "keyMonoOk",
+     "kind": "def",
+     "line": 33,
+     "signature": "def keyMonoOk (n : Nat) : Chain → Bool (same body as core but with `producer n`)",
+     "meaning": "Paper copy; bridge keyMonoOk_eq_core (168) by induction + producer_eq_core."
+    },
+    {
+     "name": "validChainK",
+     "kind": "def",
+     "line": 44,
+     "signature": "def validChainK (n : Nat) (c : Chain) : Bool := validChain n c && keyMonoOk n c",
+     "meaning": "Paper copy; bridge validChainK_eq_core (185)."
+    },
+    {
+     "name": "keyFloor",
+     "kind": "def",
+     "line": 57,
+     "signature": "def keyFloor (n : Nat) (c : Chain) (i : Nat) : Nat := ((c.filter (fun b => decide (producer n b.slot = i))).map MoltPetit.Model.Block.keyIndex).foldl max 0",
+     "meaning": "Paper copy; keyFloor_eq_core (176) is rfl."
+    },
+    {
+     "name": "confirmedPrefix",
+     "kind": "def",
+     "line": 66,
+     "signature": "def confirmedPrefix (Δconf : Nat) (c : Chain) (s : Nat) : Chain := c.filter (fun b => decide (b.slot + Δconf ≤ s))",
+     "meaning": "rfl-bridged (177)."
+    },
+    {
+     "name": "inForce",
+     "kind": "def",
+     "line": 72,
+     "signature": "def inForce (n Δconf : Nat) (c : Chain) (i s : Nat) : Nat := keyFloor n (confirmedPrefix Δconf c s) i",
+     "meaning": "inForce_eq_core (179) is rfl; Molt.inForce_mono is stated over this."
+    },
+    {
+     "name": "inForcePinned",
+     "kind": "def",
+     "line": 80,
+     "signature": "def inForcePinned (n Δconf : Nat) (c : Chain) : Bool := c.all (fun b => decide (inForce n Δconf c (producer n b.slot) b.slot ≤ b.keyIndex))",
+     "meaning": "rfl-bridged (180)."
+    },
+    {
+     "name": "validChainK'",
+     "kind": "def",
+     "line": 85,
+     "signature": "def validChainK' (n Δconf : Nat) (c : Chain) : Bool := validChainK n c && inForcePinned n Δconf c",
+     "meaning": "Bridge validChainK'_eq_core (190) via funext+simp."
+    },
+    {
+     "name": "validSignedChainK'",
+     "kind": "def",
+     "line": 89,
+     "signature": "def validSignedChainK' {σ sk pk : Type} (n Δconf : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChainK' n Δconf (stripSigs sc)",
+     "meaning": "Bridge validSignedChainK'_eq_core (196): `(validSignedChainK' (σ := σ) (sk := sk) (pk := pk)) = MoltPetit.Model.validSignedChainK'`; used as `rw [validSignedChainK'_eq_core] at hVal hVal'` before calling core theorems."
+    },
+    {
+     "name": "badKeyrot",
+     "kind": "def",
+     "line": 100,
+     "signature": "def badKeyrot (n Δconf : Nat) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (c₀ : Chain) (s : Nat) : Prop := rented s ∨ ∃ j, inForce n Δconf c₀ (producer n s) s ≤ j ∧ Stolen (producer n s) j",
+     "meaning": "Paper name for MoltPetit.Model.badKeyrotOn; badKeyrot_eq_core (182) : badKeyrot = MoltPetit.Model.badKeyrotOn := rfl."
+    },
+    {
+     "name": "KeyStealingEUFCMA",
+     "kind": "abbrev",
+     "line": 108,
+     "signature": "abbrev KeyStealingEUFCMA := @MoltPetit.Model.KeyStealingEUFCMA",
+     "meaning": "Re-export (not re-declared)."
+    },
+    {
+     "name": "KeyStealingSigned",
+     "kind": "abbrev",
+     "line": 112,
+     "signature": "abbrev KeyStealingSigned := @MoltPetit.Model.KeyStealingSigned",
+     "meaning": "Re-export of the mode-1 hash-injectivity domain."
+    },
+    {
+     "name": "schedPin / validSignedChainSched / SchedUnforgeable / badSched / SignedDeclared / noMixing / validSignedChainLock / LockstepPackage / GroundedCertK / GroundedCertSched",
+     "kind": "def/abbrev",
+     "line": 119,
+     "signature": "lines 119,124,131,134,137,144,155,164,314,352 — modes 2/3 and certificate re-exports",
+     "meaning": "Not mode-1 focus; listed for namespace completeness."
+    },
+    {
+     "name": "*_eq_core bridges",
+     "kind": "theorem",
+     "line": 168,
+     "signature": "keyMonoOk_eq_core 168, keyFloor_eq_core 176, confirmedPrefix_eq_core 177, inForce_eq_core 179, inForcePinned_eq_core 180, badKeyrot_eq_core 182, schedPin_eq_core 183, validChainK_eq_core 185, validChainK'_eq_core 190, validSignedChainK'_eq_core 196, validSignedChainSched_eq_core 203, noMixing_eq_core 210, validSignedChainLock_eq_core 217",
+     "meaning": "Transport rails: every core theorem about the RHS is a theorem about the LHS."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "validChainK_structural",
+     "line": 50,
+     "hypotheses": [
+      "h : validChainK n c = true"
+     ],
+     "conclusion": "validChain n c = true"
+    },
+    {
+     "name": "badKeyrot_lossOnly",
+     "line": 230,
+     "hypotheses": [
+      "(n Δconf : Nat) (rented : ByzantineSlots) (c₀ : Chain) explicit"
+     ],
+     "conclusion": "badKeyrot n Δconf rented (fun _ _ => False) c₀ = rented",
+     "notes": "Term-mode: MoltPetit.Model.badKeyrotOn_lossOnly n Δconf rented c₀ (types line up because badKeyrot is rfl-equal). Guarded in Molt/Axioms.lean:27 with axioms [propext, Quot.sound]."
+    },
+    {
+     "name": "client_refresh_rule",
+     "line": 267,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ  (honestSigned : SigningLog)",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hA : A ∈ stripSigs sc",
+      "hA' : A ∈ stripSigs sc'",
+      "hFresh : now ≤ A.slot + H",
+      "hBudget : ∀ u, now < u + n + H → (badSlotsIn (badKeyrot n Δconf rented Stolen (stripSigs sc)) u n).card ≤ faultBudget n",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Budget shape: per-window card bound over badKeyrot keyed on stripSigs sc (FIRST chain), only for windows with now < u + n + H. Proof: rw [validSignedChainK'_eq_core] at hVal hVal'; exact MoltPetit.Model.keyrot_recent_tip_ancestor_agreement_anchored … (fun u hu => hBudget u (by omega)) …. No genesis-position hypothesis."
+    },
+    {
+     "name": "keyrot_recent_certified_suffix_agreement (alias)",
+     "line": 308,
+     "hypotheses": [
+      "alias := MoltPetit.Model.keyrot_recent_certified_suffix_agreement"
+     ],
+     "conclusion": "see KeyStealingCert.lean:583",
+     "notes": "Docstring: 'under the global, all-window budget (the anchored, trailing-window form is future work at this presentation)'."
+    },
+    {
+     "name": "scheduled_client_safety",
+     "line": 369,
+     "hypotheses": [
+      "mode 2, not mode-1 focus: hn, hUnf : SchedUnforgeable …, hHash : SignedHashInjective (SignedDeclared n ops registry) G, hBudget : FaultBounded n (badSched n schedule rented Stolen), hVal/hVal' (validSignedChainSched), hHead/hHead', tips, recency, lengths, equal heights, hB/hB'"
+     ],
+     "conclusion": "B = B'"
+    },
+    {
+     "name": "lockstep_client_safety",
+     "line": 406,
+     "hypotheses": [
+      "mode 3, not mode-1 focus: hn, hP : LockstepPackage …, hVal/hVal' (validSignedChainLock), hHead/hHead', tips, recency, lengths, equal heights, hB/hB'"
+     ],
+     "conclusion": "B = B'"
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
+   "purpose": "The single-constant client rule (paper Theorem 3): deep_block_span (the n-deep anchor is < 2n slots below the tip), stay_recent_client_safe (H := 4n-1 instance of client_refresh_rule), sync_rule (Δconf := n), sync_rule_mem (membership form via keyrot_recent_tip_ancestor_mem_anchored).",
+   "imports": [
+    "Molt.Rotation"
+   ],
+   "defs": [
+    {
+     "name": "countP_add_le_countP / countP_between_le",
+     "kind": "private theorem",
+     "line": 27,
+     "signature": "private (lines 27, 55)",
+     "meaning": "PRIVATE counting helpers over List.countP for deep_block_span."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "deep_block_span",
+     "line": 123,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hV : ValidChain n c",
+      "hA : blockAt? c m = some A",
+      "hD : blockAt? c (m + n) = some D"
+     ],
+     "conclusion": "D.slot < A.slot + 2 * n",
+     "notes": "Stated over Molt.blockAt?/Molt.ValidChain (abbrev); proof starts `rw [blockAt?_eq_core] at hA hD` and uses MaturedWindowsDense twice + countP_between_le. Callers obtain hD from the tip via MoltPetit.Model.blockAt_getLast and an omega index rewrite."
+    },
+    {
+     "name": "stay_recent_client_safe",
+     "line": 174,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hVPrev : validSignedChainK' n Δconf ops registry scPrev = true",
+      "hTipPrev : (stripSigs scPrev).getLast? = some tipPrev",
+      "hRecPrev : t ≤ tipPrev.slot + n",
+      "hLongPrev : n < (stripSigs scPrev).length",
+      "hAnchor : blockAt? (stripSigs scPrev) ((stripSigs scPrev).length - 1 - n) = some A",
+      "hCadence : now ≤ t + n",
+      "hA : A ∈ stripSigs sc",
+      "hA' : A ∈ stripSigs sc'",
+      "hBudget : ∀ u, now < u + 5 * n → (badSlotsIn (badKeyrot n Δconf rented Stolen (stripSigs sc)) u n).card ≤ faultBudget n",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Budget: trailing < 5n windows, over badKeyrot keyed on stripSigs sc."
+    },
+    {
+     "name": "sync_rule",
+     "line": 238,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "same as stay_recent_client_safe with Δconf := n everywhere (hEUF : KeyStealingEUFCMA n n …, hVPrev/hVal/hVal' at validSignedChainK' n n …, hBudget over badKeyrot n n rented Stolen (stripSigs sc)); no hΔ"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Term-mode: stay_recent_client_safe hn (Nat.le_refl n) …."
+    },
+    {
+     "name": "sync_rule_mem",
+     "line": 284,
+     "hypotheses": [
+      "as sync_rule through hVal', hTipS, hTipS', hRecent, hRecent', hLong, hLong'",
+      "hLe : sTip.height ≤ sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B"
+     ],
+     "conclusion": "∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B",
+     "notes": "Calls MoltPetit.Model.keyrot_recent_tip_ancestor_mem_anchored directly after rw [validSignedChainK'_eq_core]."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/MaxSync.lean",
+   "purpose": "Maximum sync period (paper §6.3 mode 1): producer_slot_in_window, inForce_mono (floors never fall as s advances), the census lemmas census_accumulates / census_accumulates_later_thefts (bad-slot count of a window ≥ number of producers with an ever-stolen not-yet-retired version), no_budget_beyond (budget hypothesis unsatisfiable past faultBudget n victims), and max_sync_period (parametric F; trailing F + 4n budget).",
+   "imports": [
+    "Molt.ClientRule"
+   ],
+   "defs": [
+    {
+     "name": "foldl_max_le' / acc_le_foldl_max / mem_le_foldl_max' / foldl_max_zero_mono'",
+     "kind": "private theorem",
+     "line": 45,
+     "signature": "private (lines 45, 54, 60, 69)",
+     "meaning": "PRIVATE foldl-max helpers (yet another local copy)."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "producer_slot_in_window",
+     "line": 30,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hi : i < n",
+      "(u : Nat) explicit"
+     ],
+     "conclusion": "∃ s, u ≤ s ∧ s < u + n ∧ producer n s = i",
+     "notes": "Guarded in Molt/Axioms.lean:82."
+    },
+    {
+     "name": "inForce_mono",
+     "line": 79,
+     "hypotheses": [
+      "h : s ≤ s'"
+     ],
+     "conclusion": "inForce n Δconf c i s ≤ inForce n Δconf c i s'",
+     "notes": "Namespace Molt, stated over Molt.inForce (rfl-equal to MoltPetit.Model.inForce, so it applies to the core definition by `inForce_eq_core ▸` or directly by defeq). Proof: unfold inForce keyFloor confirmedPrefix; foldl_max_zero_mono' on the filtered-map lists. NOT present in the MoltPetit core namespace."
+    },
+    {
+     "name": "census_accumulates",
+     "line": 95,
+     "hypotheses": [
+      "hP : ∀ i ∈ P, ∃ s, u ≤ s ∧ s < u + n ∧ producer n s = i ∧ ∃ j, inForce n Δconf c₀ i s ≤ j ∧ Stolen i j"
+     ],
+     "conclusion": "P.card ≤ (badSlotsIn (badKeyrot n Δconf rented Stolen c₀) u n).card",
+     "notes": "rented and c₀ are implicit and arbitrary; uses classical choice (Finset.card_le_card_of_injOn with (hP i h).choose)."
+    },
+    {
+     "name": "census_accumulates_later_thefts",
+     "line": 135,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hP : ∀ i ∈ P, i < n ∧ ∃ sτ j, u + n ≤ sτ + 1 ∧ inForce n Δconf c₀ i sτ ≤ j ∧ Stolen i j"
+     ],
+     "conclusion": "P.card ≤ (badSlotsIn (badKeyrot n Δconf rented Stolen c₀) u n).card",
+     "notes": "Uses producer_slot_in_window + inForce_mono."
+    },
+    {
+     "name": "no_budget_beyond",
+     "line": 156,
+     "hypotheses": [
+      "hP : ∀ i ∈ P, ∃ s, u ≤ s ∧ s < u + n ∧ producer n s = i ∧ ∃ j, inForce n Δconf c₀ i s ≤ j ∧ Stolen i j",
+      "hbig : faultBudget n < P.card"
+     ],
+     "conclusion": "¬ (badSlotsIn (badKeyrot n Δconf rented Stolen c₀) u n).card ≤ faultBudget n"
+    },
+    {
+     "name": "max_sync_period",
+     "line": 176,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hVPrev : validSignedChainK' n Δconf ops registry scPrev = true",
+      "hTipPrev : (stripSigs scPrev).getLast? = some tipPrev",
+      "hRecPrev : t ≤ tipPrev.slot + n",
+      "hLongPrev : n < (stripSigs scPrev).length",
+      "hAnchor : blockAt? (stripSigs scPrev) ((stripSigs scPrev).length - 1 - n) = some A",
+      "hCadence : now ≤ t + F",
+      "hA : A ∈ stripSigs sc",
+      "hA' : A ∈ stripSigs sc'",
+      "hBudget : ∀ u, now < u + F + 4 * n → (badSlotsIn (badKeyrot n Δconf rented Stolen (stripSigs sc)) u n).card ≤ faultBudget n",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Via deep_block_span + client_refresh_rule at H := F + 3n - 1."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Protocol.lean",
+   "purpose": "Paper §3 re-presentation: quorum, faultBudget (= maxByzantine), producer (= producerForSlot), Block/Chain re-exported as abbrevs, genesisOk/childOk/linksOk/blockInWindow/windowCount/windowDense/denseSoFar/validChain fresh copies with *_eq_core bridges.",
+   "imports": [
+    "MoltPetit.Model.Definitions"
+   ],
+   "defs": [
+    {
+     "name": "quorum",
+     "kind": "def",
+     "line": 23,
+     "signature": "def quorum (n : Nat) : Nat := (2 * n + 2) / 3",
+     "meaning": "quorum_eq_core (110) rfl."
+    },
+    {
+     "name": "faultBudget",
+     "kind": "def",
+     "line": 27,
+     "signature": "def faultBudget (n : Nat) : Nat := (n - 1) / 3",
+     "meaning": "faultBudget_eq_core (111) : faultBudget = MoltPetit.Model.maxByzantine := rfl."
+    },
+    {
+     "name": "producer",
+     "kind": "def",
+     "line": 31,
+     "signature": "def producer (n slot : Nat) : Nat := slot % n",
+     "meaning": "producer_eq_core (112) : producer = MoltPetit.Model.producerForSlot := rfl."
+    },
+    {
+     "name": "Block / Chain",
+     "kind": "abbrev",
+     "line": 44,
+     "signature": "abbrev Block := MoltPetit.Model.Block; abbrev Chain := MoltPetit.Model.Chain",
+     "meaning": "Types are shared, never re-declared."
+    },
+    {
+     "name": "validChain",
+     "kind": "def",
+     "line": 94,
+     "signature": "def validChain (n : Nat) (c : Chain) : Bool (match on genesis/links/denseSoFar)",
+     "meaning": "validChain_eq_core (129) by funext + cases."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Verifier.lean",
+   "purpose": "Paper §4: SigOps/KeyRegistry/SignedBlock/SignedChain/CertClaim/CertOps/CertifiedChain re-exported as abbrevs; stripSigs, sigOk, sigsOk, validSignedChain, validSuffix, validCertifiedChain, produceBlock?, selectChain fresh copies with bridges.",
+   "imports": [
+    "Molt.Protocol"
+   ],
+   "defs": [
+    {
+     "name": "stripSigs",
+     "kind": "def",
+     "line": 177,
+     "signature": "def stripSigs {σ : Type} (sc : SignedChain σ) : Chain := sc.map MoltPetit.Model.SignedBlock.block",
+     "meaning": "stripSigs_eq_core (289) rfl."
+    },
+    {
+     "name": "sigOk / sigsOk",
+     "kind": "def",
+     "line": 182,
+     "signature": "def sigOk … := ops.verify (registry (producer n sb.block.slot) sb.block.keyIndex) sb.block sb.sig; def sigsOk … := sc.all (sigOk n ops registry)",
+     "meaning": "sigOk_eq_core (291), sigsOk_eq_core (293) rfl."
+    },
+    {
+     "name": "SigOps / KeyRegistry / SignedBlock / SignedChain / CertClaim / CertOps / CertifiedChain",
+     "kind": "abbrev",
+     "line": 163,
+     "signature": "abbrev … := MoltPetit.Model.… (lines 163,168,171,174,203,208,211)",
+     "meaning": "Shared types."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Assumptions.lean",
+   "purpose": "Paper §5: SlotRecord/ByzantineSlots/ValidChain/SigningLog abbrevs; badSlotsIn, FaultBounded (= ByzantineBounded), SignedHashInjective, HonestBlocksCover, HonestSlotsUnique, IdInjective fresh copies with rfl bridges; SigUnforgeableRecent/GroundedCert re-exported.",
+   "imports": [
+    "Molt.Verifier"
+   ],
+   "defs": [
+    {
+     "name": "badSlotsIn",
+     "kind": "noncomputable def",
+     "line": 33,
+     "signature": "noncomputable def badSlotsIn (bad : ByzantineSlots) (u n : Nat) : Finset Nat := (Finset.Ico u (u + n)).filter fun s => bad s",
+     "meaning": "badSlotsIn_eq_core (81) rfl."
+    },
+    {
+     "name": "FaultBounded",
+     "kind": "def",
+     "line": 38,
+     "signature": "def FaultBounded (n : Nat) (bad : ByzantineSlots) : Prop := ∀ u, (badSlotsIn bad u n).card ≤ faultBudget n",
+     "meaning": "faultBounded_eq_core (82) : FaultBounded = MoltPetit.Model.ByzantineBounded := rfl."
+    },
+    {
+     "name": "SignedHashInjective",
+     "kind": "def",
+     "line": 50,
+     "signature": "def SignedHashInjective (Signed : Block → Prop) (G : Block) : Prop := ∀ ⦃B B' : Block⦄, (B = G ∨ Signed B) → (B' = G ∨ Signed B') → B.id = B'.id → B = B'",
+     "meaning": "signedHashInjective_eq_core (84) rfl."
+    },
+    {
+     "name": "HonestSlotsUnique / IdInjective / SigningLog / ValidChain / ByzantineSlots / SlotRecord",
+     "kind": "def/abbrev",
+     "line": 70,
+     "signature": "lines 70, 75, 29, 25, 22, 19",
+     "meaning": "rfl-bridged (88, 90) or abbrevs."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Results.lean",
+   "purpose": "Paper §6.1–6.2: TimedLog/TimedExecution abbrevs, AvailableAt, blockAt? (Molt copy, blockAt?_eq_core rfl at 134), light_client_safety, forged_time_bound, aliases.",
+   "imports": [
+    "Molt.Assumptions",
+    "MoltPetit.Results.Results",
+    "MoltPetit.Model.TimedSig"
+   ],
+   "defs": [
+    {
+     "name": "blockAt?",
+     "kind": "def",
+     "line": 131,
+     "signature": "def blockAt? (c : Chain) (h : Nat) : Option Block := getElem? c h",
+     "meaning": "blockAt?_eq_core (134) : blockAt? = MoltPetit.Model.blockAt? := rfl. Molt theorems state hB over Molt.blockAt? and pass them to core theorems by defeq."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Axioms.lean",
+   "purpose": "Axiom-guard file for Molt: one `/-- info: 'Molt.<thm>' depends on axioms: [...] -/ #guard_msgs in #print axioms Molt.<thm>` per headline theorem. Existing guards include badKeyrot_lossOnly (27, [propext, Quot.sound]), client_refresh_rule (42), deep_block_span (47), stay_recent_client_safe (52), sync_rule (57), sync_rule_mem (62), max_sync_period (77), producer_slot_in_window (82, [propext, Quot.sound]), inForce_mono (87, [propext, Quot.sound]), census_accumulates (92), census_accumulates_later_thefts (97), no_budget_beyond (102), keyrot_recent_certified_suffix_agreement (107). Docstring: 'Extend this file with every new headline theorem.'",
+   "imports": [
+    "Molt.Results",
+    "Molt.Rotation",
+    "Molt.ClientRule",
+    "Molt.MaxSync",
+    "Molt.Liveness"
+   ],
+   "defs": [],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Definitions.lean",
+   "purpose": "(Core definitions consumed by the focus modules; only the relevant declarations recorded.)",
+   "imports": [
+    "(not read in full)"
+   ],
+   "defs": [
+    {
+     "name": "Block",
+     "kind": "structure",
+     "line": 58,
+     "signature": "structure Block where slot : Nat; height : Nat; prev : Option Nat; id : Nat; contentsHash : Nat; keyIndex : Nat deriving Repr, DecidableEq",
+     "meaning": "Six fields; keyIndex is the in-band delegate-key version."
+    },
+    {
+     "name": "quorum / maxByzantine / producerForSlot",
+     "kind": "def",
+     "line": 44,
+     "signature": "def quorum (n : Nat) : Nat := (2 * n + 2) / 3 (44); def maxByzantine (n : Nat) : Nat := (n - 1) / 3 (47); def producerForSlot (n slot : Nat) : Nat := slot % n (50)",
+     "meaning": "Core constants."
+    },
+    {
+     "name": "KeyRegistry / SignedBlock / SignedChain / stripSigs / sigOk / sigsOk",
+     "kind": "abbrev/structure/def",
+     "line": 204,
+     "signature": "abbrev KeyRegistry (pk : Type) := Nat → Nat → pk (204); structure SignedBlock (σ : Type) where block : Block; sig : σ (212); abbrev SignedChain (σ : Type) := List (SignedBlock σ) (218); def stripSigs := sc.map SignedBlock.block (221); def sigOk n ops registry sb := ops.verify (registry (producerForSlot n sb.block.slot) sb.block.keyIndex) sb.block sb.sig (226); def sigsOk := sc.all (sigOk n ops registry) (231)",
+     "meaning": "Signed layer; sigOk verifies at the DECLARED keyIndex."
+    },
+    {
+     "name": "SlotRecord / ByzantineSlots / blockAt? / SequentialHeights / StrictSlots / ParentLinked / MaturedWindowsDense / ValidChain / ChainInRecord / HonestSlotsUnique / IdInjective / badSlotsIn / ByzantineBounded / CommonPrefixUpTo / LastCommonHeight / chainSlotsIn / SigningLog",
+     "kind": "def/abbrev",
+     "line": 456,
+     "signature": "abbrev SlotRecord := Nat → Finset Block (456); abbrev ByzantineSlots := Nat → Prop (459); def blockAt? (c : Chain) (h : Nat) : Option Block := getElem? c h (462); SequentialHeights (465); StrictSlots c := c.Pairwise fun a b => a.slot < b.slot (469); ParentLinked (473); MaturedWindowsDense n c := ∀ ⦃m⦄ ⦃D⦄, blockAt? c m = some D → ∀ u, u + n ≤ D.slot + 1 → quorum n ≤ windowCount c u n (484); def ValidChain (n : Nat) (c : Chain) : Prop := SequentialHeights c ∧ StrictSlots c ∧ ParentLinked c ∧ MaturedWindowsDense n c (490); ChainInRecord record c := ∀ ⦃k⦄ ⦃B⦄, blockAt? c k = some B → B ∈ record B.slot (494); HonestSlotsUnique bad record := ∀ s, ¬ bad s → ∀ ⦃B B'⦄, B ∈ record s → B' ∈ record s → B = B' (498); IdInjective (503); noncomputable def badSlotsIn (bad : ByzantineSlots) (u n : Nat) : Finset Nat := (Finset.Ico u (u + n)).filter (509, open Classical); def ByzantineBounded (n : Nat) (bad : ByzantineSlots) : Prop := ∀ u, (badSlotsIn bad u n).card ≤ maxByzantine n (513); CommonPrefixUpTo c c' h := ∀ k, k ≤ h → ∃ B, blockAt? c k = some B ∧ blockAt? c' k = some B (517); LastCommonHeight (521); chainSlotsIn (527); abbrev SigningLog := Nat → Nat → Option Block (558)",
+     "meaning": "Proof-side predicates. ValidChain components are accessed positionally: hV.1 SequentialHeights, hV.2.1 StrictSlots, hV.2.2.1 ParentLinked, hV.2.2.2 MaturedWindowsDense."
+    },
+    {
+     "name": "SignedHashInjective / SigUnforgeableRecent / TimedLog / TimedExecution",
+     "kind": "def/structure",
+     "line": 656,
+     "signature": "def SignedHashInjective (Signed : Block → Prop) (G : Block) : Prop := ∀ ⦃B B'⦄, (B = G ∨ Signed B) → (B' = G ∨ Signed B') → B.id = B'.id → B = B' (656); structure SigUnforgeableRecent (n) (bad) (Signed) (signed : SigningLog) (now Δ) : Prop where verified_was_signed : ∀ ⦃B c⦄, ValidChain n c → B ∈ c → (∃ t, c.getLast? = some t ∧ now ≤ t.slot + Δ) → ¬ bad B.slot → Signed B → signed (producerForSlot n B.slot) B.slot = some B (677); abbrev TimedLog := Nat → Finset Block (694); structure TimedExecution (n) (bad) (log) (G) : Prop where key_match; honest_stamp; honest_once; chain_order; id_inj (719)",
+     "meaning": "Crypto surfaces and the timed model; TimedExecution mentions bad only negatively (honest_stamp, honest_once), which is what timedExecution_of_bad_iff exploits."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Safety.lean",
+   "purpose": "(Core agreement engine consumed by the focus modules; only relevant theorems recorded.)",
+   "imports": [
+    "(not read in full)"
+   ],
+   "defs": [],
+   "theorems": [
+    {
+     "name": "exists_honest_shared_slot",
+     "line": 45,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudget : ByzantineBounded n bad",
+      "hS : S ⊆ Finset.Ico u (u + n)",
+      "hS' : S' ⊆ Finset.Ico u (u + n)",
+      "hCard : quorum n ≤ S.card",
+      "hCard' : quorum n ≤ S'.card"
+     ],
+     "conclusion": "∃ s, s ∈ S ∧ s ∈ S' ∧ ¬ bad s"
+    },
+    {
+     "name": "no_deep_fork",
+     "line": 134,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudget : ByzantineBounded n bad",
+      "hHonest : HonestSlotsUnique bad record",
+      "hValid, hValid', hRec, hRec'",
+      "hLast : LastCommonHeight c c' h",
+      "hF : blockAt? c h = some F",
+      "hD, hD'",
+      "hDeep : F.slot + n ≤ D.slot",
+      "hDeep' : F.slot + n ≤ D'.slot"
+     ],
+     "conclusion": "False"
+    },
+    {
+     "name": "same_block_same_prefix",
+     "line": 189,
+     "hypotheses": [
+      "hId : IdInjective record",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hP : ParentLinked c",
+      "hP' : ParentLinked c'",
+      "blockAt? c m = some B",
+      "blockAt? c' m = some B",
+      "k ≤ m"
+     ],
+     "conclusion": "∃ P : Block, blockAt? c k = some P ∧ blockAt? c' k = some P",
+     "notes": "Aliased as Molt.same_block_same_prefix (Rotation.lean:348)."
+    },
+    {
+     "name": "deep_block_agreement",
+     "line": 292,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudget : ByzantineBounded n bad",
+      "hHonest : HonestSlotsUnique bad record",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hGenesis : CommonPrefixUpTo c c' 0",
+      "hB : blockAt? c k = some B",
+      "hB' : blockAt? c' k = some B'",
+      "hD : blockAt? c m = some D",
+      "hD' : blockAt? c' m' = some D'",
+      "hDeep : B.slot + n ≤ D.slot",
+      "hDeep' : B.slot + n ≤ D'.slot"
+     ],
+     "conclusion": "B = B'"
+    },
+    {
+     "name": "deep_block_agreement_of_height_depth",
+     "line": 352,
+     "hypotheses": [
+      "same as deep_block_agreement through hB'",
+      "hD : blockAt? c m = some D",
+      "hD' : blockAt? c' m' = some D'",
+      "hDeep : k + n ≤ m",
+      "hDeep' : k + n ≤ m'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "This is what keyrot_deep_block_agreement instantiates with bad := badKeyrotOn … (stripSigs sc), record := chainUnionRecord sc sc'."
+    }
+   ]
+  }
+ ],
+ "reuse_notes": "WHERE THE FOCUS NAMES ACTUALLY LIVE (several are not in the seven listed files):\n- inForce, inForcePinned, validChainK', validSignedChainK', validChainK'_sound/_pinned, rotated_key_dead, inForce_agreement: MoltPetit/Model/KeyRotation.lean (namespace MoltPetit.Model).\n- inForce_mono: ONLY Molt/MaxSync.lean:79 as `Molt.inForce_mono`, stated over `Molt.inForce` (= MoltPetit.Model.inForce by rfl, `inForce_eq_core`). A new core (MoltPetit.Model) module cannot import Molt/ without inverting the layering (Molt imports MoltPetit); it must either re-prove the 8-line lemma locally or live in Molt/.\n- badKeyrot (no `On`): Molt/Rotation.lean:100, `badKeyrot_eq_core : badKeyrot = MoltPetit.Model.badKeyrotOn := rfl`. The core name is badKeyrotOn (KeyStealing.lean:47). badKeyrot_lossOnly is Molt/Rotation.lean:230 (wrapping badKeyrotOn_lossOnly, KeyStealing.lean:67).\n- KeyStealingSigned: DEFINED in MoltPetit/Results/KeyStealingResults.lean:158 (∃ sig j, verify under version j); Molt/Rotation.lean:112 is `abbrev KeyStealingSigned := @MoltPetit.Model.KeyStealingSigned`. Discharged from the validator by keyStealingSigned_of_mem (Results:169).\n- census_accumulates / census_accumulates_later_thefts / no_budget_beyond / max_sync_period: Molt/MaxSync.lean (namespace Molt, over badKeyrot/producer/faultBudget).\n- deep_block_span: Molt/ClientRule.lean:123 (namespace Molt; hyps ValidChain n c, blockAt? c m = some A, blockAt? c (m+n) = some D ⊢ D.slot < A.slot + 2n).\n- mem_keyIndex_le_floor (used by LongRange): MoltPetit/Model/KeyStealingCert.lean:82.\n\nTHE KEY-STEALING SIGNATURE SURFACE: `structure KeyStealingEUFCMA (n Δconf : Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) : Prop` (KeyStealingUnique.lean:136) has exactly ONE field `unforgeable` with premises, in order: (1) validSignedChainK' n Δconf ops registry sc = true, (2) sb ∈ sc, (3) ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ, (4) ops.verify (registry (producerForSlot n sb.block.slot) j) sb.block sb.sig = true, (5) ¬ rented sb.block.slot, (6) ¬ Stolen (producerForSlot n sb.block.slot) j; conclusion honestSigned (producerForSlot n sb.block.slot) sb.block.slot = some sb.block. The version j is EXPLICIT and free (no inForce). Derived surface VersionedUnforgeable (line 161) has ONE field `verified_was_signed` replacing (4)+(6) by `∀ j, inForce n Δconf (stripSigs sc) (producer) sb.block.slot ≤ j → ¬ Stolen (producer) j` (chain-local inForce of the chain sb sits in). Always obtain it via `versionedUnforgeable_of_keyStealingEUFCMA hEUF`; never assume VersionedUnforgeable in a headline statement. In Molt/ the parameter is written `{honestSigned : SigningLog}` (abbrev for Nat → Nat → Option Block).\n\nBUDGET HYPOTHESIS SHAPES (exact):\n- Core global form: `hBudget : ByzantineBounded n (badKeyrotOn n Δconf rented Stolen (stripSigs sc))` — ByzantineBounded over badKeyrotOn READ OFF THE FIRST SIGNED CHAIN `sc` (the one whose block B/anchor the conclusion is about). Used by honestSlotsUnique_keyrot(_horizon), keyrot_deep_block_agreement(_of_length), keyrot_recent_tip_ancestor_agreement/_mem, keyrot_recent_tip_ancestor_agreement_horizon(_of_valid). The sc'-side inForce is reconciled INSIDE the proof (inForce_agreement_of_confirmed_eq + confirmed_mem_iff_horizon at the coexistence slot). Record is always `chainUnionRecord sc sc'`.\n- Anchored/windowed form (KeyStealingHorizonCore/Horizon): `hBudgetFrom : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) u n).card ≤ maxByzantine n`.\n- Molt client forms: `hBudget : ∀ u, now < u + n + H → (badSlotsIn (badKeyrot n Δconf rented Stolen (stripSigs sc)) u n).card ≤ faultBudget n` (client_refresh_rule); `now < u + 5 * n` (stay_recent_client_safe / sync_rule / sync_rule_mem, with Δconf := n in sync_rule*); `now < u + F + 4 * n` (max_sync_period). Note faultBudget = maxByzantine by rfl and Molt.badSlotsIn = core badSlotsIn by rfl, so these feed the core theorems with `fun u hu => hBudget u (by omega)`.\n- Certificate form (KeyStealingCert): `hBudget : ∀ c : Chain, AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c → ByzantineBounded n (badKeyrotOn n Δconf rented Stolen c)` — global, over every attestable history of the FIRST certificate.\n- Loss-only: `ByzantineBounded n rented`, obtained by `by rw [badKeyrotOn_lossOnly]; exact hBudget`.\n- Decomposed: induced_byzantine_bounded gives the global form from hRent (∀ u, (badSlotsIn rented u n).card ≤ R), hExposed (∀ u, (exposedProducers n Δconf Stolen c₀ u).card ≤ T), hRT : R + T ≤ maxByzantine n; instantiate c₀ := stripSigs sc.\n- Abstract engine: deep_block_shared / confirmed_mem_iff / inForce_agreement take an abstract `bad` with a GLOBAL HonestSlotsUnique bad record — circular for key-stealing; use the bounded (`_le`, M-bounded) or σ-localized (`_horizon`, single-window `(badSlotsIn bad (σ - n) n).card ≤ maxByzantine n`) variants inside any strong-induction.\n\nGENESIS / POSITION GOTCHAS: keyrot_recent_tip_ancestor_agreement/_mem and the lossonly forms require `hHead : blockAt? (stripSigs sc) 0 = some G` and `hHead'` (genesis at index 0 of both stripped chains) and turn them into CommonPrefixUpTo … 0. The `_horizon`, `_anchored` forms and all Molt client theorems need NO genesis hypothesis; G there only parameterizes SignedHashInjective's exemption. keyrot_deep_block_agreement(_of_length) take `hGenesis : CommonPrefixUpTo (stripSigs sc) (stripSigs sc') 0` directly. Depth in the tip-ancestor forms is `blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B` plus `hLong : n < (stripSigs sc).length`; tip via `(stripSigs sc).getLast? = some sTip`, converted with `MoltPetit.Model.blockAt_getLast` (Soundness.lean:97) to `blockAt? c (c.length - 1) = some tip`; height = index via `hVc.1 (blockAt_getLast hTipS)`.\n\nSIGNED PREDICATE: DECLARED vs REGISTERED VERSION. sigOk verifies at the block's DECLARED keyIndex (`registry (producerForSlot n slot) keyIndex`). KeyStealingSigned (Results:158) is ∃ sig j (any version); SignedDeclared (Cert:234) is ∃ sig at the declared keyIndex (stronger; keyStealingSigned_of_declared). Full-chain headline theorems use hHash over KeyStealingSigned; the certificate theorem uses hHash over SignedDeclared (strictly weaker hash assumption). rotated_key_dead gives verification at the declared version AND declared ≥ inForce (chain-local, read off stripSigs sc). KeyStealingEUFCMA's j is the verifying version, not the declared one; the pin links them.\n\nIDIOMS A NEW ADDITIVE MODULE MUST FOLLOW:\n- Core files: `namespace MoltPetit.Model … end MoltPetit.Model`; import the highest-needed module (e.g. `import MoltPetit.Model.KeyStealingHorizon` or `MoltPetit.Results.KeyStealingResults`); register the file in MoltPetit.lean's import list (the lean_lib picks up modules only via the root import chain — MoltPetit.lean lists every Model/Results module explicitly, KeyStealingLongRange at line 22) and add a `#guard_msgs in #print axioms` entry to MoltPetit/Results/Axioms.lean (all keyrot theorems are guarded there, lines 115-353 and 546-603). Expected axioms: `[propext, Classical.choice, Quot.sound]` (or `[propext, Quot.sound]` for choice-free lemmas); no sorry/axiom/native_decide.\n- Molt/ files: `namespace Molt`; import `Molt.Rotation` (or Molt.ClientRule/Molt.MaxSync); define fresh paper-named copies ONLY if the paper must quote them, with `theorem foo_eq_core : foo = MoltPetit.Model.foo := rfl` (or funext+simp/induction when not rfl); re-export types/surfaces with `abbrev X := @MoltPetit.Model.X`; wrap core theorems by `rw [validSignedChainK'_eq_core] at hVal hVal'` (and `rw [blockAt?_eq_core] at …` where needed) then `exact MoltPetit.Model.<thm> …`; use `alias name := MoltPetit.Model.name` when nothing needs renaming. Register the new module in Molt.lean's import list AND import it in Molt/Axioms.lean, adding a guard per headline theorem. Molt vocabulary: producer (not producerForSlot), faultBudget (not maxByzantine), FaultBounded (not ByzantineBounded), badKeyrot (not badKeyrotOn), SigningLog for honestSigned. Bare `lake build` builds all four libs incl. guards.\n- Private helpers: the foldl-max lemmas (le_foldl_max, mem_le_foldl_max, foldl_max_le, foldl_max_zero_mono), mem_of_blockAt, commonPrefix_symm are PRIVATE in every file that has them; a new module must re-prove its own (each existing module does).\n- Proof idioms: ValidChain n (stripSigs sc) from hVal via `rw [validSignedChainK', Bool.and_eq_true] at hVal; exact (validChainK'_sound hVal.2).1`; membership of a signed block's block in stripSigs via `List.mem_map`; strong induction `induction s using Nat.strongRecOn with | ind s IH =>`; ¬badKeyrotOn unpacked with `simp only [badKeyrotOn, not_or] at hbad` then `push_neg`/`push Not`; window census via `badSlotsIn_union_le`, `theftSlots_card_le_exposed`, `Finset.card_le_card_of_injOn`.\n- KeyStealingHorizon.lean depends on `horizon_shared_prefix` from KeyStealingScheduleHorizon (mode-2 module); importing KeyStealingHorizon pulls the whole schedule development in.\n- Toolchain: Lean v4.30.0-rc2 + Mathlib (lakefile.toml); `relaxedAutoImplicit = false`, so all variables must be bound.",
+ "open_items_found": [
+  "MoltPetit/Results/KeyStealingResults.lean:34-42 (module docstring): \"Two seams were isolated as named hypotheses / future work: (i) [closed, see above] the constant-size-certificate *suffix* wrapper … and (ii) the Role-B long-range / old-key-fork exclusion from the weak-subjectivity anchor `H-ANCHOR` (increment I4), which is what makes the strong-model story honest beyond the confirmed/recent zone and is **not** derivable from uniqueness.\" Seam (ii) remains a named assumption; KeyStealingLongRange only pins down its scope.",
+  "MoltPetit/Results/KeyStealingResults.lean:86-92: \"theft of *future* keys is excluded in practice by the named `H-IND` instantiation property (a theft of `dk(i,j)` yields no `dk(i,j')` for `j' > j`), which is exactly what keeps `hBudget` satisfiable. `H-IND` appears in the Lean only through this hypothesis — it is the instantiation-level justification of `hBudget`, not a formalized premise.\" (KEY_ROTATION_SOUND.md:129-140 gives the all-higher-versions form; there is no Lean `ForwardIndependent Stolen` predicate.)",
+  "MoltPetit/Model/KeyStealingLongRange.lean:6-8,13-15: \"`H-ANCHOR` — the light client trusts only recent-tipped chains anchored after the rotations it relies on — is a *named assumption* (weak subjectivity) and stays one: nothing can refute a fork built entirely in the past.\" … \"What remains for `H-ANCHOR` is exactly (and only) ruling out forks that branch before the anchor — the irreducible weak-subjectivity residue.\"",
+  "Molt/Rotation.lean:303-307 (docstring of the alias keyrot_recent_certified_suffix_agreement): \"Mode 1's certificate-level safety … under the global, all-window budget (the anchored, trailing-window form is future work at this presentation).\" — i.e. no certificate-level analogue of keyrot_recent_tip_ancestor_agreement_anchored / client_refresh_rule exists.",
+  "MoltPetit/Model/KeyStealingUnique.lean:123-135 (KeyStealingEUFCMA docstring): \"**Provenance — the exact boundary of trust.** This surface is **assumed**, not reduced to the timed model. … The key-stealing adversary deliberately **refuses** `NoBackdate`/forward security … so that derivation is unavailable by design; `KeyStealingEUFCMA` is therefore taken as a named primitive.\"",
+  "MoltPetit/Model/KeyStealingUnique.lean:104-110: \"Two further instantiation obligations: the conclusion must hold for **every** version `j` the total registry `KeyRegistry pk = Nat → Nat → pk` reaches (an instantiation whose registry defaults unregistered versions to a degenerate key cannot satisfy this surface …); and blocks differing only in `keyIndex` must hash differently (the block id must commit `keyIndex` …), or `SignedHashInjective` is uninstantiable once a producer has two versions.\" — not formalized.",
+  "MoltPetit/Model/KeyStealing.lean:96-100 (KeyStealingExecution docstring): \"`StolenMint : Block → Prop` is the unsigned image of 'verifies under a stolen registry version'; the actual `ops`/`registry`/`sig` content lives on the `SignedChain` side … and is connected to this predicate by a separate bridge hypothesis in Phase 3\". No such bridge exists in the repo: KeyStealingExecution/StolenMint/steal_bad are consumed only by keyStealing_refines_timed (grep confirmed); the timed layer is not connected to the signed headline theorems.",
+  "MoltPetit/Model/KeyRotation.lean:114-121 (validChainK'_sound docstring): \"Whether the honest producer can still sign at such a version is an instantiation property (fine for unbounded hash-derived key trees, fatal for a bounded committed tree) — **safety-irrelevant** …, a quantified liveness condition rather than an open question.\" — index-inflation liveness left as an instantiation condition.",
+  "MoltPetit/Model/KeyRotation.lean:396-400 (rotated_key_dead docstring): \"That globalization (and discharging its recent-tip hypothesis) is the Phase-2 uniqueness derivation — `rotated_key_dead` itself is deliberately chain-local.\" (globalization landed via honestSlotsUnique_keyrot*, but rotated_key_dead's inForce stays read off stripSigs sc).",
+  "MoltPetit/Model/KeyStealingBudget.lean:30-33: \"Under `H-IND` (thefts do not cascade to higher versions) and prompt emergency rotation, a single theft exposes one producer for the announcement-delay + `Δconf` window, so `T` is the number of *concurrently healing* producers — the natural deployment dial.\" — informal; the exposure-duration bound on T is not a Lean theorem.",
+  "MoltPetit/Model/KeyStealingCert.lean:41-46 and 533-540: \"The corruption budget cannot be stated over verifier-visible data (it quantifies over the whole execution), so it is assumed over **every history the certificate could be attesting** (`AttestedHistoryK`)\" — the certificate-level budget is quantified over all attestable histories, an admitted over-approximation.",
+  "MoltPetit/Model/KeyStealingCert.lean:568-582: \"**Wire contract (MANDATORY for any instantiation — read before deploying).** … the certificate must **carry and authenticate the pair `(cl, fl)` together** — a TS-level certificate-unforgeability hypothesis must read `∀ hc, verify hc = true → ∃ cl fl, claim hc = cl ∧ floors hc = fl ∧ GroundedCertK n Signed G cl fl` (note the plain path's `hUnf` attests only `cl`; a naive port would leave `fl` unauthenticated).\" — an unformalized TS/Rust-level obligation.",
+  "Molt/MaxSync.lean:8-13,22-23 (module docstring): \"later-starting windows are load-bearing only against chains dated beyond the clock\" and \"Together: `F_max = S - 4n`, and with the minimal credible cap-span of a reactive deployment (`S = 5n`), the sync rule `F = n`.\" — the F_max/S reading is informal; max_sync_period is parametric in F and no theorem states F_max = S - 4n.",
+  "MoltPetit/Model/KeyStealingHorizonCore.lean:39-45 / KeyStealingHorizon.lean:47-54: \"What does **not** transport from the scheduled variant is the budget contraction `ByzantineBoundedFrom`: mode 1's `badKeyrotOn` is chain-relative, so the slot-induction must still reconcile `inForce` across the two chains, and that induction consults windows all the way down.\" — mode 1 has no from-horizon budget contraction; only the anchor-scoped hBudgetFrom (windows ending after A.slot).",
+  "MoltPetit/Results/KeyStealingResults.lean:123-133 (assumptions ledger): \"A deployment unwilling to assume retired keys stay secret forever keeps a rolling anchor instead … only an offline/fresh client needs a checkpoint younger than the deployment's key-leak horizon.\" — the retroactive reading of hBudget (Stolen has no time index) is documented as an operational assumption, not a theorem.",
+  "MoltPetit/Model/KeyStealingUnique.lean:66-69 (idInjective_keyrot docstring): \"`Signed`/`G` and the genesis-or-signed facts are threaded from the certificate plumbing in Phase 3.\" and KeyRotation.lean:87-93: \"The signature conjunct `sigsOk` … is woven in at Phase 2/3.\" — historical phase notes; both landed (KeyStealingResults, KeyStealingCert), recorded here only because the wording says 'Phase 3'."
+ ]
+}

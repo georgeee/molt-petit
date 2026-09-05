@@ -1,0 +1,1237 @@
+{
+ "group": "Key-rotation design docs (KEY_ROTATION_SOUND.md §10, ROTATION_MODES.md, HANDOFF_SCHEDULE_VARIANT.md, KEY_INDEX_DESIGN.md; plus LOCKSTEP_DESIGN.md which ROTATION_MODES delegates the D1′-full design to) — mapped against the Lean anchors they cite (MoltPetit/Model/*, MoltPetit/Results/*, Molt/*)",
+ "modules": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/KEY_ROTATION_SOUND.md",
+   "purpose": "v3.1 design note for sound key rotation under the key-stealing adversary. Base sections (§0–§9): the ≤ in-force pin, chain-local badKeyrotOn, H-IND/H-ANCHOR as named hypotheses, proof DAG (all landed). §10 (lines 536–825): the two anchor-discharging operational packages — §10.0 generation-as-position device (badSched/schedulePinned), §10.1 Package A (fixed schedule, no erasure), §10.2 Package B (erasure + lockstep forced rotation), §10.3 bounded jumps (design only), §10.4 formalization status (device, results, certificate, budget+packages, horizon, timed layer) and the residual seam (future-inclusive census / SchedTimedUnforgeable).",
+   "imports": [
+    "MoltPetit/Model/KeyRotation.lean (inForce, inForcePinned, validChainK', validSignedChainK', confirmedPrefix, inForce_agreement, deep_block_shared)",
+    "MoltPetit/Model/KeyStealing.lean (badKeyrotOn, KeyStealingExecution, keyStealing_refines_timed, badKeyrotOn_lossOnly)",
+    "MoltPetit/Model/KeyStealingUnique.lean (KeyStealingEUFCMA, VersionedUnforgeable, chainUnionRecord, idInjective_keyrot, honestSlotsUnique_keyrot)",
+    "MoltPetit/Results/KeyStealingResults.lean (keyrot_recent_tip_ancestor_agreement/_mem, KeyStealingSigned, keyStealingSigned_of_mem)",
+    "MoltPetit/Model/KeyStealingCert.lean (GroundedCertK, keyMonoFrom, SignedDeclared, AttestedHistoryK, keyrot_recent_certified_suffix_agreement)",
+    "MoltPetit/Model/KeyStealingBudget.lean (theftOn, exposedProducers, badSlotsIn_union_le, theftSlots_card_le_exposed, induced_byzantine_bounded)",
+    "MoltPetit/Model/KeyStealingLongRange.lean (oldkey_dead_after_confirmed_announcement, recent_oldkey_fork_is_longrange)",
+    "MoltPetit/Model/KeyRotationLiveness.lean (liveness_produce_blockK, extension_rejected_below_floor)",
+    "MoltPetit/Model/KeyStealingSchedule.lean (schedPinned, validSignedChainSched, SchedUnforgeable, badSched, honestSlotsUnique_sched, sched_deep_block_agreement, rotated_key_dead_sched)",
+    "MoltPetit/Results/KeyStealingScheduleResults.lean (sched_recent_tip_ancestor_agreement/_mem, sched_oldkey_fork_stale, sched_deep_block_agreement_of_length)",
+    "MoltPetit/Model/KeyStealingScheduleCert.lean (validSignedChainSchedCore, SchedCoreUnforgeable, GroundedCertSched, GroundedHistorySched, sched_recent_certified_suffix_agreement, sched_oldkey_fork_stale_core)",
+    "MoltPetit/Model/KeyStealingScheduleBudget.lean (theftSched, exposedProducersSched, induced_byzantine_bounded_sched, PackageA, PackageB, erasure_freeze_of_exposedBound, packageA_*/packageB_*)",
+    "MoltPetit/Model/KeyStealingScheduleHorizon.lean (ByzantineBoundedFrom, horizon_shared_prefix, sched_recent_tip_ancestor_agreement_horizon/_mem/_core, sched_recent_genesis_agreement_horizon)",
+    "MoltPetit/Model/KeyStealingScheduleTimed.lean (stolenOf, NoPrematureTheft, ErasureTimed, NoPrematureMint, recentTheftProducers, theft_is_recent, horizon_budget_of_timed, sched_forwardstamp_bounded, sched_recent_block_fresh, sched_backdate_consistent, theft_during_era_of_erasure, PackageATimed, PackageBTimed)",
+    "MoltPetit/Model/Safety.lean (deep_block_agreement_of_height_depth — the engine)",
+    "MoltPetit/Model/Definitions.lean (Block, Chain, SigOps, KeyRegistry, SignedChain, stripSigs, sigsOk, ByzantineSlots, SlotRecord, SigningLog, badSlotsIn, ByzantineBounded, maxByzantine, quorum, producerForSlot, SignedHashInjective, HonestSlotsUnique, IdInjective, CertClaim, TimedLog)"
+   ],
+   "defs": [
+    {
+     "name": "inForce",
+     "kind": "def",
+     "line": 309,
+     "signature": "doc: `inForce n Δconf c i s := keyFloor n (c.filter (fun b => b.slot + Δconf ≤ s)) i` | Lean MoltPetit/Model/KeyRotation.lean:49 `def inForce (n Δconf : Nat) (c : Chain) (i s : Nat) : Nat := keyFloor n (confirmedPrefix Δconf c s) i` (confirmedPrefix at :42 `c.filter (fun b => decide (b.slot + Δconf ≤ s))`)",
+     "meaning": "Chain-LOCAL in-force key version for producer i at slot s: key floor over the Δconf-confirmed prefix. Its chain-locality is what makes the anchor necessary (§10.0)."
+    },
+    {
+     "name": "inForcePinned",
+     "kind": "def",
+     "line": 311,
+     "signature": "doc: `inForcePinned … c := ∀ b ∈ c, inForce n Δconf c (producerForSlot n b.slot) b.slot ≤ b.keyIndex` (v3.1 ≤-pin) | Lean KeyRotation.lean:79 `def inForcePinned (n Δconf : Nat) (c : Chain) : Bool := c.all (fun b => decide (inForce n Δconf c (producerForSlot n b.slot) b.slot ≤ b.keyIndex))`",
+     "meaning": "Mode-1 validator pin: no block declares an index below its producer's in-force floor (≤, not =; the = pin provably froze rotation)."
+    },
+    {
+     "name": "validChainK'",
+     "kind": "def",
+     "line": 310,
+     "signature": "doc: `validChainK' n Δconf c := validChainK n c ∧ inForcePinned n Δconf c` | Lean KeyRotation.lean:94 `def validChainK' (n Δconf : Nat) (c : Chain) : Bool` (= validChainK n c && inForcePinned n Δconf c); soundness `validChainK'_sound` at :122",
+     "meaning": "Mode-1 unsigned index-pinned validator."
+    },
+    {
+     "name": "validSignedChainK'",
+     "kind": "def",
+     "line": 444,
+     "signature": "Lean KeyRotation.lean:385 `def validSignedChainK' {σ sk pk : Type} (n Δconf : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChainK' n Δconf (stripSigs sc)`",
+     "meaning": "Mode-1 signed validator consumed by all keyrot_* theorems."
+    },
+    {
+     "name": "badKeyrotOn (doc: badKeyrot)",
+     "kind": "def",
+     "line": 236,
+     "signature": "doc: `badKeyrot s := rentedBad s ∨ ∃ j ≥ inForceIdx (producerForSlot n s) s, Stolen (producerForSlot n s) j` (§10.0 restates it as `badKeyrotOn s := rented s ∨ ∃ j ≥ inForce(c₀, i, s). Stolen i j`) | Lean MoltPetit/Model/KeyStealing.lean:47 `def badKeyrotOn (n Δconf : Nat) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (c₀ : Chain) (s : Nat) : Prop := rented s ∨ ∃ j, inForce n Δconf c₀ (producerForSlot n s) s ≤ j ∧ Stolen (producerForSlot n s) j`",
+     "meaning": "Mode-1 induced corruption; takes an explicit chain c₀ (the doc's slot-only `inForceIdx` was never built — theorems read it off `stripSigs sc`)."
+    },
+    {
+     "name": "RenewableBounded / ByzantineBounded",
+     "kind": "def",
+     "line": 240,
+     "signature": "doc: `RenewableBounded := ByzantineBounded n badKeyrot` (doc-only alias) | Lean Definitions.lean:513 `def ByzantineBounded (n : Nat) (bad : ByzantineSlots) : Prop := ∀ u, (badSlotsIn bad u n).card ≤ maxByzantine n`; badSlotsIn at :509 (noncomputable, Finset); maxByzantine at :47 `(n - 1) / 3`",
+     "meaning": "Per-n-window budget over a slot predicate. `RenewableBounded` does not exist in Lean."
+    },
+    {
+     "name": "KeyStealingEUFCMA",
+     "kind": "structure",
+     "line": 27,
+     "signature": "Lean MoltPetit/Model/KeyStealingUnique.lean:136 `structure KeyStealingEUFCMA (n Δconf : Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) : Prop where unforgeable : ∀ {sc sb j}, validSignedChainK' n Δconf ops registry sc = true → sb ∈ sc → (∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ) → ops.verify (registry (producerForSlot n sb.block.slot) j) sb.block sb.sig = true → ¬ rented sb.block.slot → ¬ Stolen (producerForSlot n sb.block.slot) j → honestSigned (producerForSlot n sb.block.slot) sb.block.slot = some sb.block`",
+     "meaning": "Mode-1 recency-scoped registry EUF-CMA surface (assumed, not reduced to the timed model). Note `j` is the VERIFYING (registered) version, quantified freely."
+    },
+    {
+     "name": "VersionedUnforgeable",
+     "kind": "structure",
+     "line": 402,
+     "signature": "Lean KeyStealingUnique.lean:161 `structure VersionedUnforgeable (n Δconf : Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) …` (derived from KeyStealingEUFCMA by `versionedUnforgeable_of_keyStealingEUFCMA`)",
+     "meaning": "Intermediate surface specialised to versions ≥ inForce; consumed by honestSlotsUnique_keyrot and the _anchored core."
+    },
+    {
+     "name": "chainUnionRecord",
+     "kind": "def",
+     "line": 405,
+     "signature": "Lean KeyStealingUnique.lean:45 `def chainUnionRecord {σ : Type} (sc sc' : SignedChain σ) : SlotRecord`",
+     "meaning": "The slot record built from two signed chains; the record all keyrot/sched uniqueness statements are over."
+    },
+    {
+     "name": "KeyStealingExecution",
+     "kind": "structure",
+     "line": 206,
+     "signature": "Lean KeyStealing.lean:101 `structure KeyStealingExecution (n Δconf : Nat) …`; `keyStealing_refines_timed` at :117",
+     "meaning": "The granted oracle (rent + steal) extending TimedExecution."
+    },
+    {
+     "name": "GroundedCertK",
+     "kind": "inductive",
+     "line": 36,
+     "signature": "Lean MoltPetit/Model/KeyStealingCert.lean:315 `inductive GroundedCertK (n : Nat) (Signed : Block → Prop) (G : Block) : …` (folds a per-producer floor snapshot; keyMonoFrom at :159; AttestedHistoryK at :541)",
+     "meaning": "Mode-1 constant-size certificate; its wire contract (authenticate (claim, floors)) disappears in the scheduled cert."
+    },
+    {
+     "name": "SignedDeclared",
+     "kind": "def",
+     "line": 747,
+     "signature": "Lean KeyStealingCert.lean:234 `def SignedDeclared {Sig sk pk : Type} (n : Nat) (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (B : Block) : Prop := ∃ sig : Sig, ops.verify (registry (producerForSlot n B.slot) B.keyIndex) B sig = true`",
+     "meaning": "'Verifies under its DECLARED version' — the SignedHashInjective domain for modes 2–3 (strictly stronger than KeyStealingSigned, which ∃-quantifies the version)."
+    },
+    {
+     "name": "KeyStealingSigned",
+     "kind": "def",
+     "line": 30,
+     "signature": "Lean MoltPetit/Results/KeyStealingResults.lean:158 `def KeyStealingSigned {Sig sk pk : Type} (n : Nat) (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (B : Block) : Prop := ∃ (sig : Sig) (j : Nat), ops.verify (registry (producerForSlot n B.slot) j) B sig = true`",
+     "meaning": "'Verifies under SOME registered version' — the SignedHashInjective domain for mode 1."
+    },
+    {
+     "name": "theftOn / exposedProducers",
+     "kind": "def",
+     "line": 413,
+     "signature": "Lean KeyStealingBudget.lean:41 `def theftOn (n Δconf : Nat) (Stolen : Nat → Nat → Prop) (c₀ : Chain) (s : Nat) : Prop := ∃ j, inForce n Δconf c₀ (producerForSlot n s) s ≤ j ∧ Stolen (producerForSlot n s) j`; :62 `noncomputable def exposedProducers (n Δconf : Nat) (Stolen : Nat → Nat → Prop) (c₀ : Chain) (u : Nat) : Finset Nat := (Finset.Ico u (u + n)).filter (fun s => theftOn n Δconf Stolen c₀ s) |>.image (producerForSlot n)`",
+     "meaning": "Mode-1 theft half and per-window exposed-producer census (chain-local)."
+    },
+    {
+     "name": "gen(s) / schedule",
+     "kind": "def",
+     "line": 574,
+     "signature": "doc: `gen(s)` — 'a pure function of the slot (or height), identical for every chain'; flagship `gen(s) = ⌊s / R⌋` (line 605) | Lean: not a named def — every scheduled statement takes `(schedule : Nat → Nat)` as a parameter with NO monotonicity/periodicity side condition; timed layer fixes `fun s => s / R`",
+     "meaning": "The §10.0 position-determined generation."
+    },
+    {
+     "name": "badSched",
+     "kind": "def",
+     "line": 577,
+     "signature": "doc: `badSched s := rented s ∨ ∃ j ≥ gen(s). Stolen (producer s) j` | Lean MoltPetit/Model/KeyStealingSchedule.lean:124 `def badSched (n : Nat) (schedule : Nat → Nat) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (s : Nat) : Prop := rented s ∨ ∃ j, schedule s ≤ j ∧ Stolen (producerForSlot n s) j`",
+     "meaning": "Chain-independent corruption predicate (takes no chain). Its chain-independence IS the formal content of 'anchor discharged'."
+    },
+    {
+     "name": "schedPinned (doc: schedulePinned)",
+     "kind": "def",
+     "line": 578,
+     "signature": "doc: `schedulePinned c := ∀ b ∈ c, gen(b.slot) ≤ b.keyIndex` | Lean KeyStealingSchedule.lean:46 `def schedPinned (schedule : Nat → Nat) (c : Chain) : Bool := c.all (fun b => decide (schedule b.slot ≤ b.keyIndex))`",
+     "meaning": "The scheduled validator rule (whole-chain c.all — LOCKSTEP_DESIGN obstruction 1 notes it reaches the unmatured tip window too)."
+    },
+    {
+     "name": "validSignedChainSched",
+     "kind": "def",
+     "line": 723,
+     "signature": "Lean KeyStealingSchedule.lean:51 `def validSignedChainSched {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChainK n (stripSigs sc) && schedPinned schedule (stripSigs sc)`",
+     "meaning": "Mode-2 full signed validator (sigs + structure + keyMonoOk + pin)."
+    },
+    {
+     "name": "validSignedChainSchedCore",
+     "kind": "def",
+     "line": 745,
+     "signature": "Lean MoltPetit/Model/KeyStealingScheduleCert.lean:109 `def validSignedChainSchedCore {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChain n (stripSigs sc) && schedPinned schedule (stripSigs sc)`; `schedCore_of_validSignedChainSched` :115",
+     "meaning": "Core validator (drops keyMonoOk) — the one the scheduled certificate path and lockstep transport run over."
+    },
+    {
+     "name": "SchedUnforgeable",
+     "kind": "structure",
+     "line": 723,
+     "signature": "Lean KeyStealingSchedule.lean:105 `structure SchedUnforgeable (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) : Prop where unforgeable : ∀ {sc sb j}, validSignedChainSched n schedule ops registry sc = true → sb ∈ sc → (∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ) → ops.verify (registry (producerForSlot n sb.block.slot) j) sb.block sb.sig = true → ¬ rented sb.block.slot → ¬ Stolen (producerForSlot n sb.block.slot) j → honestSigned (producerForSlot n sb.block.slot) sb.block.slot = some sb.block`",
+     "meaning": "Mode-2 EUF-CMA surface over the full scheduled validator."
+    },
+    {
+     "name": "SchedCoreUnforgeable",
+     "kind": "structure",
+     "line": 747,
+     "signature": "Lean KeyStealingScheduleCert.lean:200 — same fields as SchedUnforgeable with `validSignedChainSchedCore n schedule ops registry sc = true` as the validity premise; `schedUnforgeable_of_core` :216; `schedCoreUnforgeable_mono` (KeyStealingLockstep.lean:141) transports it to a pointwise-larger schedule",
+     "meaning": "Core-scope surface (mildly stronger assumption); the field type of PackageA/PackageATimed/LockstepPackage.unforgeable. Contravariant in the validator."
+    },
+    {
+     "name": "GroundedCertSched",
+     "kind": "inductive",
+     "line": 739,
+     "signature": "Lean KeyStealingScheduleCert.lean:371 `inductive GroundedCertSched (n : Nat) (schedule : Nat → Nat) (Signed : Block → Prop) (G : Block) : CertClaim → Prop | genesis : genesisOk G = true → G.slot = 0 → Signed G → schedule G.slot ≤ G.keyIndex → GroundedCertSched n schedule Signed G {tipId := G.id, tipSlot := G.slot, tipHeight := G.height, tail := [G].filter …} | extend (cl : CertClaim) (b : Block) : GroundedCertSched … cl → b.height = cl.tipHeight + 1 → cl.tipSlot < b.slot → b.prev = some cl.tipId → Signed b → schedule b.slot ≤ b.keyIndex → (∀ u, cl.tipSlot + 2 ≤ u + n → u + n ≤ b.slot + 1 → quorum n ≤ windowCount (cl.tail ++ [b]) u n) → …`; GroundedHistorySched structure at :396",
+     "meaning": "Scheduled certificate fold — NO floor snapshot (verifier computes schedule from the slot). Genesis case pins G.slot = 0."
+    },
+    {
+     "name": "theftSched / exposedProducersSched",
+     "kind": "def",
+     "line": 750,
+     "signature": "Lean MoltPetit/Model/KeyStealingScheduleBudget.lean:104 `def theftSched (n : Nat) (schedule : Nat → Nat) (Stolen : Nat → Nat → Prop) (s : Nat) : Prop := ∃ j, schedule s ≤ j ∧ Stolen (producerForSlot n s) j`; :117 `noncomputable def exposedProducersSched (n : Nat) (schedule : Nat → Nat) (Stolen : Nat → Nat → Prop) (u : Nat) : Finset Nat := (Finset.Ico u (u + n)).filter (fun s => theftSched n schedule Stolen s) |>.image (producerForSlot n)`; `badSched_iff_or` :108 (Iff.rfl)",
+     "meaning": "Scheduled theft half and the cumulative per-window exposed-producer census (the T dial)."
+    },
+    {
+     "name": "PackageA",
+     "kind": "structure",
+     "line": 752,
+     "signature": "Lean KeyStealingScheduleBudget.lean:204 `structure PackageA (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (R T : Nat) : Prop where unforgeable : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ; hashInj : SignedHashInjective (SignedDeclared n ops registry) G; rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R; exposedBound : ∀ u, (exposedProducersSched n schedule Stolen u).card ≤ T; budget_le : R + T ≤ maxByzantine n`",
+     "meaning": "Package A as a Prop-structure. NO erasure field (that absence is A2); NO A3 field either (A3/A0 are prose justifications of exposedBound)."
+    },
+    {
+     "name": "PackageB",
+     "kind": "structure",
+     "line": 753,
+     "signature": "Lean KeyStealingScheduleBudget.lean:331 `structure PackageB (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type} … (R T : Nat) extends PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T : Prop where erasure_freeze : ∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T`",
+     "meaning": "Package B = A + erasure_freeze (timeless shadow of B2). `PackageB.toPackageA` is the projection (assumption-set inclusion). erasure_freeze is consumed by no proof."
+    },
+    {
+     "name": "ByzantineBoundedFrom",
+     "kind": "def",
+     "line": 773,
+     "signature": "Lean MoltPetit/Model/KeyStealingScheduleHorizon.lean:70 `def ByzantineBoundedFrom (H n : Nat) (bad : ByzantineSlots) : Prop := ∀ u, H ≤ u → (badSlotsIn bad u n).card ≤ maxByzantine n`",
+     "meaning": "Horizon-scoped budget: only windows starting at or after H are constrained."
+    },
+    {
+     "name": "stolenOf",
+     "kind": "def",
+     "line": 820,
+     "signature": "Lean MoltPetit/Model/KeyStealingScheduleTimed.lean:90 `def stolenOf (stolenAt : Nat → Nat → Nat → Prop) (i j : Nat) : Prop := ∃ r, stolenAt i j r`",
+     "meaning": "Timeless projection of the time-stamped theft relation stolenAt i j r; what badSched consumes in the timed layer (hence future-inclusive)."
+    },
+    {
+     "name": "NoPrematureTheft",
+     "kind": "def",
+     "line": 784,
+     "signature": "Lean KeyStealingScheduleTimed.lean:96 `def NoPrematureTheft (R : Nat) (stolenAt : Nat → Nat → Nat → Prop) : Prop := ∀ i j r, stolenAt i j r → j * R ≤ r`",
+     "meaning": "A3 timed ('not-before'), flagship s/R only."
+    },
+    {
+     "name": "ErasureTimed",
+     "kind": "def",
+     "line": 784,
+     "signature": "Lean KeyStealingScheduleTimed.lean:102 `def ErasureTimed (R : Nat) (stolenAt : Nat → Nat → Nat → Prop) : Prop := ∀ i j r, stolenAt i j r → r < (j + 1) * R`",
+     "meaning": "B2 timed ('not-after'): a generation is not stealable after its era ends."
+    },
+    {
+     "name": "NoPrematureMint",
+     "kind": "def",
+     "line": 784,
+     "signature": "Lean KeyStealingScheduleTimed.lean:230 `def NoPrematureMint (R : Nat) (log : TimedLog) : Prop := ∀ r, ∀ B ∈ log r, B.keyIndex * R ≤ r` (TimedLog := Nat → Finset Block, Definitions.lean:694)",
+     "meaning": "A3 mint-side: a block cannot appear in the real-time log before its declared generation exists."
+    },
+    {
+     "name": "recentTheftProducers",
+     "kind": "def",
+     "line": 788,
+     "signature": "Lean KeyStealingScheduleTimed.lean:149 `noncomputable def recentTheftProducers (n R : Nat) (stolenAt : Nat → Nat → Nat → Prop) (u : Nat) : Finset Nat := (Finset.range n).filter (fun i => ∃ j r, u / R ≤ j ∧ stolenAt i j r ∧ u < r + R)`",
+     "meaning": "The recent-theft census (T dial of the timed packages). Future-inclusive; the `u < r + R` conjunct is redundant under NoPrematureTheft (docstring)."
+    },
+    {
+     "name": "PackageATimed",
+     "kind": "structure",
+     "line": 799,
+     "signature": "Lean KeyStealingScheduleTimed.lean:312 `structure PackageATimed (n R H : Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (stolenAt : Nat → Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (Rrent T : Nat) : Prop where unforgeable : SchedCoreUnforgeable n (fun s => s / R) ops registry rented (stolenOf stolenAt) honestSigned now Δ; hashInj : SignedHashInjective (SignedDeclared n ops registry) G; notBefore : NoPrematureTheft R stolenAt; rentBound : ∀ u, H ≤ u → (badSlotsIn rented u n).card ≤ Rrent; recentTheftBound : ∀ u, H ≤ u → (recentTheftProducers n R stolenAt u).card ≤ T; budget_le : Rrent + T ≤ maxByzantine n`",
+     "meaning": "Timed Package A (A3 is a real field here). Flagship schedule only."
+    },
+    {
+     "name": "PackageBTimed",
+     "kind": "structure",
+     "line": 799,
+     "signature": "Lean KeyStealingScheduleTimed.lean:383 `structure PackageBTimed (n R H : Nat) … extends PackageATimed n R H ops registry rented stolenAt honestSigned now Δ G Rrent T : Prop where notAfter : ErasureTimed R stolenAt`",
+     "meaning": "Timed Package B = timed A + ErasureTimed. `notAfter` is consumed only by theft_during_era_of_erasure, not by the safety conclusion."
+    },
+    {
+     "name": "SchedTimedUnforgeable",
+     "kind": "def",
+     "line": 823,
+     "signature": "doc only: 'a `SchedTimedUnforgeable` keying on theft-before-mint rather than theft-ever' — NOT DEFINED anywhere in the repo (grep: no hits)",
+     "meaning": "The designed-but-unformalized EUF-CMA surface with mint times (ROTATION_MODES X-3)."
+    },
+    {
+     "name": "composed emergency floor max(gen(s), inForce)",
+     "kind": "def",
+     "line": 610,
+     "signature": "doc only: 'compose with the existing chain-local floor for emergency early rotation: `max(gen(s), inForce)`' (§10.1 A1) and line 803 'Not modeled (validator-side): A1's composed emergency floor' — no Lean validator exists",
+     "meaning": "ROTATION_MODES X-1; informal soundness remark that deployments running it are still covered."
+    },
+    {
+     "name": "deep_block_agreement_of_height_depth (engine)",
+     "kind": "theorem-as-engine",
+     "line": 443,
+     "signature": "Lean MoltPetit/Model/Safety.lean:352 — see theorems list",
+     "meaning": "The model engine every deep-agreement headline (keyrot/sched/lockstep) feeds into."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "keyrot_recent_tip_ancestor_agreement",
+     "line": 24,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf (doc says Δconf ≥ 2n; landed gate is n ≤ Δconf)",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hBudget : ByzantineBounded n (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) — read off the FIRST chain sc",
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hVal' : validSignedChainK' n Δconf ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean MoltPetit/Results/KeyStealingResults.lean:328. Mode-1 final LC theorem (M1-G1). `_mem` twin follows."
+    },
+    {
+     "name": "recent_oldkey_fork_is_longrange",
+     "line": 419,
+     "hypotheses": [
+      "hK' : validChainK' n Δconf c' = true",
+      "hAat : blockAt? c hA = some A",
+      "hshared : CommonPrefixUpTo c c' k",
+      "hAk : hA ≤ k",
+      "hb : b ∈ c'",
+      "hprod : producerForSlot n A.slot = producerForSlot n b.slot",
+      "hconf : A.slot + Δconf ≤ b.slot"
+     ],
+     "conclusion": "A.keyIndex ≤ b.keyIndex",
+     "notes": "Lean MoltPetit/Model/KeyStealingLongRange.lean:64 (I4 core, M1-G4). Single-chain form `oldkey_dead_after_confirmed_announcement` at :35 (statement not fetched)."
+    },
+    {
+     "name": "induced_byzantine_bounded",
+     "line": 411,
+     "hypotheses": [
+      "hRent : ∀ u, (badSlotsIn rented u n).card ≤ R",
+      "hExposed : ∀ u, (exposedProducers n Δconf Stolen c₀ u).card ≤ T",
+      "hRT : R + T ≤ maxByzantine n"
+     ],
+     "conclusion": "ByzantineBounded n (badKeyrotOn n Δconf rented Stolen c₀)",
+     "notes": "Lean MoltPetit/Model/KeyStealingBudget.lean:107. Uses badSlotsIn_union_le (:52: (badSlotsIn (fun s => A s ∨ B s) u n).card ≤ (badSlotsIn A u n).card + (badSlotsIn B u n).card) and theftSlots_card_le_exposed (:92: (badSlotsIn (theftOn n Δconf Stolen c₀) u n).card ≤ (exposedProducers n Δconf Stolen c₀ u).card)."
+    },
+    {
+     "name": "deep_block_agreement_of_height_depth",
+     "line": 443,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hBudget : ByzantineBounded n bad",
+      "hHonest : HonestSlotsUnique bad record",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hGenesis : CommonPrefixUpTo c c' 0",
+      "hB : blockAt? c k = some B",
+      "hB' : blockAt? c' k = some B'",
+      "hD : blockAt? c m = some D",
+      "hD' : blockAt? c' m' = some D'",
+      "hDeep : k + n ≤ m",
+      "hDeep' : k + n ≤ m'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean MoltPetit/Model/Safety.lean:352 — the shared engine; every mode reduces to it (LOCKSTEP_DESIGN: 'Reuses deep_block_agreement_of_height_depth unchanged')."
+    },
+    {
+     "name": "honestSlotsUnique_sched",
+     "line": 725,
+     "hypotheses": [
+      "hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+      "hVal : validSignedChainSched n schedule ops registry sc = true",
+      "hVal' : validSignedChainSched n schedule ops registry sc' = true",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ"
+     ],
+     "conclusion": "HonestSlotsUnique (badSched n schedule rented Stolen) (chainUnionRecord sc sc')",
+     "notes": "Lean MoltPetit/Model/KeyStealingSchedule.lean:140 — DIRECT (no confirmed_mem_iff_le, no Δconf). Core twin honestSlotsUnique_schedCore (ScheduleCert.lean:231)."
+    },
+    {
+     "name": "rotated_key_dead_sched",
+     "line": 724,
+     "hypotheses": [
+      "h : validSignedChainSched n schedule ops registry sc = true",
+      "hmem : sb ∈ sc"
+     ],
+     "conclusion": "ops.verify (registry (producerForSlot n sb.block.slot) sb.block.keyIndex) sb.block sb.sig = true ∧ schedule sb.block.slot ≤ sb.block.keyIndex",
+     "notes": "Lean KeyStealingSchedule.lean:67. Core twin rotated_key_dead_schedCore (ScheduleCert.lean:135)."
+    },
+    {
+     "name": "signedDeclared_of_mem_sched",
+     "line": 724,
+     "hypotheses": [
+      "h : validSignedChainSched n schedule ops registry sc = true",
+      "hB : B ∈ stripSigs sc"
+     ],
+     "conclusion": "SignedDeclared n ops registry B",
+     "notes": "Lean KeyStealingSchedule.lean:88 (coverage discharged from validator). Core twin at ScheduleCert.lean:180."
+    },
+    {
+     "name": "sched_deep_block_agreement",
+     "line": 727,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBounded n (badSched n schedule rented Stolen)",
+      "hVal : validSignedChainSched n schedule ops registry sc = true",
+      "hVal' : validSignedChainSched n schedule ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ",
+      "hB : blockAt? (stripSigs sc) k = some B",
+      "hB' : blockAt? (stripSigs sc') k = some B'",
+      "hD : blockAt? (stripSigs sc) m = some D",
+      "hD' : blockAt? (stripSigs sc') m' = some D'",
+      "hDeep : k + n ≤ m",
+      "hDeep' : k + n ≤ m'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean KeyStealingSchedule.lean:206. Core twin sched_deep_block_agreement_core (ScheduleCert.lean:287), _of_length forms at Results:83 and Cert:325."
+    },
+    {
+     "name": "sched_recent_tip_ancestor_agreement",
+     "line": 729,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBounded n (badSched n schedule rented Stolen)",
+      "hVal : validSignedChainSched n schedule ops registry sc = true",
+      "hVal' : validSignedChainSched n schedule ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean MoltPetit/Results/KeyStealingScheduleResults.lean:137 (M2-G1). Re-presented as Molt.scheduled_client_safety (Molt/Rotation.lean:369)."
+    },
+    {
+     "name": "sched_recent_tip_ancestor_mem",
+     "line": 729,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedUnforgeable …",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBounded n (badSched n schedule rented Stolen)",
+      "hVal / hVal' : validSignedChainSched … = true",
+      "hHead / hHead' : blockAt? … 0 = some G",
+      "hTipS / hTipS' : getLast? = some sTip / sTip'",
+      "hRecent / hRecent' : now ≤ sTip.slot + Δ / now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLe : sTip.height ≤ sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B"
+     ],
+     "conclusion": "∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B",
+     "notes": "Lean KeyStealingScheduleResults.lean:179."
+    },
+    {
+     "name": "sched_oldkey_fork_stale",
+     "line": 731,
+     "hypotheses": [
+      "hVal : validSignedChainSched n schedule ops registry sc = true",
+      "hEraOver : ∀ s, schedule s ≤ J → s + Δ < now",
+      "hTip : (stripSigs sc).getLast? = some t",
+      "hJt : t.keyIndex ≤ J"
+     ],
+     "conclusion": "¬ now ≤ t.slot + Δ",
+     "notes": "Lean KeyStealingScheduleResults.lean:242 (M2-O3, formal §10.0 claim 2, tip-only, no budget). Core twin sched_oldkey_fork_stale_core (ScheduleCert.lean:159) with validSignedChainSchedCore."
+    },
+    {
+     "name": "schedUnforgeable_of_core",
+     "line": 748,
+     "hypotheses": [
+      "h : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ"
+     ],
+     "conclusion": "SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+     "notes": "Lean KeyStealingScheduleCert.lean:216."
+    },
+    {
+     "name": "groundedCertSched_history",
+     "line": 739,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "h : GroundedCertSched n schedule Signed G cl"
+     ],
+     "conclusion": "∃ c : Chain, GroundedHistorySched n schedule Signed G cl c",
+     "notes": "Lean KeyStealingScheduleCert.lean:409."
+    },
+    {
+     "name": "groundedCertSched_suffix_history",
+     "line": 739,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hG : GroundedCertSched n schedule Signed G cl",
+      "hTipS : (s₁ :: srest).getLast? = some sTip",
+      "hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId",
+      "hLinks : linksOk (s₁ :: srest) = true",
+      "hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n",
+      "hPinS : schedPinned schedule (s₁ :: srest) = true",
+      "hSigned : ∀ B ∈ s₁ :: srest, Signed B"
+     ],
+     "conclusion": "∃ c : Chain, validChain n (c ++ s₁ :: srest) = true ∧ schedPinned schedule (c ++ s₁ :: srest) = true ∧ blockAt? (c ++ s₁ :: srest) 0 = some G ∧ c.length = cl.tipHeight + 1 ∧ (∀ B ∈ c ++ s₁ :: srest, Signed B)",
+     "notes": "Lean KeyStealingScheduleCert.lean:502. Reconstructs a full pinned chain from cert + suffix (no floor)."
+    },
+    {
+     "name": "sched_recent_certified_suffix_agreement",
+     "line": 743,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ (CORE scope)",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBounded n (badSched n schedule rented Stolen)",
+      "hcl : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl",
+      "hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl'",
+      "hTipS : (s₁ :: srest).getLast? = some sTip",
+      "hTipS' : (s₁' :: srest').getLast? = some sTip'",
+      "hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId",
+      "hLinks : linksOk (s₁ :: srest) = true",
+      "hDense : ∀ u, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n",
+      "hPinS : schedPinned schedule (s₁ :: srest) = true",
+      "hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B",
+      "hLink' / hLinks' / hDense' / hPinS' / hSigned' : same for the primed suffix",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hB : blockAt? (s₁ :: srest) i = some B",
+      "hB' : blockAt? (s₁' :: srest') i' = some B'",
+      "hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i'",
+      "hDeep : i + n < (s₁ :: srest).length",
+      "hDeep' : i' + n < (s₁' :: srest').length"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean KeyStealingScheduleCert.lean:617. Headline of the scheduled certificate; no AttestedHistoryK quantification, no floor snapshot."
+    },
+    {
+     "name": "induced_byzantine_bounded_sched",
+     "line": 750,
+     "hypotheses": [
+      "hRent : ∀ u, (badSlotsIn rented u n).card ≤ R",
+      "hExposed : ∀ u, (exposedProducersSched n schedule Stolen u).card ≤ T",
+      "hRT : R + T ≤ maxByzantine n"
+     ],
+     "conclusion": "ByzantineBounded n (badSched n schedule rented Stolen)",
+     "notes": "Lean KeyStealingScheduleBudget.lean:164 (scheduled I3); uses theftSlotsSched_card_le_exposed (:148)."
+    },
+    {
+     "name": "packageA_byzantine_bounded",
+     "line": 752,
+     "hypotheses": [
+      "hA : PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T"
+     ],
+     "conclusion": "ByzantineBounded n (badSched n schedule rented Stolen)",
+     "notes": "Lean KeyStealingScheduleBudget.lean:216 := induced_byzantine_bounded_sched hA.rentBound hA.exposedBound hA.budget_le. packageB_byzantine_bounded at :396."
+    },
+    {
+     "name": "packageA_recent_tip_ancestor_agreement",
+     "line": 763,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hA : PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T",
+      "hVal / hVal' : validSignedChainSched n schedule ops registry sc / sc' = true",
+      "hHead / hHead' : blockAt? (stripSigs sc / sc') 0 = some G",
+      "hTipS / hTipS' : getLast? = some sTip / sTip'",
+      "hRecent / hRecent' : now ≤ sTip.slot + Δ / now ≤ sTip'.slot + Δ",
+      "hLong / hLong' : n < length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB / hB' : blockAt? … (length - 1 - n) = some B / B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean KeyStealingScheduleBudget.lean:228 (M2-G2). packageA_recent_certified_suffix_agreement at :259 (same hyps as sched_recent_certified_suffix_agreement with hA replacing hUnf/hHash/hBudget). packageB_* twins at :406 and :434 take hPB : PackageB … and are literally the A theorems on hPB.toPackageA."
+    },
+    {
+     "name": "erasure_freeze_of_exposedBound",
+     "line": 758,
+     "hypotheses": [
+      "hExposed : ∀ u, (exposedProducersSched n schedule Stolen u).card ≤ T",
+      "hFull : ∀ j : Nat, ∃ u, ∀ s, u ≤ s → s < u + n → schedule s = j"
+     ],
+     "conclusion": "∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T",
+     "notes": "Lean KeyStealingScheduleBudget.lean:364. With schedule_div_full_window (:344: hR : n ≤ R, hR0 : 0 < R ⊢ ∀ j, ∃ u, ∀ s, u ≤ s → s < u + n → s / R = j) shows PackageB is logically PackageA for the flagship schedule with R ≥ n."
+    },
+    {
+     "name": "horizon_shared_prefix",
+     "line": 770,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hHonest : HonestSlotsUnique bad record",
+      "hId : IdInjective record",
+      "hValid : ValidChain n c",
+      "hValid' : ValidChain n c'",
+      "hRec : ChainInRecord record c",
+      "hRec' : ChainInRecord record c'",
+      "hTip : c.getLast? = some tip",
+      "hTip' : c'.getLast? = some tip'",
+      "hle : tip.slot ≤ tip'.slot",
+      "hBudgetU : (badSlotsIn bad (tip.slot + 1 - n) n).card ≤ maxByzantine n — a SINGLE window, the trailing one below the lower tip",
+      "hkdeep : k + n < c.length"
+     ],
+     "conclusion": "∃ P : Block, blockAt? c k = some P ∧ blockAt? c' k = some P",
+     "notes": "Lean KeyStealingScheduleHorizon.lean:161 — the top-window contraction engine. LOCKSTEP_DESIGN D1′-full = 'generalize horizon_shared_prefix to an arbitrary window' (costs 2n depth)."
+    },
+    {
+     "name": "sched_recent_tip_ancestor_agreement_horizon",
+     "line": 771,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen)",
+      "hVal / hVal' : validSignedChainSched … = true",
+      "hTipS / hTipS' : getLast? = some sTip / sTip'",
+      "hRecent / hRecent' : now ≤ sTip.slot + Δ / now ≤ sTip'.slot + Δ",
+      "hLong / hLong' : n < length",
+      "hH : H + n ≤ sTip.slot + 1",
+      "hH' : H + n ≤ sTip'.slot + 1",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB / hB' : blockAt? … (length - 1 - n) = some B / B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean KeyStealingScheduleHorizon.lean:247 (M2-G3). NO shared-genesis hypothesis. _mem at :308; _core twins (SchedCoreUnforgeable + validSignedChainSchedCore) at :414 and :471. byzantineBoundedFrom_of_bounded (:75): ByzantineBounded n bad → ByzantineBoundedFrom H n bad."
+    },
+    {
+     "name": "sched_recent_genesis_agreement_horizon",
+     "line": 779,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedUnforgeable …",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen)",
+      "hVal / hVal' : validSignedChainSched … = true",
+      "hTipS / hTipS'",
+      "hRecent / hRecent'",
+      "hLong / hLong'",
+      "hH : H + n ≤ sTip.slot + 1",
+      "hH' : H + n ≤ sTip'.slot + 1"
+     ],
+     "conclusion": "∃ P : Block, blockAt? (stripSigs sc) 0 = some P ∧ blockAt? (stripSigs sc') 0 = some P",
+     "notes": "Lean KeyStealingScheduleHorizon.lean:365 — genesis agreement as a consequence."
+    },
+    {
+     "name": "theft_during_era_of_erasure",
+     "line": 797,
+     "hypotheses": [
+      "hA3 : NoPrematureTheft R stolenAt",
+      "hEr : ErasureTimed R stolenAt",
+      "h : stolenAt i j r"
+     ],
+     "conclusion": "j * R ≤ r ∧ r < (j + 1) * R",
+     "notes": "Lean KeyStealingScheduleTimed.lean:107 — the only consumer of ErasureTimed/notAfter."
+    },
+    {
+     "name": "theft_is_recent",
+     "line": 786,
+     "hypotheses": [
+      "hR : 0 < R",
+      "hA3 : NoPrematureTheft R stolenAt",
+      "h : theftSched n (fun t => t / R) (stolenOf stolenAt) s"
+     ],
+     "conclusion": "∃ j r, s / R ≤ j ∧ stolenAt (producerForSlot n s) j r ∧ s < r + R",
+     "notes": "Lean KeyStealingScheduleTimed.lean:122 (backward theft-locality)."
+    },
+    {
+     "name": "horizon_budget_of_timed",
+     "line": 787,
+     "hypotheses": [
+      "hn : 0 < n",
+      "hR : 0 < R",
+      "hA3 : NoPrematureTheft R stolenAt",
+      "hRent : ∀ u, H ≤ u → (badSlotsIn rented u n).card ≤ Rrent",
+      "hTheft : ∀ u, H ≤ u → (recentTheftProducers n R stolenAt u).card ≤ T",
+      "hRT : Rrent + T ≤ maxByzantine n"
+     ],
+     "conclusion": "ByzantineBoundedFrom H n (badSched n (fun s => s / R) rented (stolenOf stolenAt))",
+     "notes": "Lean KeyStealingScheduleTimed.lean:187 (timed I3); via exposedSched_subset_recentTheft (:156)."
+    },
+    {
+     "name": "sched_forwardstamp_bounded",
+     "line": 789,
+     "hypotheses": [
+      "hR : 0 < R",
+      "hMint : NoPrematureMint R log",
+      "hPin : schedPinned (fun s => s / R) c = true",
+      "hB : B ∈ c",
+      "hr : B ∈ log r"
+     ],
+     "conclusion": "B.slot < r + R",
+     "notes": "Lean KeyStealingScheduleTimed.lean:244 — forward half of NoBackdate, derived."
+    },
+    {
+     "name": "sched_recent_block_fresh",
+     "line": 795,
+     "hypotheses": [
+      "hR : 0 < R",
+      "hMint : NoPrematureMint R log",
+      "hPin : schedPinned (fun s => s / R) c = true",
+      "hB : B ∈ c",
+      "hr : B ∈ log r",
+      "hRecent : now ≤ B.slot + Δ"
+     ],
+     "conclusion": "now < r + Δ + R",
+     "notes": "Lean KeyStealingScheduleTimed.lean:267."
+    },
+    {
+     "name": "sched_backdate_consistent",
+     "line": 793,
+     "hypotheses": [
+      "(R r : Nat) — no hypotheses"
+     ],
+     "conclusion": "∃ (log : TimedLog) (B : Block), NoPrematureMint R log ∧ B ∈ log r ∧ B.slot = 0 ∧ schedPinned (fun s => s / R) [B] = true",
+     "notes": "Lean KeyStealingScheduleTimed.lean:284 — independence witness: back-dating is NOT excluded by the timed layer."
+    },
+    {
+     "name": "packageATimed_recent_tip_ancestor_agreement",
+     "line": 801,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hR : 0 < R",
+      "hA : PackageATimed n R H ops registry rented stolenAt honestSigned now Δ G Rrent T",
+      "hVal / hVal' : validSignedChainSched n (fun s => s / R) ops registry sc / sc' = true",
+      "hTipS / hTipS'",
+      "hRecent / hRecent' : now ≤ sTip.slot + Δ / sTip'.slot + Δ",
+      "hLong / hLong' : n < length",
+      "hH : H + n ≤ sTip.slot + 1",
+      "hH' : H + n ≤ sTip'.slot + 1",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB / hB' : blockAt? … (length - 1 - n) = some B / B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean KeyStealingScheduleTimed.lean:344; packageATimed_horizon_budget (:326) : PackageATimed … → ByzantineBoundedFrom H n (badSched n (fun s => s / R) rented (stolenOf stolenAt)); packageBTimed_recent_tip_ancestor_agreement (:394) same hyps with hPB : PackageBTimed …. No shared genesis, no Δconf."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/ROTATION_MODES.md",
+   "purpose": "Stabilized requirements catalogue for the three rotation modes (mode 1 in-band/anchor; mode 2 fixed schedule; mode 3 free-cadence lockstep with erasure). Each requirement carries an ID, a status marker (✅ checked / 🤝 assumed / 📐 design-level) and a Lean anchor. §5 lists what is not yet modeled (X-1..X-4). Update note (2026-08-07): mode 1's client contract is now the single-constant sync rule (Molt.stay_recent_client_safe / deep_block_span / client_refresh_rule), budget on trailing 5n slots.",
+   "imports": [
+    "MoltPetit/Model/KeyRotation.lean (inForcePinned :79, inForce :49, validSignedChainK' :385)",
+    "MoltPetit/Model/KeyIndex.lean (keyMonoOk :54, keyFloor :77)",
+    "MoltPetit/Model/KeyStealing.lean (badKeyrotOn :47, badKeyrotOn_lossOnly :67)",
+    "MoltPetit/Model/KeyStealingBudget.lean (induced_byzantine_bounded :107)",
+    "MoltPetit/Model/KeyStealingUnique.lean (KeyStealingEUFCMA :136)",
+    "MoltPetit/Results/KeyStealingResults.lean (keyrot_recent_tip_ancestor_agreement :328)",
+    "MoltPetit/Model/KeyStealingHorizon.lean (keyrot_recent_tip_ancestor_agreement_horizon :69, _anchored :134)",
+    "MoltPetit/Model/KeyStealingHorizonCore.lean (honestSlotsUnique_keyrot_anchored :258)",
+    "MoltPetit/Model/KeyStealingSchedule.lean (schedPinned :46, validSignedChainSched :51, SchedUnforgeable :105)",
+    "MoltPetit/Results/KeyStealingScheduleResults.lean (sched_recent_tip_ancestor_agreement :137, sched_oldkey_fork_stale :242)",
+    "MoltPetit/Model/KeyStealingScheduleBudget.lean (PackageA :204, packageA_recent_tip_ancestor_agreement :228, PackageB :331)",
+    "MoltPetit/Model/KeyStealingScheduleHorizon.lean (sched_recent_tip_ancestor_agreement_horizon :247)",
+    "MoltPetit/Model/KeyStealingLockstep.lean (lockstepOk :76, validSignedChainLock :103, lagSched :112, LockstepPackage :252, toPackageA :269, lockstep_declares_rosterGen :299, lockstep_validSignedChainSched :474, lockstep_recent_tip_ancestor_agreement :555, _mem :586)",
+    "Molt/ClientRule.lean (deep_block_span :123, stay_recent_client_safe :174, sync_rule :238, sync_rule_mem :284)",
+    "Molt/Rotation.lean (client_refresh_rule :267, scheduled_client_safety :369, lockstep_client_safety :406)",
+    "Molt/MaxSync.lean (max_sync_period :176, census_accumulates :95, no_budget_beyond :156)",
+    "MoltPetit/Results/Axioms.lean (axiom audit); Molt/Axioms.lean",
+    "LOCKSTEP_DESIGN.md (D1′-full vs D1′-thin)"
+   ],
+   "defs": [
+    {
+     "name": "lockstepOk",
+     "kind": "def",
+     "line": 168,
+     "signature": "Lean MoltPetit/Model/KeyStealingLockstep.lean:76 `def lockstepOk (n : Nat) : Chain → Bool | [] => true | b :: rest => rest.all (fun b' => decide ((b.slot / n = b'.slot / n → b.keyIndex = b'.keyIndex) ∧ b.keyIndex ≤ b'.keyIndex)) && lockstepOk n rest`; `lockstepOk_iff_pairwise` :84",
+     "meaning": "M3-V1 no-mixing rule: same n-window ⇒ same keyIndex; non-decreasing across all pairs (roster-wide, unlike keyMonoOk). Re-presented as Molt.noMixing (Molt/Rotation.lean:144, noMixing_eq_core :210)."
+    },
+    {
+     "name": "validSignedChainLock",
+     "kind": "def",
+     "line": 168,
+     "signature": "Lean KeyStealingLockstep.lean:103 `def validSignedChainLock {σ sk pk : Type} (n : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChainK n (stripSigs sc) && lockstepOk n (stripSigs sc)`",
+     "meaning": "Mode-3 validator, no schedule parameter (M3-V2). Molt twin :155, validSignedChainLock_eq_core :217."
+    },
+    {
+     "name": "lagSched",
+     "kind": "def",
+     "line": 190,
+     "signature": "Lean KeyStealingLockstep.lean:112 `def lagSched (n : Nat) (rosterGen : Nat → Nat) (s : Nat) : Nat := rosterGen (s / n - 1)`",
+     "meaning": "One-window-lagged schedule; Nat subtraction makes window 0 lag to itself (pinned by genesis_gen). The schedule at which lockstep chains pass mode 2's validator."
+    },
+    {
+     "name": "LockstepPackage",
+     "kind": "structure",
+     "line": 175,
+     "signature": "Lean KeyStealingLockstep.lean:252 `structure LockstepPackage (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (R T : Nat) : Prop where mono : ∀ ⦃w w'⦄, w ≤ w' → rosterGen w ≤ rosterGen w'; unforgeable : SchedCoreUnforgeable n (fun _ => 0) ops registry rented Stolen honestSigned now Δ; declared : ∀ ⦃i s B⦄, honestSigned i s = some B → B.keyIndex = rosterGen (s / n); hashInj : SignedHashInjective (SignedDeclared n ops registry) G; genesis_gen : G.keyIndex = rosterGen (G.slot / n); rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R; exposedBound : ∀ u, (exposedProducersSched n (lagSched n rosterGen) Stolen u).card ≤ T; budget_le : R + T ≤ maxByzantine n`",
+     "meaning": "Mode-3 package (D1′-thin). NO erasure field: budget is the cumulative census at lagSched; EUF-CMA at the constant-0 core schedule. Molt abbrev at Molt/Rotation.lean:164."
+    },
+    {
+     "name": "rosterGen",
+     "kind": "parameter",
+     "line": 175,
+     "signature": "`rosterGen : Nat → Nat` — a parameter of LockstepPackage (per-WINDOW generation counter), not a def; no `genOf`/`windowOf` def exists",
+     "meaning": "B1 as behaviour: execution-level, discovered, never reaches a verifier."
+    },
+    {
+     "name": "keyMonoOk / keyFloor",
+     "kind": "def",
+     "line": 37,
+     "signature": "Lean MoltPetit/Model/KeyIndex.lean:54 `def keyMonoOk (n : Nat) : Chain → Bool`; :77 `def keyFloor (n : Nat) (c : Chain) (i : Nat) : Nat` (foldl max 0 over same-producer keyIndex; Molt/Rotation.lean:57 restates it literally)",
+     "meaning": "S-V1 monotone index rule and per-producer floor."
+    },
+    {
+     "name": "maxByzantine / faultBudget",
+     "kind": "def",
+     "line": 51,
+     "signature": "Definitions.lean:47 `def maxByzantine (n : Nat) : Nat := (n - 1) / 3`; Molt/Protocol.lean:27 `def faultBudget (n : Nat) : Nat := (n - 1) / 3` (faultBudget_eq_core :111); quorum Definitions.lean:44 `(2 * n + 2) / 3`",
+     "meaning": "S-A1 budget constant."
+    },
+    {
+     "name": "Molt.FaultBounded / Molt.badKeyrot / Molt.schedPin / Molt.producer",
+     "kind": "def",
+     "line": 9,
+     "signature": "Molt/Assumptions.lean:38 `def FaultBounded (n : Nat) (bad : ByzantineSlots) : Prop` (faultBounded_eq_core :82); Molt/Rotation.lean:100 `def badKeyrot … := rented s ∨ ∃ j, inForce n Δconf c₀ (producer n s) s ≤ j ∧ Stolen (producer n s) j` (badKeyrot_eq_core :182 rfl to badKeyrotOn); :119 `def schedPin` (schedPin_eq_core :183); Molt/Protocol.lean:31 `def producer (n slot : Nat) : Nat := slot % n` (producer_eq_core :112); Molt/Assumptions.lean:29 `abbrev SigningLog := MoltPetit.Model.SigningLog` (= Nat → Nat → Option Block, Definitions.lean:558)",
+     "meaning": "The paper-vocabulary re-presentation; Molt theorems are stated in these names and transported by `rw [X_eq_core]` then `exact MoltPetit.Model.thm …`."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "lockstep_declares_rosterGen",
+     "line": 189,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T",
+      "hVal : validSignedChainLock n ops registry sc = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ"
+     ],
+     "conclusion": "∀ W, ∀ B ∈ stripSigs sc, B.slot / n = W → (∃ D ∈ stripSigs sc, W * n + n ≤ D.slot + 1) → B.keyIndex = rosterGen W",
+     "notes": "Lean KeyStealingLockstep.lean:299 (M3-G1 pinning theorem). Only MATURED windows (the ∃ D witness); the tip window is not reached — hence lagSched."
+    },
+    {
+     "name": "lockstep_validSignedChainSched",
+     "line": 190,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hP : LockstepPackage n rosterGen …",
+      "hVal : validSignedChainLock n ops registry sc = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ"
+     ],
+     "conclusion": "validSignedChainSched n (lagSched n rosterGen) ops registry sc = true",
+     "notes": "Lean KeyStealingLockstep.lean:474 (M3-G2 transport). Needs genesis at index 0 and recency."
+    },
+    {
+     "name": "LockstepPackage.toPackageA",
+     "line": 190,
+     "hypotheses": [
+      "hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T"
+     ],
+     "conclusion": "PackageA n (lagSched n rosterGen) ops registry rented Stolen honestSigned now Δ G R T",
+     "notes": "Lean KeyStealingLockstep.lean:269; built with `where unforgeable := schedCoreUnforgeable_mono (fun _ => Nat.zero_le _) hP.unforgeable; hashInj := hP.hashInj; rentBound := hP.rentBound; exposedBound := hP.exposedBound; budget_le := hP.budget_le`."
+    },
+    {
+     "name": "lockstep_recent_tip_ancestor_agreement",
+     "line": 191,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T",
+      "hVal / hVal' : validSignedChainLock n ops registry sc / sc' = true",
+      "hHead / hHead' : blockAt? (stripSigs sc / sc') 0 = some G",
+      "hTipS / hTipS' : getLast? = some sTip / sTip'",
+      "hRecent / hRecent' : now ≤ sTip.slot + Δ / sTip'.slot + Δ",
+      "hLong / hLong' : n < length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB / hB' : blockAt? … (length - 1 - n) = some B / B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean KeyStealingLockstep.lean:555 (M3-G3). _mem at :586 (hLe : sTip.height ≤ sTip'.height, drops hLong'/hTipHeight/hB'; concl ∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B). Molt.lockstep_client_safety (Molt/Rotation.lean:406) is the transported twin. No horizon/certificate lockstep forms exist."
+    },
+    {
+     "name": "keyrot_recent_tip_ancestor_agreement_anchored",
+     "line": 96,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hA : A ∈ stripSigs sc",
+      "hA' : A ∈ stripSigs sc'",
+      "hBudgetFrom : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) u n).card ≤ maxByzantine n",
+      "hVal / hVal' : validSignedChainK' n Δconf ops registry sc / sc' = true",
+      "hTipS / hTipS'",
+      "hRecent / hRecent' : now ≤ sTip.slot + Δ / sTip'.slot + Δ",
+      "hLong / hLong'",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB / hB' : blockAt? … (length - 1 - n) = some B / B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Lean MoltPetit/Model/KeyStealingHorizon.lean:134 (M1-G3). NO genesis hypothesis; anchor A of arbitrary age; budget only on windows after A. Core honestSlotsUnique_keyrot_anchored (HorizonCore.lean:258) takes hUnf : VersionedUnforgeable, hA/hA', hBudgetFrom, hId : IdInjective (chainUnionRecord sc sc'), hVal/hVal', hRecent/hRecent' (∃ t form) ⊢ HonestSlotsUnique (badKeyrotOn … (stripSigs sc)) (chainUnionRecord sc sc'). keyrot_recent_tip_ancestor_agreement_horizon (KeyStealingHorizon.lean:69, M1-G2) statement NOT fetched in this pass."
+    },
+    {
+     "name": "badKeyrotOn_lossOnly",
+     "line": 98,
+     "hypotheses": [
+      "(n Δconf : Nat) (rented : ByzantineSlots) (c₀ : Chain) — no hypotheses"
+     ],
+     "conclusion": "badKeyrotOn n Δconf rented (fun _ _ => False) c₀ = rented",
+     "notes": "Lean KeyStealing.lean:67 (M1-G5). Molt twins: badKeyrot_lossOnly (Molt/Rotation.lean:230), badSched_lossOnly (:239 `badSched n schedule rented (fun _ _ => False) = rented`), exposedSched_lossOnly (:248 `exposedProducersSched n schedule (fun _ _ => False) u = ∅`)."
+    },
+    {
+     "name": "Molt.client_refresh_rule",
+     "line": 9,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hA : A ∈ stripSigs sc",
+      "hA' : A ∈ stripSigs sc'",
+      "hFresh : now ≤ A.slot + H",
+      "hBudget : ∀ u, now < u + n + H → (badSlotsIn (badKeyrot n Δconf rented Stolen (stripSigs sc)) u n).card ≤ faultBudget n",
+      "hVal / hVal' : validSignedChainK' n Δconf ops registry sc / sc' = true",
+      "hTipS / hTipS'",
+      "hRecent / hRecent' : now ≤ sTip.slot + Δ / sTip'.slot + Δ",
+      "hLong / hLong'",
+      "hTipHeight",
+      "hB / hB'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Molt/Rotation.lean:267 (namespace Molt). Wrapper over keyrot_recent_tip_ancestor_agreement_anchored with the anchor's age explicit; proof: rw [validSignedChainK'_eq_core] at hVal hVal'; exact MoltPetit.Model.… (fun u hu => hBudget u (by omega))."
+    },
+    {
+     "name": "Molt.deep_block_span",
+     "line": 9,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hV : ValidChain n c",
+      "hA : blockAt? c m = some A",
+      "hD : blockAt? c (m + n) = some D"
+     ],
+     "conclusion": "D.slot < A.slot + 2 * n",
+     "notes": "Molt/ClientRule.lean:123 — two full matured windows would need 2·quorum > n blocks."
+    },
+    {
+     "name": "Molt.stay_recent_client_safe",
+     "line": 9,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF : KeyStealingEUFCMA n Δconf …",
+      "hHash : SignedHashInjective (KeyStealingSigned n ops registry) G",
+      "hVPrev : validSignedChainK' n Δconf ops registry scPrev = true (previous sync)",
+      "hTipPrev : (stripSigs scPrev).getLast? = some tipPrev",
+      "hRecPrev : t ≤ tipPrev.slot + n",
+      "hLongPrev : n < (stripSigs scPrev).length",
+      "hAnchor : blockAt? (stripSigs scPrev) ((stripSigs scPrev).length - 1 - n) = some A",
+      "hCadence : now ≤ t + n",
+      "hA : A ∈ stripSigs sc",
+      "hA' : A ∈ stripSigs sc'",
+      "hBudget : ∀ u, now < u + 5 * n → (badSlotsIn (badKeyrot n Δconf rented Stolen (stripSigs sc)) u n).card ≤ faultBudget n",
+      "hVal / hVal' : validSignedChainK' … = true",
+      "hTipS / hTipS'",
+      "hRecent / hRecent'",
+      "hLong / hLong'",
+      "hTipHeight",
+      "hB / hB'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Molt/ClientRule.lean:174 — ONE sync step (scPrev at time t → sc, sc' now); derives now ≤ A.slot + (4n − 1) via deep_block_span and applies client_refresh_rule at H := 4n − 1. sync_rule (:238) is the Δconf := n instance (KeyStealingEUFCMA n n …); sync_rule_mem (:284) the membership form. There is NO induction over a sequence of syncs anywhere."
+    },
+    {
+     "name": "Molt.max_sync_period",
+     "line": 9,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hΔ : n ≤ Δconf",
+      "hEUF, hHash as in stay_recent_client_safe",
+      "hVPrev, hTipPrev, hRecPrev : t ≤ tipPrev.slot + n, hLongPrev, hAnchor (previous sync)",
+      "hCadence : now ≤ t + F",
+      "hA / hA' : A ∈ stripSigs sc / sc'",
+      "hBudget : ∀ u, now < u + F + 4 * n → (badSlotsIn (badKeyrot n Δconf rented Stolen (stripSigs sc)) u n).card ≤ faultBudget n",
+      "hVal / hVal', hTipS / hTipS', hRecent / hRecent', hLong / hLong', hTipHeight, hB / hB' (tail of statement not fully fetched; same shape as stay_recent_client_safe)"
+     ],
+     "conclusion": "B = B' (per module doc; conclusion line not fetched)",
+     "notes": "Molt/MaxSync.lean:176 — parametric sync period F. Downward bounds: census_accumulates (:95), census_accumulates_later_thefts (:135), no_budget_beyond (:156: hP : ∀ i ∈ P, ∃ s, u ≤ s ∧ s < u + n ∧ producer n s = i ∧ ∃ j, inForce n Δconf c₀ i s ≤ j ∧ Stolen i j; hbig : faultBudget n < P.card ⊢ ¬ (badSlotsIn (badKeyrot n Δconf rented Stolen c₀) u n).card ≤ faultBudget n)."
+    },
+    {
+     "name": "Molt.scheduled_client_safety / Molt.lockstep_client_safety",
+     "line": 13,
+     "hypotheses": [
+      "scheduled (Molt/Rotation.lean:369): hn; hUnf : SchedUnforgeable …; hHash : SignedHashInjective (SignedDeclared n ops registry) G; hBudget : FaultBounded n (badSched n schedule rented Stolen); hVal/hVal' : Molt.validSignedChainSched …; hHead/hHead'; hTipS/hTipS'; hRecent/hRecent'; hLong/hLong'; hTipHeight; hB/hB'",
+      "lockstep (Molt/Rotation.lean:406): hn; hP : LockstepPackage n rosterGen …; hVal/hVal' : Molt.validSignedChainLock …; hHead/hHead'; hTipS/hTipS'; hRecent/hRecent'; hLong/hLong'; hTipHeight; hB/hB'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Paper Theorems 4 and 5; transported via validSignedChainSched_eq_core / validSignedChainLock_eq_core. Guarded in Molt/Axioms.lean:137/142."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/HANDOFF_SCHEDULE_VARIANT.md",
+   "purpose": "Cross-session handoff (2026-07-02, status COMPLETE; updated 2026-07-10 noting horizon + timed layers landed) for formalizing the two §10 packages as Lean structures and deriving the anchor-free scheduled main-theorem set. Records the standing orders (additive-only, no edits to default-model theorems, axiom guards, adversarial review), the default-model inventory (the DO-NOT-MODIFY list), the mirror-this-pattern pointers, and the one genuinely hard seam (deriving recency from a timed model / time-of-theft).",
+   "imports": [
+    "MoltPetit/Model/KeyRotation.lean (confirmedPrefix :42, inForce_agreement :349, deep_block_shared :245, inForce_agreement_of_confirmed_eq, rotated_key_dead, rotated_index_rejected)",
+    "MoltPetit/Model/KeyStealingSafety.lean (no_deep_fork_le :152, deep_block_shared_le, confirmed_mem_iff_le :252)",
+    "MoltPetit/Model/KeyStealingUnique.lean (chainUnionRecord :45, idInjective_keyrot :70, KeyStealingEUFCMA :136, VersionedUnforgeable :161, versionedUnforgeable_of_keyStealingEUFCMA, honestSlotsUnique_keyrot :201)",
+    "MoltPetit/Results/KeyStealingResults.lean (KeyStealingSigned :158, keyStealingSigned_of_mem :169)",
+    "MoltPetit/Model/KeyStealingCert.lean (GroundedCertK :315, keyMonoFrom :159, SignedDeclared :234, AttestedHistoryK :541)",
+    "MoltPetit/Model/KeyRotationLiveness.lean (extension_rejected_below_floor :100, liveness_produce_blockK :130)",
+    "MoltPetit/Model/KeyStealingBudget.lean, KeyStealingLongRange.lean, KeyRotationTests.lean",
+    "MoltPetit/Model/KeyStealingSchedule.lean (the device)",
+    "MoltPetit/Results/Axioms.lean (guards) — NOTE the doc's paths `MoltPetit/V2/*` and `MoltPetit/V2/Axioms.lean` are STALE: actual layout is MoltPetit/Model/* and MoltPetit/Results/*"
+   ],
+   "defs": [
+    {
+     "name": "confirmedPrefix",
+     "kind": "def",
+     "line": 201,
+     "signature": "Lean MoltPetit/Model/KeyRotation.lean:42 `def confirmedPrefix (Δconf : Nat) (c : Chain) (s : Nat) : Chain := c.filter (fun b => decide (b.slot + Δconf ≤ s))`",
+     "meaning": "Δconf-confirmed prefix seen from slot s."
+    },
+    {
+     "name": "Block",
+     "kind": "structure",
+     "line": 181,
+     "signature": "Definitions.lean:58 `structure Block where slot : Nat; height : Nat; prev : Option Nat; id : Nat; contentsHash : Nat; keyIndex : Nat deriving Repr, DecidableEq`; Chain := List Block (:75); SignedChain σ := List (SignedBlock σ) (:218); stripSigs (:221); sigsOk (:231); SigOps σ sk pk (:187); KeyRegistry pk := Nat → Nat → pk (:204, TOTAL — every (producer, index) has a key); ByzantineSlots := Nat → Prop (:459); SlotRecord := Nat → Finset Block (:456); CertClaim (:322: tipId, tipSlot, tipHeight, tail)",
+     "meaning": "Base vocabulary every new module consumes."
+    },
+    {
+     "name": "SignedHashInjective",
+     "kind": "def",
+     "line": 216,
+     "signature": "Definitions.lean:656 `def SignedHashInjective (Signed : Block → Prop) (G : Block) : Prop := ∀ ⦃B B' : Block⦄, (B = G ∨ Signed B) → (B' = G ∨ Signed B') → B.id = B'.id → B = B'`",
+     "meaning": "Collision resistance on the genesis-or-Signed domain; the Signed argument differs per mode (KeyStealingSigned vs SignedDeclared)."
+    },
+    {
+     "name": "HonestSlotsUnique / IdInjective / ByzantineBounded (engine premises)",
+     "kind": "def",
+     "line": 76,
+     "signature": "Definitions.lean:498 `def HonestSlotsUnique (bad : ByzantineSlots) (record : SlotRecord) : Prop`; :503 `def IdInjective (record : SlotRecord) : Prop`; :513 ByzantineBounded",
+     "meaning": "The three engine premises the doc's step 1 says to feed via honestSlotsUnique_sched / idInjective_keyrot / the budget."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "keyStealingSigned_of_mem",
+     "line": 216,
+     "hypotheses": [
+      "hVal : validSignedChainK' n Δconf ops registry sc = true",
+      "hB : B ∈ stripSigs sc"
+     ],
+     "conclusion": "KeyStealingSigned n ops registry B",
+     "notes": "Lean MoltPetit/Results/KeyStealingResults.lean:169 — coverage discharged from the validator (mode 1 analogue of signedDeclared_of_mem_sched)."
+    },
+    {
+     "name": "honestSlotsUnique_keyrot (the hard node)",
+     "line": 213,
+     "hypotheses": [
+      "statement not fetched in this pass — Lean MoltPetit/Model/KeyStealingUnique.lean:201; per the docs it consumes VersionedUnforgeable, validSignedChainK' for both chains, recency (∃ t form) and the opt-A strong slot induction with confirmed_mem_iff_le (Δconf gate now n ≤ Δconf)"
+     ],
+     "conclusion": "HonestSlotsUnique (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) (chainUnionRecord sc sc') (per docs)",
+     "notes": "DO NOT MODIFY per the handoff. The scheduled/lockstep variants avoid it entirely (honestSlotsUnique_sched is direct)."
+    },
+    {
+     "name": "sched_deep_block_agreement_of_length",
+     "line": 304,
+     "hypotheses": [
+      "statement not fetched — Lean MoltPetit/Results/KeyStealingScheduleResults.lean:83; per doc: n-deep from k + n < length, same premises as sched_deep_block_agreement"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Landed (step 1 of §5)."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/KEY_INDEX_DESIGN.md",
+   "purpose": "Original (pre-rotation-adversary) design note for adding the per-producer key index to consensus state: Block.keyIndex, index-selected verification key keyFor (i, j), the in-band monotone rule keyMonoOk / KeyIndexMonotone, the derived keyFloor, and the two target properties (A) index soundness / no rollback and (B) reduction to the static-registry model. Lists 'Theorems to add' (design names) and scope notes (horizon bound k as an acceptance refinement; per-event jump bound left as future work).",
+   "imports": [
+    "MoltPetit/Model/Definitions.lean (Block.keyIndex :58–70, KeyRegistry :204)",
+    "MoltPetit/Model/KeyIndex.lean (keyMonoOk :54, keyFloor :77, KeyIndexMonotone — line not fetched)",
+    "MoltPetit/Model/KeyRotation.lean / KeyIndex.lean (validChainK — the doc's `validChain'`)"
+   ],
+   "defs": [
+    {
+     "name": "Block.keyIndex",
+     "kind": "structure field",
+     "line": 22,
+     "signature": "doc: '`Block` gains `keyIndex : Nat`'; Lean Definitions.lean:58 structure Block … `keyIndex : Nat` (docstring: verifier selects the key as keyFor (producerForSlot n slot) keyIndex)",
+     "meaning": "First producer-attached datum stored per block; genesis uses keyIndex := 0."
+    },
+    {
+     "name": "keyFor / KeyRegistry",
+     "kind": "abbrev",
+     "line": 28,
+     "signature": "doc: `keyFor : producer → index → pk` (custody's dk(i,j)); Lean `abbrev KeyRegistry (pk : Type) := Nat → Nat → pk` (Definitions.lean:204), used as `registry (producerForSlot n b.slot) b.keyIndex`",
+     "meaning": "Versioned directory; TOTAL function — there is no notion of an un-delegated index (relevant to §10.3 bounded jumps)."
+    },
+    {
+     "name": "KeyIndexMonotone",
+     "kind": "def (Prop)",
+     "line": 38,
+     "signature": "doc: `KeyIndexMonotone n c : Prop := ∀ ⦃h h'⦄ ⦃B B'⦄, blockAt? c h = some B → blockAt? c h' = some B' → h ≤ h' → producerForSlot n B.slot = producerForSlot n B'.slot → B.keyIndex ≤ B'.keyIndex`; Lean: MoltPetit/Model/KeyIndex.lean (line not pinned in this pass)",
+     "meaning": "Semantic counterpart of keyMonoOk."
+    },
+    {
+     "name": "keyMonoOk / validChain' (= validChainK)",
+     "kind": "def",
+     "line": 33,
+     "signature": "doc: `validChain' = validChain ∧ keyMonoOk`; Lean keyMonoOk MoltPetit/Model/KeyIndex.lean:54 `def keyMonoOk (n : Nat) : Chain → Bool`; the doc's `validChain'` landed as `validChainK n c` (= validChain n c && keyMonoOk n c; Molt/Rotation.lean:44 restates it)",
+     "meaning": "Boolean monotone-index validator."
+    },
+    {
+     "name": "keyFloor",
+     "kind": "def",
+     "line": 46,
+     "signature": "doc: `keyFloor n c i : Nat := max keyIndex over blocks b ∈ c with producerForSlot n b.slot = i (0 if none)`; Lean MoltPetit/Model/KeyIndex.lean:77 `def keyFloor (n : Nat) (c : Chain) (i : Nat) : Nat` (foldl max 0 over the filtered/mapped chain)",
+     "meaning": "Consensus-state floor read off chain order."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "keyMonoOk_sound (design name)",
+     "line": 51,
+     "hypotheses": [
+      "keyMonoOk n c = true"
+     ],
+     "conclusion": "KeyIndexMonotone n c",
+     "notes": "Design wording; existence/line in Lean not verified in this pass (validChainK'_sound at KeyRotation.lean:122 yields ValidChain ∧ KeyIndexMonotone per KEY_ROTATION_SOUND line 316)."
+    },
+    {
+     "name": "keyFloor_le_extend (design name)",
+     "line": 53,
+     "hypotheses": [
+      "none (chain c, extension d)"
+     ],
+     "conclusion": "keyFloor n c i ≤ keyFloor n (c ++ d) i",
+     "notes": "Design wording ('no rollback'); not verified in this pass. Molt/MaxSync.lean:79 has an `inForce_mono`."
+    },
+    {
+     "name": "deep_block_keyIndex_agreement / keyFloor_agreement / indexed_reduces_to_static (design names)",
+     "line": 55,
+     "hypotheses": [
+      "as described: two valid chains from one record, block ≥ n deep on both (A); e := keyFloor n c, effKey i := keyFor i (e i), every block signing under its floor index (B)"
+     ],
+     "conclusion": "(A) agreement on keyIndex of every n-deep block, floors agree on the common prefix; (B) versioned verification = static verification under effKey, so static-registry theorems transport",
+     "notes": "Design-level names from the 'Theorems to add' list; superseded in practice by inForce_agreement / deep_block_shared (KeyRotation.lean:349/:245) and validChainK'_sound. Not verified by name in this pass."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/LOCKSTEP_DESIGN.md",
+   "purpose": "(Cited by ROTATION_MODES.md §3 'Honest scope' and X-2; read because it holds the design wording for the erasure per-generation credit.) Free-cadence lockstep design note: status 'D1′-thin IMPLEMENTED … D1′-full (the per-generation census) remains open'. Records the chain-relative badLock predicate idea with a chain-independent bound (erasure_freeze uniform in j), the D1/D1′/D2 rule candidates, the 2026-08-01 audit's three obstructions (schedPinned reaches the unmatured tip window → lag; pigeonhole runs at the sliding trailing window so erasure_freeze stays non-load-bearing and the factor-2 saving is lost; EUF-CMA contravariance → assume at constant-0 schedule), and the phasing H1–H5.",
+   "imports": [
+    "MoltPetit/Model/KeyStealingLockstep.lean (landed D1′-thin)",
+    "MoltPetit/Model/KeyStealingScheduleHorizon.lean (horizon_shared_prefix — the lemma D1′-full must generalize)",
+    "MoltPetit/Model/KeyStealingScheduleBudget.lean (PackageB.erasure_freeze, erasure_freeze_of_exposedBound)"
+   ],
+   "defs": [
+    {
+     "name": "badLock (design only)",
+     "kind": "def",
+     "line": 29,
+     "signature": "doc: `badLock n rented Stolen c s := rented s ∨ Stolen (producerForSlot n s) (genOf c s)` — chain-relative through `genOf c s`; NOT in Lean (no `genOf`, no `badLock`)",
+     "meaning": "The per-generation corruption predicate whose bound (erasure_freeze, uniform in j) is chain-independent — 'Chain-relative predicate, chain-independent bound. That is the whole trick.'"
+    },
+    {
+     "name": "erasure_freeze (field)",
+     "kind": "structure field",
+     "line": 32,
+     "signature": "doc: `∀ j, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T` — 'uniform in the generation j'; Lean: field of PackageB (KeyStealingScheduleBudget.lean:331); absent from LockstepPackage",
+     "meaning": "Would become load-bearing under D1′-full; 'Today it is documentary — consumed by no proof'."
+    },
+    {
+     "name": "rosterGen (B1 as behaviour)",
+     "kind": "parameter",
+     "line": 112,
+     "signature": "doc: 'an execution-level `rosterGen : Nat → Nat` — per window, monotone — such that every honest signature declares its window's `rosterGen`'; Lean: LockstepPackage fields mono/declared/genesis_gen",
+     "meaning": "'discovered, not fixed; no verifier is given it'."
+    },
+    {
+     "name": "PackageC (design name)",
+     "kind": "structure",
+     "line": 235,
+     "signature": "doc: '`PackageC` (or `LockstepPackage`): `rentBound`, `erasure_freeze` now load-bearing, `budget_le`, and the derived `ByzantineBounded`'; landed as LockstepPackage WITHOUT erasure_freeze",
+     "meaning": "H3 phase; the erasure field was dropped in the thin realization."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "pinning lemma (= lockstep_declares_rosterGen)",
+     "line": 119,
+     "hypotheses": [
+      "valid chain, matured window W declaring g ≠ rosterGen(W)",
+      "density gives ≥ quorum blocks at distinct producers all declaring g",
+      "B1: honest signatures declare rosterGen(W)",
+      "each block sits at a rented slot or a producer whose generation-g key is stolen: ≤ ρ + T ≤ maxByzantine"
+     ],
+     "conclusion": "contradiction with maxByzantine < quorum; hence matured windows declare exactly rosterGen",
+     "notes": "Landed as KeyStealingLockstep.lean:299 (matured windows only)."
+    },
+    {
+     "name": "D1′-full (open)",
+     "line": 214,
+     "hypotheses": [
+      "'additionally generalize `horizon_shared_prefix` to an arbitrary window so the pigeonhole can run inside a pinned region'"
+     ],
+     "conclusion": "'earns the per-generation census and makes `erasure_freeze` carry weight, at the cost of confirmation depth `2n` rather than `n` for this mode, plus real proof work'",
+     "notes": "NOT formalized. Related alternative (line 71–79): require ρ + 2T ≤ maxByzantine, or a relaxed engine needing only bad-count < quorum ('quorum > 2·maxByzantine holds for every n')."
+    }
+   ]
+  }
+ ],
+ "reuse_notes": "WHAT A NEW ADDITIVE MODULE IMPORTS. Everything schedule/lockstep-side lives in `namespace MoltPetit.Model` (including the files under MoltPetit/Results/ — they also open `namespace MoltPetit.Model`). Import the deepest relevant file: `MoltPetit.Model.KeyStealingLockstep` (imports ScheduleBudget + Results.KeyStealingScheduleResults) for lockstep work; `MoltPetit.Model.KeyStealingScheduleTimed` (imports ScheduleHorizon + ScheduleBudget) for timed/horizon work; `MoltPetit.Model.KeyStealingScheduleCert` for GroundedCertSched/SchedCoreUnforgeable/validSignedChainSchedCore. Budget/timed modules use `open Classical` and `noncomputable def` for Finset censuses. Wiring: add `import MoltPetit.Model.<New>` to the root MoltPetit.lean import list (order matters only for readability; KeyRotationTests and Results.Axioms come last), and add a guard block to MoltPetit/Results/Axioms.lean in the exact form `/-- info: 'MoltPetit.Model.<thm>' depends on axioms: [propext, Classical.choice, Quot.sound] -/\\n#guard_msgs in\\n#print axioms MoltPetit.Model.<thm>` (some guards are `[propext, Quot.sound]` — probe first by appending a bare `#print axioms`, building, then writing the guarded form). Lake: `lakefile.toml` defaultTargets = [MoltPetit, Rust, Thales, Molt]; toolchain Lean v4.30.0-rc2 + Mathlib; build `lake build MoltPetit` (HANDOFF's nix-shell recipe). The HANDOFF's paths `MoltPetit/V2/...` and `MoltPetit/V2/Axioms.lean` are stale — actual is MoltPetit/Model/... and MoltPetit/Results/Axioms.lean; Molt guards go in Molt/Axioms.lean.\n\nHOW PACKAGES ARE BUILT. Packages are `structure … : Prop where` with all hypotheses as fields (see PackageA fields: unforgeable/hashInj/rentBound/exposedBound/budget_le); extension by `extends` (PackageB, PackageBTimed); projections/transports are theorems built with `where` (LockstepPackage.toPackageA: `PackageA n (lagSched n rosterGen) … where unforgeable := schedCoreUnforgeable_mono (fun _ => Nat.zero_le _) hP.unforgeable; hashInj := hP.hashInj; …`). A package-level headline is then literally the sched_* theorem applied to the projected fields (`packageA_recent_tip_ancestor_agreement := sched_recent_tip_ancestor_agreement hn (schedUnforgeable_of_core hA.unforgeable) hA.hashInj (packageA_byzantine_bounded hA) …`). Budget derivations mirror induced_byzantine_bounded_sched: union bound `badSlotsIn_union_le` (KeyStealingBudget.lean:52, generic in A B : ByzantineSlots) + a per-window producer↔slot injection (`window_producer_inj` is PRIVATE in both budget files — copy it) + `Finset.card_le_card`/`card_image_le`.\n\nMOLT RE-PRESENTATION BRIDGE. `Molt/` (namespace Molt) restates definitions fresh in paper vocabulary (`producer`, `faultBudget`, `FaultBounded`, `badKeyrot`, `schedPin`, `noMixing`, `validSignedChainSched/Lock`, `SigningLog`) and proves `X_eq_core : X = MoltPetit.Model.X` (rfl where possible, funext+simp otherwise; Molt/Rotation.lean:168–223, Molt/Protocol.lean:110–129, Molt/Assumptions.lean:81–90, Molt/Verifier.lean:147–191). Surfaces/packages are `abbrev X := @MoltPetit.Model.X` (KeyStealingEUFCMA, SchedUnforgeable, badSched, SignedDeclared, LockstepPackage, GroundedCertK, GroundedCertSched); theorems whose statements are not re-presented are `alias` (Molt/Rotation.lean:308–361). Transport idiom: `rw [validSignedChainSched_eq_core] at hVal hVal'; exact MoltPetit.Model.thm …`. A new headline should get a Molt twin + Molt/Axioms.lean guard if the paper (`paper/molt.tex`, the current source of truth) is to cite it.\n\nGOTCHAS. (1) Genesis at index 0: every non-horizon tip-ancestor/deep theorem needs `hHead : blockAt? (stripSigs sc) 0 = some G` for BOTH chains, and `deep_block_agreement_of_height_depth` needs `CommonPrefixUpTo c c' 0`; the horizon forms (`*_horizon`, `keyrot_*_anchored`, `client_refresh_rule`) drop it. `GroundedCertSched.genesis` additionally pins `G.slot = 0` and `Signed G` (sigsOk has no genesis exemption). (2) Mode-1 budget is read off a SPECIFIC chain: `badKeyrotOn … (stripSigs sc)` — the first chain `sc` — whereas `badSched` takes no chain; do not introduce a chain into a scheduled/lockstep budget or the anchor comes back. (3) Tip indexing: n-deep ancestor is `blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n)` with `hLong : n < (stripSigs sc).length`; agreement form needs `hTipHeight : sTip.height = sTip'.height`, membership form `hLe : sTip.height ≤ sTip'.height`. (4) Recency `now ≤ sTip.slot + Δ` is consumed ONLY as the domain scope of the EUF-CMA surface (∃ t form inside the surfaces); it is assumed, not derived. (5) Signed domains: mode 1 hash injectivity is over `KeyStealingSigned` (∃ version j), modes 2–3 over `SignedDeclared` (the DECLARED version keyIndex); the EUF-CMA surfaces' `¬ Stolen i j` is at the VERIFYING version j (free), while badSched/badKeyrotOn quantify `∃ j ≥ floor` — the pin (rotated_key_dead_sched) is what ties declared ≥ floor. (6) `SchedCoreUnforgeable` is contravariant in the validator: `schedCoreUnforgeable_mono` (Lockstep.lean:141) moves it from a pointwise-smaller schedule to a larger one; lockstep assumes it at `fun _ => 0`; a lockstep-scoped surface would be circular (LOCKSTEP_DESIGN obstruction 3). (7) `lagSched n rosterGen s = rosterGen (s / n - 1)` with Nat subtraction (window 0 → itself; `genesis_gen`); `lockstep_declares_rosterGen` covers matured windows only (`∃ D ∈ chain, W * n + n ≤ D.slot + 1`); `schedPinned` is a whole-chain `c.all`. (8) Horizon forms take `ByzantineBoundedFrom H n bad` plus `hH : H + n ≤ sTip.slot + 1` for both tips; `horizon_shared_prefix` consumes the budget at the single window `tip.slot + 1 - n` of the LOWER tip — this is the lemma D1′-full must generalize (costs 2n depth). (9) Timed layer is flagship-only: `schedule := fun s => s / R`, `Stolen := stolenOf stolenAt`, `hR : 0 < R`; `recentTheftProducers` is future-inclusive; `ErasureTimed`/`notAfter` is consumed by no safety conclusion. (10) Δconf gate in landed mode-1 theorems is `hΔ : n ≤ Δconf` (KEY_ROTATION_SOUND's `Δconf ≥ 2n` wording at lines 25/402/454/726 is stale; ROTATION_MODES M1-V2 is current). (11) `KeyRegistry pk := Nat → Nat → pk` is total: there is no 'un-delegated index' notion, so §10.3's root-delegation jump bound has no formal hook; KeyRotationTests locks 'jump>1 legal'. (12) Names that exist only in docs: `inForceIdx`, `RenewableBounded`, `schedulePinned` (→ schedPinned), `gen(s)` (→ `schedule` param), `GroundedCertK'`, `SchedTimedUnforgeable`, `badLock`, `genOf`, `windowOf`, `PackageC`, `inForce_agreement_of_recent_tips`. `stay_recent_client_safe`/`deep_block_span`/`client_refresh_rule`/`sync_rule`/`max_sync_period` live in `Molt/` (namespace Molt), not MoltPetit. (13) ROTATION_MODES M2-O2 says A3 is 'a PackageA field' — it is NOT (PackageA has no A3 field; only PackageATimed.notBefore); KEY_ROTATION_SOUND §10.4 says B1 no-mixing is unmodeled while ROTATION_MODES M3-V1 anchors it to `lockstepOk` — the Lockstep module postdates §10.4's wording. (14) Certificate path runs over the CORE validator (no keyMonoOk) because keyMonoOk needs a floor across the cert boundary; a lockstep certificate wrapper (X-4) would need a fold rule for no-mixing across the boundary (window-constancy needs the previous window's generation — a carried scalar, not a floor vector). (15) Focus terms 'induction over syncs' and 'multi-chain liveness' do NOT appear in any of the four docs: the sync rule is a single-step statement (scPrev at time t → sc, sc' at now), with no theorem chaining syncs; liveness appears only as single-chain production liveness (`liveness_produce_blockK`, `extension_rejected_below_floor`, Molt aliases `production_liveness`/`global_liveness`).",
+ "open_items_found": [
+  "KEY_ROTATION_SOUND.md:129-140 (H-IND): 'In the Lean, `H-IND` surfaces as the instantiation-level justification of `hBudget` over the ∃-form `badKeyrotOn` … it is named in the assumptions ledger (`KeyStealingResults.lean`), not a formalized premise.'",
+  "KEY_ROTATION_SOUND.md:141-144 / 423-428 (H-ANCHOR): 'Each LC's trusted certificate tip is at or after the confirmed rotation it relies on … `H-ANCHOR` remains a named assumption but is reduced to its irreducible weak-subjectivity content: ruling out pre-anchor branches'.",
+  "KEY_ROTATION_SOUND.md:252-259 (well-definedness obligation): 'turning that into a single slot-only `inForceIdx(i,s)` still needs a witness chain confirmed past every evaluated `s` … thread the witness from each chain's recent tip … or expose a thin `inForce_agreement_of_recent_tips` corollary. No Phase-1 change; flagged so it is not forgotten.' — Never built: the landed `badKeyrotOn` keeps an explicit chain argument and the headline theorems read the budget off `stripSigs sc`.",
+  "KEY_ROTATION_SOUND.md:343-352 (§6 two depth parameters): 'Prove the bridging inequalities; verify the skeleton's `hRecent` is discharged independently of `H-ANCHOR`.' — stated as an instruction; no Lean name is cited for it.",
+  "KEY_ROTATION_SOUND.md:388-389 (stale checkbox): '☐ `rotated_key_dead` over `validSignedChain` (validator-or-`sigsOk` split, `H-IND`) — the remaining Phase-1 node, on the signed layer.' (HANDOFF:201-205 says `rotated_key_dead` landed in KeyRotation.lean.)",
+  "KEY_ROTATION_SOUND.md:509-510 (stale checkbox): '☐ remaining future work: the recursive/windowed plonky2 path (floor vector into the public-input state, mirroring `GroundedCertK`).' (lines 47-56 say ivc.rs is implemented.)",
+  "KEY_ROTATION_SOUND.md:71-77 (circuit trust anchors): 'Remaining trust anchors (out-of-circuit, disclosed): the roster commitment itself (the n cold roots, A0), the rotation-floor semantics of delegations (an equivocating root is accountable), and the prototype is not Lean-verified; `spec.rs`'s monolithic path keeps its PoK-only scope, and the from-genesis batch harnesses still replay ids with the zero-placeholder `parentSig`'",
+  "KEY_ROTATION_SOUND.md:601-621 (Package A assumptions are 'stated, not adopted'); A3 at 614-617: 'A generation-`g` hot key is not stealable before generation `g`'s provisioning window … (Formally this is the `H-IND` forward-independence property extended to \"no theft of not-yet-live versions\".)' — formal only for the flagship s/R as `NoPrematureTheft`; in `PackageA` it is prose ('named in prose, not formalized premises', KeyStealingScheduleBudget.lean module doc).",
+  "KEY_ROTATION_SOUND.md:631-648 (retroactive budget reading): 'What A2-style leaks still charge is the historical windows of the budget's retroactive reading: `Stolen` is timeless, `badSched` counts `j ≥ schedule s`, and `j` is upward-unbounded … early windows accumulate the thefts of all later generations, and `ByzantineBounded n badSched` at those windows is a lifetime-cumulative bound … The anchor hypothesis is what the schedule removes … the budget's reading is unchanged.'",
+  "KEY_ROTATION_SOUND.md:654-661 (B1 forced lockstep) and 669-674: 'The frozen fork is defeated by density (a `1/3` adversary cannot fill windows), not by an anti-freeze rule' — the no-mixing/frozen-fork discharge route is design prose; §10.4:803-804 says 'Not modeled (validator-side): A1's composed emergency floor (`max(gen s, inForce)`) and B1's no-mixing rule'. (ROTATION_MODES later anchors no-mixing to `lockstepOk`, but the per-generation census route it was meant to enable is still open — X-2.)",
+  "KEY_ROTATION_SOUND.md:692-714 (§10.3 Bounded jumps) — entirely design; no Lean artifact listed in §10.4: '(timing) the jump happens in the lockstep/schedule transition window — advancing one's generation off-cadence is mixing, and is forbidden; but the jump size is free; (authorization) the `generation → key` binding is root-delegated just-in-time, so the adversary cannot claim an un-delegated index … Skipped indices map to no generation and are rule-dead. Jump size is naturally bounded by root delegation, which also kills index-inflation griefing (an index validates only if a root cert exists for it).' The Lean registry is a total `Nat → Nat → pk`, so 'un-delegated index' has no formal counterpart; only 'jump>1 legal' is locked by KeyRotationTests.",
+  "KEY_ROTATION_SOUND.md:753-761 (erasure_freeze weight): 'Honest weight: the field is consumed by no proof, and for full-window schedules (`s / R`, `R ≥ n`) it is implied by the exposure rate (`erasure_freeze_of_exposedBound`) — there `PackageB` is logically `PackageA`; §10.2's distinctive discharge route (no-mixing ⇒ single-generation forks ⇒ per-generation census without the cumulative reading) needs the unmodeled B1 no-mixing rule.'",
+  "KEY_ROTATION_SOUND.md:782-783: the timed theft layer is 'formal for the flagship `s / R`' only — general schedules have no timed layer (NoPrematureTheft/ErasureTimed/NoPrematureMint all take a period R).",
+  "KEY_ROTATION_SOUND.md:789-794 (back-dating half): 'the back-dating half is NOT derived — `sched_backdate_consistent` machine-checks it stays consistent, mirroring `noBackdate_independent`, whose witness is itself a back-dated block'; 816-818: 'the back-dating half — late minting of old-stamped blocks — is not derived and is budget-charged'.",
+  "KEY_ROTATION_SOUND.md:803-808 (validator scope): 'Not modeled (validator-side): A1's composed emergency floor (`max(gen s, inForce)`) and B1's no-mixing rule — the packages license the shared §10.0 device, whose validator is the pin alone; a deployment running the composed (stricter) validator is still covered, and `T` must be sized to generation-length exposure'.",
+  "KEY_ROTATION_SOUND.md:818-825 (THE residual, theft times): 'What remains, precisely: the recent-theft census is future-inclusive — `badSched` consumes the timeless projection `stolenOf`, so qualifying thefts at any later real time still count; confining the census to thefts before the client's validation time requires re-plumbing the EUF-CMA surface itself with mint times (a `SchedTimedUnforgeable` keying on theft-before-mint rather than theft-ever). That, plus the surface's recency scope itself (a modeling choice, as in the default development), is the residual — the natural next increment.' `SchedTimedUnforgeable` is not defined anywhere in the repo.",
+  "ROTATION_MODES.md:24 (marker legend): '📐 design-level — stated and bounded in prose, not yet in Lean.'",
+  "ROTATION_MODES.md:6-13 (update note): 'The M1-C1/M1-O4 rows below predate this and speak of a free horizon 𝓗; read them through the new rule (𝓗 fixed at `4n−1` by derivation, no longer user-chosen). Long-offline clients are pointed at modes 2–3. See `paper/molt.tex` §5.3, the current source of truth.'",
+  "ROTATION_MODES.md:80-81, 87 (mode 1 🤝 assumed): M1-O3 'Keep versions independent (H-IND) … Instantiable from key-insulated signatures. 🤝'; M1-O4 'Keep retired keys secret over the key-leak horizon — not forever … 🤝, scope ✅ by M1-G3'; M1-C1 'Hold S-C1 plus a rolling anchor (H-ANCHOR) … 🤝, payoff ✅ M1-G3'.",
+  "ROTATION_MODES.md:124-127 (mode 2 🤝 assumed): M2-O1 cold root A0 🤝; M2-O2 'Not-before (A3): generation j's key is not exposed to theft before its provisioning window. Bought by M2-O1. 🤝 (a `PackageA` field)' — INACCURATE: `PackageA` has no such field; only `PackageATimed.notBefore`; M2-O4 'Size the theft rate T to the era length … 🤝 sizing rule'.",
+  "ROTATION_MODES.md:147-150 (mode 2 honest scope): 'The global-budget reading of `Stolen` is retroactive (theft-ever, not theft-before-mint); the horizon form (M2-G3) confines it to recent windows. Mint times in the EUF-CMA surface would sharpen theft-ever to theft-before-mint — 📐 design-level, the natural next increment.'",
+  "ROTATION_MODES.md:175-177 (mode 3 🤝 assumed): M3-O1 'Lockstep coordination (B1) … 🤝 (`LockstepPackage` fields `declared`, `genesis_gen`, `mono`)'; M3-O2 'Erasure (B2): retired key material destroyed at each boundary. Defensible realizations: HSM or never-persisted RAM keys. Flash storage … is not. 🤝'; M3-O3 'Not-before and cold root per generation (B3 = A3, B0 = A0). 🤝'. Note: erasure appears as NO field of `LockstepPackage`.",
+  "ROTATION_MODES.md:197-203 (mode 3 honest scope — erasure per-generation credit + lockstep certificate): 'The budget field is still mode 2's cumulative census; the sharper per-generation census, where erasure itself carries the count (B2 load-bearing), is 📐 design-level (D1′-full; D1′-thin is what is implemented — see `LOCKSTEP_DESIGN.md`).' and 'Certificate-level lockstep statements are 📐 future work (a wrapper over M3-G2's transport).'",
+  "ROTATION_MODES.md:223-230 (§5 Not yet modeled table): 'X-1 Composed emergency floor: a validator pinning at `max(gen(s), inForce(c,i,s))`, restoring in-band emergency rotation ahead of schedule. Deployments running it are still covered (informal soundness remark). [modes 2, 3]'; 'X-2 Per-generation census as the budget (D1′-full): pigeonhole moved inside the pinned region so erasure carries the count. [3]'; 'X-3 Mint times in the EUF-CMA surface: theft-before-mint instead of theft-ever. [1, 2, 3]'; 'X-4 Lockstep certificate wrapper. [3]'.",
+  "HANDOFF_SCHEDULE_VARIANT.md:102-111 (the recency seam): 'The ONE part that is genuinely hard — and is the SAME open seam as the default model (`§10.4`) — is deriving the recency premise itself from a timed model (\"a from-scratch fork cannot have a recent tip\"). That needs an explicit time-of-theft model (when a key is stolen vs when it is live), which is the `Timed*`/`TimedSig` territory. Do NOT block the task on this … If you attempt the timed derivation, scope it as a separate optional increment and flag it clearly; under the schedule it is easier than the default because stolen keys are rule-bound to their generation's slots.' (Partially closed later by KeyStealingScheduleTimed — `sched_recent_block_fresh`/`sched_oldkey_fork_stale` — but the recency premise is still assumed: 'the recency premise itself is assumed, not derived from a timed model', KeyStealingScheduleResults.lean module doc.)",
+  "HANDOFF_SCHEDULE_VARIANT.md:327-329: 'Keep the temporal \"steal only while live\" content as named fields / prose — do NOT block on a timed derivation (see §0).'",
+  "HANDOFF_SCHEDULE_VARIANT.md:9-16 (review-driven deviations): 'the certificate runs over a CORE validator (keyMonoOk needs a floor across the cert boundary and is not load-bearing for scheduled safety) … PackageB.toPackageA is documented as an assumption-set INCLUSION (erasure_freeze proven redundant for full-window schedules …); and the budget's retroactive reading is disclosed everywhere (the anchor HYPOTHESIS is removed; the budget's reading is unchanged from the default model).'",
+  "HANDOFF_SCHEDULE_VARIANT.md:358-359 (standing order): 'Scope every named seam explicitly (the §10.4 recency-derivation seam; Package temporal assumptions).'",
+  "KEY_INDEX_DESIGN.md:14-17: 'This mechanizes exactly what the custody paper … admits is \"argued, not mechanized\": the link between the key-index floor and the actual chain order, and the static-registry reduction across the dynamics.'",
+  "KEY_INDEX_DESIGN.md:89-92 (jump bound): 'Horizon bound `k` (custody's `Accepts` window) is modeled as an acceptance refinement, orthogonal to safety; the per-event jump bound is the open DoS problem the custody paper flags — left as future work, not load-bearing for (A)/(B).'",
+  "KEY_INDEX_DESIGN.md:49-67 ('Theorems to add'): `keyMonoOk_sound`, `keyFloor_le_extend`, `deep_block_keyIndex_agreement`, `keyFloor_agreement`, `indexed_reduces_to_static` — design names; their existence under these names was not verified in this pass (the landed development uses inForce_agreement / deep_block_shared / validChainK'_sound instead).",
+  "LOCKSTEP_DESIGN.md:3-9 (status): 'D1′-thin IMPLEMENTED … D1′-full (the per-generation census) remains open — see the audit section below for what it takes.'",
+  "LOCKSTEP_DESIGN.md:135-178 (audit obstructions): '1. `schedPinned` is a whole-chain `c.all`, while pinning only reaches matured windows … Fixable by instantiating at the one-window-lagged schedule'; '2. That fix is not free, and it kills the factor-2 saving. The agreement engine's pigeonhole always runs at the sliding window `[tip.slot+1−n, tip.slot+1)` … So the census over the consulted window is again the ≥/cumulative one, `erasure_freeze` stays non-load-bearing … Recovering the per-generation census requires generalizing `horizon_shared_prefix` to an arbitrary window — which costs confirmation depth `2n` instead of `n`.'; '3. The EUF-CMA surface is contravariant in the validator, and the pinning lemma needs it, so a lockstep-scoped surface is circular.'; 'The timed layer does not transport at all.'",
+  "LOCKSTEP_DESIGN.md:214-218 (D1′-full definition): 'additionally generalize `horizon_shared_prefix` to an arbitrary window so the pigeonhole can run inside a pinned region. This is what earns the per-generation census and makes `erasure_freeze` carry weight, at the cost of confirmation depth `2n` rather than `n` for this mode, plus real proof work.'",
+  "LOCKSTEP_DESIGN.md:67-79 (factor-2 wrinkle, alternative route): 'require `ρ + 2T ≤ maxByzantine` in the package — simplest, honest, and costs a factor 2 in the tolerated theft rate; or observe `ρ + 2T ≤ 2(ρ+T) ≤ 2·maxByzantine < quorum` and prove a relaxed variant of the agreement engine that needs only `bad-count < quorum` rather than `≤ maxByzantine` … the second is a clean follow-up that recovers the rate.'",
+  "LOCKSTEP_DESIGN.md:220-224: 'The one genuinely new hypothesis either way is B1-as-behaviour: honest signatures declare their window's `rosterGen` … it is an assumption about honest coordination, and it should be disclosed in the paper alongside A3/A0/B2 rather than buried.'",
+  "Lean-side echoes of the same open items (for the planner's cross-check): KeyStealingLockstep.lean module doc 'The distinctive per-generation census (`erasure_freeze` as the load-bearing bound) is not delivered … Earning the per-generation reading is the D1′-full increment'; KeyStealingScheduleBudget.lean PackageB docstring '`erasure_freeze` is consumed by no proof … Nor would a timed model derive the current `exposedBound` from `erasure_freeze`'; KeyStealingScheduleTimed.lean module doc 'Confining the census to thefts before the client's validation time requires re-plumbing the EUF-CMA surface itself with mint times (a `SchedTimedUnforgeable` …) — the natural next increment, not attempted here.'",
+  "NOT FOUND in any of the four docs: any wording about 'induction over syncs' (the Molt sync rule is a single-step scPrev→sc statement; `max_sync_period` is parametric in one period F) or 'multi-chain liveness' (liveness appears only as single-chain production liveness `liveness_produce_blockK`/`extension_rejected_below_floor`; ROTATION_MODES has no liveness rows at all)."
+ ]
+}

@@ -1,0 +1,550 @@
+{
+ "group": "Scheduled-rotation certificate + scheduled budget/packages: MoltPetit/Model/KeyStealingScheduleCert.lean and MoltPetit/Model/KeyStealingScheduleBudget.lean (plus the Molt/Rotation.lean re-presentation items the planner named: badSched_lossOnly / exposedSched_lossOnly)",
+ "modules": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleCert.lean",
+   "purpose": "The scheduled-rotation certificate path with NO floor snapshot. Defines the CORE scheduled validator validSignedChainSchedCore = sigsOk && validChain && schedPinned (drops keyMonoOk, which is the only validator component whose certificate-boundary reconstruction needs a floor), restates the EUF-CMA surface over core acceptance (SchedCoreUnforgeable, proven to imply the full-validator SchedUnforgeable), mirrors the scheduled uniqueness/agreement chain at core level (honestSlotsUnique_schedCore, sched_deep_block_agreement_core[_of_length]), defines the certificate derivation GroundedCertSched (per-block link + Signed + density + pin schedule b.slot ≤ b.keyIndex; state is exactly the plain GroundedCert state), reconstructs history (groundedCertSched_history, groundedCertSched_suffix_history), and proves the certificate-level headline sched_recent_certified_suffix_agreement (global chain-independent budget, no Δconf, no floor, no anchor beyond genesis). 702 lines; namespace MoltPetit.Model throughout; no `open` directives (uses fully-qualified Mathlib/List lemmas).",
+   "imports": [
+    "MoltPetit.Results.KeyStealingScheduleResults"
+   ],
+   "defs": [
+    {
+     "name": "validSignedChainSchedCore",
+     "kind": "def (Bool)",
+     "line": 109,
+     "signature": "def validSignedChainSchedCore {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChain n (stripSigs sc) && schedPinned schedule (stripSigs sc)",
+     "meaning": "The CORE scheduled signed validator: signatures + structural/density validity + scheduled pin, WITHOUT keyMonoOk (contrast validSignedChainSched in KeyStealingSchedule.lean:51 which uses validChainK = validChain && keyMonoOk). Note the && nesting is ((sigsOk && validChain) && schedPinned): destructure with `rw [validSignedChainSchedCore, Bool.and_eq_true, Bool.and_eq_true]` to get ⟨⟨hSig, hV⟩, hPin⟩."
+    },
+    {
+     "name": "SchedCoreUnforgeable",
+     "kind": "structure (Prop)",
+     "line": 200,
+     "signature": "structure SchedCoreUnforgeable (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) : Prop where unforgeable : ∀ {sc : SignedChain Sig} {sb : SignedBlock Sig} {j : Nat}, validSignedChainSchedCore n schedule ops registry sc = true → sb ∈ sc → (∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ) → ops.verify (registry (producerForSlot n sb.block.slot) j) sb.block sb.sig = true → ¬ rented sb.block.slot → ¬ Stolen (producerForSlot n sb.block.slot) j → honestSigned (producerForSlot n sb.block.slot) sb.block.slot = some sb.block",
+     "meaning": "Registry-level EUF-CMA surface scoped to CORE-accepted recent chains (single field `unforgeable`, line 204). Same shape as SchedUnforgeable (KeyStealingSchedule.lean:105) but quantified over the superset of core-valid chains, hence a mildly stronger named assumption. The verifying version j is arbitrary (not tied to sb.block.keyIndex); consumers pass the declared index and discharge ¬Stolen at it via the pin. Recency is an ∃-tip form. Build with anonymous constructor ⟨fun hVal hmem hRecent hverify hrent hstolen => ...⟩ or `where unforgeable ... := ...`."
+    },
+    {
+     "name": "GroundedCertSched",
+     "kind": "inductive (CertClaim → Prop)",
+     "line": 371,
+     "signature": "inductive GroundedCertSched (n : Nat) (schedule : Nat → Nat) (Signed : Block → Prop) (G : Block) : CertClaim → Prop\n  | genesis (line 373) : genesisOk G = true → G.slot = 0 → Signed G → schedule G.slot ≤ G.keyIndex → GroundedCertSched n schedule Signed G { tipId := G.id, tipSlot := G.slot, tipHeight := G.height, tail := [G].filter fun x => decide (G.slot + 2 - n ≤ x.slot) }\n  | extend (line 381) (cl : CertClaim) (b : Block) : GroundedCertSched n schedule Signed G cl → b.height = cl.tipHeight + 1 → cl.tipSlot < b.slot → b.prev = some cl.tipId → Signed b → schedule b.slot ≤ b.keyIndex → (∀ u : Nat, cl.tipSlot + 2 ≤ u + n → u + n ≤ b.slot + 1 → quorum n ≤ windowCount (cl.tail ++ [b]) u n) → GroundedCertSched n schedule Signed G { tipId := b.id, tipSlot := b.slot, tipHeight := b.height, tail := (cl.tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) }",
+     "meaning": "Scheduled certificate grounding: the claim arose from the genesis claim by folds that each check link + Signed + density over tail++[b] + the scheduled pin. No threaded floor; state identical to plain GroundedCert (Definitions.lean:627) — differs from GroundedCert only by the two pin premises (genesis: schedule G.slot ≤ G.keyIndex; extend: schedule b.slot ≤ b.keyIndex) and by requiring Signed G at genesis (plain GroundedCert does NOT require Signed G). Differs from GroundedCertK (KeyStealingCert.lean:315) by having no floor vector. Induction pattern used: `induction h with | genesis hG hSlot hSig hPin => ... | extend cl b hcl hH hS hP hSig hPin hD ih => ...`."
+    },
+    {
+     "name": "GroundedHistorySched",
+     "kind": "structure (Prop)",
+     "line": 396,
+     "signature": "structure GroundedHistorySched (n : Nat) (schedule : Nat → Nat) (Signed : Block → Prop) (G : Block) (cl : CertClaim) (c : Chain) : Prop where\n  valid : validChain n c = true (398)\n  pinned : schedPinned schedule c = true (399)\n  head : blockAt? c 0 = some G (400)\n  tip : ∃ t : Block, c.getLast? = some t ∧ t.id = cl.tipId ∧ t.slot = cl.tipSlot ∧ t.height = cl.tipHeight (401)\n  tail_eq : cl.tail = c.filter fun x => decide (cl.tipSlot + 2 - n ≤ x.slot) (403)\n  len_eq : c.length = cl.tipHeight + 1 (404)\n  signed : ∀ B ∈ c, Signed B (405)",
+     "meaning": "What groundedCertSched_history reconstructs from a GroundedCertSched derivation: a validChain-accepted, schedule-pinned chain rooted at G matching the claim's tip/tail/length with every block Signed. Built with the 7-tuple anonymous constructor ⟨valid, pinned, head, tip, tail_eq, len_eq, signed⟩."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "schedCore_of_validSignedChainSched",
+     "line": 115,
+     "hypotheses": [
+      "h : validSignedChainSched n schedule ops registry sc = true (full validator, KeyStealingSchedule.lean:51)"
+     ],
+     "conclusion": "validSignedChainSchedCore n schedule ops registry sc = true",
+     "notes": "Full ⇒ core (drops keyMonoOk). Implicits {σ sk pk : Type} {n} {schedule} {ops} {registry} {sc}. Used by schedUnforgeable_of_core and by any transport from full-validator hypotheses into core-level theorems."
+    },
+    {
+     "name": "validChain_of_validSignedChainSchedCore",
+     "line": 125,
+     "hypotheses": [
+      "h : validSignedChainSchedCore n schedule ops registry sc = true"
+     ],
+     "conclusion": "ValidChain n (stripSigs sc)",
+     "notes": "Semantic validity (SequentialHeights ∧ StrictSlots ∧ ParentLinked ∧ MaturedWindowsDense) of the stripped core-valid chain, via validChain_sound."
+    },
+    {
+     "name": "rotated_key_dead_schedCore",
+     "line": 135,
+     "hypotheses": [
+      "h : validSignedChainSchedCore n schedule ops registry sc = true",
+      "hmem : sb ∈ sc (sb : SignedBlock σ)"
+     ],
+     "conclusion": "ops.verify (registry (producerForSlot n sb.block.slot) sb.block.keyIndex) sb.block sb.sig = true ∧ schedule sb.block.slot ≤ sb.block.keyIndex",
+     "notes": "The pin + declared-version verification at core scope. Component .2 is what discharges ¬Stolen at the declared index in uniqueness proofs (via `schedule s ≤ j → ¬Stolen (producerForSlot n s) j` from ¬badSched s)."
+    },
+    {
+     "name": "sched_oldkey_fork_stale_core",
+     "line": 159,
+     "hypotheses": [
+      "hVal : validSignedChainSchedCore n schedule ops registry sc = true",
+      "hEraOver : ∀ s, schedule s ≤ J → s + Δ < now",
+      "hTip : (stripSigs sc).getLast? = some t",
+      "hJt : t.keyIndex ≤ J"
+     ],
+     "conclusion": "¬ now ≤ t.slot + Δ",
+     "notes": "Tip-staleness (§10.0 claim 2) at core scope: a core-valid chain whose tip declares generation ≤ J, where every slot of generation ≤ J ended more than Δ ago, fails the recency check. No budget, no EUF-CMA, no honesty consumed. Implicits {J now Δ : Nat} {t : Block}. Full-validator twin: sched_oldkey_fork_stale (KeyStealingScheduleResults.lean:242). Axioms: [propext, Quot.sound]."
+    },
+    {
+     "name": "signedDeclared_of_mem_schedCore",
+     "line": 180,
+     "hypotheses": [
+      "h : validSignedChainSchedCore n schedule ops registry sc = true",
+      "hB : B ∈ stripSigs sc"
+     ],
+     "conclusion": "SignedDeclared n ops registry B",
+     "notes": "Every block of a core-valid chain carries a verifying signature under its DECLARED registry version (SignedDeclared, KeyStealingCert.lean:234). Gives the Or.inr branch of SignedHashInjective's genesis-or-signed domain for every block."
+    },
+    {
+     "name": "schedUnforgeable_of_core",
+     "line": 216,
+     "hypotheses": [
+      "h : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ"
+     ],
+     "conclusion": "SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+     "notes": "Core surface ⇒ full surface (the direction that matters: a core assumption covers every fully-valid chain). Axioms: [propext] only. Used by PackageA to feed the full-validator theorem sched_recent_tip_ancestor_agreement."
+    },
+    {
+     "name": "honestSlotsUnique_schedCore",
+     "line": 231,
+     "hypotheses": [
+      "hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+      "hVal : validSignedChainSchedCore n schedule ops registry sc = true",
+      "hVal' : validSignedChainSchedCore n schedule ops registry sc' = true",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ"
+     ],
+     "conclusion": "HonestSlotsUnique (badSched n schedule rented Stolen) (chainUnionRecord sc sc')",
+     "notes": "Direct contraction proof (no Δconf, no reconciliation induction): for a non-badSched slot s, all blocks at s across both chains equal honestSigned (producerForSlot n s) s. No hHash, no hBudget, no genesis needed. Verbatim mirror of honestSlotsUnique_sched (KeyStealingSchedule.lean:140)."
+    },
+    {
+     "name": "sched_deep_block_agreement_core",
+     "line": 287,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBounded n (badSched n schedule rented Stolen)",
+      "hVal : validSignedChainSchedCore n schedule ops registry sc = true",
+      "hVal' : validSignedChainSchedCore n schedule ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ",
+      "hB : blockAt? (stripSigs sc) k = some B",
+      "hB' : blockAt? (stripSigs sc') k = some B'",
+      "hD : blockAt? (stripSigs sc) m = some D",
+      "hD' : blockAt? (stripSigs sc') m' = some D'",
+      "hDeep : k + n ≤ m",
+      "hDeep' : k + n ≤ m'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Two core-accepted chains sharing genesis at index 0 with recent tips agree on any block at common index k that is n-deep in both. Assembled from idInjective_keyrot (KeyStealingUnique.lean:70), honestSlotsUnique_schedCore, CommonPrefixUpTo _ _ 0 from hHead/hHead', and deep_block_agreement_of_height_depth (Safety.lean:352). Implicits {k m m' : Nat} {B B' D D' : Block} {G : Block}. Genesis G must be at position 0 of BOTH stripped chains."
+    },
+    {
+     "name": "sched_deep_block_agreement_core_of_length",
+     "line": 325,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBounded n (badSched n schedule rented Stolen)",
+      "hVal : validSignedChainSchedCore n schedule ops registry sc = true",
+      "hVal' : validSignedChainSchedCore n schedule ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ",
+      "hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ",
+      "hB : blockAt? (stripSigs sc) k = some B",
+      "hB' : blockAt? (stripSigs sc') k = some B'",
+      "hLen : k + n < (stripSigs sc).length",
+      "hLen' : k + n < (stripSigs sc').length"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Depth-from-length form: replaces the witness blocks D/D' by length bounds. This is the form sched_recent_certified_suffix_agreement consumes (with k := c.length + i). Implicits {k : Nat} {B B' : Block}."
+    },
+    {
+     "name": "groundedCertSched_history",
+     "line": 409,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "h : GroundedCertSched n schedule Signed G cl"
+     ],
+     "conclusion": "∃ c : Chain, GroundedHistorySched n schedule Signed G cl c",
+     "notes": "History reconstruction by induction on the derivation; genesis case yields [G] (needs hn for maturedWindowsDense of a 1-block chain and uses G.height = 0 from genesisOk), extend case appends b via validChain_append_one (Liveness.lean:123) with density transferred from tail++[b] to c++[b] by windowCount_append/windowCount_filter_low (Grounded.lean:55/61). Signed is an arbitrary Block → Prop here (instantiated with SignedDeclared n ops registry downstream)."
+    },
+    {
+     "name": "groundedCertSched_suffix_history",
+     "line": 502,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hG : GroundedCertSched n schedule Signed G cl",
+      "hTipS : (s₁ :: srest).getLast? = some sTip",
+      "hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId",
+      "hLinks : linksOk (s₁ :: srest) = true",
+      "hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n",
+      "hPinS : schedPinned schedule (s₁ :: srest) = true",
+      "hSigned : ∀ B ∈ s₁ :: srest, Signed B"
+     ],
+     "conclusion": "∃ c : Chain, validChain n (c ++ s₁ :: srest) = true ∧ schedPinned schedule (c ++ s₁ :: srest) = true ∧ blockAt? (c ++ s₁ :: srest) 0 = some G ∧ c.length = cl.tipHeight + 1 ∧ (∀ B ∈ c ++ s₁ :: srest, Signed B)",
+     "notes": "Grounded-sched prefix + validated suffix = full validChain-accepted, schedule-pinned, G-rooted, fully-Signed chain. The suffix must be non-empty (s₁ :: srest). hDense's lower bound is stated over Int ((cl.tipSlot : Int) + 2 - n ≤ (u : Int)) to avoid Nat truncation; discharge with `push_cast; omega`. Suffix-side rotation check is the pin alone (no keyMonoFrom / floor). Uses validChain_append_suffix (Grounded.lean:222). Implicits {s₁ : Block} {srest : Chain} {sTip : Block}."
+    },
+    {
+     "name": "sched_recent_certified_suffix_agreement",
+     "line": 617,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G",
+      "hBudget : ByzantineBounded n (badSched n schedule rented Stolen)",
+      "hcl : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl",
+      "hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl'",
+      "hTipS : (s₁ :: srest).getLast? = some sTip",
+      "hTipS' : (s₁' :: srest').getLast? = some sTip'",
+      "hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId",
+      "hLinks : linksOk (s₁ :: srest) = true",
+      "hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n",
+      "hPinS : schedPinned schedule (s₁ :: srest) = true",
+      "hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B",
+      "hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId",
+      "hLinks' : linksOk (s₁' :: srest') = true",
+      "hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n",
+      "hPinS' : schedPinned schedule (s₁' :: srest') = true",
+      "hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hB : blockAt? (s₁ :: srest) i = some B",
+      "hB' : blockAt? (s₁' :: srest') i' = some B'",
+      "hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i'",
+      "hDeep : i + n < (s₁ :: srest).length",
+      "hDeep' : i' + n < (s₁' :: srest').length"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Certificate-level headline for the scheduled adversary. Proof: groundedCertSched_suffix_history twice → exists_signedChain_of_covered (KeyStealingCert.lean:247) to materialize SignedChains sc/sc' with stripSigs sc = c ++ s₁ :: srest → validSignedChainSchedCore assembled from sigsOk + validChain + schedPinned → sched_deep_block_agreement_core_of_length at k := c.length + i. Recency here is the plain form now ≤ sTip.slot + Δ (not ∃). The blocks B/B' are indexed WITHIN the suffixes (i, i') and aligned by global height hHeight; genesis is the same G for both certificates. Signed is fixed to SignedDeclared n ops registry (declared version). Axioms: [propext, Classical.choice, Quot.sound]. Re-exported in Molt/Rotation.lean:321 as `alias sched_recent_certified_suffix_agreement`."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleBudget.lean",
+   "purpose": "Decomposes the scheduled chain-independent budget (the scheduled I3): ByzantineBounded n (badSched n schedule rented Stolen) is DERIVED from a rent rate R (badSlotsIn rented per window ≤ R) plus a current-or-later-generation theft rate T (exposedProducersSched per window ≤ T) with R + T ≤ maxByzantine n. Then packages the §10.1 / §10.2 operational assumption sets as Prop-structures PackageA (unforgeable @ core surface, hashInj, rentBound, exposedBound, budget_le) and PackageB extends PackageA (+ erasure_freeze, consumed by no proof), each delivering the tip-ancestor and certificate light-client theorems. Also proves erasure_freeze is implied by exposedBound for full-window schedules (erasure_freeze_of_exposedBound) and that the flagship schedule fun s => s / R is full-window when n ≤ R (schedule_div_full_window). 473 lines; namespace MoltPetit.Model; `open Classical` at line 96.",
+   "imports": [
+    "MoltPetit.Model.KeyStealingScheduleCert",
+    "MoltPetit.Model.KeyStealingBudget"
+   ],
+   "defs": [
+    {
+     "name": "theftSched",
+     "kind": "def (Prop)",
+     "line": 104,
+     "signature": "def theftSched (n : Nat) (schedule : Nat → Nat) (Stolen : Nat → Nat → Prop) (s : Nat) : Prop := ∃ j, schedule s ≤ j ∧ Stolen (producerForSlot n s) j",
+     "meaning": "The theft half of badSched: slot s's producer holds a stolen key of the scheduled-current-or-later generation. Pure function of the slot (no chain). badSched n schedule rented Stolen s is DEFINITIONALLY rented s ∨ theftSched n schedule Stolen s (badSched_iff_or is Iff.rfl)."
+    },
+    {
+     "name": "exposedProducersSched",
+     "kind": "noncomputable def (Finset Nat)",
+     "line": 117,
+     "signature": "noncomputable def exposedProducersSched (n : Nat) (schedule : Nat → Nat) (Stolen : Nat → Nat → Prop) (u : Nat) : Finset Nat := (Finset.Ico u (u + n)).filter (fun s => theftSched n schedule Stolen s) |>.image (producerForSlot n)",
+     "meaning": "Exposed producers of window [u, u+n): images under producerForSlot n of the theftSched-slots of the window. Chain-independent analogue of exposedProducers (KeyStealingBudget.lean:62, which takes Δconf and a chain c₀). Membership unfolds via Finset.mem_image / Finset.mem_filter / Finset.mem_Ico; witness form ⟨s, ⟨mem_Ico, ⟨j, hle, hStolen⟩⟩, producerForSlot n s = i⟩."
+    },
+    {
+     "name": "window_producer_inj",
+     "kind": "private theorem",
+     "line": 125,
+     "signature": "private theorem window_producer_inj {n u : Nat} {s s' : Nat} (hs : s ∈ Finset.Ico u (u + n)) (hs' : s' ∈ Finset.Ico u (u + n)) (h : producerForSlot n s = producerForSlot n s') : s = s'",
+     "meaning": "Per-window producer↔slot injectivity. PRIVATE (also private in KeyStealingBudget.lean) — a new module cannot import it and must re-prove (copy the ~20-line Nat.div_add_mod / lt_trichotomy proof) or use Molt.producer_slot_in_window-style lemmas if suitable."
+    },
+    {
+     "name": "PackageA",
+     "kind": "structure (Prop)",
+     "line": 204,
+     "signature": "structure PackageA (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (R T : Nat) : Prop where\n  unforgeable : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ (208)\n  hashInj : SignedHashInjective (SignedDeclared n ops registry) G (210)\n  rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R (211)\n  exposedBound : ∀ u, (exposedProducersSched n schedule Stolen u).card ≤ T (212)\n  budget_le : R + T ≤ maxByzantine n (213)",
+     "meaning": "§10.1 assumption set (fixed scheduled rotation, no erasure). Parameters are all explicit except {Sig sk pk}. EUF-CMA at CORE scope. Note exposedBound quantifies over ALL windows u (cumulative/retroactive reading). Construct with `{ unforgeable := _, hashInj := _, rentBound := _, exposedBound := _, budget_le := _ }` or ⟨_, _, _, _, _⟩."
+    },
+    {
+     "name": "PackageB",
+     "kind": "structure (Prop), extends PackageA",
+     "line": 331,
+     "signature": "structure PackageB (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (R T : Nat) extends PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T : Prop where\n  erasure_freeze : ∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T (337)",
+     "meaning": "§10.2 assumption set (erasure + lockstep forced rotation) = PackageA + erasure_freeze (per-generation frozen census: for each generation j at most T of the n producers ever have their generation-j key stolen). The field is consumed by NO proof; PackageB.toPackageA is the auto-generated projection. `erasure_freeze` exists only as this field (there is no standalone theorem/def named erasure_freeze)."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "badSched_iff_or",
+     "line": 108,
+     "hypotheses": [
+      "(s : Nat) explicit; implicit {n} {schedule} {rented} {Stolen}; no hypotheses"
+     ],
+     "conclusion": "badSched n schedule rented Stolen s ↔ rented s ∨ theftSched n schedule Stolen s",
+     "notes": "Proof is Iff.rfl — definitional unfolding; `simp only [badSched, not_or]` and `push Not` are the idioms used elsewhere to split ¬badSched into ¬rented ∧ ∀ j, schedule s ≤ j → ¬Stolen …"
+    },
+    {
+     "name": "theftSlotsSched_card_le_exposed",
+     "line": 148,
+     "hypotheses": [
+      "(n : Nat) (schedule : Nat → Nat) (Stolen : Nat → Nat → Prop) (u : Nat) all explicit; no hypotheses"
+     ],
+     "conclusion": "(badSlotsIn (theftSched n schedule Stolen) u n).card ≤ (exposedProducersSched n schedule Stolen u).card",
+     "notes": "Producer↔slot injection per window (Finset.card_le_card_of_injOn (producerForSlot n)). Axioms: [propext, Classical.choice, Quot.sound]."
+    },
+    {
+     "name": "induced_byzantine_bounded_sched",
+     "line": 164,
+     "hypotheses": [
+      "hRent : ∀ u, (badSlotsIn rented u n).card ≤ R",
+      "hExposed : ∀ u, (exposedProducersSched n schedule Stolen u).card ≤ T",
+      "hRT : R + T ≤ maxByzantine n"
+     ],
+     "conclusion": "ByzantineBounded n (badSched n schedule rented Stolen)",
+     "notes": "The scheduled I3. Uses badSlotsIn_union_le (KeyStealingBudget.lean:52) + theftSlotsSched_card_le_exposed; the rewrite from badSched to the explicit disjunction is `rfl`. Implicits {n} {schedule} {rented} {Stolen} {R T : Nat}. No chain argument anywhere."
+    },
+    {
+     "name": "packageA_byzantine_bounded",
+     "line": 216,
+     "hypotheses": [
+      "hA : PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T"
+     ],
+     "conclusion": "ByzantineBounded n (badSched n schedule rented Stolen)",
+     "notes": "= induced_byzantine_bounded_sched hA.rentBound hA.exposedBound hA.budget_le."
+    },
+    {
+     "name": "packageA_recent_tip_ancestor_agreement",
+     "line": 228,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hA : PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T",
+      "hVal : validSignedChainSched n schedule ops registry sc = true (FULL validator incl. keyMonoOk)",
+      "hVal' : validSignedChainSched n schedule ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Package A ⊢ anchor-free tip-ancestor agreement (equal tip heights, n-deep ancestor). Routes through sched_recent_tip_ancestor_agreement (KeyStealingScheduleResults.lean:137) using schedUnforgeable_of_core hA.unforgeable and packageA_byzantine_bounded hA — so it consumes the FULL validator validSignedChainSched, not the core one. A core-validator analogue with a PackageA is not stated in this file (the horizon module has sched_recent_tip_ancestor_agreement_horizon_core taking raw hUnf/hHash/hBudget instead)."
+    },
+    {
+     "name": "packageA_recent_certified_suffix_agreement",
+     "line": 259,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hA : PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T",
+      "hcl : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl",
+      "hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl'",
+      "hTipS : (s₁ :: srest).getLast? = some sTip",
+      "hTipS' : (s₁' :: srest').getLast? = some sTip'",
+      "hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId",
+      "hLinks : linksOk (s₁ :: srest) = true",
+      "hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n",
+      "hPinS : schedPinned schedule (s₁ :: srest) = true",
+      "hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B",
+      "hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId",
+      "hLinks' : linksOk (s₁' :: srest') = true",
+      "hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n",
+      "hPinS' : schedPinned schedule (s₁' :: srest') = true",
+      "hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hB : blockAt? (s₁ :: srest) i = some B",
+      "hB' : blockAt? (s₁' :: srest') i' = some B'",
+      "hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i'",
+      "hDeep : i + n < (s₁ :: srest).length",
+      "hDeep' : i' + n < (s₁' :: srest').length"
+     ],
+     "conclusion": "B = B'",
+     "notes": "= sched_recent_certified_suffix_agreement hn hA.unforgeable hA.hashInj (packageA_byzantine_bounded hA) … ; hypothesis list identical to the headline with (hUnf, hHash, hBudget) replaced by hA."
+    },
+    {
+     "name": "schedule_div_full_window",
+     "line": 344,
+     "hypotheses": [
+      "hR : n ≤ R",
+      "hR0 : 0 < R"
+     ],
+     "conclusion": "∀ j : Nat, ∃ u, ∀ s, u ≤ s → s < u + n → s / R = j",
+     "notes": "Flagship schedule fun s => s / R has a full n-window inside each generation j (witness u := j * R) when R ≥ n. Implicits {n R : Nat}. Conclusion is literally the hFull premise of erasure_freeze_of_exposedBound at schedule := fun s => s / R (may need `show` / beta to match)."
+    },
+    {
+     "name": "erasure_freeze_of_exposedBound",
+     "line": 364,
+     "hypotheses": [
+      "hExposed : ∀ u, (exposedProducersSched n schedule Stolen u).card ≤ T",
+      "hFull : ∀ j : Nat, ∃ u, ∀ s, u ≤ s → s < u + n → schedule s = j"
+     ],
+     "conclusion": "∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T",
+     "notes": "For full-window schedules, PackageB's erasure_freeze field is implied by PackageA's exposedBound — so PackageB is logically PackageA there. Proof constructs, for each producer i < n, a slot s ∈ [u, u+n) with s % n = i (via Nat.div_add_mod / Nat.mul_add_mod case split on u % n ≤ i). Implicits {n} {schedule} {Stolen} {T}. Requires 0 < n implicitly (derived from i < n inside)."
+    },
+    {
+     "name": "packageB_byzantine_bounded",
+     "line": 396,
+     "hypotheses": [
+      "hPB : PackageB n schedule ops registry rented Stolen honestSigned now Δ G R T"
+     ],
+     "conclusion": "ByzantineBounded n (badSched n schedule rented Stolen)",
+     "notes": "= packageA_byzantine_bounded hPB.toPackageA."
+    },
+    {
+     "name": "packageB_recent_tip_ancestor_agreement",
+     "line": 406,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hPB : PackageB n schedule ops registry rented Stolen honestSigned now Δ G R T",
+      "hVal : validSignedChainSched n schedule ops registry sc = true",
+      "hVal' : validSignedChainSched n schedule ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Literally packageA_recent_tip_ancestor_agreement hn hPB.toPackageA … (erasure_freeze unused)."
+    },
+    {
+     "name": "packageB_recent_certified_suffix_agreement",
+     "line": 434,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hPB : PackageB n schedule ops registry rented Stolen honestSigned now Δ G R T",
+      "hcl : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl",
+      "hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl'",
+      "hTipS : (s₁ :: srest).getLast? = some sTip",
+      "hTipS' : (s₁' :: srest').getLast? = some sTip'",
+      "hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId",
+      "hLinks : linksOk (s₁ :: srest) = true",
+      "hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n",
+      "hPinS : schedPinned schedule (s₁ :: srest) = true",
+      "hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B",
+      "hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId",
+      "hLinks' : linksOk (s₁' :: srest') = true",
+      "hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n",
+      "hPinS' : schedPinned schedule (s₁' :: srest') = true",
+      "hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hB : blockAt? (s₁ :: srest) i = some B",
+      "hB' : blockAt? (s₁' :: srest') i' = some B'",
+      "hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i'",
+      "hDeep : i + n < (s₁ :: srest).length",
+      "hDeep' : i' + n < (s₁' :: srest').length"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Literally packageA_recent_certified_suffix_agreement hn hPB.toPackageA … (erasure_freeze unused)."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
+   "purpose": "NOT one of the two target files, but read in full (437 lines) because the planner asked for badSched_lossOnly / exposedSched_lossOnly, which live here, not in the MoltPetit files. This is the paper-aligned re-presentation (namespace Molt): fresh definitions bridged to MoltPetit.Model by rfl `_eq_core` lemmas, headline theorems transported by `rw [..._eq_core] at hVal hVal'` then `exact MoltPetit.Model.<thm> …`, and the rest re-exported by `abbrev X := @MoltPetit.Model.X` / `alias thm := MoltPetit.Model.thm`. Only the scheduled-rotation-relevant items are listed.",
+   "imports": [
+    "Molt.Results",
+    "MoltPetit.Results.KeyStealingResults",
+    "MoltPetit.Results.KeyStealingScheduleResults",
+    "MoltPetit.Model.KeyStealingHorizon",
+    "MoltPetit.Model.KeyStealingLockstep",
+    "MoltPetit.Model.KeyStealingCert",
+    "MoltPetit.Model.KeyStealingScheduleCert"
+   ],
+   "defs": [
+    {
+     "name": "schedPin",
+     "kind": "def (Bool)",
+     "line": 119,
+     "signature": "def schedPin (schedule : Nat → Nat) (c : Chain) : Bool := c.all (fun b => decide (schedule b.slot ≤ b.keyIndex))",
+     "meaning": "Molt's fresh name for schedPinned; bridged by `theorem schedPin_eq_core : schedPin = MoltPetit.Model.schedPinned := rfl` (line 183)."
+    },
+    {
+     "name": "validSignedChainSched",
+     "kind": "def (Bool)",
+     "line": 124,
+     "signature": "def validSignedChainSched {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChainK n (stripSigs sc) && schedPin schedule (stripSigs sc)",
+     "meaning": "Molt's fresh mode-2 (FULL) validator; bridged by validSignedChainSched_eq_core (line 203, proved by funext + simp only over sigsOk_eq_core, validChainK_eq_core, schedPin_eq_core, stripSigs_eq_core). There is NO Molt-side fresh definition of validSignedChainSchedCore — core-level theorems are only reached via aliases/abbrevs."
+    },
+    {
+     "name": "SchedUnforgeable / badSched / SignedDeclared / GroundedCertSched",
+     "kind": "abbrev re-exports",
+     "line": 131,
+     "signature": "abbrev SchedUnforgeable := @MoltPetit.Model.SchedUnforgeable (131); abbrev badSched := @MoltPetit.Model.badSched (134); abbrev SignedDeclared := @MoltPetit.Model.SignedDeclared (137); abbrev GroundedCertSched := @MoltPetit.Model.GroundedCertSched (352)",
+     "meaning": "Re-exports so Molt statements can name them; SchedCoreUnforgeable, PackageA, PackageB, exposedProducersSched, theftSched are NOT re-exported in Molt (exposedProducersSched is referenced fully qualified in exposedSched_lossOnly)."
+    },
+    {
+     "name": "FaultBounded (Molt/Assumptions.lean)",
+     "kind": "def (Prop)",
+     "line": 38,
+     "signature": "def FaultBounded (n : Nat) (bad : ByzantineSlots) : Prop := ∀ u, (badSlotsIn bad u n).card ≤ faultBudget n  -- with faultBounded_eq_core : FaultBounded = MoltPetit.Model.ByzantineBounded := rfl (Assumptions.lean:82) and faultBudget_eq_core : faultBudget = MoltPetit.Model.maxByzantine := rfl (Protocol.lean:111)",
+     "meaning": "Molt's name for ByzantineBounded; scheduled_client_safety takes hBudget : FaultBounded n (badSched …) and passes it directly to the core theorem (defeq)."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "badSched_lossOnly",
+     "line": 239,
+     "hypotheses": [
+      "(n : Nat) (schedule : Nat → Nat) (rented : ByzantineSlots) explicit; no hypotheses"
+     ],
+     "conclusion": "badSched n schedule rented (fun _ _ => False) = rented",
+     "notes": "Loss-only collapse of the scheduled census (paper mode 0). Proof: funext s; simp [MoltPetit.Model.badSched]. Axioms [propext, Quot.sound]; guarded in Molt/Axioms.lean:34. Lives in namespace Molt, NOT MoltPetit.Model — there is no MoltPetit.Model-level badSched_lossOnly (the MoltPetit analogue for mode 1 is badKeyrotOn_lossOnly, KeyStealing.lean:67)."
+    },
+    {
+     "name": "exposedSched_lossOnly",
+     "line": 248,
+     "hypotheses": [
+      "(n : Nat) (schedule : Nat → Nat) (u : Nat) explicit; no hypotheses"
+     ],
+     "conclusion": "MoltPetit.Model.exposedProducersSched n schedule (fun _ _ => False) u = ∅",
+     "notes": "Exposure census empty with nothing stolen. Proof: unfold exposedProducersSched; simp [MoltPetit.Model.theftSched]. Axioms [propext, Classical.choice, Quot.sound]; guarded in Molt/Axioms.lean:39. Namespace Molt."
+    },
+    {
+     "name": "scheduled_client_safety",
+     "line": 369,
+     "hypotheses": [
+      "hn : 1 ≤ n",
+      "hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ (honestSigned : SigningLog = Nat → Nat → Option Block)",
+      "hHash : SignedHashInjective (SignedDeclared n ops registry) G (Molt's SignedHashInjective, rfl-equal to core)",
+      "hBudget : FaultBounded n (badSched n schedule rented Stolen)",
+      "hVal : validSignedChainSched n schedule ops registry sc = true (Molt's def)",
+      "hVal' : validSignedChainSched n schedule ops registry sc' = true",
+      "hHead : blockAt? (stripSigs sc) 0 = some G",
+      "hHead' : blockAt? (stripSigs sc') 0 = some G",
+      "hTipS : (stripSigs sc).getLast? = some sTip",
+      "hTipS' : (stripSigs sc').getLast? = some sTip'",
+      "hRecent : now ≤ sTip.slot + Δ",
+      "hRecent' : now ≤ sTip'.slot + Δ",
+      "hLong : n < (stripSigs sc).length",
+      "hLong' : n < (stripSigs sc').length",
+      "hTipHeight : sTip.height = sTip'.height",
+      "hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B",
+      "hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B'"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Paper Theorem 4 transport: `rw [validSignedChainSched_eq_core] at hVal hVal'` then `exact MoltPetit.Model.sched_recent_tip_ancestor_agreement …`. This is THE idiom for bridging a Molt-side statement to a MoltPetit.Model proof. The certificate form is not re-proved on the Molt side; it is `alias sched_recent_certified_suffix_agreement := MoltPetit.Model.sched_recent_certified_suffix_agreement` (line 321)."
+    }
+   ]
+  }
+ ],
+ "reuse_notes": "IMPORTS FOR A NEW ADDITIVE MODULE. `import MoltPetit.Model.KeyStealingScheduleBudget` transitively brings KeyStealingScheduleCert → Results.KeyStealingScheduleResults → Model.KeyStealingSchedule (badSched, schedPinned, validSignedChainSched, SchedUnforgeable, rotated_key_dead_sched, honestSlotsUnique_sched, sched_deep_block_agreement[_of_length]) and Model.KeyStealingBudget (badSlotsIn_union_le, exposedProducers, induced_byzantine_bounded, theftOn) and everything below (Definitions: Block/Chain/CertClaim/ByzantineSlots/badSlotsIn/ByzantineBounded/maxByzantine/producerForSlot/quorum/windowCount/blockAt?/GroundedCert/SignedHashInjective; KeyStealingCert: SignedDeclared, exists_signedChain_of_covered, GroundedCertK; KeyStealingUnique: chainUnionRecord/idInjective_keyrot/chainInRecord_left/right; Safety: deep_block_agreement_of_height_depth; Grounded: windowCount_append/windowCount_filter_low/validChain_append_suffix; Liveness: validChain_append_one/windowCount_mono/slot_le_tip_of_mem; Soundness: validChain_sound/linksOk_isChain/strictSlots_of_checks/blockAt_getLast). If the new module needs the horizon budget (ByzantineBoundedFrom, *_horizon_core theorems over validSignedChainSchedCore + SchedCoreUnforgeable) import MoltPetit.Model.KeyStealingScheduleHorizon (which imports only KeyStealingScheduleCert, not Budget). If it needs schedule-monotonicity transports (schedPinned_mono, schedCore_mono, schedCoreUnforgeable_mono, schedCore0_of_lock, lagSched, LockstepPackage.toPackageA) import MoltPetit.Model.KeyStealingLockstep (imports Budget + ScheduleResults). If it needs the timed layer (NoPrematureTheft, ErasureTimed, stolenOf, recentTheftProducers, PackageATimed/PackageBTimed, horizon_budget_of_timed) import MoltPetit.Model.KeyStealingScheduleTimed (imports Horizon + Budget). Root MoltPetit.lean imports every Model module explicitly; a new file NOT added to MoltPetit.lean will not be built by `lake build` default targets and will not be reachable from MoltPetit/Results/Axioms.lean's #print axioms guards — with the no-edit constraint, build it explicitly (`lake build MoltPetit.Model.<NewFile>`) and put its own `#guard_msgs in #print axioms` block inside the new file (the pattern in Results/Axioms.lean and Molt/Axioms.lean: `/-- info: '<fullname>' depends on axioms: [propext, Classical.choice, Quot.sound] -/ #guard_msgs in #print axioms <fullname>`). Toolchain: leanprover/lean4:v4.30.0-rc2, Mathlib v4.30.0-rc2, lakefile.toml sets relaxedAutoImplicit = false (every variable must be bound) and weak.linter.mathlibStandardSet = true.\n\nNAMESPACE / STYLE IDIOMS. All MoltPetit-side content is inside `namespace MoltPetit.Model … end MoltPetit.Model`; the Budget file adds `open Classical` (needed for Finset.filter on Prop predicates — exposedProducersSched is `noncomputable`; Definitions.badSlotsIn uses `open Classical in`). No other `open`s: List/Finset/Nat lemmas are fully qualified. Bool validators are destructured by `rw [<validator>, Bool.and_eq_true, Bool.and_eq_true] at h` giving ⟨⟨hSig, hV⟩, hPin⟩ (left-nested &&). `schedPinned` unfolds by `rw [schedPinned, List.all_eq_true]` then `decide_eq_true_eq`. `sigsOk` by `rw [sigsOk, List.all_eq_true]` then `rw [sigOk] at hsb`. Block membership in stripped chain: `List.mem_map.mp` gives ⟨sb, hsbmem, hsbeq⟩ with hsbeq : sb.block = B. ¬badSched s splits by `simp only [badSched, not_or] at hbad; obtain ⟨hNotRent, hNotStolen⟩ := hbad; push Not at hNotStolen` giving ∀ j, schedule s ≤ j → ¬Stolen (producerForSlot n s) j. Packages are Prop-structures with all protocol parameters explicit except {Sig sk pk}; PackageB `extends` PackageA and is consumed only via `.toPackageA`; package-delivered theorems are one-line `exact`/term applications of the raw theorem with `hA.field` projections (packageA_byzantine_bounded hA for the budget, schedUnforgeable_of_core hA.unforgeable when a FULL-surface theorem is targeted). Core-level mirrors are named `<thm>_core` / `<thm>Core` and are verbatim copies of the full-validator proofs with validSignedChainSched → validSignedChainSchedCore and rotated_key_dead_sched → rotated_key_dead_schedCore.\n\nMOLT/ RE-PRESENTATION BRIDGE. Molt defines paper-vocabulary copies (schedPin, validSignedChainSched with validChainK, FaultBounded, faultBudget, producer, badSlotsIn) and proves `X_eq_core : X = MoltPetit.Model.Y` (rfl where possible; funext + simp only over component _eq_core lemmas for recursive defs like validSignedChainSched_eq_core at Molt/Rotation.lean:203). Transport pattern: state the theorem over Molt names, `rw [validSignedChainSched_eq_core] at hVal hVal'`, `exact MoltPetit.Model.<thm> …` (scheduled_client_safety, Molt/Rotation.lean:369). Things without a paper-side fresh definition are `abbrev X := @MoltPetit.Model.X` (SchedUnforgeable, badSched, SignedDeclared, GroundedCertSched) or `alias thm := MoltPetit.Model.thm` (sched_recent_certified_suffix_agreement:321, sched_oldkey_fork_stale:356, sched_recent_tip_ancestor_*_horizon:329/339, sched_recent_tip_ancestor_mem:334). Molt does NOT re-export SchedCoreUnforgeable, validSignedChainSchedCore, PackageA/PackageB, theftSched, exposedProducersSched (the latter is referenced fully qualified in exposedSched_lossOnly). A new Molt-side module must import Molt.Rotation (or Molt.Results + the MoltPetit modules) and add its own #print axioms guards in a new file since Molt/Axioms.lean cannot be edited. Molt.lean root also lists every module explicitly.\n\nGOTCHAS. (1) Genesis at position 0: sched_deep_block_agreement_core[_of_length], packageA/B_recent_tip_ancestor_agreement and sched_recent_tip_ancestor_agreement all require hHead : blockAt? (stripSigs sc) 0 = some G for BOTH chains, and G is the same block in SignedHashInjective's domain; the certificate theorems get this from GroundedCertSched's genesis constructor (blockAt? (c ++ suffix) 0 = some G from groundedCertSched_suffix_history). (2) Signed at DECLARED version: every scheduled/certificate theorem fixes the hash-injectivity domain and the certificate's Signed predicate to `SignedDeclared n ops registry` (∃ sig, ops.verify (registry (producerForSlot n B.slot) B.keyIndex) B sig = true — the DECLARED keyIndex), not KeyStealingSigned (which ∃-quantifies the version; keyStealingSigned_of_declared converts one way). GroundedCertSched.genesis requires Signed G, i.e. the deployment genesis must itself verify at its declared version (sigsOk has no genesis exemption) and satisfy schedule G.slot ≤ G.keyIndex with G.slot = 0. (3) SchedCoreUnforgeable's verifying version j is arbitrary; consumers instantiate j := sb.block.keyIndex and discharge ¬Stolen via the pin (rotated_key_dead_schedCore).2 plus ¬badSched; the surface's recency premise is the ∃-tip form while the top-level theorems take now ≤ sTip.slot + Δ and wrap it as ⟨sTip, hTipS, hRecent⟩. (4) Budget shape: badSched takes NO chain argument, so ByzantineBounded n (badSched …) is a single global hypothesis quantified over ALL windows u (retroactive/cumulative reading; exposedBound counts j ≥ schedule s for any later j). The horizon module's ByzantineBoundedFrom H n bad is the one-sided replacement; byzantineBoundedFrom_of_bounded converts. (5) Full vs core validator: packageA/B_recent_tip_ancestor_agreement consume the FULL validSignedChainSched (with keyMonoOk); the certificate theorems and all *_core theorems consume validSignedChainSchedCore. schedCore_of_validSignedChainSched converts full → core; there is no core → full. Core-validity is antitone in the schedule (schedCore_mono in KeyStealingLockstep) and SchedCoreUnforgeable is monotone (schedCoreUnforgeable_mono) — the surface assumed at a pointwise-smaller schedule (e.g. fun _ => 0) covers more chains. (6) hDense in the suffix theorems has an Int-cast lower bound `(cl.tipSlot : Int) + 2 - n ≤ (u : Int)`; GroundedCertSched.extend's density premise is the Nat form `cl.tipSlot + 2 ≤ u + n`. Suffixes are non-empty lists `s₁ :: srest` with tip via getLast?. (7) window_producer_inj is `private` in BOTH KeyStealingBudget and KeyStealingScheduleBudget — a new module must re-prove it (or reuse Molt.producer_slot_in_window-style lemmas if they fit). (8) erasure_freeze exists only as PackageB's field (Budget:337); erasure_freeze_of_exposedBound (Budget:364) is the standalone theorem producing that field's statement from exposedBound + a full-window premise; schedule_div_full_window (Budget:344) supplies the premise for fun s => s / R when n ≤ R ∧ 0 < R (its conclusion is `s / R = j`, which matches `schedule s = j` for schedule := fun s => s / R only up to beta — may need `show` or `fun j => by simpa using …`). (9) badSched_lossOnly / exposedSched_lossOnly are Molt-namespace theorems (Molt/Rotation.lean:239/248) with no MoltPetit.Model twin; both are stated with Stolen := fun _ _ => False and are one-line simp proofs — a new MoltPetit-side module wanting them must restate them (they are trivial) rather than import Molt (Molt imports MoltPetit, not vice-versa; importing Molt.Rotation from a MoltPetit.Model file would invert the dependency layering).",
+ "open_items_found": [
+  "KeyStealingScheduleCert.lean module doc (lines ~26-66): the core validator drops keyMonoOk; \"A deployment that keeps the in-band monotone rule simply also checks it on the suffix; the safety statement does not need it. (Note the limit of that option: a suffix-side `keyMonoOk` restores *intra-suffix* monotonicity only — cross-boundary monotonicity against the certified prefix is exactly the floor snapshot being dropped, so a certificate-syncing verifier runs at core scope for the prefix permanently.)\" — cross-boundary keyMonoOk at a certificate boundary is by design NOT reconstructed.",
+  "KeyStealingScheduleCert.lean module doc (lines ~48-60): SchedCoreUnforgeable \"is a (mildly) stronger named assumption — recorded, not hidden\"; \"Its plausibility argument is untouched\" is an informal argument; \"the surface's breadth over arbitrary verifying `j` is unchanged from the full surface and is covered by the registry version-separation obligation (`KeyStealingScheduleResults.lean`, honest scope)\" — a prose obligation living in another file, not a Lean premise.",
+  "KeyStealingScheduleCert.lean GroundedCertSched docstring (lines ~362-369): \"Deployment note (as in `GroundedCertK`): the genesis constructor requires `Signed G` and the slot-0 pin `schedule G.slot ≤ G.keyIndex` — the deployment genesis must carry a verifying registry signature at its declared version (`sigsOk` has no genesis exemption).\"",
+  "KeyStealingScheduleCert.lean sched_recent_certified_suffix_agreement docstring (lines ~592-604): \"**Residual static contract (the dynamic one is gone, this one is not).** In this statement one `schedule` binder couples the certificate derivation (`hcl`), the suffix pin (`hPinS`), the EUF-CMA surface (`hUnf`), and the budget (`hBudget`). At the wire level that means: `schedule` is a deployment constant baked into the verifier alongside `n`, `G`, and the registry — a verifier that let a certificate or peer *supply* `schedule*` would reintroduce exactly the attack this theorem removes (with `schedule* ≡ 0`, a suffix block signed with a stolen retired-generation key passes the pin, and the budget hypothesis silently becomes near-unsatisfiable).\" — the static parameter contract is prose, not formalized.",
+  "KeyStealingScheduleCert.lean sched_recent_certified_suffix_agreement docstring (lines ~606-608): \"Budget read retroactively — see the honest-scope note in `KeyStealingScheduleResults.lean` (early windows accumulate later-generation thefts; the anchor *hypothesis* is what is removed).\"",
+  "KeyStealingScheduleBudget.lean module doc (lines 36-39): \"A3 (no premature exposure — just-in-time per-generation root delegation) and A0 (cold root) are the instantiation-level justifications of `exposedBound`, exactly as `H-IND` justifies the default model's `hBudget`: named in prose, not formalized premises (the temporal \\\"steal only while live\\\" content is the §10.4 seam).\" [Note: the later sibling module KeyStealingScheduleTimed.lean formalizes A3 as NoPrematureTheft and B2 as ErasureTimed for the flagship schedule; this docstring was not updated to say so.]",
+  "KeyStealingScheduleBudget.lean module doc (lines 41-49): PackageB's `erasure_freeze` — \"The field is consumed by no proof, and for full-window schedules it is implied by `exposedBound` (`erasure_freeze_of_exposedBound`)\".",
+  "KeyStealingScheduleBudget.lean module doc (lines 51-61): \"The inclusion is documentary rather than a nontrivial reduction — for the flagship schedule the field is redundant (`erasure_freeze_of_exposedBound`), and §10.2's *distinctive* discharge route (no-mixing ⇒ single-generation forks ⇒ per-generation census with no cumulative reading) needs the unmodeled B1 no-mixing rule.\" [Note: KeyStealingLockstep.lean later models no-mixing as lockstepOk but its own honest-scope note says the per-generation census (erasure_freeze as load-bearing) is still NOT delivered — \"the D1′-full increment\".]",
+  "KeyStealingScheduleBudget.lean module doc (lines 63-81), \"Honest reading of the rates\": \"`Stolen` has no time index, so `exposedBound` bounds, per **historical** window, the producers whose then-current-**or-later** generation key *ever* leaks. Early windows therefore accumulate the thefts of all later generations … A genesis-only stateless client needs the rates in this cumulative reading; a deployment unwilling to assert that keeps a rolling anchor, exactly as the default model prescribes\". Also: \"(the statements constrain `schedule` in no way, so the per-slot form is the precise one)\" — no monotone-schedule lemma is stated in this file. [Note: KeyStealingScheduleHorizon.lean later replaces the all-windows budget by ByzantineBoundedFrom H; not reflected here.]",
+  "KeyStealingScheduleBudget.lean module doc (lines 83-92), \"Validator scope note\": \"The landed pin is schedule-only: §10.1 A1's composed emergency floor (`max(gen s, inForce)`) and §10.2 B1's no-mixing rule are not modeled — the packages license the shared §10.0 device, whose validator is the pin alone. Consequence for the rates: without the composed floor, a stolen current-generation key stays usable (its producer exposed) until the schedule itself advances — up to a full generation period rather than `Δconf` slots — so `T` must be sized to generation-length exposure. A deployment running the composed (stricter) validator is still covered: its accepted chains pass the schedule-only validator too, so every theorem here applies to them unchanged.\" — the composed max(gen s, inForce) validator is not formalized anywhere in these files.",
+  "KeyStealingScheduleBudget.lean PackageA docstring (lines ~198-203): \"**No erasure field** — that is A2: retired-key leaks are harmless by the `j ≥ schedule s` floor in the exposure predicate, not assumed away. A3 (just-in-time provisioning: no theft of not-yet-live generations) and A0 (cold root) are the instantiation-level justifications of `exposedBound` — named here, formalized nowhere (the §10.4 temporal seam, same as the default model's `H-IND`).\"",
+  "KeyStealingScheduleBudget.lean PackageB docstring (lines ~313-330): \"**Honest weight of the field (review-driven).** `erasure_freeze` is consumed by no proof … `PackageB.toPackageA` therefore records an **assumption-set inclusion** (B assumes at least A) — documentary, not a nontrivial reduction; its value is stating B's mechanism. The genuinely-B discharge of §10.2 — no-mixing forces any fork to a single generation, so a per-generation census suffices *without* the cumulative reading — is a different proof shape requiring the unmodeled B1 no-mixing rule (validator scope note). Nor would a timed model derive the current `exposedBound` from `erasure_freeze`: even in a faithful-B world (thefts only while live), letting *different* producers lose keys in *different* generations satisfies `erasure_freeze` yet falsifies the cumulative `exposedBound` at genesis-era windows; a timed model would instead replace the budget's *shape* by a horizon-scoped one — the §10.4 seam. Both packages, like the default model, assume the budget in its cumulative reading. B3/B0 are as A3/A0: prose-level instantiation justifications.\"",
+  "KeyStealingScheduleBudget.lean schedule_div_full_window docstring (lines ~340-343): \"(For `R < n` the premise genuinely fails — a generation has fewer than `n` slots, so some producer never produces in it.)\" — erasure_freeze_of_exposedBound has no counterpart for short-generation schedules.",
+  "KeyStealingScheduleBudget.lean: no theorem states that PackageB is strictly weaker/stronger than PackageA beyond the projection; no `PackageA → PackageB` under hFull is packaged (erasure_freeze_of_exposedBound gives the field but no `PackageB.mk` wrapper theorem exists).",
+  "Molt/Rotation.lean (line ~303-307, adjacent, mode 1 not mode 2): \"Mode 1's certificate-level safety … under the global, all-window budget (the anchored, trailing-window form is future work at this presentation).\" — the anchored/horizon certificate form is explicitly future work for mode 1; for mode 2 the certificate headline is likewise only stated under the global ByzantineBounded (no ByzantineBoundedFrom certificate-level theorem exists in KeyStealingScheduleCert or KeyStealingScheduleHorizon).",
+  "Cross-file gap surfaced by the planner's named items: `badSched_lossOnly` and `exposedSched_lossOnly` exist only in namespace Molt (Molt/Rotation.lean:239, :248); neither KeyStealingScheduleCert.lean nor KeyStealingScheduleBudget.lean contains a loss-only collapse lemma."
+ ]
+}

@@ -1,0 +1,1527 @@
+{
+ "group": "Timed model, timed-signature bridge, liveness, and core definitions (MoltPetit/Model/{Timed,TimedSig,Liveness,Definitions}.lean) plus the out-of-file declarations the brief names (Results.lean forged bounds, Molt/ re-presentation, KeyIndex/KeyRotationLiveness, Model/Soundness helper lemmas)",
+ "modules": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Timed.lean",
+   "purpose": "Timed signing model proofs: signing-time monotonicity along parent-linked chains (from TimedExecution.chain_order + id_inj), the 'one real slot, one chain block' lemma, and the counting lemmas (belowCount / windows / Byzantine budget over Ico) that Results.lean assembles into forged_suffix_time_bound / forged_chain_time_bound. Namespace MoltPetit.Model. Contains ONE definition (belowCount); the model structures (TimedLog, TimedExecution, AvailableAt, SignedEver) live in Definitions.lean.",
+   "imports": [
+    "MoltPetit.Model.Grounded (transitively: MoltPetit.TS.Bridge, MoltPetit.Model.Liveness, Soundness, Safety, Model, KeyIndex, Definitions, Mathlib, MoltPetit.TS.Emitted)"
+   ],
+   "defs": [
+    {
+     "name": "belowCount",
+     "kind": "def",
+     "line": 254,
+     "signature": "def belowCount (c : Chain) (k : Nat) : Nat := (c.filter fun B => decide (B.slot < k)).length",
+     "meaning": "Number of chain blocks whose stamp is strictly below k."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "block_signed",
+     "line": 47,
+     "hypotheses": [
+      "{log : TimedLog} {G : Block} (hGprev : G.prev = none)",
+      "{c : Chain} (hPL : ParentLinked c)",
+      "{R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)",
+      "{k : Nat} (hk : 1 ≤ k)",
+      "{B : Block} (hB : blockAt? c k = some B)"
+     ],
+     "conclusion": "B ≠ G ∧ ∃ r, r ≤ R ∧ B ∈ log r",
+     "notes": "Needs NO TimedExecution. Index k ≥ 1 is essential: index 0 has prev = none by ParentLinked; blocks at index ≥ 1 have prev = some _, hence ≠ G. Does not require c[0] = G."
+    },
+    {
+     "name": "sigTime_mono_step",
+     "line": 67,
+     "hypotheses": [
+      "{n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block} (hexec : TimedExecution n bad log G)",
+      "{P B : Block} (hPne : P ≠ G)",
+      "(hprev : B.prev = some P.id)",
+      "(hPsig : ∃ r, P ∈ log r)",
+      "(hBsig : ∃ r, B ∈ log r)"
+     ],
+     "conclusion": "Nat.find hPsig ≤ Nat.find hBsig",
+     "notes": "Uses hexec.chain_order and hexec.id_inj only. First-signing time is Nat.find over ∃ r, B ∈ log r (needs DecidablePred — classical instance available since Finset membership on Block with DecidableEq)."
+    },
+    {
+     "name": "sigTime_mono_chain",
+     "line": 87,
+     "hypotheses": [
+      "(hexec : TimedExecution n bad log G)",
+      "(hGprev : G.prev = none)",
+      "{c : Chain} (hPL : ParentLinked c)",
+      "{R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)",
+      "∀ (d : Nat) {k : Nat}, 1 ≤ k →",
+      "∀ {B B' : Block}, blockAt? c k = some B → blockAt? c (k + d) = some B' →",
+      "∀ (hBsig : ∃ r, B ∈ log r) (hB'sig : ∃ r, B' ∈ log r)"
+     ],
+     "conclusion": "Nat.find hBsig ≤ Nat.find hB'sig",
+     "notes": "Induction on the index gap d; uses block_signed + sigTime_mono_step. Only needs ParentLinked (not full ValidChain)."
+    },
+    {
+     "name": "one_real_slot_one_block",
+     "line": 136,
+     "hypotheses": [
+      "{n : Nat} (hn : 2 ≤ n)",
+      "{bad : ByzantineSlots} {log : TimedLog} {G : Block} (hexec : TimedExecution n bad log G)",
+      "(hGprev : G.prev = none)",
+      "{c : Chain} (hValid : ValidChain n c)",
+      "{R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)",
+      "{k k' : Nat} (hk : 1 ≤ k) (hkk : k < k')",
+      "{B B' : Block} (hB : blockAt? c k = some B) (hB' : blockAt? c k' = some B')",
+      "{r : Nat} (hBr : B ∈ log r) (hBmin : ∀ r' < r, B ∉ log r')",
+      "(hB'r : B' ∈ log r) (hB'min : ∀ r' < r, B' ∉ log r')"
+     ],
+     "conclusion": "False",
+     "notes": "Two distinct chain blocks (indices ≥ 1) cannot both be FIRST-signed at the same real slot r. Uses hexec.key_match, MaturedWindowsDense at B' for window [B.slot+1, B.slot+1+n), 2 ≤ quorum n (from hn), StrictSlots, sigTime_mono_chain. The 'first-signed' minimality hypotheses are stated as ∀ r' < r, B ∉ log r' (not via Nat.find)."
+    },
+    {
+     "name": "belowCount_le",
+     "line": 257,
+     "hypotheses": [
+      "(c : Chain) (k : Nat)"
+     ],
+     "conclusion": "belowCount c k ≤ c.length"
+    },
+    {
+     "name": "belowCount_cons",
+     "line": 260,
+     "hypotheses": [
+      "(b : Block) (rest : Chain) (k : Nat)"
+     ],
+     "conclusion": "belowCount (b :: rest) k = (if b.slot < k then 1 else 0) + belowCount rest k"
+    },
+    {
+     "name": "belowCount_split",
+     "line": 268,
+     "hypotheses": [
+      "(c : Chain) (u len : Nat)"
+     ],
+     "conclusion": "belowCount c (u + len) = belowCount c u + windowCount c u len",
+     "notes": "Uses windowCount_cons from MoltPetit/TS/Bridge.lean:134."
+    },
+    {
+     "name": "belowCount_zero",
+     "line": 295,
+     "hypotheses": [
+      "(c : Chain)"
+     ],
+     "conclusion": "belowCount c 0 = 0"
+    },
+    {
+     "name": "belowCount_windows",
+     "line": 303,
+     "hypotheses": [
+      "(c : Chain) (lo n q : Nat)",
+      "∀ m, (∀ j < m, q ≤ windowCount c (lo + j * n) n)"
+     ],
+     "conclusion": "belowCount c lo + q * m ≤ belowCount c (lo + m * n)",
+     "notes": "Density of m consecutive n-windows starting at lo forces q·m blocks in [lo, lo + m·n). Windows must be aligned at lo + j*n."
+    },
+    {
+     "name": "belowCount_prefix",
+     "line": 320,
+     "hypotheses": [
+      "{c : Chain} (StrictSlots c)",
+      "{k₀ : Nat} {F : Block} (blockAt? c k₀ = some F)"
+     ],
+     "conclusion": "k₀ + 1 ≤ belowCount c (F.slot + 1)"
+    },
+    {
+     "name": "le_div_succ_mul",
+     "line": 342,
+     "hypotheses": [
+      "(D n : Nat) (hn : 1 ≤ n)"
+     ],
+     "conclusion": "D + 1 ≤ (D / n + 1) * n"
+    },
+    {
+     "name": "bad_budget_Ico",
+     "line": 355,
+     "hypotheses": [
+      "{n : Nat} {bad : ByzantineSlots} (hBudget : ByzantineBounded n bad)",
+      "(r₀ : Nat)",
+      "∀ k"
+     ],
+     "conclusion": "((Finset.Ico r₀ (r₀ + k * n)).filter fun s => bad s).card ≤ maxByzantine n * k",
+     "notes": "Declared under `open Classical in`. The filter predicate is the Prop `bad s`; matches badSlotsIn unfolded."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/TimedSig.lean",
+   "purpose": "Derives the recency-scoped unforgeability assumption SigUnforgeableRecent (consumed by light-client safety) from TimedExecution + a new residue NoBackdate, via the projected stamped log projectSigned; and proves NoBackdate is independent of the five TimedExecution fields by an explicit n = 2 counter-execution. Namespace MoltPetit.Model.",
+   "imports": [
+    "MoltPetit.Model.Timed"
+   ],
+   "defs": [
+    {
+     "name": "projectSigned",
+     "kind": "noncomputable def (open Classical in)",
+     "line": 53,
+     "signature": "noncomputable def projectSigned (n : Nat) (log : TimedLog) : SigningLog := fun p s => if h : p = producerForSlot n s ∧ ∃ B, B ∈ log s ∧ B.slot = s then some h.2.choose else none",
+     "meaning": "Stamped signing log read off a real-time log: participant p's entry at stamped slot s is (a choice of) the block stamped s that was signed AT real slot s, provided p is s's producer; canonical only at honest real slots (honest_once)."
+    },
+    {
+     "name": "NoBackdate",
+     "kind": "def",
+     "line": 65,
+     "signature": "def NoBackdate (bad : ByzantineSlots) (log : TimedLog) : Prop := ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → ¬ bad B.slot → B.slot = r",
+     "meaning": "No back-dating onto an honest stamp: a block whose STAMP is honest was signed at the real slot equal to its stamp (forward-secure / stamp-bound custody residue). Note `bad` is applied to the stamp B.slot, whereas TimedExecution applies `bad` to the real slot r."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "sigUnforgeableRecent_of_timed",
+     "line": 79,
+     "hypotheses": [
+      "{n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block} {Signed : Block → Prop} {now Δ : Nat}",
+      "(hexec : TimedExecution n bad log G)",
+      "(hNB : NoBackdate bad log)",
+      "(hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r, B ∈ log r)"
+     ],
+     "conclusion": "SigUnforgeableRecent n bad Signed (projectSigned n log) now Δ",
+     "notes": "now and Δ are arbitrary; the recency hypothesis inside SigUnforgeableRecent.verified_was_signed and the ValidChain/membership hypotheses are discarded (`intro B c _hVC _hBc _hrec hbadB hSB`). Uses only hexec.honest_once besides NoBackdate. The SigningLog produced is specifically projectSigned n log — to feed a safety theorem quantified over an abstract `signed : SigningLog`, instantiate signed := projectSigned n log."
+    },
+    {
+     "name": "noBackdate_independent",
+     "line": 119,
+     "hypotheses": [],
+     "conclusion": "∃ (bad : ByzantineSlots) (log : TimedLog) (G : Block), TimedExecution 2 bad log G ∧ ¬ NoBackdate bad log",
+     "notes": "Witness: bad := fun r => r = 3; log := fun r => if r = 3 then {⟨1, 1, some 100, 101, 0, 0⟩} else ∅; G := ⟨0, 0, none, 100, 0, 0⟩ (Block fields in order slot, height, prev, id, contentsHash, keyIndex). All five fields discharged via `refine { key_match := ?_, honest_stamp := ?_, honest_once := ?_, chain_order := ?_, id_inj := ?_ }`."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Liveness.lean",
+   "purpose": "Liveness: (local) the honest one-block extension of a validator-accepted chain is again accepted, given the Byzantine budget and honest-block delivery (HonestBlocksCover) for newly matured windows; (global) a synchronous honest run buildChain g ss validates and has ss.length + 1 blocks. Namespace MoltPetit.Model. The produceBlock?-level corollaries (liveness_produce_block, liveness_produce_signed_block) are NOT here despite the module docstring — they are in MoltPetit/Results/Results.lean.",
+   "imports": [
+    "MoltPetit.Model.Soundness (transitively: MoltPetit.Model.Model, MoltPetit.Model.Safety, MoltPetit.Model.Definitions)"
+   ],
+   "defs": [
+    {
+     "name": "buildFrom",
+     "kind": "def",
+     "line": 289,
+     "signature": "def buildFrom (tip : Block) : List Nat → Chain | [] => [] | s :: ss => nextBlock s s 0 0 tip :: buildFrom (nextBlock s s 0 0 tip) ss",
+     "meaning": "Extend tip by one honest block per schedule slot, each built on the previous; block id := its slot, contentsHash := 0, keyIndex := 0."
+    },
+    {
+     "name": "buildChain",
+     "kind": "def",
+     "line": 294,
+     "signature": "def buildChain (g : Block) (ss : List Nat) : Chain := g :: buildFrom g ss",
+     "meaning": "A synchronous honest run from genesis g over honest schedule ss: a single linear chain, no forks, no adversarial blocks, no signatures, no record."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "quorum_plus_byzantine_le",
+     "line": 48,
+     "hypotheses": [
+      "(n : Nat)"
+     ],
+     "conclusion": "quorum n + maxByzantine n ≤ n"
+    },
+    {
+     "name": "windowCount_mono",
+     "line": 58,
+     "hypotheses": [
+      "{u len : Nat} {c c' : Chain} (h : c.Sublist c')"
+     ],
+     "conclusion": "windowCount c u len ≤ windowCount c' u len"
+    },
+    {
+     "name": "slot_le_tip_of_mem",
+     "line": 63,
+     "hypotheses": [
+      "{c : Chain} (hS : StrictSlots c)",
+      "{tip : Block} (hTip : c.getLast? = some tip)",
+      "{x : Block} (hx : x ∈ c)"
+     ],
+     "conclusion": "x.slot ≤ tip.slot"
+    },
+    {
+     "name": "strictSlots_append_one",
+     "line": 78,
+     "hypotheses": [
+      "{c : Chain} {b : Block} (hS : StrictSlots c)",
+      "(hAll : ∀ x ∈ c, x.slot < b.slot)"
+     ],
+     "conclusion": "StrictSlots (c ++ [b])"
+    },
+    {
+     "name": "linksOk_append_one",
+     "line": 93,
+     "hypotheses": [
+      "∀ (c : Chain) (b : Block)",
+      "linksOk c = true",
+      "(∃ tip : Block, c.getLast? = some tip ∧ childOk tip b = true)"
+     ],
+     "conclusion": "linksOk (c ++ [b]) = true"
+    },
+    {
+     "name": "validChain_append_one",
+     "line": 123,
+     "hypotheses": [
+      "{n : Nat} {c : Chain} {b tip : Block} (hValid : validChain n c = true)",
+      "(hTipEq : c.getLast? = some tip)",
+      "(hChild : childOk tip b = true)",
+      "(hAllDense : ∀ u : Nat, u + n ≤ b.slot + 1 → windowDense n (c ++ [b]) u = true)"
+     ],
+     "conclusion": "validChain n (c ++ [b]) = true",
+     "notes": "Purely structural; density for ALL windows matured at b (not just new ones) must be supplied."
+    },
+    {
+     "name": "window_dense_of_honest_cover_at",
+     "line": 161,
+     "hypotheses": [
+      "{n : Nat} {bad : ByzantineSlots} {record : SlotRecord} {c : Chain} (hS : StrictSlots c)",
+      "(hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)",
+      "{u : Nat} (hBudgetU : (badSlotsIn bad u n).card ≤ maxByzantine n)",
+      "(hCover : HonestBlocksCover bad record c u n)"
+     ],
+     "conclusion": "quorum n ≤ windowCount c u n",
+     "notes": "Per-window form (budget only at this u). Uses chainSlotsIn_card, mem_chainSlotsIn (Model.lean), quorum_plus_byzantine_le, Finset.card_sdiff."
+    },
+    {
+     "name": "window_dense_of_honest_cover",
+     "line": 209,
+     "hypotheses": [
+      "(hBudget : ByzantineBounded n bad)",
+      "(hS : StrictSlots c)",
+      "(hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)",
+      "{u : Nat} (hCover : HonestBlocksCover bad record c u n)"
+     ],
+     "conclusion": "quorum n ≤ windowCount c u n"
+    },
+    {
+     "name": "liveness_valid_extension",
+     "line": 232,
+     "hypotheses": [
+      "{n : Nat} {bad : ByzantineSlots} {record : SlotRecord} {c : Chain} {slot newId : Nat} {contentsHash keyIndex : Nat} {tip : Block}",
+      "(hBudget : ByzantineBounded n bad)",
+      "(hValid : validChain n c = true)",
+      "(hTipEq : c.getLast? = some tip)",
+      "(hTipLt : tip.slot < slot)",
+      "(hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)",
+      "(hCover : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 → HonestBlocksCover bad record (c ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)"
+     ],
+     "conclusion": "validChain n (c ++ [nextBlock slot newId contentsHash keyIndex tip]) = true",
+     "notes": "Liveness core. hCover is over the EXTENDED chain and only for windows newly matured at `slot` (old windows are dense by windowCount_mono). If `slot` itself is honest and lies in such a window, the cover demands some block of record slot inside c ++ [b], so the caller must have the new block (or another block at slot) in `record slot`. Uses validChain_sound (Soundness.lean) to obtain StrictSlots/MaturedWindowsDense from the Bool validator."
+    },
+    {
+     "name": "buildFrom_map_slot",
+     "line": 296,
+     "hypotheses": [
+      "(tip : Block) (ss : List Nat)"
+     ],
+     "conclusion": "(buildFrom tip ss).map Block.slot = ss"
+    },
+    {
+     "name": "buildFrom_length",
+     "line": 302,
+     "hypotheses": [
+      "(tip : Block) (ss : List Nat)"
+     ],
+     "conclusion": "(buildFrom tip ss).length = ss.length"
+    },
+    {
+     "name": "buildChain_length",
+     "line": 307,
+     "hypotheses": [
+      "(g : Block) (ss : List Nat)"
+     ],
+     "conclusion": "(buildChain g ss).length = ss.length + 1"
+    },
+    {
+     "name": "buildChain_map_slot",
+     "line": 311,
+     "hypotheses": [
+      "(g : Block) (ss : List Nat)"
+     ],
+     "conclusion": "(buildChain g ss).map Block.slot = g.slot :: ss"
+    },
+    {
+     "name": "linksOk_buildFrom",
+     "line": 315,
+     "hypotheses": [
+      "∀ (tip : Block) (ss : List Nat)",
+      "List.IsChain (· < ·) (tip.slot :: ss)"
+     ],
+     "conclusion": "linksOk (tip :: buildFrom tip ss) = true"
+    },
+    {
+     "name": "strictSlots_buildChain",
+     "line": 335,
+     "hypotheses": [
+      "(g : Block) (ss : List Nat)",
+      "(h : List.IsChain (· < ·) (g.slot :: ss))"
+     ],
+     "conclusion": "StrictSlots (buildChain g ss)"
+    },
+    {
+     "name": "liveness_global",
+     "line": 361,
+     "hypotheses": [
+      "{n : Nat} {g : Block} {ss : List Nat}",
+      "(hGen : genesisOk g = true)",
+      "(hChain : List.IsChain (· < ·) (g.slot :: ss))",
+      "(hBudget : ∀ u, u + n ≤ (g.slot :: ss).getLast (List.cons_ne_nil _ _) + 1 → (badSlotsIn (fun s => s ∉ g.slot :: ss) u n).card ≤ maxByzantine n)"
+     ],
+     "conclusion": "validChain n (buildChain g ss) = true ∧ (buildChain g ss).length = ss.length + 1",
+     "notes": "SINGLE-CHAIN ASSUMPTION BAKED IN: the run IS buildChain g ss — one linear chain where every block is built on its immediate predecessor (delivery/synchrony by construction, 'no honest fork'); the adversary is DEFINED as bad := fun s => s ∉ g.slot :: ss (every unscheduled slot is Byzantine, including the genesis slot being scheduled); the budget is required only over windows maturing at the last scheduled slot; record is defined internally as the run's own blocks (record s := (buildChain g ss).filter (·.slot = s)).toFinset). No TimedExecution/log, no signatures, no produceBlock?/selectChain, no competing chains, no id hypothesis (ids are the slot numbers). Aliased as Molt.global_liveness (Molt/Liveness.lean:33)."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Definitions.lean",
+   "purpose": "All definitions needed to state the main results, in one file: executable model (blocks, chains, density validator, signed chains, production, chain selection), certified chains, semantic predicates of the safety proof, the signing model, TS-bridge injections, GroundedCert and the two light-client assumptions, the real-time signing model TimedExecution, HonestBlocksCover, and the ProverTiming defs. Namespace MoltPetit.Model (sub-namespace ProverTiming). No theorems. NOTE: validChainK, denseSoFar, faultBudget (named in the brief as if here) are NOT in this file — see Model/KeyIndex.lean:71, Molt/Protocol.lean:88, Molt/Protocol.lean:27.",
+   "imports": [
+    "Mathlib",
+    "MoltPetit.TS.Emitted (namespace MoltPetit: the thales-emitted TS sidecar; provides MoltPetit.Chain, MoltPetit.CertClaim, MoltPetit.SignedChain, MoltPetit.SigOps, MoltPetit.RawSignature, MoltPetit.validChainK (Int) etc.)"
+   ],
+   "defs": [
+    {
+     "name": "quorum",
+     "kind": "def",
+     "line": 44,
+     "signature": "def quorum (n : Nat) : Nat := (2 * n + 2) / 3",
+     "meaning": "Density threshold ⌈2n/3⌉."
+    },
+    {
+     "name": "maxByzantine",
+     "kind": "def",
+     "line": 47,
+     "signature": "def maxByzantine (n : Nat) : Nat := (n - 1) / 3",
+     "meaning": "Max tolerated Byzantine slots per n-window ⌊(n-1)/3⌋ (Molt name: faultBudget)."
+    },
+    {
+     "name": "producerForSlot",
+     "kind": "def",
+     "line": 50,
+     "signature": "def producerForSlot (n slot : Nat) : Nat := slot % n",
+     "meaning": "Round-robin producer index of a slot (Molt name: producer)."
+    },
+    {
+     "name": "Block",
+     "kind": "structure",
+     "line": 58,
+     "signature": "structure Block where slot : Nat; height : Nat; prev : Option Nat; id : Nat; contentsHash : Nat; keyIndex : Nat  deriving Repr, DecidableEq",
+     "meaning": "A block; id abstracts a collision-resistant hash supplied by the caller; keyIndex is the in-band delegate-key version the producer signed under. Anonymous-constructor field order: ⟨slot, height, prev, id, contentsHash, keyIndex⟩."
+    },
+    {
+     "name": "Chain",
+     "kind": "abbrev",
+     "line": 75,
+     "signature": "abbrev Chain := List Block",
+     "meaning": "Linear history, lowest height first."
+    },
+    {
+     "name": "blockInWindow",
+     "kind": "def",
+     "line": 78,
+     "signature": "def blockInWindow (u len : Nat) (b : Block) : Bool := decide (u ≤ b.slot ∧ b.slot < u + len)",
+     "meaning": "b's slot lies in [u, u+len)."
+    },
+    {
+     "name": "windowCount",
+     "kind": "def",
+     "line": 82,
+     "signature": "def windowCount (c : Chain) (u len : Nat) : Nat := (c.filter (blockInWindow u len)).length",
+     "meaning": "Number of chain blocks with slot in [u, u+len)."
+    },
+    {
+     "name": "windowDense",
+     "kind": "def",
+     "line": 86,
+     "signature": "def windowDense (n : Nat) (c : Chain) (u : Nat) : Bool := decide (quorum n ≤ windowCount c u n)",
+     "meaning": "One window meets quorum density."
+    },
+    {
+     "name": "maturedWindowsDense",
+     "kind": "def",
+     "line": 95,
+     "signature": "def maturedWindowsDense (n : Nat) (c : Chain) (t : Nat) : Bool := (List.range (t + 2 - n)).all fun u => windowDense n c u",
+     "meaning": "All windows matured at tip slot t (u + n ≤ t + 1, i.e. u ∈ range (t+2-n)) are dense (Molt name: denseSoFar)."
+    },
+    {
+     "name": "genesisOk",
+     "kind": "def",
+     "line": 99,
+     "signature": "def genesisOk (b : Block) : Bool := decide (b.height = 0 ∧ b.prev = none)",
+     "meaning": "Structural genesis check (does NOT require slot = 0)."
+    },
+    {
+     "name": "childOk",
+     "kind": "def",
+     "line": 103,
+     "signature": "def childOk (parent child : Block) : Bool := decide (child.height = parent.height + 1 ∧ parent.slot < child.slot ∧ child.prev = some parent.id)",
+     "meaning": "Immediate-successor check."
+    },
+    {
+     "name": "linksOk",
+     "kind": "def",
+     "line": 109,
+     "signature": "def linksOk : Chain → Bool | [] => true | [_] => true | a :: b :: rest => childOk a b && linksOk (b :: rest)",
+     "meaning": "Every adjacent pair satisfies childOk."
+    },
+    {
+     "name": "validChain",
+     "kind": "def",
+     "line": 122,
+     "signature": "def validChain (n : Nat) (c : Chain) : Bool := match c with | [] => true | g :: rest => genesisOk g && linksOk (g :: rest) && (match (g :: rest).getLast? with | some tip => maturedWindowsDense n (g :: rest) tip.slot | none => true)",
+     "meaning": "The executable validator replayed from genesis; [] is accepted."
+    },
+    {
+     "name": "tipHeight",
+     "kind": "def",
+     "line": 133,
+     "signature": "def tipHeight (c : Chain) : Option Nat := c.getLast?.map Block.height",
+     "meaning": "Height of the tip if any."
+    },
+    {
+     "name": "selectChain",
+     "kind": "def",
+     "line": 141,
+     "signature": "def selectChain (n : Nat) (cur candidate : Chain) : Chain := if validChain n candidate && candidate.length > cur.length then candidate else cur",
+     "meaning": "Longest-valid-chain adoption rule. No theorem anywhere in the repo is stated about it (only the definition, its @[export] wrapper, and Molt.selectChain which is the CERTIFIED-chain variant selectCertifiedChain)."
+    },
+    {
+     "name": "nextBlock",
+     "kind": "def",
+     "line": 159,
+     "signature": "def nextBlock (slot newId : Nat) (contentsHash keyIndex : Nat) (tip : Block) : Block := { slot, height := tip.height + 1, prev := some tip.id, id := newId, contentsHash, keyIndex }",
+     "meaning": "The candidate child of tip."
+    },
+    {
+     "name": "produceBlock?",
+     "kind": "def",
+     "line": 162,
+     "signature": "def produceBlock? (n me slot newId : Nat) (contentsHash keyIndex : Nat) (c : Chain) : Option Block := if producerForSlot n slot = me then match c.getLast? with | none => none | some tip => if validChain n (c ++ [nextBlock slot newId contentsHash keyIndex tip]) then some (nextBlock slot newId contentsHash keyIndex tip) else none else none",
+     "meaning": "Honest production: only in own slot, only if the extension validates."
+    },
+    {
+     "name": "genesisBlock",
+     "kind": "def",
+     "line": 174,
+     "signature": "def genesisBlock (id : Nat) : Block := { slot := 0, height := 0, prev := none, id, contentsHash := 0, keyIndex := 0 }",
+     "meaning": "Fresh-deployment genesis."
+    },
+    {
+     "name": "SigOps",
+     "kind": "structure",
+     "line": 187,
+     "signature": "structure SigOps (σ sk pk : Type) where sign : sk → Block → σ; verify : pk → Block → σ → Bool",
+     "meaning": "Abstract signature scheme over the Block content (signature not part of message)."
+    },
+    {
+     "name": "KeyRegistry",
+     "kind": "abbrev",
+     "line": 204,
+     "signature": "abbrev KeyRegistry (pk : Type) := Nat → Nat → pk",
+     "meaning": "Versioned public-key directory: registry i j = participant i's delegate key at index j."
+    },
+    {
+     "name": "SignedBlock",
+     "kind": "structure",
+     "line": 212,
+     "signature": "structure SignedBlock (σ : Type) where block : Block; sig : σ  deriving Repr",
+     "meaning": "Wire block: content + detached signature."
+    },
+    {
+     "name": "SignedChain",
+     "kind": "abbrev",
+     "line": 218,
+     "signature": "abbrev SignedChain (σ : Type) := List (SignedBlock σ)",
+     "meaning": "Signed chain."
+    },
+    {
+     "name": "stripSigs",
+     "kind": "def",
+     "line": 221,
+     "signature": "def stripSigs {σ : Type} (sc : SignedChain σ) : Chain := sc.map SignedBlock.block",
+     "meaning": "Drop signatures."
+    },
+    {
+     "name": "sigOk",
+     "kind": "def",
+     "line": 226,
+     "signature": "def sigOk {σ sk pk : Type} (n : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sb : SignedBlock σ) : Bool := ops.verify (registry (producerForSlot n sb.block.slot) sb.block.keyIndex) sb.block sb.sig",
+     "meaning": "Per-block verification under the key selected by the block's producer AND its DECLARED in-band keyIndex."
+    },
+    {
+     "name": "sigsOk",
+     "kind": "def",
+     "line": 231,
+     "signature": "def sigsOk {σ sk pk : Type} (n : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sc.all (sigOk n ops registry)",
+     "meaning": "All signatures verify."
+    },
+    {
+     "name": "validSignedChain",
+     "kind": "def",
+     "line": 241,
+     "signature": "def validSignedChain {σ sk pk : Type} (n : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool := sigsOk n ops registry sc && validChain n (stripSigs sc)",
+     "meaning": "Signature check then structural validation."
+    },
+    {
+     "name": "produceSignedBlock?",
+     "kind": "def",
+     "line": 257,
+     "signature": "def produceSignedBlock? {σ sk pk : Type} (n me slot newId : Nat) (contentsHash keyIndex : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (myKey : sk) (sc : SignedChain σ) : Option (SignedBlock σ)",
+     "meaning": "Sign nextBlock with myKey, return it iff producerForSlot n slot = me and validSignedChain (sc ++ [sb]) (uses (stripSigs sc).getLast? as tip)."
+    },
+    {
+     "name": "selectSignedChain",
+     "kind": "def",
+     "line": 272,
+     "signature": "def selectSignedChain {σ sk pk : Type} (n : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (cur candidate : SignedChain σ) : SignedChain σ",
+     "meaning": "Adopt candidate iff validSignedChain and strictly longer."
+    },
+    {
+     "name": "trivialSigOps / trivialRegistry / signedGenesisBlock",
+     "kind": "def",
+     "line": 282,
+     "signature": "def trivialSigOps : SigOps Unit Unit Unit; def trivialRegistry (_n : Nat) : KeyRegistry Unit; def signedGenesisBlock (id : Nat) : SignedBlock Unit",
+     "meaning": "Accept-everything signature instance for tests (lines 282, 288, 292)."
+    },
+    {
+     "name": "validChainExport / produceBlockExport / selectChainExport",
+     "kind": "def (@[export mcv2_*])",
+     "line": 300,
+     "signature": "@[export mcv2_valid_chain] def validChainExport (n : Nat) (c : Chain) : Bool; @[export mcv2_produce_block] def produceBlockExport ...; @[export mcv2_select_chain] def selectChainExport (n : Nat) (cur candidate : Chain) : Chain",
+     "meaning": "C entry points (lines 300, 303, 307)."
+    },
+    {
+     "name": "CertClaim",
+     "kind": "structure",
+     "line": 322,
+     "signature": "structure CertClaim where tipId : Nat; tipSlot : Nat; tipHeight : Nat; tail : List Block  deriving Repr, DecidableEq",
+     "meaning": "What a certificate claims: tip triple plus the boundary buffer of stripped prefix blocks near the tip."
+    },
+    {
+     "name": "CertOps",
+     "kind": "structure",
+     "line": 330,
+     "signature": "structure CertOps (α : Type) where claim : α → CertClaim; verify : α → Bool; generate : α → Block → α",
+     "meaning": "Abstract certificate operations."
+    },
+    {
+     "name": "CertifiedChain",
+     "kind": "structure",
+     "line": 339,
+     "signature": "structure CertifiedChain (α σ : Type) where cert : α; suffix : SignedChain σ  deriving Repr",
+     "meaning": "Certificate for the prefix plus a signed suffix."
+    },
+    {
+     "name": "certTipHeight / certTipSlot / certTipId",
+     "kind": "def",
+     "line": 345,
+     "signature": "def certTipHeight {α σ : Type} (ops : CertOps α) (cc : CertifiedChain α σ) : Nat := cc.suffix.getLast?.map (·.block.height) |>.getD (ops.claim cc.cert).tipHeight (similarly certTipSlot line 349, certTipId line 353)",
+     "meaning": "Effective tip of a certified chain (suffix tip else claim)."
+    },
+    {
+     "name": "validateSuffix",
+     "kind": "def",
+     "line": 365,
+     "signature": "def validateSuffix {α σ sk pk : Type} (n : Nat) (sigOps : SigOps σ sk pk) (registry : KeyRegistry pk) (certOps : CertOps α) (cert : α) (suffix : SignedChain σ) : Bool",
+     "meaning": "sigsOk on suffix && link from claim tip to first suffix block && linksOk && density of windows in [tipSlot+2-n, t.slot+2-n) counted over claim.tail ++ suffix."
+    },
+    {
+     "name": "validateCertifiedChain",
+     "kind": "def",
+     "line": 389,
+     "signature": "def validateCertifiedChain {α σ sk pk : Type} (n : Nat) (sigOps : SigOps σ sk pk) (registry : KeyRegistry pk) (certOps : CertOps α) (cc : CertifiedChain α σ) : Bool := certOps.verify cc.cert && validateSuffix n sigOps registry certOps cc.cert cc.suffix",
+     "meaning": "Full certified-chain validation."
+    },
+    {
+     "name": "produceBlockCert?",
+     "kind": "def",
+     "line": 401,
+     "signature": "def produceBlockCert? {α σ sk pk : Type} (n me slot newId : Nat) (contentsHash keyIndex : Nat) (sigOps : SigOps σ sk pk) (registry : KeyRegistry pk) (myKey : sk) (certOps : CertOps α) (cc : CertifiedChain α σ) : Option (SignedBlock σ × CertifiedChain α σ)",
+     "meaning": "Certified production; tip defaults to a synthetic block from the claim (prev := none, contentsHash 0, keyIndex 0) when the suffix is empty."
+    },
+    {
+     "name": "selectCertifiedChain",
+     "kind": "def",
+     "line": 419,
+     "signature": "def selectCertifiedChain {α σ sk pk : Type} (n : Nat) (sigOps : SigOps σ sk pk) (registry : KeyRegistry pk) (certOps : CertOps α) (current candidate : CertifiedChain α σ) : CertifiedChain α σ",
+     "meaning": "Adopt candidate iff validateCertifiedChain and certTipHeight strictly higher (this is what Molt.selectChain bridges to)."
+    },
+    {
+     "name": "TrivialCert / trivialCertOps / trivialGenesisCertChain",
+     "kind": "abbrev/def",
+     "line": 431,
+     "signature": "abbrev TrivialCert := Chain; def trivialCertOps (n : Nat) : CertOps TrivialCert (claim: tip triple + tail := c.filter (tipSlot + 2 - n ≤ ·.slot); verify := validChain n; generate := (· ++ [·])); def trivialGenesisCertChain (genesisId : Nat) : CertifiedChain TrivialCert Unit",
+     "meaning": "Trivial certificate = the full stripped prefix (lines 431, 434, 446)."
+    },
+    {
+     "name": "SlotRecord",
+     "kind": "abbrev",
+     "line": 456,
+     "signature": "abbrev SlotRecord := Nat → Finset Block",
+     "meaning": "Blocks produced in each slot over the whole execution."
+    },
+    {
+     "name": "ByzantineSlots",
+     "kind": "abbrev",
+     "line": 459,
+     "signature": "abbrev ByzantineSlots := Nat → Prop",
+     "meaning": "Adversary schedule; bad s = adversary owns slot s (Prop, so Finset filters need Classical)."
+    },
+    {
+     "name": "blockAt?",
+     "kind": "def",
+     "line": 462,
+     "signature": "def blockAt? (c : Chain) (h : Nat) : Option Block := getElem? c h",
+     "meaning": "Block at list index h (unfold to getElem? then use List.getElem?_eq_some_iff / List.mem_of_getElem?)."
+    },
+    {
+     "name": "SequentialHeights",
+     "kind": "def",
+     "line": 465,
+     "signature": "def SequentialHeights (c : Chain) : Prop := ∀ ⦃h⦄ ⦃B : Block⦄, blockAt? c h = some B → B.height = h",
+     "meaning": "Index = height."
+    },
+    {
+     "name": "StrictSlots",
+     "kind": "def",
+     "line": 469,
+     "signature": "def StrictSlots (c : Chain) : Prop := c.Pairwise fun a b => a.slot < b.slot",
+     "meaning": "Slots strictly increase."
+    },
+    {
+     "name": "ParentLinked",
+     "kind": "def",
+     "line": 473,
+     "signature": "def ParentLinked (c : Chain) : Prop := ∀ ⦃h⦄ ⦃B : Block⦄, blockAt? c h = some B → match h with | 0 => B.prev = none | k + 1 => ∃ P : Block, blockAt? c k = some P ∧ B.prev = some P.id",
+     "meaning": "Index 0 has no parent; every later block points at its predecessor's id."
+    },
+    {
+     "name": "MaturedWindowsDense",
+     "kind": "def",
+     "line": 484,
+     "signature": "def MaturedWindowsDense (n : Nat) (c : Chain) : Prop := ∀ ⦃m⦄ ⦃D : Block⦄, blockAt? c m = some D → ∀ u, u + n ≤ D.slot + 1 → quorum n ≤ windowCount c u n",
+     "meaning": "Every window matured at any chain block is quorum-dense (counted over the whole chain c)."
+    },
+    {
+     "name": "ValidChain",
+     "kind": "def",
+     "line": 490,
+     "signature": "def ValidChain (n : Nat) (c : Chain) : Prop := SequentialHeights c ∧ StrictSlots c ∧ ParentLinked c ∧ MaturedWindowsDense n c",
+     "meaning": "Semantic validity; destructure as ⟨hSeq, hS, hPL, hMat⟩."
+    },
+    {
+     "name": "ChainInRecord",
+     "kind": "def",
+     "line": 494,
+     "signature": "def ChainInRecord (record : SlotRecord) (c : Chain) : Prop := ∀ ⦃k⦄ ⦃B : Block⦄, blockAt? c k = some B → B ∈ record B.slot",
+     "meaning": "Every chain block was produced."
+    },
+    {
+     "name": "HonestSlotsUnique",
+     "kind": "def",
+     "line": 498,
+     "signature": "def HonestSlotsUnique (bad : ByzantineSlots) (record : SlotRecord) : Prop := ∀ s, ¬ bad s → ∀ ⦃B B' : Block⦄, B ∈ record s → B' ∈ record s → B = B'",
+     "meaning": "Honest slot has ≤ 1 produced block."
+    },
+    {
+     "name": "IdInjective",
+     "kind": "def",
+     "line": 503,
+     "signature": "def IdInjective (record : SlotRecord) : Prop := ∀ s t, ∀ ⦃B B' : Block⦄, B ∈ record s → B' ∈ record t → B.id = B'.id → B = B'",
+     "meaning": "Ids injective across the record."
+    },
+    {
+     "name": "badSlotsIn",
+     "kind": "noncomputable def (open Classical in)",
+     "line": 509,
+     "signature": "noncomputable def badSlotsIn (bad : ByzantineSlots) (u n : Nat) : Finset Nat := (Finset.Ico u (u + n)).filter fun s => bad s",
+     "meaning": "Bad slots in [u, u+n)."
+    },
+    {
+     "name": "ByzantineBounded",
+     "kind": "def",
+     "line": 513,
+     "signature": "def ByzantineBounded (n : Nat) (bad : ByzantineSlots) : Prop := ∀ u, (badSlotsIn bad u n).card ≤ maxByzantine n",
+     "meaning": "≤ ⌊(n-1)/3⌋ bad slots in every n-window (Molt name: FaultBounded, rfl-equal)."
+    },
+    {
+     "name": "CommonPrefixUpTo / LastCommonHeight",
+     "kind": "def",
+     "line": 517,
+     "signature": "def CommonPrefixUpTo (c c' : Chain) (h : Nat) : Prop := ∀ k, k ≤ h → ∃ B : Block, blockAt? c k = some B ∧ blockAt? c' k = some B; def LastCommonHeight (c c' : Chain) (h : Nat) : Prop := CommonPrefixUpTo c c' h ∧ ∀ k, h < k → ∀ B : Block, ¬ (blockAt? c k = some B ∧ blockAt? c' k = some B)",
+     "meaning": "Fork-point predicates (lines 517, 521)."
+    },
+    {
+     "name": "chainSlotsIn",
+     "kind": "def",
+     "line": 527,
+     "signature": "def chainSlotsIn (c : Chain) (u len : Nat) : Finset Nat := ((c.filter (blockInWindow u len)).map Block.slot).toFinset",
+     "meaning": "Distinct slots occupied in a window; card = windowCount under StrictSlots (chainSlotsIn_card, Model.lean:60)."
+    },
+    {
+     "name": "SigCorrect",
+     "kind": "structure (Prop)",
+     "line": 541,
+     "signature": "structure SigCorrect {σ sk pk : Type} (n : Nat) (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (keyPair : Nat → Nat → sk) : Prop where verify_sign : ∀ (i j : Nat) (b : Block), producerForSlot n b.slot = i → b.keyIndex = j → ops.verify (registry i j) b (ops.sign (keyPair i j) b) = true",
+     "meaning": "Signature-scheme correctness at the block's DECLARED index j."
+    },
+    {
+     "name": "SigningLog",
+     "kind": "abbrev",
+     "line": 558,
+     "signature": "abbrev SigningLog := Nat → Nat → Option Block",
+     "meaning": "Honest stamped signing log: signed i s = some B iff participant i signed exactly B for slot s."
+    },
+    {
+     "name": "toTSChain / toTSClaim / toTSSigned",
+     "kind": "def",
+     "line": 568,
+     "signature": "def toTSChain : Chain → MoltPetit.Chain; def toTSClaim (cl : CertClaim) : MoltPetit.CertClaim; def toTSSigned : SignedChain MoltPetit.RawSignature → MoltPetit.SignedChain",
+     "meaning": "Injections into the thales-emitted TS representation (lines 568, 574, 580)."
+    },
+    {
+     "name": "TSSigned",
+     "kind": "def",
+     "line": 597,
+     "signature": "def TSSigned (n : Nat) (sigOps : MoltPetit.SigOps) (B : Block) : Prop := ∃ sig : MoltPetit.RawSignature, sigOps.verify (sigOps.keyFor (producerForSlot n B.slot) B.keyIndex) B.slot B.height (B.prev.map Int.ofNat) B.id sig = true",
+     "meaning": "B carries a signature verifying under keyFor (producer, DECLARED keyIndex) — the concrete Signed predicate for TS results."
+    },
+    {
+     "name": "GroundedCert",
+     "kind": "inductive (Prop)",
+     "line": 627,
+     "signature": "inductive GroundedCert (n : Nat) (Signed : Block → Prop) (G : Block) : CertClaim → Prop | genesis : genesisOk G = true → G.slot = 0 → GroundedCert n Signed G { tipId := G.id, tipSlot := G.slot, tipHeight := G.height, tail := [G].filter fun x => decide (G.slot + 2 - n ≤ x.slot) } | extend (cl : CertClaim) (b : Block) : GroundedCert n Signed G cl → b.height = cl.tipHeight + 1 → cl.tipSlot < b.slot → b.prev = some cl.tipId → Signed b → (∀ u : Nat, cl.tipSlot + 2 ≤ u + n → u + n ≤ b.slot + 1 → quorum n ≤ windowCount (cl.tail ++ [b]) u n) → GroundedCert n Signed G { tipId := b.id, tipSlot := b.slot, tipHeight := b.height, tail := (cl.tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) }",
+     "meaning": "Inductive certificate model: claims grounded in genesis G (which must have slot 0) by signed folds."
+    },
+    {
+     "name": "SignedHashInjective",
+     "kind": "def",
+     "line": 656,
+     "signature": "def SignedHashInjective (Signed : Block → Prop) (G : Block) : Prop := ∀ ⦃B B' : Block⦄, (B = G ∨ Signed B) → (B' = G ∨ Signed B') → B.id = B'.id → B = B'",
+     "meaning": "Collision resistance over occurring blocks (same shape as TimedExecution.id_inj with Signed := ∃ r, · ∈ log r)."
+    },
+    {
+     "name": "SigUnforgeableRecent",
+     "kind": "structure (Prop)",
+     "line": 677,
+     "signature": "structure SigUnforgeableRecent (n : Nat) (bad : ByzantineSlots) (Signed : Block → Prop) (signed : SigningLog) (now Δ : Nat) : Prop where verified_was_signed : ∀ ⦃B : Block⦄ ⦃c : Chain⦄, ValidChain n c → B ∈ c → (∃ t : Block, c.getLast? = some t ∧ now ≤ t.slot + Δ) → ¬ bad B.slot → Signed B → signed (producerForSlot n B.slot) B.slot = some B",
+     "meaning": "Recency-scoped honest-slot pinning; `bad` is applied to the STAMP B.slot."
+    },
+    {
+     "name": "TimedLog",
+     "kind": "abbrev",
+     "line": 694,
+     "signature": "abbrev TimedLog := Nat → Finset Block",
+     "meaning": "What was signed at each REAL slot r (under r's producer's key)."
+    },
+    {
+     "name": "SignedEver",
+     "kind": "def",
+     "line": 698,
+     "signature": "def SignedEver (log : TimedLog) (G : Block) (B : Block) : Prop := B = G ∨ ∃ r, B ∈ log r",
+     "meaning": "Domain of id injectivity in the timed model."
+    },
+    {
+     "name": "AvailableAt",
+     "kind": "def",
+     "line": 703,
+     "signature": "def AvailableAt (log : TimedLog) (G : Block) (B : Block) (R : Nat) : Prop := B = G ∨ ∃ r ≤ R, B ∈ log r",
+     "meaning": "B exists by real slot R."
+    },
+    {
+     "name": "TimedExecution",
+     "kind": "structure (Prop)",
+     "line": 719,
+     "signature": "structure TimedExecution (n : Nat) (bad : ByzantineSlots) (log : TimedLog) (G : Block) : Prop where\n  key_match : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → B.slot % n = r % n\n  honest_stamp : ∀ ⦃r : Nat⦄, ¬ bad r → ∀ ⦃B : Block⦄, B ∈ log r → B.slot = r\n  honest_once : ∀ ⦃r : Nat⦄, ¬ bad r → ∀ ⦃B B' : Block⦄, B ∈ log r → B' ∈ log r → B = B'\n  chain_order : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → ∀ ⦃i : Nat⦄, B.prev = some i → ∃ P : Block, P.id = i ∧ AvailableAt log G P r\n  id_inj : ∀ ⦃B B' : Block⦄, SignedEver log G B → SignedEver log G B' → B.id = B'.id → B = B'",
+     "meaning": "Real-time signing model, ALL FIVE FIELDS: key_match (stamp ≡ real slot mod n), honest_stamp (honest real slot signs only its own stamp), honest_once (honest real slot signs ≤ 1 block), chain_order (a signed block's parent — some block with the referenced id — is available at or before the signing real slot; residue of id = H(..., parentSig, ...)), id_inj (collision resistance over genesis ∪ ever-signed). `bad` here is over REAL slots r. Corruption is per real slot; a bad real slot may sign any stamp in its residue class."
+    },
+    {
+     "name": "HonestBlocksCover",
+     "kind": "def",
+     "line": 753,
+     "signature": "def HonestBlocksCover (bad : ByzantineSlots) (record : SlotRecord) (c : Chain) (u n : Nat) : Prop := ∀ s, ¬ bad s → u ≤ s → s < u + n → ∃ B : Block, B ∈ record s ∧ B ∈ c",
+     "meaning": "Honest-block delivery for window [u, u+n): every honest slot has a recorded block already in c (liveness/synchrony packaging)."
+    },
+    {
+     "name": "ProverTiming (namespace)",
+     "kind": "namespace",
+     "line": 763,
+     "signature": "namespace ProverTiming — def certTime (baseline perBlock k : ℚ) : ℚ (767); def nextBacklog (baseline perBlock τ u : ℚ) : ℚ (773); def peakSuffix (baseline perBlock τ u : ℚ) : ℚ (778); def backlog (baseline perBlock τ u₀ : ℚ) : ℕ → ℚ (782); def recommendedSlot (n baseline perBlock : ℚ) : ℚ := perBlock + 2 * baseline / n (789)",
+     "meaning": "Prover-throughput model over ℚ; its theorems (nextBacklog_le, nextBacklog_nonneg, recommended_slot_sufficient, recommended_slot_necessary, backlog_diverges) are in MoltPetit/Results/Results.lean lines 514-596."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Results/Results.lean",
+   "purpose": "REFERENCE (partially read: statements only). Headline results: forged-time bounds assembled from Timed.lean, liveness_produce_block / liveness_produce_signed_block built on Liveness.lean, ProverTiming theorems. Namespace MoltPetit.Model. Docstring: 'All results depend only on propext, Classical.choice, Quot.sound'.",
+   "imports": [
+    "MoltPetit.Model.Grounded",
+    "MoltPetit.Model.Timed"
+   ],
+   "defs": [
+    {
+     "name": "model_no_deep_fork / model_deep_block_agreement / model_validChain_sound",
+     "kind": "alias",
+     "line": 71,
+     "signature": "alias model_no_deep_fork := no_deep_fork (71); alias model_deep_block_agreement := deep_block_agreement (74); alias model_validChain_sound := validChain_sound (78)",
+     "meaning": "Aliases of the Safety/Soundness engine results."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "forged_suffix_time_bound",
+     "line": 102,
+     "hypotheses": [
+      "{n : Nat} (hn : 2 ≤ n)",
+      "{bad : ByzantineSlots} {log : TimedLog} {G : Block} (hexec : TimedExecution n bad log G)",
+      "(hBudget : ByzantineBounded n bad)",
+      "{c : Chain} (hValid : ValidChain n c)",
+      "(hGprev : G.prev = none)",
+      "{R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)",
+      "{k₀ : Nat} (hk₀ : 1 ≤ k₀) {F : Block} (hF : blockAt? c k₀ = some F)",
+      "{r₀ : Nat} (hFr : F ∈ log r₀) (hFmin : ∀ r < r₀, F ∉ log r)",
+      "(hForged : ∀ B ∈ c, F.slot < B.slot → ∀ r, B ∈ log r → bad r)",
+      "{tip : Block} (hTip : c.getLast? = some tip)"
+     ],
+     "conclusion": "quorum n * ((tip.slot - F.slot) / n) ≤ maxByzantine n * ((R - r₀) / n + 1)",
+     "notes": "`open Classical in`. Budget is ByzantineBounded on REAL slots (bad_budget_Ico over Ico r₀ (R+1)); density is read off c's own matured windows (hMat at the tip index blockAt_getLast). Uses belowCount_prefix, belowCount_windows, belowCount_le, block_signed, one_real_slot_one_block, le_div_succ_mul, Finset.card_le_card_of_injOn. Transported as Molt.forged_time_bound."
+    },
+    {
+     "name": "forged_suffix_lag",
+     "line": 231,
+     "hypotheses": [
+      "all hypotheses of forged_suffix_time_bound (hn, hexec, hBudget, hValid, hGprev, hAvail, hk₀, hF, hFr, hFmin, hForged, hTip)",
+      "(hf : 1 ≤ maxByzantine n)"
+     ],
+     "conclusion": "2 * ((tip.slot - F.slot) / n) ≤ (R - r₀) / n + 1",
+     "notes": "Uses 2 * maxByzantine n + 1 ≤ quorum n (omega after unfold)."
+    },
+    {
+     "name": "forged_chain_time_bound",
+     "line": 285,
+     "hypotheses": [
+      "{n : Nat} (hn : 2 ≤ n)",
+      "(hexec : TimedExecution n bad log G)",
+      "(hBudget : ByzantineBounded n bad)",
+      "{c : Chain} (hValid : ValidChain n c)",
+      "(hGprev : G.prev = none)",
+      "{R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)",
+      "(hForged : ∀ B ∈ c, B ≠ G → ∀ r, B ∈ log r → bad r)",
+      "{tip : Block} (hTip : c.getLast? = some tip)"
+     ],
+     "conclusion": "quorum n * ((tip.slot + 1) / n) ≤ maxByzantine n * (R / n + 1) + 1",
+     "notes": "From-genesis form; windows aligned at 0 (belowCount_zero). Aliased verbatim as Molt.forged_chain_time_bound (Molt/Results.lean:128)."
+    },
+    {
+     "name": "forged_chain_lag",
+     "line": 386,
+     "hypotheses": [
+      "all hypotheses of forged_chain_time_bound",
+      "(hf : 1 ≤ maxByzantine n)"
+     ],
+     "conclusion": "2 * ((tip.slot + 1) / n) ≤ R / n + 3"
+    },
+    {
+     "name": "liveness_produce_block",
+     "line": 429,
+     "hypotheses": [
+      "{n me slot newId : Nat} {contentsHash keyIndex : Nat} {bad : ByzantineSlots} {record : SlotRecord} {c : Chain} {tip : Block}",
+      "(hBudget : ByzantineBounded n bad)",
+      "(hValid : validChain n c = true)",
+      "(hTipEq : c.getLast? = some tip)",
+      "(hTipLt : tip.slot < slot)",
+      "(hMine : producerForSlot n slot = me)",
+      "(hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)",
+      "(hCover : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 → HonestBlocksCover bad record (c ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)"
+     ],
+     "conclusion": "produceBlock? n me slot newId contentsHash keyIndex c = some (nextBlock slot newId contentsHash keyIndex tip)",
+     "notes": "= liveness_valid_extension + simp [produceBlock?]. Single chain c held by the producer; nothing about selectChain or other nodes. Aliased as Molt.production_liveness."
+    },
+    {
+     "name": "liveness_produce_signed_block",
+     "line": 455,
+     "hypotheses": [
+      "{σ sk pk : Type} {n me slot newId : Nat} {contentsHash keyIndex : Nat} (hn : 1 ≤ n)",
+      "{ops : SigOps σ sk pk} {registry : KeyRegistry pk} {keyPair : Nat → Nat → sk} {bad} {record} {sc : SignedChain σ} {tip : Block}",
+      "(hSig : SigCorrect n ops registry keyPair)",
+      "(hBudget : ByzantineBounded n bad)",
+      "(hValid : validSignedChain n ops registry sc = true)",
+      "(hTipEq : (stripSigs sc).getLast? = some tip)",
+      "(hTipLt : tip.slot < slot)",
+      "(hMine : producerForSlot n slot = me)",
+      "(hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)",
+      "(hCover : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 → HonestBlocksCover bad record (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)"
+     ],
+     "conclusion": "produceSignedBlock? n me slot newId contentsHash keyIndex ops registry (keyPair me keyIndex) sc = some ⟨nextBlock slot newId contentsHash keyIndex tip, ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩",
+     "notes": "Signs with keyPair me keyIndex, i.e. the DECLARED index; SigCorrect discharges the self-check. hn : 1 ≤ n is taken but (per docstring) a 'full registry' is not otherwise formalized. Aliased as Molt.signed_production_liveness."
+    },
+    {
+     "name": "ProverTiming.recommended_slot_sufficient",
+     "line": 544,
+     "hypotheses": [
+      "{n baseline perBlock τ : ℚ} (hn : 0 < n) (hb : 0 ≤ baseline) (hpb : 0 ≤ perBlock) (hτpos : 0 < τ)",
+      "(hτ : recommendedSlot n baseline perBlock ≤ τ)",
+      "{u₀ : ℚ} (hu₀ : 0 ≤ u₀) (hub₀ : u₀ ≤ n / 2)"
+     ],
+     "conclusion": "∀ j, backlog baseline perBlock τ u₀ j ≤ n / 2 ∧ peakSuffix baseline perBlock τ (backlog baseline perBlock τ u₀ j) ≤ n",
+     "notes": "Aliased as Molt.slot_time_sufficient."
+    },
+    {
+     "name": "ProverTiming.recommended_slot_necessary",
+     "line": 571,
+     "hypotheses": [
+      "{n baseline perBlock τ : ℚ} (hn : 0 < n) (hpb0 : 0 ≤ perBlock) (hpb : perBlock < τ)",
+      "(hτ : τ < recommendedSlot n baseline perBlock)",
+      "{u : ℚ} (hsteady : nextBacklog baseline perBlock τ u = u)"
+     ],
+     "conclusion": "n < peakSuffix baseline perBlock τ u",
+     "notes": "Aliased as Molt.slot_time_necessary. Other ProverTiming lemmas: nextBacklog_le (514), nextBacklog_nonneg (528), backlog_diverges (596: τ ≤ perBlock → ∀ j, u₀ + j * (baseline / τ) ≤ backlog ... j)."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Results.lean",
+   "purpose": "REFERENCE (read lines 1-60, 90-150). Paper-facing (namespace Molt) re-presentation of safety and the timed bounds. Shows the bridging idiom: abbrev for structures (TimedExecution), fresh def + rfl bridge for simple defs (AvailableAt, blockAt?), transport theorem whose proof is the core theorem applied verbatim, and `alias` for theorems needing no renaming.",
+   "imports": [
+    "Molt.Assumptions",
+    "MoltPetit.Results.Results",
+    "MoltPetit.Model.TimedSig"
+   ],
+   "defs": [
+    {
+     "name": "Molt.TimedLog",
+     "kind": "abbrev",
+     "line": 25,
+     "signature": "abbrev TimedLog := MoltPetit.Model.TimedLog",
+     "meaning": "Re-export."
+    },
+    {
+     "name": "Molt.AvailableAt",
+     "kind": "def",
+     "line": 29,
+     "signature": "def AvailableAt (log : TimedLog) (G : Block) (B : Block) (R : Nat) : Prop := B = G ∨ ∃ r ≤ R, B ∈ log r",
+     "meaning": "Fresh copy; availableAt_eq_core (41) : AvailableAt = MoltPetit.Model.AvailableAt := rfl."
+    },
+    {
+     "name": "Molt.TimedExecution",
+     "kind": "abbrev",
+     "line": 36,
+     "signature": "abbrev TimedExecution := MoltPetit.Model.TimedExecution",
+     "meaning": "Re-export (structure, so not re-declared)."
+    },
+    {
+     "name": "Molt.blockAt?",
+     "kind": "def",
+     "line": 39,
+     "signature": "def blockAt? (c : Chain) (h : Nat) : Option Block := getElem? c h",
+     "meaning": "Fresh copy; blockAt?_eq_core (42) := rfl."
+    },
+    {
+     "name": "Molt.NoBackdate",
+     "kind": "abbrev",
+     "line": 140,
+     "signature": "abbrev NoBackdate := MoltPetit.Model.NoBackdate",
+     "meaning": "Re-export."
+    },
+    {
+     "name": "Molt.projectSigned",
+     "kind": "noncomputable abbrev",
+     "line": 143,
+     "signature": "noncomputable abbrev projectSigned := MoltPetit.Model.projectSigned",
+     "meaning": "Re-export."
+    },
+    {
+     "name": "Molt.forged_chain_time_bound / forged_suffix_lag / sigUnforgeableRecent_of_timed / noBackdate_independent",
+     "kind": "alias",
+     "line": 128,
+     "signature": "alias forged_chain_time_bound := MoltPetit.Model.forged_chain_time_bound (128); alias forged_suffix_lag := MoltPetit.Model.forged_suffix_lag (131); alias sigUnforgeableRecent_of_timed := MoltPetit.Model.sigUnforgeableRecent_of_timed (135); alias noBackdate_independent := MoltPetit.Model.noBackdate_independent (148)",
+     "meaning": "Verbatim aliases."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "Molt.forged_time_bound",
+     "line": 110,
+     "hypotheses": [
+      "{n : Nat} (hn : 2 ≤ n)",
+      "{bad : ByzantineSlots} {log : TimedLog} {G : Block} (hexec : TimedExecution n bad log G)",
+      "(hBudget : FaultBounded n bad)",
+      "{c : Chain} (hValid : ValidChain n c)",
+      "(hGprev : G.prev = none)",
+      "{rNow : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B rNow)",
+      "{k₀ : Nat} (hk₀ : 1 ≤ k₀) {F : Block} (hF : blockAt? c k₀ = some F)",
+      "{r₀ : Nat} (hFr : F ∈ log r₀) (hFmin : ∀ r < r₀, F ∉ log r)",
+      "(hForged : ∀ B ∈ c, F.slot < B.slot → ∀ r, B ∈ log r → bad r)",
+      "{tip : Block} (hTip : c.getLast? = some tip)"
+     ],
+     "conclusion": "quorum n * ((tip.slot - F.slot) / n) ≤ faultBudget n * ((rNow - r₀) / n + 1)",
+     "notes": "Proof is literally `MoltPetit.Model.forged_suffix_time_bound hn hexec hBudget hValid hGprev hAvail hk₀ hF hFr hFmin hForged hTip` — accepted because Molt.FaultBounded/AvailableAt/blockAt?/quorum/faultBudget are rfl-equal to the core."
+    },
+    {
+     "name": "Molt.light_client_safety",
+     "line": 54,
+     "hypotheses": [
+      "{n : Nat} (hn : 1 ≤ n) {bad : ByzantineSlots} {signed : SigningLog} {Signed : Block → Prop} {G : Block} {now Δ : Nat}",
+      "(hBudget : FaultBounded n bad)",
+      "(hSig : SigUnforgeableRecent n bad Signed signed now Δ)",
+      "(hHash : SignedHashInjective Signed G)",
+      "... (further certificate/suffix hypotheses hcl hcl' hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense' hSigned hSigned' hRecent hRecent' hB hB' hHeight hDeep hDeep'; not read in full)"
+     ],
+     "conclusion": "B = B'",
+     "notes": "Transported from MoltPetit.Model.recent_certified_suffix_agreement; needs `rw [linksOk_eq_core] at hLinks hLinks'` because linksOk's bridge is not rfl."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Liveness.lean",
+   "purpose": "REFERENCE (read in full, 45 lines). Paper-facing liveness names — pure aliases, no restatement ('the theorems quantify over the model-level production and selection functions, which the paper does not re-present').",
+   "imports": [
+    "Molt.Rotation",
+    "MoltPetit.Results.Results",
+    "MoltPetit.Model.KeyRotationLiveness"
+   ],
+   "defs": [
+    {
+     "name": "Molt.production_liveness",
+     "kind": "alias",
+     "line": 19,
+     "signature": "alias production_liveness := MoltPetit.Model.liveness_produce_block",
+     "meaning": "Paper Theorem 6, unsigned form."
+    },
+    {
+     "name": "Molt.signed_production_liveness",
+     "kind": "alias",
+     "line": 22,
+     "signature": "alias signed_production_liveness := MoltPetit.Model.liveness_produce_signed_block",
+     "meaning": "Signed form."
+    },
+    {
+     "name": "Molt.liveness_produce_blockK",
+     "kind": "alias",
+     "line": 27,
+     "signature": "alias liveness_produce_blockK := MoltPetit.Model.liveness_produce_blockK",
+     "meaning": "Mode-1 (pinned validator) liveness."
+    },
+    {
+     "name": "Molt.global_liveness",
+     "kind": "alias",
+     "line": 33,
+     "signature": "alias global_liveness := MoltPetit.Model.liveness_global",
+     "meaning": "Paper Theorem 6, global form."
+    },
+    {
+     "name": "Molt.slot_time_sufficient / slot_time_necessary",
+     "kind": "alias",
+     "line": 39,
+     "signature": "alias slot_time_sufficient := MoltPetit.Model.ProverTiming.recommended_slot_sufficient (39); alias slot_time_necessary := MoltPetit.Model.ProverTiming.recommended_slot_necessary (43)",
+     "meaning": "Slot-duration rule."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Protocol.lean",
+   "purpose": "REFERENCE (read in full, 142 lines). Fresh paper-ordered restatement of the data model and density rule with rfl/funext bridges to MoltPetit.Model. Namespace Molt. Block/Chain are re-exported abbrevs (a re-declared structure would not transport).",
+   "imports": [
+    "MoltPetit.Model.Definitions"
+   ],
+   "defs": [
+    {
+     "name": "Molt.quorum",
+     "kind": "def",
+     "line": 23,
+     "signature": "def quorum (n : Nat) : Nat := (2 * n + 2) / 3",
+     "meaning": "quorum_eq_core (110) := rfl."
+    },
+    {
+     "name": "Molt.faultBudget",
+     "kind": "def",
+     "line": 27,
+     "signature": "def faultBudget (n : Nat) : Nat := (n - 1) / 3",
+     "meaning": "faultBudget_eq_core (111) : faultBudget = MoltPetit.Model.maxByzantine := rfl."
+    },
+    {
+     "name": "Molt.producer",
+     "kind": "def",
+     "line": 31,
+     "signature": "def producer (n slot : Nat) : Nat := slot % n",
+     "meaning": "producer_eq_core (112) : producer = MoltPetit.Model.producerForSlot := rfl."
+    },
+    {
+     "name": "Molt.Block / Molt.Chain",
+     "kind": "abbrev",
+     "line": 44,
+     "signature": "abbrev Block := MoltPetit.Model.Block (44); abbrev Chain := MoltPetit.Model.Chain (47)",
+     "meaning": "Shared types."
+    },
+    {
+     "name": "Molt.genesisBlock / genesisOk / childOk / linksOk / blockInWindow / windowCount / windowDense",
+     "kind": "def",
+     "line": 51,
+     "signature": "genesisBlock (51), genesisOk (55), childOk (60), linksOk (66), blockInWindow (74), windowCount (78), windowDense (82) — textual copies of the core",
+     "meaning": "Bridges: genesisBlock_eq_core (113), genesisOk_eq_core (114), childOk_eq_core (115), windowDense_eq_core (116) are rfl; linksOk_eq_core (119) is by funext+induction (NOT rfl)."
+    },
+    {
+     "name": "Molt.denseSoFar",
+     "kind": "def",
+     "line": 88,
+     "signature": "def denseSoFar (n : Nat) (c : Chain) (t : Nat) : Bool := (List.range (t + 2 - n)).all fun u => windowDense n c u",
+     "meaning": "denseSoFar_eq_core (117) : denseSoFar = MoltPetit.Model.maturedWindowsDense := rfl."
+    },
+    {
+     "name": "Molt.validChain",
+     "kind": "def",
+     "line": 94,
+     "signature": "def validChain (n : Nat) (c : Chain) : Bool := match c with | [] => true | g :: rest => genesisOk g && linksOk (g :: rest) && (match (g :: rest).getLast? with | some tip => denseSoFar n (g :: rest) tip.slot | none => true)",
+     "meaning": "validChain_eq_core (129) : validChain = MoltPetit.Model.validChain, by funext/cases/simp (NOT rfl)."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Assumptions.lean",
+   "purpose": "REFERENCE (read in full, 92 lines). Deployment assumptions in paper form; proof-side predicates re-exported as abbrevs; assumption statements written fresh with rfl bridges.",
+   "imports": [
+    "Molt.Verifier (← Molt.Protocol ← MoltPetit.Model.Definitions)"
+   ],
+   "defs": [
+    {
+     "name": "Molt.SlotRecord / ByzantineSlots / ValidChain / SigningLog",
+     "kind": "abbrev",
+     "line": 19,
+     "signature": "abbrev SlotRecord := MoltPetit.Model.SlotRecord (19); abbrev ByzantineSlots := MoltPetit.Model.ByzantineSlots (22); abbrev ValidChain := MoltPetit.Model.ValidChain (25); abbrev SigningLog := MoltPetit.Model.SigningLog (29)",
+     "meaning": "Re-exports."
+    },
+    {
+     "name": "Molt.badSlotsIn",
+     "kind": "noncomputable def (open Classical in)",
+     "line": 33,
+     "signature": "noncomputable def badSlotsIn (bad : ByzantineSlots) (u n : Nat) : Finset Nat := (Finset.Ico u (u + n)).filter fun s => bad s",
+     "meaning": "badSlotsIn_eq_core (81) := rfl."
+    },
+    {
+     "name": "Molt.FaultBounded",
+     "kind": "def",
+     "line": 38,
+     "signature": "def FaultBounded (n : Nat) (bad : ByzantineSlots) : Prop := ∀ u, (badSlotsIn bad u n).card ≤ faultBudget n",
+     "meaning": "faultBounded_eq_core (82) : FaultBounded = MoltPetit.Model.ByzantineBounded := rfl."
+    },
+    {
+     "name": "Molt.SigUnforgeableRecent / GroundedCert",
+     "kind": "abbrev",
+     "line": 45,
+     "signature": "abbrev SigUnforgeableRecent := @MoltPetit.Model.SigUnforgeableRecent (45); abbrev GroundedCert := @MoltPetit.Model.GroundedCert (59)",
+     "meaning": "Re-exported structure/inductive (note the explicit @)."
+    },
+    {
+     "name": "Molt.SignedHashInjective",
+     "kind": "def",
+     "line": 50,
+     "signature": "def SignedHashInjective (Signed : Block → Prop) (G : Block) : Prop := ∀ ⦃B B' : Block⦄, (B = G ∨ Signed B) → (B' = G ∨ Signed B') → B.id = B'.id → B = B'",
+     "meaning": "signedHashInjective_eq_core (84) := rfl."
+    },
+    {
+     "name": "Molt.HonestBlocksCover",
+     "kind": "def",
+     "line": 63,
+     "signature": "def HonestBlocksCover (bad : ByzantineSlots) (record : SlotRecord) (c : Chain) (u n : Nat) : Prop := ∀ s, ¬ bad s → u ≤ s → s < u + n → ∃ B : Block, B ∈ record s ∧ B ∈ c",
+     "meaning": "honestBlocksCover_eq_core (86) := rfl."
+    },
+    {
+     "name": "Molt.HonestSlotsUnique / IdInjective",
+     "kind": "def",
+     "line": 70,
+     "signature": "HonestSlotsUnique (70), IdInjective (75) — copies; honestSlotsUnique_eq_core (88), idInjective_eq_core (90) := rfl",
+     "meaning": "Conclusion-side predicates."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Verifier.lean",
+   "purpose": "REFERENCE (declaration list + lines 150-199). Signed/certified verifier re-presentation. Molt.selectChain is the CERTIFIED-chain selection (bridges to MoltPetit.Model.selectCertifiedChain), not the plain MoltPetit.Model.selectChain.",
+   "imports": [
+    "Molt.Protocol"
+   ],
+   "defs": [
+    {
+     "name": "Molt.SigOps / KeyRegistry / SignedBlock / SignedChain / CertClaim / CertOps / CertifiedChain",
+     "kind": "abbrev",
+     "line": 21,
+     "signature": "abbrev SigOps (σ sk pk : Type) := MoltPetit.Model.SigOps σ sk pk (21); abbrev KeyRegistry (pk : Type) := MoltPetit.Model.KeyRegistry pk (26); abbrev SignedBlock (σ) (29); abbrev SignedChain (σ) (32); abbrev CertClaim (61); abbrev CertOps (α) (66); abbrev CertifiedChain (α σ) (69)",
+     "meaning": "Re-exported types."
+    },
+    {
+     "name": "Molt.stripSigs / sigOk / sigsOk / validSignedChain / tipHeight / validSuffix / validCertifiedChain / produceBlock? / selectChain",
+     "kind": "def",
+     "line": 35,
+     "signature": "stripSigs (35), sigOk (40), sigsOk (46), validSignedChain (52), tipHeight (73), validSuffix (80), validCertifiedChain (103), produceBlock? (112, = produceBlockCert?), selectChain (136, = selectCertifiedChain)",
+     "meaning": "Bridges: stripSigs_eq_core (147), sigOk_eq_core (149), sigsOk_eq_core (151), tipHeight_eq_core (161) are rfl; validSignedChain_eq_core (154), validSuffix_eq_core (164), validCertifiedChain_eq_core (177), produceBlock?_eq_core (184), selectChain_eq_core (191) are funext/simp (NOT rfl)."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
+   "purpose": "REFERENCE (lines 1-100, 175-215). Paper re-presentation of the indexed validators; validChainK lives here for Molt.",
+   "imports": [
+    "Molt.Results",
+    "MoltPetit.Results.KeyStealingResults",
+    "MoltPetit.Results.KeyStealingScheduleResults",
+    "MoltPetit.Model.KeyStealingHorizon",
+    "MoltPetit.Model.KeyStealingLockstep",
+    "MoltPetit.Model.KeyStealingCert",
+    "MoltPetit.Model.KeyStealingScheduleCert"
+   ],
+   "defs": [
+    {
+     "name": "Molt.keyMonoOk",
+     "kind": "def",
+     "line": 33,
+     "signature": "def keyMonoOk (n : Nat) : Chain → Bool | [] => true | b :: rest => rest.all (fun b' => decide (producer n b.slot = producer n b'.slot → b.keyIndex ≤ b'.keyIndex)) && keyMonoOk n rest",
+     "meaning": "In-band monotone rule."
+    },
+    {
+     "name": "Molt.validChainK",
+     "kind": "def",
+     "line": 44,
+     "signature": "def validChainK (n : Nat) (c : Chain) : Bool := validChain n c && keyMonoOk n c",
+     "meaning": "validChainK_eq_core (185) : validChainK = MoltPetit.Model.validChainK by funext/simp (NOT rfl)."
+    },
+    {
+     "name": "Molt.keyFloor / confirmedPrefix / inForce / inForcePinned / validChainK' / validSignedChainK'",
+     "kind": "def",
+     "line": 57,
+     "signature": "keyFloor (57), confirmedPrefix (66), inForce (72), inForcePinned (80), validChainK' (n Δconf) := validChainK n c && inForcePinned n Δconf c (85), validSignedChainK' (89)",
+     "meaning": "Mode-1 pinned validators; keyFloor/confirmedPrefix/inForce/inForcePinned bridges are rfl (176-181); validChainK'_eq_core (190), validSignedChainK'_eq_core (196) are funext/simp."
+    }
+   ],
+   "theorems": [
+    {
+     "name": "Molt.validChainK_structural",
+     "line": 50,
+     "hypotheses": [
+      "{n : Nat} {c : Chain} (h : validChainK n c = true)"
+     ],
+     "conclusion": "validChain n c = true"
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyIndex.lean",
+   "purpose": "REFERENCE (lines 1-100). Core validChainK (the name the brief attributes to Definitions.lean).",
+   "imports": [
+    "MoltPetit.Model.Safety",
+    "MoltPetit.Model.Soundness"
+   ],
+   "defs": [
+    {
+     "name": "keyMonoOk",
+     "kind": "def",
+     "line": 54,
+     "signature": "def keyMonoOk (n : Nat) : Chain → Bool | [] => true | b :: rest => rest.all (fun b' => decide (producerForSlot n b.slot = producerForSlot n b'.slot → b.keyIndex ≤ b'.keyIndex)) && keyMonoOk n rest",
+     "meaning": "Validator's in-band key-rotation rule."
+    },
+    {
+     "name": "KeyIndexMonotone",
+     "kind": "def",
+     "line": 64,
+     "signature": "def KeyIndexMonotone (n : Nat) (c : Chain) : Prop := ∀ ⦃i j : Nat⦄ ⦃B B' : Block⦄, blockAt? c i = some B → blockAt? c j = some B' → i ≤ j → producerForSlot n B.slot = producerForSlot n B'.slot → B.keyIndex ≤ B'.keyIndex",
+     "meaning": "Semantic counterpart."
+    },
+    {
+     "name": "validChainK",
+     "kind": "def",
+     "line": 71,
+     "signature": "def validChainK (n : Nat) (c : Chain) : Bool := validChain n c && keyMonoOk n c",
+     "meaning": "Indexed validator; validChainK_sound (elsewhere in file) gives ValidChain."
+    },
+    {
+     "name": "keyFloor",
+     "kind": "def",
+     "line": 77,
+     "signature": "def keyFloor (n : Nat) (c : Chain) (i : Nat) : Nat := ((c.filter (fun b => decide (producerForSlot n b.slot = i))).map Block.keyIndex).foldl max 0",
+     "meaning": "Highest index participant i has used in c."
+    }
+   ],
+   "theorems": []
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotationLiveness.lean",
+   "purpose": "REFERENCE (lines 1-40, 100-180). Liveness under the index-pinned validator validChainK'.",
+   "imports": [
+    "MoltPetit.Results.Results",
+    "MoltPetit.Model.KeyStealingCert"
+   ],
+   "defs": [],
+   "theorems": [
+    {
+     "name": "liveness_produce_blockK",
+     "line": 130,
+     "hypotheses": [
+      "{n Δconf me slot newId : Nat} {contentsHash keyIndex : Nat} {bad : ByzantineSlots} {record : SlotRecord} {c : Chain} {tip : Block}",
+      "(hBudget : ByzantineBounded n bad)",
+      "(hValidK : validChainK n c = true)",
+      "(hTipEq : c.getLast? = some tip)",
+      "(hTipLt : tip.slot < slot)",
+      "(hMine : producerForSlot n slot = me)",
+      "(hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)",
+      "(hCover : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 → HonestBlocksCover bad record (c ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)",
+      "(hFloor : keyFloor n c me ≤ keyIndex)"
+     ],
+     "conclusion": "produceBlock? n me slot newId contentsHash keyIndex c = some (nextBlock slot newId contentsHash keyIndex tip) ∧ validChainK' n Δconf (c ++ [nextBlock slot newId contentsHash keyIndex tip]) = true",
+     "notes": "Same single-chain shape as liveness_produce_block plus floor clearance at the DECLARED keyIndex (vs the registered/in-force version handled by inForcePinned). Converse: extension_rejected_below_floor (100): keyIndex < keyFloor n c (producerForSlot n slot) → validChainK' n Δconf (c ++ [nextBlock ...]) = false. Signed variant liveness_produce_signed_blockK (160) adds hn : 1 ≤ n, SigCorrect, validSignedChainK' hypotheses and hFloor over stripSigs sc."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Model.lean",
+   "purpose": "REFERENCE (lines 1-90). Basic lemmas Liveness.lean/Timed.lean consume.",
+   "imports": [
+    "MoltPetit.Model.Definitions"
+   ],
+   "defs": [],
+   "theorems": [
+    {
+     "name": "mem_chainSlotsIn",
+     "line": 35,
+     "hypotheses": [
+      "{c : Chain} {u len s : Nat}"
+     ],
+     "conclusion": "s ∈ chainSlotsIn c u len ↔ ∃ B : Block, B ∈ c ∧ (u ≤ B.slot ∧ B.slot < u + len) ∧ B.slot = s"
+    },
+    {
+     "name": "chainSlotsIn_subset_Ico",
+     "line": 40,
+     "hypotheses": [
+      "{c : Chain} {u len : Nat}"
+     ],
+     "conclusion": "chainSlotsIn c u len ⊆ Finset.Ico u (u + len)"
+    },
+    {
+     "name": "strictSlots_lt",
+     "line": 47,
+     "hypotheses": [
+      "{c : Chain} (hS : StrictSlots c)",
+      "{i j : Nat} {Bi Bj : Block} (hi : blockAt? c i = some Bi) (hj : blockAt? c j = some Bj)",
+      "(hij : i < j)"
+     ],
+     "conclusion": "Bi.slot < Bj.slot"
+    },
+    {
+     "name": "chainSlotsIn_card",
+     "line": 60,
+     "hypotheses": [
+      "{c : Chain} (hS : StrictSlots c) (u len : Nat)"
+     ],
+     "conclusion": "(chainSlotsIn c u len).card = windowCount c u len"
+    },
+    {
+     "name": "exists_blockAt_of_mem",
+     "line": 71,
+     "hypotheses": [
+      "{c : Chain} {B : Block} (hB : B ∈ c)"
+     ],
+     "conclusion": "∃ k, blockAt? c k = some B"
+    },
+    {
+     "name": "exists_blockAt_of_le",
+     "line": 79,
+     "hypotheses": [
+      "{c : Chain} {k m : Nat} (hk : k ≤ m)",
+      "{D : Block} (hAt : blockAt? c m = some D)"
+     ],
+     "conclusion": "∃ C : Block, blockAt? c k = some C"
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Soundness.lean",
+   "purpose": "REFERENCE (lines 1-12, 90-145). Bool validator → semantic ValidChain.",
+   "imports": [
+    "MoltPetit.Model.Model",
+    "MoltPetit.Model.Safety"
+   ],
+   "defs": [],
+   "theorems": [
+    {
+     "name": "blockAt_getLast",
+     "line": 97,
+     "hypotheses": [
+      "{ch : Chain} {tip : Block} (hTip : ch.getLast? = some tip)"
+     ],
+     "conclusion": "blockAt? ch (ch.length - 1) = some tip"
+    },
+    {
+     "name": "maturedDense_of_check",
+     "line": 104,
+     "hypotheses": [
+      "{n : Nat} {ch : Chain} (hS : StrictSlots ch)",
+      "{tip : Block} (hTip : ch.getLast? = some tip)",
+      "(hCheck : maturedWindowsDense n ch tip.slot = true)"
+     ],
+     "conclusion": "MaturedWindowsDense n ch"
+    },
+    {
+     "name": "validChain_sound",
+     "line": 130,
+     "hypotheses": [
+      "{n : Nat} ∀ {ch : Chain}, validChain n ch = true"
+     ],
+     "conclusion": "ValidChain n ch",
+     "notes": "Aliased as model_validChain_sound in Results.lean:78. The hinge from executable to semantic."
+    }
+   ]
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/TS/Bridge.lean",
+   "purpose": "REFERENCE (header + lines 128-140). Holds windowCount_cons, which Timed.lean's belowCount_split uses (reached via Grounded's import of TS.Bridge).",
+   "imports": [
+    "MoltPetit.Model.Model",
+    "MoltPetit.Model.Soundness",
+    "MoltPetit.Model.KeyIndex"
+   ],
+   "defs": [],
+   "theorems": [
+    {
+     "name": "windowCount_cons",
+     "line": 134,
+     "hypotheses": [
+      "(b : Block) (rest : Chain) (u len : Nat)"
+     ],
+     "conclusion": "windowCount (b :: rest) u len = (if blockInWindow u len b then 1 else 0) + windowCount rest u len"
+    }
+   ]
+  }
+ ],
+ "reuse_notes": "IMPORT GRAPH (what a new file gets transitively): Definitions ← Model ← Safety ← Soundness ← Liveness; KeyIndex imports Safety+Soundness; TS/Bridge imports Model+Soundness+KeyIndex; Grounded imports TS/Bridge + Liveness; Timed imports Grounded; TimedSig imports Timed; Results/Results.lean imports Grounded + Timed (NOT TimedSig); KeyRotationLiveness imports Results.Results + KeyStealingCert. Molt side: Molt.Protocol ← Molt.Verifier ← Molt.Assumptions ← Molt.Results (also imports MoltPetit.Results.Results + MoltPetit.Model.TimedSig) ← Molt.Rotation ← Molt.Liveness (also imports KeyRotationLiveness). So: a new core module wanting TimedExecution + liveness + forged bounds + NoBackdate should `import MoltPetit.Results.Results` and `import MoltPetit.Model.TimedSig`; a new Molt-side module should `import Molt.Results` (and `Molt.Liveness`/`Molt.Rotation` if it needs validChainK/global_liveness names).\n\nBUILD REGISTRATION GOTCHA: lakefile.toml declares the four lean_libs (MoltPetit, Rust, Thales, Molt) with NO `globs`, so the default `lake build` only compiles modules reachable from the root import lists in MoltPetit.lean / Molt.lean. A purely additive file (no edits to existing files) must be built explicitly, e.g. `lake build MoltPetit.Model.<New>` or `lake build Molt.<New>`, and it will not be covered by the existing axiom audit (MoltPetit/Results/Axioms.lean uses `#guard_msgs in #print axioms` per headline theorem) — replicate that guard locally in the new file if axiom hygiene matters. Toolchain: leanprover/lean4:v4.30.0-rc2, Mathlib v4.30.0-rc2, `relaxedAutoImplicit = false` (bind every variable), mathlib standard linter set on.\n\nNAMESPACE/IDIOMS: core proofs live in `namespace MoltPetit.Model` (sub-namespace ProverTiming); paper-facing re-presentations in `namespace Molt`. Molt idiom: shared TYPES are `abbrev` (Block, Chain, SigOps, TimedLog, TimedExecution, NoBackdate, SigUnforgeableRecent via `@`), simple computable/Prop defs are re-declared verbatim and bridged by `theorem foo_eq_core : foo = MoltPetit.Model.foo := rfl`, recursive/matching defs are bridged by funext+induction/simp (linksOk, validChain, validSignedChain, validSuffix, validCertifiedChain, produceBlock?, selectChain, validChainK, validChainK', validSignedChainK') and must be `rw [..._eq_core] at h` before feeding hypotheses to a core theorem; theorems are either `alias X := MoltPetit.Model.X` or restated with paper names (FaultBounded, faultBudget, producer, rNow) and proved by applying the core theorem verbatim (definitional unfolding covers rfl bridges). Prop-structures (TimedExecution, SigUnforgeableRecent, SigCorrect) are built with `refine { key_match := ?_, honest_stamp := ?_, honest_once := ?_, chain_order := ?_, id_inj := ?_ }` or `constructor`. Finset filters over `bad : Nat → Prop` need `open Classical in` (badSlotsIn, bad_budget_Ico, projectSigned, forged_* theorems). First-signing time is `Nat.find (h : ∃ r, B ∈ log r)` with `Nat.find_eq_iff`, `Nat.find_spec`, `Nat.find_min'`, and theorems phrase minimality as `∀ r' < r, B ∉ log r'`. `blockAt?` is `getElem?`: unfold then `List.getElem?_eq_some_iff`, `List.getElem?_eq_getElem`, `List.mem_of_getElem?`; `ValidChain` destructures as ⟨hSeq, hS, hPL, hMat⟩; go Bool→semantic with `validChain_sound`; tip index via `blockAt_getLast`; index→slot order via `strictSlots_lt`; membership→index via `exists_blockAt_of_mem`.\n\nGENESIS / INDEX-0 GOTCHAS: block_signed, sigTime_mono_chain, one_real_slot_one_block, forged_suffix_time_bound all require the index k (or k₀) ≥ 1 and `hGprev : G.prev = none`; they do NOT require c[0] = G, only ParentLinked (so c[0].prev = none) — hence any block at index ≥ 1 is ≠ G and is in the log by hAvail. hAvail must cover every block of c including index 0 (satisfied via the `B = G` disjunct or a log entry). GroundedCert.genesis additionally demands `G.slot = 0` and `genesisOk G`; liveness_global demands `genesisOk g` but not g.slot = 0 (g.slot is whatever heads the schedule). validChain accepts [] and does not check slot 0.\n\nBAD-SLOT READINGS (real vs stamped): TimedExecution applies `bad` to REAL slots r (honest_stamp/honest_once, and hForged in the forged bounds quantify `bad r` over signing slots); NoBackdate, SigUnforgeableRecent.verified_was_signed, HonestBlocksCover, HonestSlotsUnique apply `bad` to the STAMP B.slot / record slot s; ByzantineBounded n bad is one budget used for both readings. They coincide only under NoBackdate/honest_stamp. A new module mixing timed and stamped statements must pick one `bad` and prove the crossover explicitly.\n\nBUDGET/DENSITY READ-OFF: forged_suffix_time_bound / forged_chain_time_bound read density from the chain c's own MaturedWindowsDense at its tip (windows aligned at F.slot+1 + j*n resp. 0 + j*n via belowCount_windows) and the budget from ByzantineBounded on real slots (bad_budget_Ico over Ico r₀ (R+1) resp. Ico 0 (R+1)); both need hn : 2 ≤ n; the lag corollaries additionally need 1 ≤ maxByzantine n (i.e. n ≥ 4). Molt.forged_time_bound is the SUFFIX bound (paper Theorem 2); Molt.forged_chain_time_bound is the alias of the from-genesis bound.\n\nSIGNED PREDICATE, DECLARED vs REGISTERED: sigUnforgeableRecent_of_timed takes an abstract `Signed : Block → Prop` plus the EUF-CMA bridge `hbridge : Signed B → ∃ r, B ∈ log r` (this bridge is the only place the crypto enters; nothing in the repo proves it for TSSigned). TSSigned / sigOk / SigCorrect all verify under the block's DECLARED in-band keyIndex (`keyFor (producerForSlot n B.slot) B.keyIndex`), not the version in force; the in-force check is validChainK'/inForcePinned (KeyRotation). The result of sigUnforgeableRecent_of_timed is for `signed := projectSigned n log` (noncomputable, Classical.choose; canonical only at honest real slots) and holds for every now and Δ — the recency scoping is slack there.\n\nLIVENESS SINGLE-CHAIN ASSUMPTION: liveness_valid_extension / liveness_produce_block / liveness_produce_blockK all speak about ONE chain c the producer holds (c.getLast? = some tip, validChain n c = true as Bool) and demand HonestBlocksCover over the EXTENDED chain c ++ [nextBlock ...] for exactly the windows newly matured at `slot` (tip.slot + 1 < u + n ≤ slot + 1); if `slot` is honest and inside such a window the cover forces some `record slot` block to be in c ++ [b], i.e. the caller must register the new block in `record`; `hSCorrect : ∀ s B, B ∈ record s → B.slot = s` is a global record hypothesis. liveness_global hard-codes the single chain: the run IS buildChain g ss (each block built on its immediate predecessor; ids = slots, contentsHash = keyIndex = 0), `bad := fun s => s ∉ g.slot :: ss` (every unscheduled slot is adversarial by definition), budget only over windows maturing by the last scheduled slot, record := the run's own blocks. There is no theorem anywhere about MoltPetit.Model.selectChain (Molt.selectChain is selectCertifiedChain); no theorem connects liveness to TimedExecution/log, to competing chains, or to forks. A new module wanting multi-chain or network liveness must add its own model; the reusable pieces are validChain_append_one, window_dense_of_honest_cover(_at), windowCount_mono, strictSlots_append_one, linksOk_append_one, slot_le_tip_of_mem, quorum_plus_byzantine_le, and the buildChain lemmas.\n\nARITHMETIC FACTS proved inline (re-derive with `unfold quorum maxByzantine; omega`): quorum n + maxByzantine n ≤ n (theorem), 2 ≤ quorum n given 2 ≤ n, 2 * maxByzantine n + 1 ≤ quorum n.",
+ "open_items_found": [
+  "Timed.lean:20-24 — 'Main results (stated in `Results/Results.lean`): `forged_suffix_time_bound` and `forged_chain_time_bound` … This module holds the model and the counting lemmas' — the headline timed theorems are NOT in Timed.lean; the module has only lemmas + belowCount.",
+  "Timed.lean:14-18 — 'The id-formation contract (`moltPetit.ts`: a block id hashes the parent's *signature*) appears as its formal residue, `chain_order` … referencing an id whose preimage contains a not-yet-existing signature would be predicting a signature, i.e. an EUF-CMA forgery.' — the reduction from the hash/signature contract to chain_order is informal (chain_order is an assumed field).",
+  "TimedSig.lean:30-36 — NoBackdate 'is guaranteed by *forward-secure / key-evolving* signatures (the per-period key cannot sign for a different period — exactly the upgrade the limitations section recommends), or by a signing oracle that stamps its own real slot.' — operational justification only; no formal model of forward-secure signatures.",
+  "TimedSig.lean:37-40 — 'the scoping in `SigUnforgeableRecent` is then slack, which matches the operational reading that forward-secure custody removes the long-range residual entirely.' — informal reading.",
+  "TimedSig.lean:74-77 — 'This is the formal replacement for the conjecture that the assumption \"follows from the recency bound itself\"' — records that the earlier conjecture was wrong and replaced; the recency→pinning route is explicitly NOT a theorem (noBackdate_independent).",
+  "TimedSig.lean:114-116 — '(The forged block could moreover sit at an arbitrarily recent tip — an operational remark, not part of this statement, which asserts only the `TimedExecution` ∧ ¬`NoBackdate` witness.)'",
+  "TimedSig.lean:83 — the EUF-CMA bridge `hbridge : ∀ ⦃B⦄, Signed B → ∃ r, B ∈ log r` is an assumption of sigUnforgeableRecent_of_timed; nothing in the four files (or Results/Molt headers read) discharges it for the concrete TSSigned predicate.",
+  "Liveness.lean:26-34 module docstring '## Results' lists `liveness_produce_block` and `liveness_produce_signed_block — wire-level version: with signature correctness (`SigCorrect`), `produceSignedBlock?` succeeds too' as results of this module, but they are defined in MoltPetit/Results/Results.lean:429 and :455 — stale docstring.",
+  "Liveness.lean:270-285 — 'The theorems above are *local*: one honest producer extends its chain. Global liveness is the temporal/network statement … We model a synchronous honest run as `buildChain g ss` … That each block is built on the previous one is exactly the delivery assumption — every honest block reaches the next honest producer within its slot, so the honest blocks form a single chain (no honest fork).' — synchrony/delivery is modeled by construction, not by a network or adversary model; no adversarial blocks, forks, or chain selection appear.",
+  "Liveness.lean:348-351 — '`hChain` — genesis and the schedule slots strictly increase (a single honest chain: delivery makes each honest producer build on the last honest block)'.",
+  "Liveness.lean:357-359 — 'Since `ss` can be arbitrarily long, the chain reaches any height — production never stalls, and every block eventually becomes `n`-deep.' — the 'any height' / 'eventually n-deep' reading is informal; the theorem states only validChain ∧ length = ss.length + 1 for a fixed schedule.",
+  "Liveness.lean:19-21, Definitions.lean:746-751 — HonestBlocksCover 'packages two operational facts: honest producers were live in their slots (they produced), and the network delivered their blocks in time for the current producer to have built on them (synchrony).' — informal packaging.",
+  "Definitions.lean:7-12 — 'read this and `Results.lean` … and you have the complete formal content of the development. The remaining modules contain only proofs.' — not accurate: Timed.lean defines belowCount, TimedSig.lean defines projectSigned/NoBackdate, Liveness.lean defines buildFrom/buildChain, KeyIndex/KeyRotation define validChainK/keyFloor/validChainK' etc.",
+  "Definitions.lean:114-120 (validChain) — 'production code may check matured windows incrementally per received block, which is equivalent because earlier windows were checked when validating the parent.' — equivalence claim is informal.",
+  "Definitions.lean:136-139 (selectChain) — 'Safety does not depend on this rule (the safety theorem quantifies over arbitrary valid chains); it only affects liveness.' — yet no liveness theorem mentions selectChain; only the definition, its @[export] wrapper, and Molt's certified-chain selectChain_eq_core exist.",
+  "Definitions.lean:155-157 (produceBlock?) — 'The node's outer loop calls this at most once per slot, which together with the conditions above realises the honest-slot assumptions of the safety proof.' and :554-556 (SigningLog) — 'That this is a partial *function* … is precisely the honest behaviour of the implementation: the node's outer loop calls production at most once per slot.' — implementation↔HonestSlotsUnique/honest_once link is informal.",
+  "Definitions.lean:665-675 (SigUnforgeableRecent docstring) — 'This is the assumption the timed model justifies for the tight rule `Δ = n` … a fork meeting the recency bar caps out around `2·maxByzantine ≈ 2n/3` harvested blocks — short of the `n + 1` needed … (breakeven at `Δ ≈ 1.5n`, so `Δ = n` keeps ~50% margin).' — a counting heuristic; there is no theorem deriving SigUnforgeableRecent from forged_suffix_time_bound (TimedSig derives it from NoBackdate with Δ unused, and explicitly says recency alone does not suffice).",
+  "Definitions.lean:706-717 (TimedExecution docstring) — '`chain_order` is the formal residue of the id-formation contract (`id = H(slot, height, prev, parentSig, contentsHash, keyIndex)`) … Predicting an unavailable parent's id is predicting a signature, i.e. an EUF-CMA forgery.' — cryptographic argument informal.",
+  "Definitions.lean:786-788 (recommendedSlot) — 'Sufficient and necessary (over steady states)' — proved in Results.lean (recommended_slot_sufficient/necessary), fine; but 'over steady states' means necessity is only for fixed points of nextBacklog.",
+  "Results.lean:447-450 (liveness_produce_signed_block docstring) — 'additionally assuming signature-scheme correctness (`SigCorrect`), a full registry (`registry.size = n`), and that the producer signs with its own key' — 'registry.size = n' is not a hypothesis of the theorem (only hn : 1 ≤ n appears); stale wording.",
+  "KeyRotationLiveness.lean:26-27 — 'The deployment-level mitigation (an out-of-band root-authorization horizon on index jumps) is orthogonal and stated in the paper.' — not formalized.",
+  "Molt.lean docstring — 'Modules grow section by section with the paper; the imports above are the current frontier.' and Molt/Liveness.lean:37-38 — 'The paper states the rule qualitatively; the formula lives here.'",
+  "Brief/naming mismatches: `validChainK` is not in Definitions.lean (core: MoltPetit/Model/KeyIndex.lean:71; Molt: Molt/Rotation.lean:44); `denseSoFar` is Molt/Protocol.lean:88 (= maturedWindowsDense, rfl); `faultBudget` is Molt/Protocol.lean:27 (= maxByzantine, rfl); `forged_time_bound` is Molt/Results.lean:110 (= forged_suffix_time_bound); `global_liveness` is the alias Molt/Liveness.lean:33 of liveness_global; `liveness_produce_blockK` is MoltPetit/Model/KeyRotationLiveness.lean:130.",
+  "No `sorry`/`axiom` in project sources (Molt, MoltPetit, Rust, Thales, Main.lean); only mentions in docstrings of the axiom-audit files."
+ ]
+}

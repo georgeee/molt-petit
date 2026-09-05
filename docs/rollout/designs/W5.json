@@ -1,0 +1,752 @@
+{
+ "work_item": "W5",
+ "title": "Mode 3 per-generation census (D1'-full): aligned-window engine, non-inductive pinning, LockstepPackageGen, and a timed erasure layer that makes erasure load-bearing",
+ "goal_statement": "Deliver, additively, the per-generation census the lockstep design promised: a new package LockstepPackageGen whose budget fields are PackageB's {rentBound, erasure_freeze-shaped genBound, budget_le} (no cumulative exposedBound at all), a new validator-agnostic aligned-window engine window_shared_prefix (the generalisation of horizon_shared_prefix to an arbitrary window matured in both chains), a NEW non-inductive per-window pinning theorem, new lockstep headlines at confirmation depth 2n that need no shared genesis, and a timed layer (stolenAt; NoPrematureTheftLock / ErasureTimedLock phrased against rosterGen ∘ (·/n), the roster's switch grid) in which ErasureTimedLock is CONSUMED by the derivation of genBound from a pre-retirement theft-rate. Answers to the three questions asked: (1) a pure budget-transport lemma (per-generation rates + erasure ⇒ LockstepPackage.exposedBound at lagSched) is NOT achievable — exposedBound at any window is a union over all future generations j ≥ rosterGen(W−1) and per-generation rates bound each j-slice by T but not the union; a machine-checked counter-witness (n=2, T=1, rosterGen ≡ 0, Stolen i j := i = j) is included — so the safety proof must change, and it changes by a NEW engine + NEW pinning theorem + NEW headlines placed next to the old ones (nothing existing is modified). (2) 'Generalising horizon_shared_prefix' concretely means: replace the fixed pigeonhole window u := tip.slot+1−n by an arbitrary u with maturity in both chains (u+n ≤ tip.slot+1 and u+n ≤ tip'.slot+1), restrict honest-slot uniqueness to that window (HonestSlotsUniqueOn u n), and replace hkdeep by 'the block at height k sits strictly below u' — the proof is the existing one minus the slot-gap step, plus public copies of the two private helpers; 'generalising the pinning lemma' means swapping the census from exposedBound-at-lagSched (which needed the induction hypothesis to discharge the ≥ lagSched side condition, and genesis_gen for window 0) to genBound at j := the window's declared generation g, which removes the induction, the lag, and the genesis base case entirely. (3) Depth 2n IS unavoidable for the aligned-window route in the worst case (exactly n + ((tip.slot+1) mod n) ≤ 2n−1 in positions): the last aligned window matured in the lower chain starts at ((tip.slot+1)/n − 1)·n, which can be as low as tip.slot + 2 − 2n; the core theorem is stated with an explicit window W and 'B.slot < W·n' so the sharp form is available for free, and the headlines use the clean 2n. Any depth-n statement would have to consult the sliding trailing window, which straddles the unpinned tip window where the two chains may declare different generations — that is the cumulative reading (D1'-thin) or a ρ+2T/3T factor loss, not a per-generation census.",
+ "new_files": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingWindowCore.lean",
+   "outline": "Validator-agnostic, mode-agnostic ALIGNED-WINDOW contraction engine (the generalisation of horizon_shared_prefix the audit asked for). import MoltPetit.Model.KeyStealingScheduleHorizon (transitively Safety/Soundness/Model/Definitions). namespace MoltPetit.Model. Sections: (1) HonestSlotsUniqueOn u len bad record — honest-slot uniqueness required only on slots of [u, u+len); honestSlotsUniqueOn_of_unique. (2) Public copies of the two PRIVATE helpers of KeyStealingScheduleHorizon.lean (exists_honest_shared_slot_at :86 → exists_honest_shared_slot_at_win; slot_gap_of_position_gap :116 → slot_gap_of_position_gap_win), verbatim bodies. (3) window_shared_prefix — pigeonhole at an arbitrary window u matured in BOTH chains, uniqueness only on that window, block at k strictly below u ⇒ shared block at k. (4) chain_length_le_tip_slot (tip.slot ≥ length−1 on a strict-slot chain; from slot_gap_of_position_gap_win at p := 0). (5) Optional formal reduction horizon_shared_prefix_of_window re-deriving horizon_shared_prefix's exact statement from window_shared_prefix at u := tip.slot+1−n (records that the old lemma is the special case). ~170 lines. Guards go in Results/AxiomsLockstepGen.lean."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingLockstepGen.lean",
+   "outline": "Mode 3, D1'-full: the per-generation census route. import MoltPetit.Model.KeyStealingLockstep, MoltPetit.Model.KeyStealingWindowCore. namespace MoltPetit.Model; `classical` tactic where Finset filters need decidability (Budget-file idiom: `open Classical` at top since badLockAt-filtered Finsets are noncomputable). Sections: (1) Chain-order helpers re-proved from the public lockstepOk_iff_pairwise (the originals lockstep_rel/lockstep_const/window_producer_inj' are private in KeyStealingLockstep.lean:172/195/220): private lockstep_rel_gen, lockstep_const_gen; aligned_producer_inj (s, s' ∈ [W·n, W·n+n), s % n = s' % n ⇒ s = s' — via Nat.div_add_mod, simpler than the ModEq form because the window is aligned); signedDeclared_of_mem_lock (sigsOk ⇒ SignedDeclared blockwise, mirror of signedDeclared_of_mem_sched at KeyStealingSchedule.lean:88). (2) The per-generation corruption predicate badLockAt n rosterGen rented Stolen s := rented s ∨ Stolen (producerForSlot n s) (rosterGen (s / n)) — the design note's 'intended consequence' predicate, chain-independent, a pure function of the slot; badLockAt_iff_or (Iff.rfl); AlignedBounded n bad := ∀ W, (badSlotsIn bad (W*n) n).card ≤ maxByzantine n; alignedBounded_of_bounded. (3) The mode-3 I3: theftLockAt_card_le_genCensus and lockstep_aligned_budget (rent rate + per-generation census + R+T ≤ maxByzantine ⇒ AlignedBounded n (badLockAt …)) — the 'derived ByzantineBounded' of LOCKSTEP_DESIGN H3, in aligned form. (4) structure LockstepPackageGen (fields unforgeable, declared, hashInj, rentBound, genBound, budget_le — genBound is syntactically PackageB.erasure_freeze's expression so a PackageB field can be passed verbatim); LockstepPackageGen.alignedBudget; LockstepPackage.toGen (thin ⇒ gen when rosterGen skips no value, via erasure_freeze_of_exposedBound at u := (W+1)·n). (5) lockstep_window_declares_rosterGen — the NON-INDUCTIVE per-window pinning theorem (no hHead, no lag, no genesis_gen). (6) honestSlotsUniqueOn_lockstep — uniqueness on one aligned window matured in both chains, for badLockAt, over chainUnionRecord. (7) lockstepGen_shared_prefix (explicit window W, sharp form) and lockstepGen_shared_prefix_deep (k + 2n < length picks W := (sTip.slot+1)/n − 1). (8) Headlines (genesis-free, depth 2n): lockstepGen_recent_tip_ancestor_agreement, lockstepGen_recent_tip_ancestor_mem, lockstepGen_recent_genesis_agreement. (9) Consistency witness exposedBound_not_of_genBound (pure budget transport is impossible), optional. ~480 lines."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingLockstepTimed.lean",
+   "outline": "The timed theft layer for lockstep. import MoltPetit.Model.KeyStealingLockstepGen, MoltPetit.Model.KeyStealingScheduleTimed (for stolenOf, NoPrematureTheft, ErasureTimed — reused, not redefined). open Classical. Sections: (1) NoPrematureTheftLock n rosterGen stolenAt := ∀ i j r, stolenAt i j r → j ≤ rosterGen (r / n) (A3/B3 with the roster's switch grid in place of j*R); ErasureTimedLock n rosterGen stolenAt := ∀ i j r, stolenAt i j r → rosterGen (r / n) ≤ j (B2). theft_in_era_lock (both ⇒ rosterGen (r/n) = j, the mode-3 twin of theft_during_era_of_erasure); stolen_generation_was_live (stolenOf stolenAt i j → ∃ W, rosterGen W = j). (2) Faithfulness to mode 2: noPrematureTheftLock_iff_flagship / erasureTimedLock_iff_flagship — at rosterGen := fun W => W and R := n the lock forms are exactly NoPrematureTheft n / ErasureTimed n (Nat.le_div_iff_mul_le / Nat.div_lt_iff_lt_mul). (3) The pre-retirement census preRetirementTheftProducers n rosterGen stolenAt j := (Finset.range n).filter (fun i => ∃ r, stolenAt i j r ∧ rosterGen (r / n) ≤ j) and the timed mode-3 I3 genBound_of_preRetirementBound: ErasureTimedLock + (∀ j, census ≤ T) ⇒ ∀ j, ((Finset.range n).filter (fun i => stolenOf stolenAt i j)).card ≤ T — ERASURE IS THE LOAD-BEARING HYPOTHESIS (mirror image of mode 2's horizon_budget_of_timed, where A3 was). (4) structure LockstepPackageTimed (unforgeable at Stolen := stolenOf stolenAt, declared, hashInj, notBefore, notAfter, rentBound, preRetirementTheftBound, budget_le); LockstepPackageTimed.toGen; end-to-end lockstepTimed_recent_tip_ancestor_agreement and lockstepTimed_recent_tip_ancestor_mem. ~220 lines."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Results/AxiomsLockstepGen.lean",
+   "outline": "New axiom-guard file (Results/Axioms.lean is not edited). import MoltPetit.Model.KeyStealingWindowCore, KeyStealingLockstepGen, KeyStealingLockstepTimed. One `/-- info: 'MoltPetit.Model.<thm>' depends on axioms: [propext, Classical.choice, Quot.sound] -/ #guard_msgs in #print axioms …` block per headline: window_shared_prefix, lockstep_aligned_budget, LockstepPackage.toGen, lockstep_window_declares_rosterGen, honestSlotsUniqueOn_lockstep, lockstepGen_shared_prefix, lockstepGen_recent_tip_ancestor_agreement, lockstepGen_recent_tip_ancestor_mem, lockstepGen_recent_genesis_agreement, exposedBound_not_of_genBound, genBound_of_preRetirementBound, lockstepTimed_recent_tip_ancestor_agreement, lockstepTimed_recent_tip_ancestor_mem; plus theft_in_era_lock / noPrematureTheftLock_iff_flagship / erasureTimedLock_iff_flagship which will print 'does not depend on any axioms' (probe first, as Axioms.lean:512 does for theft_during_era_of_erasure). Long names may wrap the list — use `#guard_msgs (whitespace := lax) in` as Axioms.lean:480/516 do. ~70 lines."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/LockstepGen.lean",
+   "outline": "Paper-side re-presentation (needed only when the paper pass happens; small). import Molt.Rotation, MoltPetit.Model.KeyStealingLockstepTimed. namespace Molt. abbrev LockstepPackageGen := @MoltPetit.Model.LockstepPackageGen; abbrev LockstepPackageTimed := @MoltPetit.Model.LockstepPackageTimed; abbrev badLockAt; wrapper theorems lockstep_client_safety_gen and lockstep_client_safety_timed stated over Molt.validSignedChainLock, proved by `rw [validSignedChainLock_eq_core] at hVal hVal'; exact MoltPetit.Model.lockstepGen_recent_tip_ancestor_agreement …` (the idiom of Molt/Rotation.lean:406); alias lockstep_window_declares_rosterGen. ~90 lines."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/AxiomsLockstepGen.lean",
+   "outline": "New Molt-side guard file (Molt/Axioms.lean not edited): guards for Molt.lockstep_client_safety_gen, Molt.lockstep_client_safety_timed, Molt.lockstep_window_declares_rosterGen. ~20 lines."
+  }
+ ],
+ "new_defs": [
+  {
+   "name": "HonestSlotsUniqueOn",
+   "signature": "def HonestSlotsUniqueOn (u len : Nat) (bad : ByzantineSlots) (record : SlotRecord) : Prop := ∀ s, u ≤ s → s < u + len → ¬ bad s → ∀ ⦃B B' : Block⦄, B ∈ record s → B' ∈ record s → B = B'",
+   "meaning": "Honest-slot uniqueness demanded only on the slots of one window. This is what lets the engine consume a corruption predicate that is sound only where both chains are pinned (window W at generation rosterGen W). HonestSlotsUnique bad record (Definitions.lean:498) implies it for every u, len (honestSlotsUniqueOn_of_unique)."
+  },
+  {
+   "name": "badLockAt",
+   "signature": "def badLockAt (n : Nat) (rosterGen : Nat → Nat) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (s : Nat) : Prop := rented s ∨ Stolen (producerForSlot n s) (rosterGen (s / n))",
+   "meaning": "The per-generation corruption predicate of LOCKSTEP_DESIGN.md:127-133 ('rented s ∨ Stolen (producerForSlot n s) (rosterGen (window s))'): a slot is bad if rented or its producer's key OF THE GENERATION THE ROSTER IS AT IN THAT GRID WINDOW is stolen. Chain-independent and un-lagged; no ∃ j ≥ … cumulative reading. Sound (for uniqueness) exactly on windows pinned in both chains — which is why it is consumed through HonestSlotsUniqueOn, not HonestSlotsUnique."
+  },
+  {
+   "name": "AlignedBounded",
+   "signature": "def AlignedBounded (n : Nat) (bad : ByzantineSlots) : Prop := ∀ W, (badSlotsIn bad (W * n) n).card ≤ maxByzantine n",
+   "meaning": "The Byzantine budget on the fixed grid of aligned windows [W·n, W·n+n) only (the paper's 'grid window'). Weaker than ByzantineBounded (alignedBounded_of_bounded); it is the shape the aligned-window engine consumes. For badLockAt the sliding-window budget would cost R + 2T (two generations straddled) — the D1 factor 2 — while the aligned one costs R + T."
+  },
+  {
+   "name": "LockstepPackageGen",
+   "signature": "structure LockstepPackageGen (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (R T : Nat) : Prop where\n  unforgeable : SchedCoreUnforgeable n (fun _ => 0) ops registry rented Stolen honestSigned now Δ\n  declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B → B.keyIndex = rosterGen (s / n)\n  hashInj : SignedHashInjective (SignedDeclared n ops registry) G\n  rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R\n  genBound : ∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T\n  budget_le : R + T ≤ maxByzantine n",
+   "meaning": "The D1'-full package (LOCKSTEP_DESIGN H3's 'PackageC'): B1-as-behaviour (declared), the constant-0 core EUF-CMA surface (audit obstruction 3, unchanged), hash injectivity, and the budget in PER-GENERATION form — genBound is literally PackageB.erasure_freeze's expression (KeyStealingScheduleBudget.lean:337), so PackageB's field can be passed verbatim. NO exposedBound (no cumulative census, no lagSched), NO mono and NO genesis_gen (neither is consumed by the new route: the pinning theorem is non-inductive and per-window). Incomparable with LockstepPackage in general; LockstepPackage.toGen gives thin ⇒ gen when rosterGen is surjective (skips no value)."
+  },
+  {
+   "name": "NoPrematureTheftLock",
+   "signature": "def NoPrematureTheftLock (n : Nat) (rosterGen : Nat → Nat) (stolenAt : Nat → Nat → Nat → Prop) : Prop := ∀ i j r, stolenAt i j r → j ≤ rosterGen (r / n)",
+   "meaning": "A3/B3 timed, mode 3: a generation-j key can be stolen at real slot r only if the roster has already reached j in r's grid window. The 'switch time' of j is thereby the first grid window W with j ≤ rosterGen W — expressed without Nat.find so it is total even when rosterGen never reaches j. At rosterGen := id and R := n it is exactly NoPrematureTheft n stolenAt (KeyStealingScheduleTimed.lean:96), proved by noPrematureTheftLock_iff_flagship."
+  },
+  {
+   "name": "ErasureTimedLock",
+   "signature": "def ErasureTimedLock (n : Nat) (rosterGen : Nat → Nat) (stolenAt : Nat → Nat → Nat → Prop) : Prop := ∀ i j r, stolenAt i j r → rosterGen (r / n) ≤ j",
+   "meaning": "B2 timed, mode 3: at real slot r nothing of a generation the roster has already moved past can be stolen — retired material was destroyed at the switch. At rosterGen := id, R := n it is exactly ErasureTimed n stolenAt (KeyStealingScheduleTimed.lean:102), proved by erasureTimedLock_iff_flagship. THIS field is consumed by genBound_of_preRetirementBound — erasure becomes load-bearing."
+  },
+  {
+   "name": "preRetirementTheftProducers",
+   "signature": "noncomputable def preRetirementTheftProducers (n : Nat) (rosterGen : Nat → Nat) (stolenAt : Nat → Nat → Nat → Prop) (j : Nat) : Finset Nat := (Finset.range n).filter (fun i => ∃ r, stolenAt i j r ∧ rosterGen (r / n) ≤ j)",
+   "meaning": "The per-generation census a mode-3 deployment asserts: seats whose generation-j key is stolen at a real time at which j has not yet been retired (the 'while-live' count of §10.2). Mirror of recentTheftProducers (KeyStealingScheduleTimed.lean:149) with the generation floor replaced by the retirement ceiling. Under ErasureTimedLock it coincides with the timeless (Finset.range n).filter (fun i => stolenOf stolenAt i j)."
+  },
+  {
+   "name": "LockstepPackageTimed",
+   "signature": "structure LockstepPackageTimed (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type} (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots) (stolenAt : Nat → Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (R T : Nat) : Prop where\n  unforgeable : SchedCoreUnforgeable n (fun _ => 0) ops registry rented (stolenOf stolenAt) honestSigned now Δ\n  declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B → B.keyIndex = rosterGen (s / n)\n  hashInj : SignedHashInjective (SignedDeclared n ops registry) G\n  notBefore : NoPrematureTheftLock n rosterGen stolenAt\n  notAfter : ErasureTimedLock n rosterGen stolenAt\n  rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R\n  preRetirementTheftBound : ∀ j, (preRetirementTheftProducers n rosterGen stolenAt j).card ≤ T\n  budget_le : R + T ≤ maxByzantine n",
+   "meaning": "Mode 3 with its temporal content formalized (the twin of PackageBTimed, KeyStealingScheduleTimed.lean:383): theft is time-stamped, A3 and B2 are fields, and the rate is the while-live per-generation census. notAfter is CONSUMED (toGen via genBound_of_preRetirementBound); notBefore is documentary here (consumed only by theft_in_era_lock), the exact mirror of mode 2 where A3 is consumed and erasure documentary."
+  },
+  {
+   "name": "exists_honest_shared_slot_at_win / slot_gap_of_position_gap_win",
+   "signature": "theorem exists_honest_shared_slot_at_win {n : Nat} (hn : 1 ≤ n) {bad : ByzantineSlots} {u : Nat} (hBudgetU : (badSlotsIn bad u n).card ≤ maxByzantine n) {S S' : Finset Nat} (hS : S ⊆ Finset.Ico u (u + n)) (hS' : S' ⊆ Finset.Ico u (u + n)) (hCard : quorum n ≤ S.card) (hCard' : quorum n ≤ S'.card) : ∃ s, s ∈ S ∧ s ∈ S' ∧ ¬ bad s\ntheorem slot_gap_of_position_gap_win {c : Chain} (hS : StrictSlots c) : ∀ (d p : Nat) {X Y : Block}, blockAt? c p = some X → blockAt? c (p + d) = some Y → X.slot + d ≤ Y.slot",
+   "meaning": "Public verbatim copies of the private helpers at KeyStealingScheduleHorizon.lean:86 and :116 (private names are module-mangled, so no clash). Needed because a new module cannot import them."
+  }
+ ],
+ "new_theorems": [
+  {
+   "name": "window_shared_prefix",
+   "hypotheses": [
+    "{n : Nat} (hn : 1 ≤ n)",
+    "{bad : ByzantineSlots} {record : SlotRecord} {u : Nat}",
+    "(hHonest : HonestSlotsUniqueOn u n bad record)",
+    "(hId : IdInjective record)",
+    "{c c' : Chain} (hValid : ValidChain n c) (hValid' : ValidChain n c')",
+    "(hRec : ChainInRecord record c) (hRec' : ChainInRecord record c')",
+    "{tip tip' : Block} (hTip : c.getLast? = some tip) (hTip' : c'.getLast? = some tip')",
+    "(hMat : u + n ≤ tip.slot + 1) (hMat' : u + n ≤ tip'.slot + 1)",
+    "(hBudgetU : (badSlotsIn bad u n).card ≤ maxByzantine n)",
+    "{k : Nat} {B : Block} (hB : blockAt? c k = some B) (hBu : B.slot < u)"
+   ],
+   "conclusion": "∃ P : Block, blockAt? c k = some P ∧ blockAt? c' k = some P",
+   "proof_sketch": "Verbatim the body of horizon_shared_prefix from its line 'both chains are quorum-dense' onward, with u a parameter instead of tip.slot+1−n and the slot-gap step dropped: destructure hValid/hValid' as ⟨hSeq,hS,hPL,hDense⟩; hTipAt := blockAt_getLast hTip (both); hq : quorum n ≤ (chainSlotsIn c u n).card by chainSlotsIn_card hS + hDense hTipAt u hMat (and primed with hMat'); exists_honest_shared_slot_at_win hn hBudgetU chainSlotsIn_subset_Ico chainSlotsIn_subset_Ico hq hq' gives s ∈ both, ¬bad s; mem_chainSlotsIn unpacks B₁ ∈ c, B₂ ∈ c' at slot s with u ≤ s < u+n; exists_blockAt_of_mem gives k₁,k₂; hRec/hRec' put them in record s; hHonest s hsu hsun hsHonest gives B₁ = B₂; SequentialHeights gives k₁ = k₂; height_gt_of_slot_gt hS hB hk₁ (B.slot < u ≤ s) gives k < k₁; same_block_same_prefix hId hRec hRec' hPL hPL' hk₁ hk₂' (le_of_lt) closes. No genesis, no window other than u.",
+   "reuses": [
+    {
+     "name": "horizon_shared_prefix",
+     "path": "MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+     "line": 161,
+     "how": "proof template (lines 175-223); the new lemma is its generalisation, old lemma untouched"
+    },
+    {
+     "name": "exists_honest_shared_slot_at (private)",
+     "path": "MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+     "line": 86,
+     "how": "copied verbatim as exists_honest_shared_slot_at_win"
+    },
+    {
+     "name": "same_block_same_prefix",
+     "path": "MoltPetit/Model/Safety.lean",
+     "line": 189,
+     "how": "drags the shared block down to height k"
+    },
+    {
+     "name": "height_gt_of_slot_gt",
+     "path": "MoltPetit/Model/Safety.lean",
+     "line": 29,
+     "how": "k < k₁ from B.slot < s"
+    },
+    {
+     "name": "blockAt_getLast",
+     "path": "MoltPetit/Model/Soundness.lean",
+     "line": 97,
+     "how": "tip at index length−1 for MaturedWindowsDense"
+    },
+    {
+     "name": "chainSlotsIn_card / chainSlotsIn_subset_Ico / mem_chainSlotsIn / exists_blockAt_of_mem",
+     "path": "MoltPetit/Model/Model.lean",
+     "line": 60,
+     "how": "window density as a Finset card; membership unpacking"
+    },
+    {
+     "name": "MaturedWindowsDense / ValidChain / HonestSlotsUnique / IdInjective / ChainInRecord / badSlotsIn",
+     "path": "MoltPetit/Model/Definitions.lean",
+     "line": 484,
+     "how": "the record-level vocabulary consumed"
+    }
+   ]
+  },
+  {
+   "name": "lockstep_aligned_budget",
+   "hypotheses": [
+    "{n : Nat} (hn : 0 < n) {rosterGen : Nat → Nat} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {R T : Nat}",
+    "(hRent : ∀ u, (badSlotsIn rented u n).card ≤ R)",
+    "(hGen : ∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T)",
+    "(hRT : R + T ≤ maxByzantine n)"
+   ],
+   "conclusion": "AlignedBounded n (badLockAt n rosterGen rented Stolen)",
+   "proof_sketch": "intro W. badSlotsIn (badLockAt …) (W*n) n = badSlotsIn (fun s => rented s ∨ Stolen (producerForSlot n s) (rosterGen (s/n))) … by rfl (badLockAt_iff_or is Iff.rfl, same trick as induced_byzantine_bounded_sched). badSlotsIn_union_le splits into rent-card + theft-card. Theft-card ≤ ((Finset.range n).filter (fun i => Stolen i (rosterGen W))).card by Finset.card_le_card_of_injOn (producerForSlot n): for s ∈ [W*n, W*n+n), s / n = W (Nat.div_eq_of_lt_le or omega with Nat.div_add_mod) so the filter predicate at s reads Stolen (s % n) (rosterGen W), and s % n ∈ range n (Nat.mod_lt, needs hn); injectivity is aligned_producer_inj. Then hGen (rosterGen W), hRent (W*n), hRT, calc. This is the mode-3 I3 — the per-generation census IS the budget, with no cumulative reading anywhere.",
+   "reuses": [
+    {
+     "name": "induced_byzantine_bounded_sched",
+     "path": "MoltPetit/Model/KeyStealingScheduleBudget.lean",
+     "line": 164,
+     "how": "template for the calc / rfl rewrite"
+    },
+    {
+     "name": "badSlotsIn_union_le",
+     "path": "MoltPetit/Model/KeyStealingBudget.lean",
+     "line": 52,
+     "how": "rent + theft split"
+    },
+    {
+     "name": "theftSlotsSched_card_le_exposed",
+     "path": "MoltPetit/Model/KeyStealingScheduleBudget.lean",
+     "line": 148,
+     "how": "template for Finset.card_le_card_of_injOn with producerForSlot"
+    },
+    {
+     "name": "PackageB.erasure_freeze",
+     "path": "MoltPetit/Model/KeyStealingScheduleBudget.lean",
+     "line": 337,
+     "how": "hGen is syntactically this field, so PackageB's field discharges it verbatim"
+    }
+   ]
+  },
+  {
+   "name": "LockstepPackage.toGen",
+   "hypotheses": [
+    "CTX := {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}",
+    "(hn : 0 < n)",
+    "(hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)",
+    "(hSurj : ∀ j, ∃ W, rosterGen W = j)"
+   ],
+   "conclusion": "LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T",
+   "proof_sketch": "Fields unforgeable/declared/hashInj/rentBound/budget_le copied from hP (anonymous-structure `where` syntax as in LockstepPackage.toPackageA). genBound := erasure_freeze_of_exposedBound hP.exposedBound hFull where hFull j := from hSurj j = ⟨W, hW⟩ take u := (W+1)*n; for s ∈ [(W+1)n, (W+2)n) we have s / n = W + 1 hence lagSched n rosterGen s = rosterGen (W + 1 − 1) = rosterGen W = j. Documents the assumption-set comparison: D1'-thin ⇒ D1'-full exactly when the counter skips no generation; in general the two packages are incomparable (PackageB docstring counterexample; exposedBound_not_of_genBound).",
+   "reuses": [
+    {
+     "name": "erasure_freeze_of_exposedBound",
+     "path": "MoltPetit/Model/KeyStealingScheduleBudget.lean",
+     "line": 364,
+     "how": "the per-generation bound from the cumulative one under the full-window premise"
+    },
+    {
+     "name": "LockstepPackage / lagSched",
+     "path": "MoltPetit/Model/KeyStealingLockstep.lean",
+     "line": 252,
+     "how": "source package; lagSched :112 unfolds to rosterGen (s/n − 1)"
+    },
+    {
+     "name": "LockstepPackage.toPackageA",
+     "path": "MoltPetit/Model/KeyStealingLockstep.lean",
+     "line": 269,
+     "how": "`where`-syntax idiom for transports"
+    }
+   ]
+  },
+  {
+   "name": "lockstep_window_declares_rosterGen",
+   "hypotheses": [
+    "CTX",
+    "(hn : 1 ≤ n)",
+    "(hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)",
+    "{sc : SignedChain Sig} (hVal : validSignedChainLock n ops registry sc = true)",
+    "(hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ)",
+    "(W : Nat) (hMat : ∃ D ∈ stripSigs sc, W * n + n ≤ D.slot + 1)",
+    "{B : Block} (hB : B ∈ stripSigs sc) (hBW : B.slot / n = W)"
+   ],
+   "conclusion": "B.keyIndex = rosterGen W",
+   "proof_sketch": "The NON-INDUCTIVE pinning theorem — lockstep_declares_rosterGen (:299) with the census swapped. Unpack hVal into hSigs (sigsOk, List.all_eq_true), hVK, hLock; hVC := (validChainK_sound hVK).1 = ⟨hSeq,hS,hPL,hDense⟩; hWdense := hDense hkD (W*n) (by omega) from the maturity witness D. by_contra hne. Set g := B.keyIndex. Show chainSlotsIn (stripSigs sc) (W*n) n ⊆ badSlotsIn rented (W*n) n ∪ (Finset.Ico (W*n) (W*n+n)).filter (fun s => Stolen (producerForSlot n s) g): for a chain slot s with block Bs, lockstep_const_gen gives Bs.keyIndex = g; if ¬rented s ∧ ¬Stolen (s%n) g then hP.unforgeable.unforgeable (schedCore0_of_lock hVal) hsbmem hRecent hver(rw sigOk) hrent' hstol' yields honestSigned … = some Bs and hP.declared forces g = rosterGen W — contradiction with hne (lines 400-417 of the old proof verbatim). Counting: the theft filter injects into (Finset.range n).filter (fun i => Stolen i g) under producerForSlot n (aligned_producer_inj + Nat.mod_lt), card ≤ T by hP.genBound g; rent ≤ R by hP.rentBound (W*n); quorum n ≤ windowCount = (chainSlotsIn …).card (chainSlotsIn_card hS) ≤ R + T ≤ maxByzantine n < quorum n (unfold maxByzantine quorum; omega). What is GONE relative to the old proof: the strong induction on W, the lagSched side condition hlow, the genesis base case (hHead, head_slot_min, genesis_gen), and the previous-window density argument. Every theft slot is charged to the single generation g, so genBound g closes it — exactly map gotcha (2).",
+   "reuses": [
+    {
+     "name": "lockstep_declares_rosterGen",
+     "path": "MoltPetit/Model/KeyStealingLockstep.lean",
+     "line": 299,
+     "how": "proof template (lines 383-463); the old theorem stays as is"
+    },
+    {
+     "name": "schedCore0_of_lock",
+     "path": "MoltPetit/Model/KeyStealingLockstep.lean",
+     "line": 154,
+     "how": "validity argument for the constant-0 surface"
+    },
+    {
+     "name": "SchedCoreUnforgeable",
+     "path": "MoltPetit/Model/KeyStealingScheduleCert.lean",
+     "line": 200,
+     "how": "the surface, instantiated at j := sb.block.keyIndex via sigOk"
+    },
+    {
+     "name": "lockstepOk_iff_pairwise",
+     "path": "MoltPetit/Model/KeyStealingLockstep.lean",
+     "line": 84,
+     "how": "re-proving lockstep_const_gen (same-window constancy) since lockstep_const :195 is private"
+    },
+    {
+     "name": "validChainK_sound",
+     "path": "MoltPetit/Model/KeyIndex.lean",
+     "line": 215,
+     "how": "ValidChain from the Bool validator"
+    },
+    {
+     "name": "sigOk / sigsOk",
+     "path": "MoltPetit/Model/Definitions.lean",
+     "line": 226,
+     "how": "verification at the DECLARED keyIndex"
+    }
+   ]
+  },
+  {
+   "name": "honestSlotsUniqueOn_lockstep",
+   "hypotheses": [
+    "CTX",
+    "(hn : 1 ≤ n)",
+    "(hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)",
+    "{sc sc' : SignedChain Sig} (hVal : validSignedChainLock n ops registry sc = true) (hVal' : validSignedChainLock n ops registry sc' = true)",
+    "(hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ) (hRecent' : ∃ t', (stripSigs sc').getLast? = some t' ∧ now ≤ t'.slot + Δ)",
+    "(W : Nat) (hMat : ∃ D ∈ stripSigs sc, W * n + n ≤ D.slot + 1) (hMat' : ∃ D' ∈ stripSigs sc', W * n + n ≤ D'.slot + 1)"
+   ],
+   "conclusion": "HonestSlotsUniqueOn (W * n) n (badLockAt n rosterGen rented Stolen) (chainUnionRecord sc sc')",
+   "proof_sketch": "intro s hsu hsun hbad X Y hX hY; simp only [badLockAt, not_or] at hbad gives ¬rented s and ¬Stolen (producerForSlot n s) (rosterGen (s/n)); s / n = W from W*n ≤ s < W*n+n (omega with Nat.div_add_mod, hn). rw [mem_chainUnionRecord] at hX hY: each of X, Y is in sc or sc' at slot s. For a block Z ∈ stripSigs sc at s: Z.keyIndex = rosterGen W by lockstep_window_declares_rosterGen hn hP hVal hRecent W hMat hZ (Z.slot/n = W); List.mem_map.mp gives sb; hver from sigsOk after rw [sigOk] (verifies at sb.block.keyIndex = rosterGen W); hP.unforgeable.unforgeable (schedCore0_of_lock hVal) hsb hRecent hver (¬rented) (¬Stolen … (rosterGen W), rewritten from hbad) gives honestSigned (producerForSlot n s) s = some Z. Same for sc' with hVal', hRecent', hMat'. Four cases (X, Y each from sc or sc'): both equal the one honestSigned value, so X = Y (Option.some.inj). Mirrors honestSlotsUnique_schedCore's structure (KeyStealingScheduleCert.lean:231) but at the pinned generation instead of the scheduled floor.",
+   "reuses": [
+    {
+     "name": "honestSlotsUnique_schedCore",
+     "path": "MoltPetit/Model/KeyStealingScheduleCert.lean",
+     "line": 231,
+     "how": "proof shape (cross-chain via the surface, no reconciliation induction)"
+    },
+    {
+     "name": "chainUnionRecord / mem_chainUnionRecord",
+     "path": "MoltPetit/Model/KeyStealingUnique.lean",
+     "line": 45,
+     "how": "the record under test and its membership unpacking"
+    },
+    {
+     "name": "lockstep_window_declares_rosterGen",
+     "path": "MoltPetit/Model/KeyStealingLockstepGen.lean",
+     "how": "pins both chains' blocks at s to rosterGen W (new, above)"
+    }
+   ]
+  },
+  {
+   "name": "lockstepGen_shared_prefix",
+   "hypotheses": [
+    "CTX",
+    "(hn : 1 ≤ n)",
+    "(hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)",
+    "{sc sc' : SignedChain Sig} (hVal : validSignedChainLock n ops registry sc = true) (hVal' : validSignedChainLock n ops registry sc' = true)",
+    "{sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip) (hTipS' : (stripSigs sc').getLast? = some sTip')",
+    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+    "(hle : sTip.slot ≤ sTip'.slot)",
+    "{W : Nat} (hWmat : W * n + n ≤ sTip.slot + 1)",
+    "{k : Nat} {B : Block} (hB : blockAt? (stripSigs sc) k = some B) (hBu : B.slot < W * n)"
+   ],
+   "conclusion": "∃ P : Block, blockAt? (stripSigs sc) k = some P ∧ blockAt? (stripSigs sc') k = some P",
+   "proof_sketch": "The sharp core (explicit window). hVc/hVc' : ValidChain via validChainK_sound after rw [validSignedChainLock, Bool.and_eq_true] (as keyrot_recent_tip_ancestor_agreement_horizon does for validSignedChainK'). hSig/hSig' : ∀ b ∈ stripSigs sc, b = G ∨ SignedDeclared n ops registry b := fun b hb => Or.inr (signedDeclared_of_mem_lock hVal hb). hId := idInjective_keyrot hP.hashInj hSig hSig'. Maturity witnesses: sTip ∈ stripSigs sc (List.mem_of_getElem? on blockAt_getLast hTipS) with hWmat; sTip' with hWmat and hle. hUniq := honestSlotsUniqueOn_lockstep hn hP hVal hVal' ⟨sTip,hTipS,hRecent⟩ ⟨sTip',hTipS',hRecent'⟩ W ⟨sTip,_,hWmat⟩ ⟨sTip',_,by omega⟩. hBudget := hP.alignedBudget W (= lockstep_aligned_budget (by omega) hP.rentBound hP.genBound hP.budget_le W). exact window_shared_prefix hn hUniq hId hVc hVc' chainInRecord_left chainInRecord_right hTipS hTipS' hWmat (by omega) hBudget hB hBu. No hHead anywhere: genesis-free like the horizon forms.",
+   "reuses": [
+    {
+     "name": "sched_recent_tip_ancestor_agreement_horizon",
+     "path": "MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+     "line": 247,
+     "how": "composition template (hSig via Or.inr, hId via idInjective_keyrot, engine call)"
+    },
+    {
+     "name": "idInjective_keyrot / chainInRecord_left / chainInRecord_right",
+     "path": "MoltPetit/Model/KeyStealingUnique.lean",
+     "line": 71,
+     "how": "IdInjective over the union record from hashInj"
+    },
+    {
+     "name": "SignedDeclared",
+     "path": "MoltPetit/Model/KeyStealingCert.lean",
+     "line": 234,
+     "how": "hash-injectivity domain; signedDeclared_of_mem_lock is its lock-validator coverage lemma (new, mirrors KeyStealingSchedule.lean:88)"
+    },
+    {
+     "name": "window_shared_prefix",
+     "path": "MoltPetit/Model/KeyStealingWindowCore.lean",
+     "how": "the engine (new, above)"
+    }
+   ]
+  },
+  {
+   "name": "lockstepGen_recent_tip_ancestor_agreement",
+   "hypotheses": [
+    "CTX",
+    "(hn : 1 ≤ n)",
+    "(hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)",
+    "{sc sc' : SignedChain Sig} (hVal : validSignedChainLock n ops registry sc = true) (hVal' : validSignedChainLock n ops registry sc' = true)",
+    "{sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip) (hTipS' : (stripSigs sc').getLast? = some sTip')",
+    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+    "(hLong : 2 * n < (stripSigs sc).length) (hLong' : 2 * n < (stripSigs sc').length)",
+    "(hTipHeight : sTip.height = sTip'.height)",
+    "{B B' : Block} (hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - 2 * n) = some B) (hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - 2 * n) = some B')"
+   ],
+   "conclusion": "B = B'",
+   "proof_sketch": "Headline, depth 2n, NO hHead/hHead'. hTipIdx from hVc.1 (blockAt_getLast hTipS) turns equal heights into equal lengths (rw [← hLenEq] at hB'). rcases Nat.le_total sTip.slot sTip'.slot; in the lower-tip branch set W := (sTip.slot + 1) / n − 1. Facts: sTip.slot ≥ 2n from hLong via chain_length_le_tip_slot (slot_gap_of_position_gap_win at p := 0), so (sTip.slot+1)/n ≥ 2 and hWmat : W*n + n ≤ sTip.slot + 1 (Nat.div_mul_le_self); hBu : B.slot < W*n from slot_gap_of_position_gap_win hS (2n) k hB hTipAt giving B.slot + 2n ≤ sTip.slot and W*n ≥ sTip.slot + 2 − 2n (from Nat.div_add_mod with (sTip.slot+1) % n < n). Then lockstepGen_shared_prefix … hle hWmat hB hBu, rw hB/hB', Option.some.inj. The swapped branch is symmetric (chains, tips, hVal swapped; k the same index because the lengths are equal). The sharp variant (depth n + (sTip.slot+1) % n) is the same proof with the weaker hkdeep and is available from lockstepGen_shared_prefix directly.",
+   "reuses": [
+    {
+     "name": "lockstep_recent_tip_ancestor_agreement",
+     "path": "MoltPetit/Model/KeyStealingLockstep.lean",
+     "line": 555,
+     "how": "statement template (this is its 2n, genesis-free, per-generation twin; old one untouched)"
+    },
+    {
+     "name": "sched_recent_tip_ancestor_agreement_horizon",
+     "path": "MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+     "line": 247,
+     "how": "the tip-order case split and index alignment (lines 279-303)"
+    },
+    {
+     "name": "slot_gap_of_position_gap (private)",
+     "path": "MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+     "line": 116,
+     "how": "copied as slot_gap_of_position_gap_win for the 2n slot gap"
+    }
+   ]
+  },
+  {
+   "name": "lockstepGen_recent_tip_ancestor_mem",
+   "hypotheses": [
+    "CTX",
+    "(hn : 1 ≤ n)",
+    "(hP : LockstepPackageGen …)",
+    "{sc sc'} (hVal) (hVal')",
+    "{sTip sTip'} (hTipS) (hTipS')",
+    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+    "(hLong : 2 * n < (stripSigs sc).length)",
+    "(hLe : sTip.height ≤ sTip'.height)",
+    "{B : Block} (hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - 2 * n) = some B)"
+   ],
+   "conclusion": "∃ i', i' + 2 * n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B",
+   "proof_sketch": "Witness i' := (stripSigs sc).length − 1 − 2n; i' + 2n < length' from hLe + SequentialHeights (hTipIdx, hTipIdx'); then the same two-branch argument as the agreement form with k := i' (mirror of sched_recent_tip_ancestor_mem_horizon, KeyStealingScheduleHorizon.lean:308). In the branch where sc' has the lower tip, W is computed from sTip'.slot and hBu needs B.slot < W'*n: B.slot + 2n ≤ sTip.slot ≤ … no — careful: in that branch the lower chain is sc', and window_shared_prefix is applied with c := stripSigs sc' and the block at k in sc'; obtain its block at k (exists since i' + 2n < length'), it sits 2n positions below sTip', so the same gap bound applies; conclude via the returned P and hB.",
+   "reuses": [
+    {
+     "name": "sched_recent_tip_ancestor_mem_horizon",
+     "path": "MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+     "line": 308,
+     "how": "proof template for the membership form"
+    },
+    {
+     "name": "lockstep_recent_tip_ancestor_mem",
+     "path": "MoltPetit/Model/KeyStealingLockstep.lean",
+     "line": 586,
+     "how": "statement template"
+    }
+   ]
+  },
+  {
+   "name": "lockstepGen_recent_genesis_agreement",
+   "hypotheses": [
+    "CTX",
+    "(hn : 1 ≤ n)",
+    "(hP : LockstepPackageGen …)",
+    "{sc sc'} (hVal) (hVal')",
+    "{sTip sTip'} (hTipS) (hTipS')",
+    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+    "(hLong : 2 * n < (stripSigs sc).length) (hLong' : 2 * n < (stripSigs sc').length)"
+   ],
+   "conclusion": "∃ P : Block, blockAt? (stripSigs sc) 0 = some P ∧ blockAt? (stripSigs sc') 0 = some P",
+   "proof_sketch": "k := 0 in lockstepGen_shared_prefix (either branch of Nat.le_total): the block at 0 exists (length > 0), and its slot is below W*n since 0 + 2n ≤ tip.slot gap. Mirrors sched_recent_genesis_agreement_horizon (:365). Makes explicit that the new mode-3 statements assume NO shared genesis — genesis agreement is a conclusion — which the paper's Theorem 5 currently requires as a hypothesis (hHead/hHead').",
+   "reuses": [
+    {
+     "name": "sched_recent_genesis_agreement_horizon",
+     "path": "MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+     "line": 365,
+     "how": "statement and proof template"
+    }
+   ]
+  },
+  {
+   "name": "exposedBound_not_of_genBound",
+   "hypotheses": [
+    "(none — an existence statement)"
+   ],
+   "conclusion": "∃ (n T : Nat) (rosterGen : Nat → Nat) (Stolen : Nat → Nat → Prop), (∀ j, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T) ∧ ¬ (∀ u, (exposedProducersSched n (lagSched n rosterGen) Stolen u).card ≤ T)",
+   "proof_sketch": "The machine-checked answer to 'is a pure budget-transport lemma achievable?': NO. Witness n := 2, T := 1, rosterGen := fun _ => 0, Stolen i j := (i = j). Per-generation census of any j is ⊆ {j} so card ≤ 1. At u := 0, lagSched = 0 everywhere, theftSched 2 _ Stolen s = ∃ j ≥ 0, s % 2 = j holds for s = 0 (j = 0) and s = 1 (j = 1), so the image under producerForSlot 2 is {0, 1}, card 2 > 1. Proof by unfolding exposedProducersSched/theftSched/lagSched and `decide`-free Finset reasoning (Finset.card_le_one / Finset.card_pair / Finset.mem_image); ~40 lines, fiddly but standard; guarded like sched_backdate_consistent (KeyStealingScheduleTimed.lean:284) as a consistency artifact. Optional: if it fights, keep the prose in the module doc and drop it.",
+   "reuses": [
+    {
+     "name": "exposedProducersSched / theftSched",
+     "path": "MoltPetit/Model/KeyStealingScheduleBudget.lean",
+     "line": 117,
+     "how": "the cumulative census being refuted as a consequence"
+    },
+    {
+     "name": "PackageB docstring counterexample",
+     "path": "MoltPetit/Model/KeyStealingScheduleBudget.lean",
+     "line": 323,
+     "how": "the prose argument this formalizes"
+    },
+    {
+     "name": "sched_backdate_consistent",
+     "path": "MoltPetit/Model/KeyStealingScheduleTimed.lean",
+     "line": 284,
+     "how": "precedent for consistency witnesses in the codebase"
+    }
+   ]
+  },
+  {
+   "name": "theft_in_era_lock",
+   "hypotheses": [
+    "{n : Nat} {rosterGen : Nat → Nat} {stolenAt : Nat → Nat → Nat → Prop}",
+    "(hA3 : NoPrematureTheftLock n rosterGen stolenAt) (hEr : ErasureTimedLock n rosterGen stolenAt)",
+    "{i j r : Nat} (h : stolenAt i j r)"
+   ],
+   "conclusion": "rosterGen (r / n) = j",
+   "proof_sketch": "Nat.le_antisymm (hEr i j r h) (hA3 i j r h). Axiom-free (guard prints 'does not depend on any axioms'). Twin of theft_during_era_of_erasure (:107): every theft is of the generation the roster is at in the theft's grid window — 'per-generation compromise freezes' in real time, for the free cadence. Corollary stolen_generation_was_live : stolenOf stolenAt i j → ∃ W, rosterGen W = j (skipped generations have empty census).",
+   "reuses": [
+    {
+     "name": "theft_during_era_of_erasure",
+     "path": "MoltPetit/Model/KeyStealingScheduleTimed.lean",
+     "line": 107,
+     "how": "the mode-2 twin"
+    },
+    {
+     "name": "stolenOf",
+     "path": "MoltPetit/Model/KeyStealingScheduleTimed.lean",
+     "line": 90,
+     "how": "reused as the timeless projection (not redefined)"
+    }
+   ]
+  },
+  {
+   "name": "noPrematureTheftLock_iff_flagship (and erasureTimedLock_iff_flagship)",
+   "hypotheses": [
+    "{n : Nat} (hn : 0 < n) {stolenAt : Nat → Nat → Nat → Prop}"
+   ],
+   "conclusion": "NoPrematureTheftLock n (fun W => W) stolenAt ↔ NoPrematureTheft n stolenAt   (resp. ErasureTimedLock n (fun W => W) stolenAt ↔ ErasureTimed n stolenAt)",
+   "proof_sketch": "Pointwise: j ≤ r / n ↔ j * n ≤ r is Nat.le_div_iff_mul_le hn; r / n ≤ j ↔ r < (j+1) * n is Nat.lt_succ_iff.symm composed with Nat.div_lt_iff_lt_mul hn. Documents that 'the roster's switch times in place of j*R' is a faithful generalisation: mode 2's flagship with R = n is the lockstep counter that advances every grid window.",
+   "reuses": [
+    {
+     "name": "NoPrematureTheft / ErasureTimed",
+     "path": "MoltPetit/Model/KeyStealingScheduleTimed.lean",
+     "line": 96,
+     "how": "the mode-2 definitions being recovered as the identity-counter instance"
+    }
+   ]
+  },
+  {
+   "name": "genBound_of_preRetirementBound",
+   "hypotheses": [
+    "{n : Nat} {rosterGen : Nat → Nat} {stolenAt : Nat → Nat → Nat → Prop} {T : Nat}",
+    "(hEr : ErasureTimedLock n rosterGen stolenAt)",
+    "(hLive : ∀ j, (preRetirementTheftProducers n rosterGen stolenAt j).card ≤ T)"
+   ],
+   "conclusion": "∀ j : Nat, ((Finset.range n).filter (fun i => stolenOf stolenAt i j)).card ≤ T",
+   "proof_sketch": "THE TIMED MODE-3 I3 — the theorem in which erasure carries weight. intro j; le_trans (Finset.card_le_card ?_) (hLive j); for i in the timeless filter: Finset.mem_filter gives i < n and ⟨r, hr⟩ : stolenOf stolenAt i j; hEr i j r hr gives rosterGen (r/n) ≤ j; so i ∈ preRetirementTheftProducers … j. Mirror of exposedSched_subset_recentTheft + horizon_budget_of_timed (:156/:187) with the roles of A3 and erasure exchanged: there A3 bounded thefts from below in time (backward locality), here erasure bounds them from above (no post-retirement theft), and the timeless per-generation census the safety engine consumes is derived rather than assumed.",
+   "reuses": [
+    {
+     "name": "horizon_budget_of_timed / exposedSched_subset_recentTheft",
+     "path": "MoltPetit/Model/KeyStealingScheduleTimed.lean",
+     "line": 187,
+     "how": "derivation template (subset ⇒ card_le_card ⇒ rate)"
+    },
+    {
+     "name": "recentTheftProducers",
+     "path": "MoltPetit/Model/KeyStealingScheduleTimed.lean",
+     "line": 149,
+     "how": "shape template for preRetirementTheftProducers"
+    }
+   ]
+  },
+  {
+   "name": "LockstepPackageTimed.toGen",
+   "hypotheses": [
+    "CTX with {stolenAt : Nat → Nat → Nat → Prop} in place of Stolen",
+    "(hP : LockstepPackageTimed n rosterGen ops registry rented stolenAt honestSigned now Δ G R T)"
+   ],
+   "conclusion": "LockstepPackageGen n rosterGen ops registry rented (stolenOf stolenAt) honestSigned now Δ G R T",
+   "proof_sketch": "`where` structure: unforgeable/declared/hashInj/rentBound/budget_le copied; genBound := genBound_of_preRetirementBound hP.notAfter hP.preRetirementTheftBound. Then lockstepTimed_recent_tip_ancestor_agreement := lockstepGen_recent_tip_ancestor_agreement hn hP.toGen … and lockstepTimed_recent_tip_ancestor_mem likewise — the end-to-end 'PackageBTimed ⊢ safety' twin for mode 3 (packageBTimed_recent_tip_ancestor_agreement, :394), except that here notAfter is on the proof path.",
+   "reuses": [
+    {
+     "name": "PackageBTimed / packageBTimed_recent_tip_ancestor_agreement",
+     "path": "MoltPetit/Model/KeyStealingScheduleTimed.lean",
+     "line": 383,
+     "how": "statement/composition template"
+    },
+    {
+     "name": "packageATimed_horizon_budget",
+     "path": "MoltPetit/Model/KeyStealingScheduleTimed.lean",
+     "line": 326,
+     "how": "the 'package delivers the budget' idiom"
+    }
+   ]
+  },
+  {
+   "name": "Molt.lockstep_client_safety_gen (paper-side wrapper, Molt/LockstepGen.lean)",
+   "hypotheses": [
+    "same as lockstepGen_recent_tip_ancestor_agreement but with hVal/hVal' over Molt.validSignedChainLock and honestSigned : SigningLog"
+   ],
+   "conclusion": "B = B'",
+   "proof_sketch": "rw [validSignedChainLock_eq_core] at hVal hVal'; exact MoltPetit.Model.lockstepGen_recent_tip_ancestor_agreement hn hP hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB' — the exact idiom of Molt.lockstep_client_safety (Molt/Rotation.lean:406). Ditto lockstep_client_safety_timed via LockstepPackageTimed. Guarded in the new Molt/AxiomsLockstepGen.lean. Only needed for the later paper pass; can be deferred to that pass if the owner prefers (open question).",
+   "reuses": [
+    {
+     "name": "validSignedChainLock_eq_core",
+     "path": "Molt/Rotation.lean",
+     "line": 217,
+     "how": "bridge"
+    },
+    {
+     "name": "lockstep_client_safety",
+     "path": "Molt/Rotation.lean",
+     "line": 406,
+     "how": "wrapper idiom"
+    },
+    {
+     "name": "Molt.LockstepPackage abbrev",
+     "path": "Molt/Rotation.lean",
+     "line": 164,
+     "how": "abbrev re-export idiom for Prop-structures"
+    }
+   ]
+  }
+ ],
+ "touches_existing": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
+   "change": "Add four import lines after `import MoltPetit.Model.KeyStealingScheduleTimed`: `import MoltPetit.Model.KeyStealingWindowCore`, `import MoltPetit.Model.KeyStealingLockstepGen`, `import MoltPetit.Model.KeyStealingLockstepTimed`, `import MoltPetit.Results.AxiomsLockstepGen` (before KeyRotationTests / Results.Axioms so `lake build MoltPetit` elaborates the new modules and their guards).",
+   "why_unavoidable": "lean_lib MoltPetit builds only modules reachable from its root; without the import the new files and their #guard_msgs are not checked by a bare `lake build`. This is one of the two permitted touch kinds (docs/rollout/ROLLOUT_NOTES.md ground rules)."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt.lean",
+   "change": "Add `import Molt.LockstepGen` and `import Molt.AxiomsLockstepGen` (only if the paper-side wrapper is built in this item; otherwise deferred to the paper pass).",
+   "why_unavoidable": "Same reachability reason for lean_lib Molt. Permitted touch kind."
+  }
+ ],
+ "depends_on": [
+  {
+   "key": "W1",
+   "why": "No dependency. W1 (mode-3 certificate level) builds on the lagSched transport lockstep_validSignedChainSched + GroundedCertSched at schedule lagSched n rosterGen + PackageA's cumulative budget; W5 uses none of that and modifies nothing W1 consumes. Build order between W1 and W5 is free. Listed only to record that the question was checked.",
+   "hard": false
+  },
+  {
+   "key": "W3a",
+   "why": "No dependency; parallel shape only. W3a's mode-1 timed layer and W5's mode-3 timed layer both mirror KeyStealingScheduleTimed.lean; neither imports the other. If W3a lands first, W5 should reuse its naming conventions for stolenAt-layer definitions (e.g. a `*Lock` vs `*Keyrot` suffix scheme) for consistency, nothing more.",
+   "hard": false
+  }
+ ],
+ "enables": [
+  {
+   "key": "W1",
+   "why": "A future W1×W5 join (lockstep certificate at the per-generation census, ROTATION_MODES X-2 + X-4 together) would compose W1's history reconstruction with W5's lockstepGen_shared_prefix. For that join to be a one-liner, W1's lockstep certificate history should reconstruct EXACTLY `validSignedChainLock n ops registry sc = true` for a materialized sc (via exists_signedChain_of_covered, KeyStealingCert.lean:247) plus the tip and recency in the split form now ≤ sTip.slot + Δ — the hypotheses W5's core theorem takes (no hHead, full chain, explicit window W). W5 does not change any hypothesis W1's own cert theorem consumes."
+  },
+  {
+   "key": "W6",
+   "why": "W6's mode-3 no-back-dating derivation needs a mint-side twin of NoPrematureTheftLock (a `NoPrematureMintLock n rosterGen log := ∀ r, ∀ B ∈ log r, B.keyIndex ≤ rosterGen (r / n)`) plus the pinning theorem; W5 fixes the vocabulary `j ≤ rosterGen (r / n)` and provides the non-inductive per-window pinning lockstep_window_declares_rosterGen (which needs no genesis, unlike the old one) as the pin W6 would compose with. W6 should note that with a non-strictly-increasing counter the forward-stamp bound is NOT one grid window (a stale counter gives no bound) — the derivation needs 'switch at least every K windows' or similar."
+  },
+  {
+   "key": "W4",
+   "why": "W5's per-sync agreement statement is at depth 2n (and genesis-free) rather than n. If W4 abstracts induction-over-syncs over a per-sync agreement lemma, it should parametrize the confirmation depth (d := n for modes 1-2, d := 2n for the mode-3 per-generation form) rather than hard-code n, or W5's headline cannot be plugged in later."
+  },
+  {
+   "key": "W7",
+   "why": "window_shared_prefix (validator- and mode-agnostic, arbitrary aligned window, uniqueness only on that window) is a reusable engine for any multi-chain argument that wants to run the pigeonhole at a chosen window rather than the trailing one."
+  }
+ ],
+ "paper_changes": [
+  {
+   "location": "paper/molt.tex §2, mode-3 paragraph, phrase `erasure's per-generation credit against the budget is designed but not yet formalized --- today's theorems count thefts across all generations within one budget, with or without erasure` (line ~214)",
+   "change": "Replace with: the per-generation budget is machine-checked (`LockstepPackageGen`, `lockstep\\_client\\_safety\\_gen`): each generation's stolen census is bounded separately, erasure carries the count (`LockstepPackageTimed`, field `notAfter`, derivation `genBound\\_of\\_preRetirementBound`), at confirmation depth $2n$ instead of $n$; keep 'proved for full chains' until W1 lands (AN/9b)."
+  },
+  {
+   "location": "paper/molt.tex §6.3 Theorem 5 environment (`\\begin{theorem}[Lockstep safety; Lean lockstep\\_client\\_safety]`, line ~1092) and the paragraph `The route is a machine-checked \\emph{pinning} theorem` (~1104)",
+   "change": "Add Theorem 5$'$ (Lean `lockstep\\_client\\_safety\\_gen`): under the per-generation package (declared, constant-0 core surface, hash injectivity, rent rate, per-generation theft census $T$, $\\rho + T \\le \\fmax$) two accepted lockstep chains with recent tips agree on the block $2n$ below each tip — with NO shared-genesis hypothesis (genesis agreement is a conclusion, `lockstepGen\\_recent\\_genesis\\_agreement`). Explain the route: a non-inductive pinning theorem (`lockstep\\_window\\_declares\\_rosterGen`) pins both chains' last matured grid window to one generation, so the pigeonhole (`window\\_shared\\_prefix`) runs on a window whose corruption predicate is at a single generation; state that this is what costs $2n$ (the pigeonhole cannot use the unmatured tip window) and that Theorem 5 ($n$-deep, cumulative census) remains available."
+  },
+  {
+   "location": "paper/molt.tex §6.3 `\\emph{Operator duties.}` paragraph, phrase `and \\emph{real erasure} of retired key material at each switch (its budget credit: honest scope below)` (~1117)",
+   "change": "Replace the parenthetical with the credit itself: under the timed package erasure is the hypothesis that turns the while-live census into the all-time per-generation census (`ErasureTimedLock`, consumed by `genBound\\_of\\_preRetirementBound`); a deployment budgets $T$ seats lost PER GENERATION while it is live, not $T$ across all generations."
+  },
+  {
+   "location": "paper/molt.tex §6.3 `A realistic mode-3 deployment, end to end`, the sentence `\\emph{the same $\\rho$/$T$ budget as mode 2's global form, assessed at the one-grid-window-lagged counter}` (~1133) and `Conclusion, machine-checked (...)` (~1137)",
+   "change": "Offer the alternative budget: rent $\\le \\rho$ per window and, for every generation $j$, at most $T$ seats whose generation-$j$ key is stolen while $j$ is live; cite `lockstep\\_client\\_safety\\_timed`; conclusion then reads 'agree on the block $2n$ below each tip' and 'no shared genesis needed'."
+  },
+  {
+   "location": "paper/molt.tex §6.3 `The modes at a glance` table (~1150), row `3 lockstep & roster counter, no-mixing & genesis + clock & yes & no`",
+   "change": "Erasure column entry becomes `yes (credited)` and, if a depth column is added, mode 3 shows `$n$ (cumulative) / $2n$ (per-generation)`; the sentence `Modes 1--3 share the $\\rho + T \\le \\fmax$ budget` gains 'in mode 3 the $T$ may be read per generation'."
+  },
+  {
+   "location": "paper/molt.tex §6.3 `\\paragraph{Honest scope.}` second bound, phrase `Second, mode 3's budget still counts thefts across all generations together, exactly as mode 2's does --- letting erasure cap each generation's count separately is designed but not yet formalized.` (~1176)",
+   "change": "Delete the second bound; replace with the honest residue: the per-generation form costs confirmation depth $2n$ (exactly $n + ((t{+}1) \\bmod n)$, where $t$ is the lower tip slot), and the per-generation census, like all censuses here, is future-inclusive within a generation's live span (X-3 seam unchanged). Renumber 'Third' to 'Second'."
+  },
+  {
+   "location": "paper/molt.tex §Limitations / named seams (phrase `assumed, not derived from the timed model`, ~1418) and the sentence `hypothesis outright at the price of a schedule or an erasure discipline`",
+   "change": "Mention that the erasure discipline is now a load-bearing formal field in mode 3 (contrast mode 2, where it is documentary); no change to the recency seam."
+  },
+  {
+   "location": "LOCKSTEP_DESIGN.md:3-9 status line and :135-178 audit, :198-224 recommendation (repo doc, not the paper)",
+   "change": "Status becomes 'D1'-thin AND D1'-full IMPLEMENTED'; audit obstruction 2 gets a 'resolved by window_shared_prefix at depth 2n' note; record that the pinning theorem became non-inductive and genesis-free once the census was per-generation, and that pure budget transport is refuted by exposedBound_not_of_genBound."
+  },
+  {
+   "location": "ROTATION_MODES.md:197-203 (mode-3 honest scope) and :228 (X-2 row), KEY_ROTATION_SOUND.md:753-761 (erasure_freeze weight)",
+   "change": "X-2 moves from 📐 to ✅ with the Lean anchors; the erasure_freeze 'consumed by no proof' remark gains 'except through LockstepPackageGen.genBound, where it is the budget'."
+  }
+ ],
+ "size_estimate_lines": 1050,
+ "effort_sessions": "3-4 sessions: (1) KeyStealingWindowCore + the three re-proved helpers + lockstep_window_declares_rosterGen (the pinning proof is a 130-line adaptation); (2) honestSlotsUniqueOn_lockstep, lockstepGen_shared_prefix, the three headlines with the 2n arithmetic, guard file, MoltPetit.lean import; (3) KeyStealingLockstepTimed + LockstepPackage.toGen + the consistency witness + Molt wrapper; a half-session of slack for Finset/omega friction and guard-string probing.",
+ "risks": [
+  {
+   "risk": "The 2n index arithmetic (W := (sTip.slot+1)/n − 1 with Nat subtraction and division; W*n ≥ sTip.slot + 2 − 2n; B.slot + 2n ≤ sTip.slot) is omega-hostile because of the division.",
+   "mitigation": "Introduce q := (sTip.slot+1)/n and ρ := (sTip.slot+1)%n via Nat.div_add_mod and Nat.mod_lt once, then everything is linear; state the core with an explicit W and hBu so the headline is the only place the division appears. Establish sTip.slot ≥ 2n first (chain_length_le_tip_slot) so q ≥ 2 and W = q − 1 is well-behaved."
+  },
+  {
+   "risk": "The three private helpers (lockstep_rel, lockstep_const, window_producer_inj') must be re-proved; drift from the originals could cost time.",
+   "mitigation": "Copy the bodies from KeyStealingLockstep.lean:172-232 verbatim under new names (private declarations are module-mangled, no clash); aligned_producer_inj is simpler than the ModEq form since both slots have s / n = W."
+  },
+  {
+   "risk": "Axiom-guard strings: timed arithmetic lemmas print 'does not depend on any axioms', Finset-based ones print the three; long names wrap the list.",
+   "mitigation": "Probe each with a bare #print axioms before writing the guard (Axioms.lean:512 precedent), use `#guard_msgs (whitespace := lax) in` for long names (Axioms.lean:480)."
+  },
+  {
+   "risk": "The consistency witness exposedBound_not_of_genBound needs card computations on noncomputable classical Finsets (no decide).",
+   "mitigation": "Mark optional; prove via Finset.card_le_one.mpr for the ≤ 1 side and exhibit {0,1} ⊆ image with Finset.card_pair for the > 1 side; if it exceeds an hour, drop it and keep the prose (the PackageB docstring already states the counterexample)."
+  },
+  {
+   "risk": "Narrative mismatch: the new package drops `mono` and `genesis_gen` (not consumed), so the paper's Theorem 5 package description ('the roster tracks one monotone counter; the genesis declares the counter's initial value') does not describe Theorem 5'.",
+   "mitigation": "Documented in the package docstring and flagged as an owner question; adding the two fields back as documentary fields is a 2-line change if the owner wants parity."
+  },
+  {
+   "risk": "A reviewer may ask why the sliding-window (depth-n) form cannot be had with a per-generation census.",
+   "mitigation": "Module doc states the reason (two chains may declare different generations in the unmatured tip window, so the straddling window's predicate is chain-dependent; the best chain-independent bound there is R + 2T at best), and the sharp core theorem shows exactly which window is consulted."
+  },
+  {
+   "risk": "LockstepPackageGen.unforgeable is still the constant-0 core surface (audit obstruction 3 unchanged) — someone may expect the per-generation route to also sharpen the crypto surface.",
+   "mitigation": "State explicitly in docs that W5 changes the budget, not the surface; the surface question is X-3 / W3b territory."
+  }
+ ],
+ "alternatives_rejected": [
+  {
+   "alt": "Pure budget-transport lemma: per-generation rates + (timed) erasure ⇒ LockstepPackage.exposedBound at lagSched, leaving lockstep_recent_tip_ancestor_agreement as the headline.",
+   "why": "False. exposedProducersSched at lagSched over any window is the union over ALL generations j ≥ rosterGen(W−1) of the j-slices; per-generation rates bound each slice by T, not the union (counterexample n=2, T=1, Stolen i j := i=j; PackageB docstring:323-328). Timed erasure does not help: it confines each theft to its generation's live span but the union over future generations remains. Hence the safety proof must change (new engine, new pinning, new headlines) — additively."
+  },
+  {
+   "alt": "Keep depth n by running the pigeonhole at the sliding trailing window with a per-generation predicate on each of the two straddled grid windows.",
+   "why": "The tip grid window is unmatured, so the two chains may declare different generations g ≠ g' there (each below quorum); the corruption predicate becomes chain-dependent or the census pays R + 2T (or 3T) — the D1 factor-2 wrinkle the design wanted to remove. The aligned route pays 2n depth instead of a factor in T; the owner chose D1'-full's shape (LOCKSTEP_DESIGN:214-218)."
+  },
+  {
+   "alt": "D1 option (b): a relaxed agreement engine that needs only bad-count < quorum (using quorum > 2·maxByzantine) to absorb R + 2T.",
+   "why": "Does not remove the chain-dependence of the tip window's predicate, and still counts two generations; it is a factor-recovery trick for the sliding window, orthogonal to (and weaker than) moving the pigeonhole inside the pinned region."
+  },
+  {
+   "alt": "Generalize horizon_shared_prefix in place (add a window parameter to the existing theorem) and re-route the existing callers.",
+   "why": "Modifies an existing theorem and its callers — forbidden. The additive copy costs ~120 lines including the two private helpers, and an optional formal reduction shows the old lemma is the u := tip.slot+1−n instance."
+  },
+  {
+   "alt": "Express the switch times as an explicit function switchAt rosterGen j := Nat.find (∃ W, j ≤ rosterGen W) and state A3/B2 as j's switch time ≤ r < (j+1)'s switch time (literal 'j*R replaced by switch time').",
+   "why": "Nat.find needs an existence proof, which fails for generations the counter never reaches (bounded rosterGen); phrasing A3/B2 pointwise against rosterGen (r / n) is total, equivalent for reached generations, and reduces to the flagship at rosterGen := id, R := n (the two _iff_flagship lemmas)."
+  },
+  {
+   "alt": "Define the timed census as the exact-era census (∃ r, rosterGen (r/n) = j ∧ stolenAt i j r) and consume both A3 and erasure in the derivation.",
+   "why": "Muddies the 'erasure is load-bearing' claim (A3 would be equally load-bearing). The pre-retirement census (rosterGen (r/n) ≤ j) needs erasure alone, the exact mirror of mode 2 where A3 alone is consumed; notBefore stays as a documentary field consumed by theft_in_era_lock, as notAfter is in mode 2."
+  },
+  {
+   "alt": "Horizon-scope the rent rate (∀ u, H ≤ u → …) with hH : H + 2n ≤ sTip.slot + 1, mode-2-timed style.",
+   "why": "Deferred: the engine consumes one window, so the H-guarded form is a trivial follow-up package; adding H now would diverge the field shape from LockstepPackage.rentBound and enlarge the item without changing what is proved. Noted as a follow-up, not a loop."
+  },
+  {
+   "alt": "Keep `mono` and `genesis_gen` in LockstepPackageGen for parity with LockstepPackage.",
+   "why": "Neither is consumed on the new route (non-inductive, genesis-free pinning); carrying unconsumed fields contradicts the codebase's honest-accounting habit (map notes that mono is already consumed by nothing). Left to the owner as a question since the paper's Theorem 5 prose lists them."
+  }
+ ],
+ "open_questions_for_owner": [
+  "Depth statement: is the clean `2 * n` headline acceptable, or do you want the sharp `n + (sTip.slot + 1) % n` form promoted to the headline (it is what the core theorem lockstepGen_shared_prefix actually delivers; 2n−1 is the exact worst case)?",
+  "Package naming: `LockstepPackageGen` (this design) vs the design note's `PackageC` (LOCKSTEP_DESIGN H3) — which name should the paper cite?",
+  "Drop `mono` and `genesis_gen` from the per-generation package (they are not consumed by the new route), or keep them as documentary fields so Theorem 5' reads like Theorem 5's package in the paper?",
+  "Is the pre-retirement census (`stolenAt i j r ∧ rosterGen (r / n) ≤ j`, erasure alone load-bearing) the rate a deployment would actually assert, or do you prefer the exact-era census (both A3 and erasure consumed)?",
+  "Should the Molt-side wrapper (`Molt.lockstep_client_safety_gen`, `Molt/LockstepGen.lean` + `Molt/AxiomsLockstepGen.lean`) be part of W5 or of the later paper pass? It is ~110 lines and purely mechanical.",
+  "Do you want the machine-checked non-derivability witness `exposedBound_not_of_genBound` (pure budget transport is impossible) included, or is the prose counterexample in the PackageB docstring enough?",
+  "Should the new mode-3 statements' genesis-freedom (genesis agreement as a conclusion) be surfaced in the paper as a strengthening over Theorem 5, or kept quiet to avoid re-auditing the abstract's 'anchor-free' claims?"
+ ],
+ "files_read": [
+  "/etheron-pod/rollout-work/designs-partial/W5.md",
+  "/etheron-pod/rollout-work/designs-partial/W1.md",
+  "/etheron-pod/rollout-work/designs-partial/W3a.md",
+  "/etheron-pod/rollout-work/maps/mode3-lockstep.md",
+  "/etheron-pod/rollout-work/maps/mode2-horizon-timed.md",
+  "/etheron-pod/rollout-work/maps/mode2-cert-budget.md (grep of GroundedCertSched / reuse_notes sections)",
+  "/etheron-pod/rollout-work/maps/design-docs.md (grep of §10 / X-2 / lockstep / erasure entries)",
+  "/etheron-pod/mini-consensus-lean/LOCKSTEP_DESIGN.md (lines 120-251)",
+  "/etheron-pod/mini-consensus-lean/docs/rollout/ROLLOUT_NOTES.md",
+  "/etheron-pod/mini-consensus-lean/CLAUDE.md",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingLockstep.lean (full)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleHorizon.lean (lines 60-365)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleTimed.lean (lines 80-424)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleBudget.lean (lines 95-215, 300-400)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingSchedule.lean (lines 88-160)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleCert.lean (lines 56-90, 195-260)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean (lines 40-85)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean (lines 225-250)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingBudget.lean (lines 45-60)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Definitions.lean (lines 76-100, 221-235, 455-530, 650-662)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Model.lean (lines 30-100)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Safety.lean (lines 20-60, 180-215)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Soundness.lean (blockAt_getLast, lines 97-103)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Results/Axioms.lean (lines 1-30, 500-520, 555-585)",
+  "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
+  "/etheron-pod/mini-consensus-lean/Molt.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Axioms.lean (lines 1-20 + lockstep guards)",
+  "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean (lines 1-12, 125-170, 380-420)",
+  "/etheron-pod/mini-consensus-lean/lakefile.toml",
+  "/etheron-pod/mini-consensus-lean/paper2/molt.tex (lines 200-222, 1078-1185, grep of lockstep/erasure/2n)"
+ ]
+}
