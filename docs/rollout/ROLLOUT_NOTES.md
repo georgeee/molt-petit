@@ -50,6 +50,47 @@ Also carried from the annotation round (not Lean-gated, George's call):
   header and the agent memory for the derivation-based PDF build).
 - `paper/molt.pdf` on disk is the pre-annotation build.
 
+## 1b. Answers to the question-annotations (2026-09-04, not yet in the paper)
+
+These annotations asked questions rather than requesting edits. The answers were
+given to George in chat; recorded here so they are not re-derived.
+
+**AN/23 — "would it follow from rho+T < f for F=n?"** Yes, and the paper already
+says so three paragraphs above where the question was asked: a deployment keeping
+rho+T within f on every window from genesis satisfies the hypothesis outright, and
+`client_refresh_rule` at `A :=` genesis recovers the lifetime statement exactly.
+`F_max = S - 4n` at `S = 5n` gives `F = n`, the sync rule. The point of the
+trailing form is that it demands strictly *less*. A one-clause cross-reference at
+the `F_max` formula would prevent the re-read (listed in the carried items below).
+
+**AN/21 — "carrying the anchored trailing-5n form to certificates: what will it
+buy us?"** Today the certified mode-1 theorem holds only under the global
+all-window budget, i.e. the lifetime assumption the paper argues no deployment can
+defend under key theft. So the constant-size client — the client the paper is
+written for — does not get the two-minute budget; only a full-chain client does.
+Closing it removes a gap between the headline claim and the certified form. This
+is work item **W2**, now designed.
+
+**AN/29 — "what would the theft-timing work buy; necessary or vain curiosity?"**
+Not vain, not necessary. It removes the retroactive census, which is the one thing
+forcing the n-slot cadence: with theft times a theft charges only windows at or
+after it, so the budget stops being a per-stretch total and becomes closer to a
+concurrency bound — far easier for an operator to attest — and `F_max` rises. It
+is the single highest-leverage relaxation available, and it is the same machinery
+as **W3a** (derivation layer) and **W3b** (non-retroactive census).
+
+**AN/27 — the VRF-derived-next-key idea.** George's own diagnosis is right and it
+is fatal: if `SK_{j+1} = KDF(SK_j, seed)` then a thief of `SK_j` owns every future
+generation, so rotation buys nothing and healing — which mode 1's entire budget
+rests on — disappears. A public seed does not help; the secret input is `SK_j`.
+The nearest workable neighbour is forward security (evolve, then erase `SK_j`),
+which fixes back-dating but not forward theft, and the paper already cites it in
+the long-range-residual paragraph. Capping forward theft requires that the cold
+root not be derivable from the live key — which is the current design. If the
+motivation is fewer cold-root ceremonies, the dial that actually moves is the era
+length R in mode 2. This is a design judgement, not a proved statement; it is not
+a paper change unless George wants it in Limitations.
+
 ## 2. Existing Lean touched
 
 Policy: none, except the two kinds of touch listed at the top. Log every one here.
@@ -63,6 +104,28 @@ Policy: none, except the two kinds of touch listed at the top. Log every one her
 | Date | Module | Headline names | Guard file | Status |
 |---|---|---|---|---|
 | — | — | — | — | — |
+
+## 3b. Provisional effort and ordering (NOT yet verified)
+
+The sequencing agent never ran, so this is the planner's provisional reading, not
+a checked result. Effort for W1/W2/W5 is each design's own estimate; the rest are
+rough. Nothing here should be treated as settled until a sequencing pass runs
+over the verified designs.
+
+| item | effort | note |
+|---|---|---|
+| W2 | 1-2 sessions | cheapest of the three designed; no dependencies; adds a generic-Signed anchored engine that W4 can also use |
+| W1 | 2-3 sessions | self-contained; consumes the lockstep package opaquely, so W5 does not invalidate it |
+| W4 | 1-2 sessions | abstract over the per-sync step, so it instantiates at both the full-chain and (later) certificate presentations |
+| W3a | 1-2 sessions | mirrors the mode-2 timed layer; the survey is salvaged |
+| W5 | 3-4 sessions | the deep one (the D1-prime-full census); do after W1 |
+| W6 | text-only, or 1-2 sessions | a text-only variant exists and may be the right call |
+| W3b | 4-6 sessions | subsumes W3a's relaxation; never before W3a |
+| W7 | 4-6 sessions | lowest priority; buys a liveness hypothesis discharge, not safety |
+
+Two loop risks the designs flag and a sequencer must settle: who owns the shared
+timed structure carrying theft times (W3a vs W5 vs W6), and whether W3b's surface
+change would force any W3a result to be restated.
 
 ## 4. Recovery record
 
