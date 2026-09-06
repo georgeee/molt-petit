@@ -109,4 +109,16 @@ Lens attribution was recovered from two independent signals: prompt sizes cluste
 
 Also in wf_6b051052-ec7's journal: eight 5-line transcripts (a4155a89acefe88f4, a4e074b746121a200, aa01ca238e02db8ec, a903ad762ce132cd8, a368a7f9085e5bb8e, af5da61f217ab7f62, a4317d918482ad49f, a90bfd759243e8ed6) that produced no assistant output at all — the rate-limit record sits at offset 4. Nothing to salvage and their labels are unrecoverable, since the only identifying text is in the oversized prompt line.
 
-Salvage of these 11: run wf_13ac64ad-fe2 → `verdicts/<W>-<lens>-partial.md` and `designs-partial/<W>-run3.md`.
+Salvage of these 11: run wf_13ac64ad-fe2 → `verdicts/<W>-<lens>-partial.md` and `designs-partial/<W>-run3.md`. All 11 recovered. **No verifier ever reached a verdict** — every one died mid-evidence-sweep — so the files under `verdicts/` record located evidence plus salvager-labelled open threads, not findings.
+
+## Completeness audit, 2026-09-05: the account is closed
+
+Every result record in every journal is accounted for on disk, with one deliberate exception.
+
+**The exception: there are TWO W5 designs, and the superseded one was not extracted.** Journal wf_6b051052-ec7 carries a W5 design result at line 24 (agent `aec00bace87a903ac`, 07:10–07:24) and a second at line 32 (agent `a8ed793547b1149dd`, 09:23–09:36). They are independent runs of the same item two hours apart, not a cache replay: different workflow cache keys (`v2:afd7035b…` vs `v2:f0eb1464…`), different promptIds, different cwd.
+
+The one on disk is **a8ed's**, the later and better-informed pass. Decisive evidence: `designs/W5.md` cites "Axioms.lean:512 … theft_during_era_of_erasure", and only a8ed ran the grep that returned that line; the record agent logged `theorems_count: 15`, matching a8ed's output and `designs/W5.md`. a8ed also had strictly more input — `aec`'s attempt to read `maps/design-docs.md` FAILED at 07:10:21 because that map was not written until 07:12, whereas a8ed read it successfully. a8ed's goal statement opens "Answers to the three questions asked", i.e. it is a refining pass.
+
+`aec`'s earlier W5 design therefore exists only in journal line 24 of wf_6b051052-ec7 (about 25K tokens, above the single-line Read cap). It is superseded by a design built on more information. It was left unextracted deliberately; if it is ever wanted, it can be recovered by cache replay of that agent's prompt, as W5 itself was.
+
+Neither designer wrote to disk directly (both are Read/Bash only); the `designs/` directory did not exist during aec's run.
