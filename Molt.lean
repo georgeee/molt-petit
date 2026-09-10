@@ -6,6 +6,7 @@ import Molt.Rotation
 import Molt.KeyStealingTimedScope
 import Molt.ClientRule
 import Molt.CertClientRule
+import Molt.LockstepCert
 import Molt.SyncInduction
 import Molt.SyncRuleTimed
 import Molt.MaxSync
@@ -15,6 +16,7 @@ import Molt.AxiomsKeyStealingTimedScope
 import Molt.AxiomsSyncInduction
 import Molt.AxiomsSyncRuleTimed
 import Molt.AxiomsCertAnchored
+import Molt.LockstepCertAxioms
 
 /-!
 # Molt — the paper-aligned codebase
