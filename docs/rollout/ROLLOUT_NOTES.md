@@ -131,4 +131,35 @@ change would force any W3a result to be restated.
 
 The planning workflow's first run died on a usage limit; recovery notes and the
 recorded module maps live outside the repo at `/etheron-pod/rollout-work/`
-(`journal-scan.md`, `maps/`, `designs-partial/`).
+(`journal-scan.md`, `maps/`, `designs-partial/`) **and, committed, at
+`docs/rollout/`** in this repo (the canonical copy going forward — see `docs/rollout/README.md`).
+
+## 5. Plan-completion phase (started 2026-09-10)
+
+George's instruction: process every Fable finding (finished and killed mid-run),
+finish the plan, adversarially review and fix it, then implement strictly in
+plan order — one item fully done before the next starts — documenting every
+stage and committing often. Not touching the paper remains absolute.
+
+**Workflow `molt-rollout-plan2`** (run id `wf_d51a02f7-018`), launched to close
+every gap left by §3b: loads the three existing designs (W1, W2, W5) from
+`docs/rollout/designs/`, designs W3a/W4/W6 in full and sketches W3b/W7 (using the
+`docs/rollout/designs-partial/*-run2.md` salvage as the starting evidence so nothing
+already verified gets re-derived), runs a REAL two-lens adversarial review on
+every substantial item to completion (the six-verifier partial results in
+`docs/rollout/verdicts/*-partial.md` never reached a verdict last time — this run's
+prompts point reviewers at that evidence and instruct them to build on it, not
+repeat it), fixes any design carrying a blocking/major finding, and sequences
+the final sequence agent produces the implementation order this plan follows.
+Every agent writes its own JSON output directly into `docs/rollout/designs/` and
+`docs/rollout/verdicts/` as it finishes, so a partial run loses nothing.
+
+Once this workflow returns: reconcile its output into `docs/rollout/ROLLOUT_PLAN.md` (the
+deliverable), commit the plan and every design/verdict file, and **only then**
+start Lean implementation, one work item at a time, in the sequenced order —
+each item's cycle is: write the Lean, `lake build` it clean, guard its axioms,
+`lake build MoltPetit Molt` clean, update §2/§3 of this file, commit, and only
+then move to the next item. If the workflow's own review turns up a design
+that is not implementable as specified, that is logged here and the item is
+either fixed again or explicitly deferred — never implemented against advice
+silently.
