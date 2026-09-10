@@ -1,0 +1,212 @@
+{
+ "work_item": "W4",
+ "title": "Machine-check the induction over syncs (mode 1 client): an abstract engine (SyncInductionData) plus its full-chain instantiation via Molt.sync_rule_mem",
+ "goal_statement": "Prove, additively and axiom-clean, the paper's induction over syncs (paper/molt.tex lines 982-997: 'Agreement with the honest chain itself follows by an induction over syncs argued on paper, not itself machine-checked') by (1) a small ABSTRACT engine, structure Molt.SyncInductionData bundling an anchor sequence a : Nat -> Block, a reference-chain sequence R : Nat -> Chain, a prefix-growth hypothesis on R, a base-case membership fact, and a one-step membership-preservation hypothesis, with theorem SyncInductionData.invariant proving by plain Nat.rec that a k is on R k at every sync k -- this half needs no crypto, no protocol names, and (verified) depends on NO axioms at all; and (2) a CONCRETE full-chain instantiation, theorem Molt.sync_induction_full_chain, that discharges the abstract engine's per-step hypothesis by one application of the existing Molt.sync_rule_mem (Molt/ClientRule.lean:284) per sync, using the reference chain's own recency/validity/height/prefix data as the three side conditions the item was asked to identify. The whole design (structure, both theorems, the small membership helper) was written out in full and BUILT against the live repo with the pinned toolchain (leanprover/lean4:v4.30.0-rc2) in this session, then deleted (scratch file Molt/ZZZScratchW4.lean, never committed) -- it compiles with zero sorry/admit/axiom declarations and the expected axiom sets ([] for SyncInductionData.invariant, [propext, Classical.choice, Quot.sound] for sync_induction_full_chain, [propext] for the mem_of_blockAt? helper). Answers to the item's questions: (1) THE REFERENCE CHAIN is not a fixed, privileged 'honest chain' object -- it is an abstract Nat-indexed family R : Nat -> Chain (Chain = List Block) that the client never learns is honest; the theorem is conditional on such a family existing with the three properties below, exactly matching the paper's own scoping ('the honest tip staying recent is a liveness-style side condition, outside the safety hypotheses' -- existence is liveness territory, out of scope here). (2) THE THREE SIDE CONDITIONS, all now explicit ForAll-quantified hypotheses of sync_induction_full_chain: (a) hRLe : the reference tip is at least as tall as the accepted one, at every sync (feeds sync_rule_mem's hLe); (b) hRRecent/hRVal/hRLong : the reference chain is itself valid, recent (at the SAME clock 'now k' as the accepted chain), and longer than n blocks, at every sync (feeds hVal'/hTipS'/hRecent'/hLong'); (c) hRPrefix : stripSigs (R k) <+: stripSigs (R (k+1)) -- the reference chains are prefix-ordered over time (used to promote the previous sync's invariant fact a k in R k into a k in R (k+1) via List.IsPrefix.mem, before feeding it to sync_rule_mem as hA'). (3) THE PAPER'S DENSITY REMARK ('density keeps a recent taller fork's n-deep block below its divergence, hence on the honest chain -- an informal argument') IS NOT NEEDED under these side conditions: the informal argument's whole job was to justify 'the taller chain contains the anchor', which here is simply ASSUMED directly as hRLe plus the ordinary sync_rule_mem membership hypotheses -- there is no separate density-based selection argument anywhere in the Lean proof (verified: the built proof term never touches MaturedWindowsDense beyond what sync_rule_mem/ClientRule.deep_block_span already consult internally). (4) THE EXACT INSTANTIATION: each step k of the induction (k >= 0, producing 'a(k+1) is on R(k+1)' from 'a(k) is on R(k)') is exactly one application of Molt.sync_rule_mem with scPrev := c k, sc := c (k+1), sc' := R (k+1), A := a k, t := now k, now := now (k+1) -- the 21 explicit arguments and their order were verified against the live source and compiled; see the sync_induction_full_chain proof_sketch below for the exact call. The base case (k = 0) is NOT an application of sync_rule_mem or any other per-sync lemma -- 'a 0 = the join checkpoint' is modelled as the raw hypothesis hBase : a 0 in stripSigs (R 0), matching the paper's own framing of the join checkpoint as 'the op-model's fresh trust event ... outside the formal development'.",
+ "new_files": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/SyncInduction.lean",
+   "outline": "namespace Molt. Imports: `import Molt.ClientRule` only (transitively brings Molt.Rotation, Molt.Results, Molt.Assumptions, Molt.Verifier, Molt.Protocol, and everything ClientRule.lean's sync_rule_mem needs; no core MoltPetit.Model import needed -- every name used resolves inside `namespace Molt`). Contents in order: (1) module docstring citing paper/molt.tex lines 982-997 and stating the two-layer design (abstract engine + full-chain instantiation) and the three answers above; (2) `theorem mem_of_blockAt? {c : Chain} {h : Nat} {B : Block} (hAt : blockAt? c h = some B) : B in c` -- one-line helper (`unfold blockAt? at hAt; exact List.mem_of_getElem? hAt`), needed to turn sync_rule_mem's existential-index conclusion into a plain membership fact; (3) `structure SyncInductionData (n : Nat)` -- the abstract engine, with a docstring stating it is deliberately crypto-free and reusable at any presentation (full-chain now, certificate later per W2); (4) `theorem SyncInductionData.invariant` -- the induction itself, `Nat.rec` in two lines, docstring naming this 'the induction over syncs, abstract form'; (5) `theorem sync_induction_full_chain` -- the concrete full-chain instantiation via `Molt.sync_rule_mem`, with a long docstring restating the three side conditions and the density-remark answer, and pointing at the paper passage it supersedes. All four declarations were verified end-to-end by an actual `lake build` in this design session (see goal_statement); a later implementing session can reproduce the exact text from this design's new_defs/new_theorems fields verbatim (whitespace-lint clean: write `k + 1` not `k+1`, matching the repo's `linter.style.whitespace`)."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/AxiomsSyncInduction.lean",
+   "outline": "No namespace (matches Molt/Axioms.lean's top-level style). Imports `Molt.SyncInduction`. Three `#guard_msgs in #print axioms` blocks, in the exact Molt/Axioms.lean format (one-line docstring `/-- info: '<name>' ... -/` above each, comment above naming the paper location): `Molt.SyncInductionData.invariant` (expect `'Molt.SyncInductionData.invariant' does not depend on any axioms` -- verified, NOT the usual three-axiom line, copy the exact emitted message, do not hand-write it), `Molt.mem_of_blockAt?` (expect `[propext]` only -- verified), `Molt.sync_induction_full_chain` (expect `[propext, Classical.choice, Quot.sound]` -- verified). This is a NEW guard file rather than an edit to Molt/Axioms.lean, per the additive-only rule; it is enforced only once imported from Molt.lean (see touches_existing)."
+  }
+ ],
+ "new_defs": [
+  {
+   "name": "Molt.mem_of_blockAt?",
+   "signature": "theorem mem_of_blockAt? {c : Chain} {h : Nat} {B : Block} (hAt : blockAt? c h = some B) : B ∈ c",
+   "meaning": "Turns a positional chain-membership fact (blockAt?, i.e. List.getElem?) into a plain List.Mem fact, via `unfold blockAt? at hAt; exact List.mem_of_getElem? hAt` (List.mem_of_getElem? confirmed at Init/Data/List/Lemmas.lean:479 in the pinned v4.30.0-rc2 toolchain). Needed once per induction step to convert sync_rule_mem's `∃ i', i' + n < len ∧ blockAt? sc' i' = some B` conclusion into `B ∈ stripSigs sc'`, which is the shape SyncInductionData's invariant is stated in."
+  },
+  {
+   "name": "Molt.SyncInductionData",
+   "signature": "structure SyncInductionData (n : Nat) where\n  a : Nat → Block\n  R : Nat → Chain\n  hPrefix : ∀ k, R k <+: R (k + 1)\n  hBase : a 0 ∈ R 0\n  hStep : ∀ k, a k ∈ R (k + 1) → a (k + 1) ∈ R (k + 1)",
+   "meaning": "The abstract engine. `n` is carried only for documentation (the structure's own fields never mention it -- kept as an explicit parameter so a reader can see which cadence constant a given instance is about, and so `Molt.SyncInductionData n` at two different `n` are genuinely different types). `a` is the client's anchor sequence, `R` the reference-chain sequence (paper's informal 'the honest chain', formalised as an arbitrary witness family, never assumed unique or privileged). `hPrefix` is side condition (c): the reference chains are prefix-ordered over time. `hBase` is the base case: 'a 0 = the join checkpoint', taken as raw data (not derived). `hStep` is the ABSTRACTED per-sync agreement property: given the previous anchor already promoted onto the current reference chain (via hPrefix, done by the caller of hStep, not inside it), the next anchor lands on the current reference chain too. This is deliberately the ONLY field a different presentation (W2's certificate level) needs to supply differently -- SyncInductionData.invariant never inspects `n`, `a`, or `R` beyond what's written above, so swapping the hStep-discharging lemma (sync_rule_mem now, a future cert-level mem lemma later) requires zero change to the induction itself. Verified crypto-free: SyncInductionData.invariant depends on NO axioms (not even propext/Classical.choice/Quot.sound -- confirmed by #print axioms in this design session)."
+  }
+ ],
+ "new_theorems": [
+  {
+   "name": "Molt.SyncInductionData.invariant",
+   "hypotheses": [
+    "{n : Nat} (d : SyncInductionData n)"
+   ],
+   "conclusion": "∀ k, d.a k ∈ d.R k",
+   "proof_sketch": "`intro k; induction k with | zero => exact d.hBase | succ k ih => exact d.hStep k ((d.hPrefix k).mem ih)`. `(d.hPrefix k).mem ih` is `List.IsPrefix.mem` (Init/Data/List/Sublist.lean:816, `theorem IsPrefix.mem (hx : a ∈ l₁) (hl : l₁ <+: l₂) : a ∈ l₂`, confirmed present and NOT protected in the pinned v4.30.0-rc2 toolchain; dot notation `(d.hPrefix k).mem ih` resolves correctly since `d.hPrefix k : d.R k <+: d.R (k+1)` carries the `IsPrefix` type dot-notation needs, regardless of its argument position). Verified by an actual `lake build Molt.<scratch>` in this design session: compiles, zero sorry, `#print axioms` reports NO axioms at all (stronger than the usual three-axiom guard, since the proof is pure structural recursion over List membership -- worth noting explicitly in its guard entry so a reviewer does not think the guard is broken).",
+   "reuses": [
+    {
+     "name": "List.IsPrefix.mem",
+     "path": "Init/Data/List/Sublist.lean (Lean core, pinned toolchain leanprover/lean4:v4.30.0-rc2)",
+     "line": 816,
+     "how": "promotes membership across a prefix-growth step; the entire content of `hPrefix`'s use"
+    }
+   ]
+  },
+  {
+   "name": "Molt.sync_induction_full_chain",
+   "hypotheses": [
+    "{n : Nat} (hn : 1 ≤ n)",
+    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : SigningLog} {G : Block}",
+    "(now : Nat → Nat)  -- the clock time of each sync; Δ is fixed to n throughout (see alternatives_rejected) rather than kept as a second free parameter",
+    "(c R : Nat → SignedChain Sig)  -- c k = the chain the client accepts at sync k; R k = the reference/'honest' chain as of sync k",
+    "(hEUF : ∀ k, KeyStealingEUFCMA n n ops registry rented Stolen honestSigned (now k) n)",
+    "(hHash : SignedHashInjective (KeyStealingSigned n ops registry) G)",
+    "{tip : Nat → Block} (hTip : ∀ k, (stripSigs (c k)).getLast? = some (tip k))",
+    "(hRec : ∀ k, now k ≤ (tip k).slot + n)  -- c k's own recency, checked at its own sync time now k (doubles as sync_rule_mem's hRecPrev when k plays the role of the PREVIOUS sync, and as hRecent when k plays the role of the CURRENT sync, since Δ := n)",
+    "(hLong : ∀ k, n < (stripSigs (c k)).length)",
+    "(hVal : ∀ k, validSignedChainK' n n ops registry (c k) = true)",
+    "(hCadence : ∀ k, now (k + 1) ≤ now k + n)  -- the client re-verifies at least once every n slots",
+    "{a : Nat → Block} (hAnchor : ∀ k, blockAt? (stripSigs (c k)) ((stripSigs (c k)).length - 1 - n) = some (a k))  -- a k is DEFINED as the n-deep block of c k, for every k including k = 0",
+    "(hAcc : ∀ k, a k ∈ stripSigs (c (k + 1)))  -- the client's own acceptance rule: c (k+1) is accepted only because it contains the previous anchor a k",
+    "(hBudget : ∀ k u, now (k + 1) < u + 5 * n → (badSlotsIn (badKeyrot n n rented Stolen (stripSigs (c (k + 1)))) u n).card ≤ faultBudget n)  -- trailing-5n budget keyed to stripSigs (c (k+1)), exactly as the working hypothesis specified",
+    "{rTip : Nat → Block} (hRTip : ∀ k, (stripSigs (R k)).getLast? = some (rTip k))",
+    "(hRVal : ∀ k, validSignedChainK' n n ops registry (R k) = true)  -- side condition (b), part 1: the reference chain is itself accepted",
+    "(hRRecent : ∀ k, now k ≤ (rTip k).slot + n)  -- side condition (b), part 2: reference recent at every sync",
+    "(hRLong : ∀ k, n < (stripSigs (R k)).length)  -- side condition (b), part 3",
+    "(hRLe : ∀ k, (tip k).height ≤ (rTip k).height)  -- side condition (a): reference tip at least as tall as the accepted one, at every sync",
+    "(hRPrefix : ∀ k, stripSigs (R k) <+: stripSigs (R (k + 1)))  -- side condition (c): reference chains prefix-ordered over time",
+    "(hBase : a 0 ∈ stripSigs (R 0))  -- the base case: the join checkpoint, taken as data"
+   ],
+   "conclusion": "∀ k, a k ∈ stripSigs (R k)",
+   "proof_sketch": "Build a `SyncInductionData n` with `a := a`, `R := fun k => stripSigs (R k)`, `hPrefix := hRPrefix`, `hBase := hBase`, and `hStep` proved by `intro k hMem; obtain ⟨i', hi', hEq⟩ := sync_rule_mem hn (hEUF (k+1)) hHash (hVal k) (hTip k) (hRec k) (hLong k) (hAnchor k) (hCadence k) (hAcc k) hMem (hBudget k) (hVal (k+1)) (hRVal (k+1)) (hTip (k+1)) (hRTip (k+1)) (hRec (k+1)) (hRRecent (k+1)) (hLong (k+1)) (hRLong (k+1)) (hRLe (k+1)) (hAnchor (k+1)); exact mem_of_blockAt? hEq`, then `exact d.invariant k` (equivalently, close the whole theorem with `exact (the built d).invariant`). The 21-argument call above is the EXACT argument list and order verified to compile against `Molt.sync_rule_mem` (Molt/ClientRule.lean:284) in this design session, mapping onto sync_rule_mem's own binder names as: hn->hn, hEUF->hEUF(k+1), hHash->hHash, hVPrev->hVal k, hTipPrev->hTip k, hRecPrev->hRec k, hLongPrev->hLong k, hAnchor(scPrev's)->hAnchor k, hCadence->hCadence k, hA->hAcc k, hA'->hMem (the promoted IH), hBudget->hBudget k, hVal->hVal(k+1), hVal'->hRVal(k+1), hTipS->hTip(k+1), hTipS'->hRTip(k+1), hRecent->hRec(k+1), hRecent'->hRRecent(k+1), hLong->hLong(k+1), hLong'->hRLong(k+1), hLe->hRLe(k+1), hB->hAnchor(k+1). No `rw [validSignedChainK'_eq_core]` needed anywhere (sync_rule_mem already takes Molt-level validSignedChainK' directly, unlike the core theorems it wraps). Δ is fixed to `n` throughout (both `hEUF`'s Δ argument and every recency bound) -- a deliberate simplification, see alternatives_rejected. Verified: compiles with zero sorry against the live repo; `#print axioms` reports `[propext, Classical.choice, Quot.sound]` (inherited entirely from `sync_rule_mem`'s own axiom footprint, itself already guarded at that set in Molt/Axioms.lean).",
+   "reuses": [
+    {
+     "name": "sync_rule_mem",
+     "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
+     "line": 284,
+     "how": "the per-sync step, called once per k inside SyncInductionData's hStep; called as-is, zero modification, zero re-proof"
+    },
+    {
+     "name": "SyncInductionData.invariant",
+     "path": "/etheron-pod/mini-consensus-lean/Molt/SyncInduction.lean",
+     "how": "the induction itself, called once at the end to close the ∀ k goal"
+    },
+    {
+     "name": "mem_of_blockAt?",
+     "path": "/etheron-pod/mini-consensus-lean/Molt/SyncInduction.lean",
+     "how": "converts sync_rule_mem's ∃ i', ... conclusion into the plain membership fact hStep needs"
+    },
+    {
+     "name": "List.IsPrefix.mem",
+     "path": "Init/Data/List/Sublist.lean (Lean core)",
+     "line": 816,
+     "how": "used inside SyncInductionData.invariant, not directly here"
+    }
+   ]
+  }
+ ],
+ "touches_existing": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt.lean",
+   "change": "add two lines: `import Molt.SyncInduction` (after `import Molt.ClientRule`, before `import Molt.MaxSync`, mirroring the existing dependency order) and `import Molt.AxiomsSyncInduction` (after `import Molt.Axioms`)",
+   "why_unavoidable": "lakefile.toml declares `[[lean_lib]] name = \"Molt\"` with no `roots`/`globs`, so `lake build`, `lake build Molt`, and `nix run .#verify-lean` (`lake build MoltPetit Rust Thales Molt`) only elaborate modules reachable from Molt.lean; without these two lines the new files are checked only via the explicit `/etheron-pod/toolchains/lake.sh build Molt.SyncInduction Molt.AxiomsSyncInduction`. This is the one permitted touch (root-module import lines) plus a new guard file instead of editing Molt/Axioms.lean, per the item's constraints. No change to MoltPetit.lean is needed -- every name this item uses already resolves inside `namespace Molt` via Molt/ClientRule.lean's existing import chain; no new core (MoltPetit.Model) file is required."
+  }
+ ],
+ "depends_on": [
+  {
+   "key": "W2",
+   "why": "Soft only, and only for a FUTURE certificate-level instantiation, not for this item, which stands alone against Molt.sync_rule_mem and was verified to compile without W2. W2's current design (docs/rollout/designs/W2.json) produces cert_sync_rule, an EQUAL-HEIGHT agreement form (fixed depth i = i' via hHeight), not a membership form with an existential index covering unequal tip heights the way sync_rule_mem does. Instantiating Molt.SyncInductionData at the certificate presentation later therefore needs a new cert-level 'mem' lemma (mirroring keyrot_recent_tip_ancestor_mem_anchored / sync_rule_mem's shape, not yet designed anywhere) to be added to W2's scope or as a small W2-extension -- the abstract engine itself (SyncInductionData, .invariant) needs no change at all to accept it (hard=false: W4 does not need this to land, and does not need re-doing if it lands later; only a NEW discharge of hStep is needed, which is additive)."
+  }
+ ],
+ "enables": [
+  {
+   "key": "W2",
+   "why": "Molt.SyncInductionData is available for W2 (or a small W2-extension) to instantiate at the certificate presentation, once a cert-level membership-shaped per-sync lemma exists (see depends_on): supply a different `hStep` proof built from that lemma, reuse `.invariant` verbatim. No re-proof of the induction itself."
+  },
+  {
+   "key": "W1",
+   "why": "SyncInductionData is crypto- and protocol-free (parameterised only over Nat -> Block and Nat -> Chain with a prefix/membership pattern), so a mode-3 lockstep per-generation induction (if one is wanted) could reuse the same structure and .invariant verbatim, supplying its own hStep from whatever lockstep per-generation agreement lemma W1/W5 produce. Not required reading for W1/W5; noted only as a reuse opportunity."
+  }
+ ],
+ "paper_changes": [
+  {
+   "location": "paper/molt.tex §6.3, 'A realistic mode-1 deployment, end to end' paragraph, sentence containing the phrase `an induction over syncs argued on paper, not itself machine-checked` (paper lines ~988-993, quoted in full in the salvage at docs/rollout/designs-partial/W4-run2.md §2.12)",
+   "change": "Replace `argued on paper, not itself machine-checked` with `machine-checked (\\code{Molt.sync\\_induction\\_full\\_chain}, abstracted over the per-sync step via \\code{Molt.SyncInductionData})`."
+  },
+  {
+   "location": "paper/molt.tex, same paragraph, clause `density keeps a recent taller fork's $n$-deep block below its divergence, hence on the honest chain --- an informal argument`",
+   "change": "Delete the density-based justification and replace with a direct statement of the hypothesis actually used: the reference chain's tip is assumed at least as tall as the accepted chain's tip at every sync (\\code{hRLe} in \\code{sync\\_induction\\_full\\_chain}) -- no density argument is needed once this is assumed directly, which the Lean form records explicitly as a hypothesis rather than deriving informally."
+  },
+  {
+   "location": "paper/molt.tex, same paragraph, sentence `The join checkpoint starts the induction as the op-model's fresh trust event: a checkpoint no older than ${\\approx}\\,4n$ slots satisfies the general Lean form \\code{client\\_refresh\\_rule}.`",
+   "change": "Add a citation clause: the base case is exactly \\code{sync\\_induction\\_full\\_chain}'s \\code{hBase} hypothesis (\\code{a 0 ∈ stripSigs (R 0)}) -- an assumed fact, matching this sentence's own framing, and not itself derived from \\code{client\\_refresh\\_rule} in the current development (see open questions for the small follow-up that would close this gap)."
+  },
+  {
+   "location": "paper/molt.tex, same paragraph, sentence `And the honest tip staying recent is a liveness-style side condition, outside the safety hypotheses.`",
+   "change": "Add a citation clause naming \\code{hRRecent}, \\code{hRVal}, \\code{hRLong} in \\code{sync\\_induction\\_full\\_chain} as exactly this side condition, now explicit \\code{∀ k} hypotheses rather than left informal."
+  },
+  {
+   "location": "paper/molt.tex, same paragraph, closing sentence `At the full-chain presentation this is the complete story.`",
+   "change": "Append `, now including the induction over syncs itself (\\code{Molt.sync\\_induction\\_full\\_chain}).`"
+  }
+ ],
+ "size_estimate_lines": 210,
+ "effort_sessions": "1 session. The entire design (structure, both theorems, the helper lemma) was written out in full and compiled against the live repo with the pinned toolchain in this design session (see goal_statement) -- a later session's work is: paste the verified declarations into Molt/SyncInduction.lean with full docstrings (the compiled scratch content was ~75 lines without docstrings; add ~60-80 lines of paper-citing prose to reach the structure/theorem docstrings this item's discipline expects, plus the ~25-30 line guard file), fix the two whitespace-lint warnings the scratch run produced (write `k + 1` not `k + 1` -- i.e. keep the space the linter wants around `+`), add the two Molt.lean import lines, and do one final `lake build Molt` / `nix run .#verify-lean` pass. No new proof engineering is expected; the risk is entirely in bookkeeping (docstrings, guard-message exactness, lint spacing), not in the mathematics.",
+ "risks": [
+  {
+   "risk": "A reviewer expects the base case (hBase : a 0 ∈ stripSigs (R 0)) to be DERIVED from client_refresh_rule (as the paper's prose about '≈4n slots' suggests), not merely assumed.",
+   "mitigation": "This matches the paper's own framing of the join checkpoint as 'the op-model's fresh trust event ... outside the formal development', and matches the working hypothesis's own text ('Base: a 0 = the join checkpoint', stated as data, not as a lemma to apply). Deriving it is a clearly-scoped, additive follow-up: it needs a NEW H-parametric 'mem' wrapper of client_refresh_rule (none exists today -- confirmed gap, see docs/rollout/designs-partial/W4-run2.md's reuse_notes 'GENESIS-AT-INDEX-0 GOTCHA' / 'for a membership form there is no Molt-level anchored-mem wrapper with explicit H'), costing roughly the same ~40 lines as stay_recent_client_safe's own derivation. Flagged in open_questions_for_owner rather than silently included, since the working hypothesis did not ask for it."
+  },
+  {
+   "risk": "Fixing Δ := n throughout the concrete instantiation (rather than keeping Δ as a second free parameter, distinct from the n used in hRecPrev-shaped bounds) is a real restriction: a deployment that wants Δ > n cannot instantiate sync_induction_full_chain directly.",
+   "mitigation": "The abstract engine (SyncInductionData) is completely Δ-agnostic -- it never appears in its fields. Generalising sync_induction_full_chain to a free Δ only changes that one theorem's hypothesis list (splitting hRec/hRRecent into an n-bounded family and a separate Δ-bounded family) and its call to sync_rule_mem's own Δ argument; no change anywhere else. Left out of this item's scope because the paper's own worked deployment (paper/molt.tex, 'Seven seats' example) uses Δconf = n uniformly and sync_rule/sync_rule_mem themselves already fix Δconf := n, so Δ := n is the natural match."
+  },
+  {
+   "risk": "The reference-chain family R is a free variable with no witness constructed anywhere in this item -- the theorem proves nothing about whether such an R actually exists in a real execution.",
+   "mitigation": "Deliberate and matches the paper precisely: the induction is a SAFETY statement conditional on the reference chain's existence and good behaviour (exactly the three side conditions), with existence itself explicitly scoped out ('a liveness-style side condition, outside the safety hypotheses'). Constructing a witness R (e.g. from an honest-production schedule as in Liveness.lean's buildChain, adapted to the key-rotation/signed setting) is liveness territory, plausibly W7's remit, not this item's."
+  },
+  {
+   "risk": "Guard-message exactness: SyncInductionData.invariant's guard must record 'does not depend on any axioms' verbatim (not the usual three-axiom line) -- a copy-paste of the standard guard template would silently assert the wrong (weaker, i.e. less precise, though not unsound) claim and could even fail #guard_msgs if hand-typed incorrectly.",
+   "mitigation": "Run `#print axioms Molt.SyncInductionData.invariant` first and paste the exact emitted `info:` line, exactly as the existing two-axiom guards (badKeyrot_lossOnly, badSched_lossOnly) already do for their own non-standard axiom sets. Verified once already in this design session: the emitted message is `'Molt.SyncInductionData.invariant' does not depend on any axioms`."
+  },
+  {
+   "risk": "Build discovery: the new files are not elaborated by `lake build`/`nix run .#verify-lean` unless imported from Molt.lean.",
+   "mitigation": "Add the two Molt.lean import lines (permitted touch, listed in touches_existing); during development build explicitly with `/etheron-pod/toolchains/lake.sh build Molt.SyncInduction Molt.AxiomsSyncInduction`, exactly as verified in this design session."
+  }
+ ],
+ "alternatives_rejected": [
+  {
+   "alt": "State the abstract per-sync step as an EQUAL-DEPTH agreement predicate (fixed index i = i', mirroring W2's keyrot_deep_block_agreement_anchored / cert_sync_rule shape) instead of a membership predicate with an existential index.",
+   "why": "Does not compose when the reference chain is allowed to be strictly taller than the accepted chain at some syncs (exactly the design's side condition (a), hRLe with ≤ not =) -- the reference chain's n-deep block need not sit at the SAME index as the accepted chain's, only at SOME index at least n deep. The membership form is what sync_rule_mem actually proves and is the natural invariant; the equal-depth form would force an artificial extra 'the heights actually matched' hypothesis at every step for no benefit."
+  },
+  {
+   "alt": "Inline Molt.sync_rule_mem's application directly inside a single monolithic induction proof, without factoring out SyncInductionData as a separate reusable structure.",
+   "why": "Directly violates the item's own instruction to design 'ABSTRACT over the per-sync agreement property so it instantiates with the full-chain sync_rule_mem now and W2 certificate-level form later with no re-proof' -- verified concretely in this session: SyncInductionData.invariant's proof term never mentions sync_rule_mem, KeyStealingEUFCMA, or any other crypto/protocol name, so a future certificate-level hStep discharge is a pure addition with zero risk of needing to re-touch the induction's own two-line proof."
+  },
+  {
+   "alt": "Close the base case within this item via a new H-parametric mem wrapper of client_refresh_rule (client_refresh_rule_mem), fully deriving hBase from a checkpoint-freshness bound instead of taking it as a raw hypothesis.",
+   "why": "Adds a genuinely new ~40-line engine not requested by the working hypothesis (which states 'Base: a 0 = the join checkpoint' as given data), and the paper's own prose treats the checkpoint as 'a fresh trust event outside the formal development' -- deriving it formally is a legitimate but separate follow-up, listed in open_questions_for_owner rather than folded in silently, keeping this item's proof burden at 'zero new proof engineering beyond what was already verified to compile'."
+  },
+  {
+   "alt": "Keep Δ generic (not fixed to n) throughout the concrete instantiation, threading a second, Δ-bounded recency-hypothesis family alongside the n-bounded one used for hRecPrev-shaped facts.",
+   "why": "Doubles the hypothesis-list size for a distinction the paper's own worked deployment never uses (Δconf = n throughout); rejected for this item's size budget, flagged as a one-line-per-hypothesis future generalisation that touches only sync_induction_full_chain, never SyncInductionData."
+  },
+  {
+   "alt": "Put SyncInductionData in a new, crypto-independent file (e.g. Molt/Induction.lean) importing nothing but Mathlib/Lean core, separate from the full-chain instantiation which would live in Molt/SyncInduction.lean and import both.",
+   "why": "Marginally cleaner layering (matches the observation that SyncInductionData mentions no protocol names) but adds a file and an extra Molt.lean import line for a ~15-line structure; kept in one file to match the '150-250 lines, one import in Molt.lean' sizing the working hypothesis specified, and flagged as an open question in case the owner prefers the split for future non-key-rotation reuse."
+  }
+ ],
+ "open_questions_for_owner": [
+  "Should hBase (a 0 ∈ stripSigs (R 0)) remain a raw assumed hypothesis (as designed and verified here, matching the paper's 'outside the formal development' framing and the working hypothesis's literal text), or should this item additionally derive it from a new client_refresh_rule_mem wrapper (~40 lines, not yet existing anywhere)? See risks/alternatives_rejected for the tradeoff.",
+  "Fix Δ := n throughout sync_induction_full_chain (as designed and verified), or keep Δ generic with a second recency-hypothesis family? The paper's own deployment example never distinguishes them.",
+  "Split SyncInductionData into its own crypto-free file (Molt/Induction.lean) separate from the full-chain instantiation (Molt/SyncInduction.lean), for easier reuse by a future non-key-rotation client presentation -- or keep the one-file layout as designed, matching the working hypothesis's sizing?",
+  "When W2's certificate-level induction is eventually designed: should it add a cert_sync_rule_mem-shaped lemma (mirroring sync_rule_mem's existential-index conclusion) as part of W2's own scope, or as a distinct small follow-up item? W2.json's current cert_sync_rule is an equal-height agreement form only; SyncInductionData is ready for either choice with no change to itself."
+ ],
+ "hypothesis_verdict": "Confirmed, with two refinements found while making it fully implementable and load-bearing verified by an actual build against the live repo (a real lake build of the exact structure, both theorems, and the helper lemma, all compiling with zero sorry and the expected axiom sets, in a scratch file deleted before returning): (1) the base case is best modelled as a raw hypothesis (a 0 ∈ stripSigs (R 0)) rather than derived from any lemma within this item -- matches the working hypothesis's own literal phrasing ('Base: a 0 = the join checkpoint') and the paper's 'outside the formal development' framing; deriving it further is flagged as an explicit, separate, additive follow-up rather than silently included or silently assumed to be out of scope. (2) The working hypothesis's per-step claim ('each step IS Molt.sync_rule_mem applied with scPrev := c(k-1), sc := c k, sc-prime := R k, A := a(k-1)') is exactly right and was verified argument-by-argument (21 explicit arguments, exact order recorded in the proof_sketch) to compile against the live Molt/ClientRule.lean:284. The 'reference at least as tall' / 'reference recent' / 'prefix-ordered' triad is exactly the three side conditions sync_rule_mem's own hypothesis list demands once instantiated per-sync, and the density remark is confirmed unneeded once hRLe is assumed directly (no density-based reasoning appears anywhere in the compiled proof).",
+ "recommendation": "Proceed as designed; the design is implementable as-is by a later session with no further research. All four new declarations (mem_of_blockAt?, SyncInductionData, SyncInductionData.invariant, sync_induction_full_chain) were written out in full and verified to compile, axiom-clean, sorry-free, against the live repo and toolchain in this design session (scratch file Molt/ZZZScratchW4.lean, built via /etheron-pod/toolchains/lake.sh build Molt.ZZZScratchW4, then deleted -- git status confirmed clean afterward). Remaining work for the implementing session is purely bookkeeping: paste the verified declarations into the two new files with full docstrings, add the two Molt.lean import lines, write the guard file's three #guard_msgs blocks using the exact emitted #print axioms messages (already recorded above), fix the two `k + 1` whitespace-lint spacing warnings the scratch run surfaced, and run a final lake build Molt / nix run .#verify-lean pass.",
+ "files_read": [
+  "/etheron-pod/mini-consensus-lean/rollout/designs-partial/W4-run2.md",
+  "/etheron-pod/mini-consensus-lean/rollout/designs/W2.json",
+  "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Verifier.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Assumptions.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Protocol.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Results.lean",
+  "/etheron-pod/mini-consensus-lean/Molt.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Axioms.lean (tail)",
+  "/etheron-pod/mini-consensus-lean/CLAUDE.md",
+  "/etheron-pod/toolchains/lake.sh",
+  "/etheron-pod/mini-consensus-lean/Molt/ZZZScratchW4.lean (scratch, written and deleted this session; built successfully against the live toolchain -- see goal_statement)"
+ ]
+}

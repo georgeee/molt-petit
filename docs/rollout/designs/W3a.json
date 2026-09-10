@@ -1,0 +1,324 @@
+{
+ "work_item": "W3a",
+ "title": "Timed theft layer for mode 1 (derive the trailing/anchored budget from a theft rate plus a chain-relative reaction-delay hypothesis)",
+ "goal_statement": "Give mode 1 a mirror of KeyStealingScheduleTimed's timed I3 (`horizon_budget_of_timed`): derive the EXACT budget hypothesis the mode-1 client theorems already consume from (a) a rent rate, (b) a per-window recent-theft-producer census, and (c) a new named REACTION hypothesis, rather than assuming the joint budget outright. Time-stamped thefts reuse `stolenAt : Nat → Nat → Nat → Prop` and `stolenOf` from `KeyStealingScheduleTimed.lean:90` verbatim (`Stolen := stolenOf stolenAt`); no new theft-timing vocabulary is invented. Answers to the item's questions, all confirmed against source: (1) THE EXACT CONSUMED BUDGET SHAPE is not one fixed shape but one theorem (`MoltPetit.Model.budget_of_reaction`) GENERIC in an arbitrary window guard `guard : Nat → Prop`, because every consumer in the codebase (the core anchored theorems and all four Molt client theorems) already carries its OWN guard and the underlying union-bound/exposure-census argument never inspects the guard's shape (`horizon_budget_of_timed`'s proof only ever uses `hu : H ≤ u` opaquely). Instantiated at `guard u := A.slot + 1 ≤ u + n` it is byte-identical to the core anchored form `∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented (stolenOf stolenAt) c₀) u n).card ≤ maxByzantine n` that `honestSlotsUnique_keyrot_anchored` (KeyStealingHorizonCore.lean:258), `keyrot_recent_tip_ancestor_agreement_anchored` (KeyStealingHorizon.lean:134) and `keyrot_recent_tip_ancestor_mem_anchored` (KeyStealingHorizon.lean:222) take as `hBudgetFrom`, with `c₀` the LOWER accepted chain (`stripSigs sc`, always the first chain — the same asymmetric convention `badKeyrotOn` already forces, per `mode1-chain.md`'s gotcha (2)); instantiated at `guard u := now < u + n + H` / `now < u + 5 * n` / `now < u + F + 4 * n` it is byte-identical to the `hBudget` hypothesis of `client_refresh_rule` (Molt/Rotation.lean:267) / `sync_rule`+`sync_rule_mem` (Molt/ClientRule.lean:238,284, at `Δconf := n`) / `max_sync_period` (Molt/MaxSync.lean:176) respectively — so composing needs no restatement of any of the four, only substituting the derived term for their `hBudget` argument. (2) WHAT `theft_is_recent` BECOMES: there is no analogue derived from a structural axiom, because mode 1's floor `inForce` (KeyRotation.lean:72, read off `c₀`'s `confirmedPrefix`) carries no period the way mode 2's flagship schedule `s / R` does — `mode1-chain.md` states outright that 'a theft_is_recent analogue needs a relation between inForce and real time that does not exist yet'. So the healing/backward-locality content that `theft_is_recent` DERIVES for mode 2 is instead ASSUMED for mode 1 as a new named operational hypothesis `Reacts` — playing the role `NoPrematureTheft`/`ErasureTimed` already play (named, not reduced) rather than the role `theft_is_recent` (derived) plays — stating that once a reaction delay `d` has elapsed past a theft's real time `r`, the confirmed floor read off `c₀` has moved strictly past the stolen version: `stolenAt i j r → ∀ s, r + d ≤ s → j < inForce n Δconf c₀ i s`. (3) THE DERIVATION IS PER ACCEPTED CHAIN, confirmed necessary: `badKeyrotOn` is keyed to a fixed witness chain `c₀` (KeyStealing.lean:47), so `Reacts` is likewise parametrized by that same `c₀` (unlike mode 2's `s / R`, which is chain-independent) — composing with a client theorem instantiates `c₀ := stripSigs sc`, the SAME chain the theorem's own `hBudget`/`hBudgetFrom` already reads its census from; there is no chain-independent form. (4) ONE-LINE READING of the derived hypothesis: 'at most `T` producers are, per guarded window, exposed by a theft that has not yet had `d` slots to show up as a floor-raising confirmation on the accepted chain — a reaction-delay-bounded census in place of mode 2's schedule-period-bounded one, still future-inclusive (a theft counted at window `u` stays counted at every later window before `r + d`, never subtracted once healed) but no longer retroactively unbounded provided `Reacts` holds.'",
+ "new_files": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingTimed.lean",
+   "outline": "namespace MoltPetit.Model. Imports: MoltPetit.Model.KeyStealingBudget (theftOn, exposedProducers, badSlotsIn_union_le, theftSlots_card_le_exposed, badKeyrotOn transitively via KeyStealing.lean) and MoltPetit.Model.KeyStealingScheduleTimed (stolenOf, for the mode-2-mirroring docstring cross-reference and so `stolenAt`/`stolenOf` are literally the mode-2 names, not a re-declaration). `open Classical` (needed for the two noncomputable Finset defs, exactly as KeyStealingBudget.lean and KeyStealingScheduleTimed.lean do). Contents in order: (1) module docstring naming this the mode-1 mirror of KeyStealingScheduleTimed's timed I3, explaining why `Reacts` is assumed rather than derived (inForce carries no period) and that the derivation is generic in the window guard so it serves the core anchored form and all four Molt trailing forms without restatement, plus an Honest-scope paragraph identical in spirit to KeyStealingScheduleTimed's (future-inclusive census; theft-before-mint re-plumbing — the X-3/SchedTimedUnforgeable seam — still not attempted); (2) def Reacts; (3) noncomputable def recentTheftProducersK; (4) theorem exposedProducers_subset_recentTheftK; (5) theorem budget_of_reaction (generic guard); (6) theorem anchored_budget_of_reaction (one-line corollary at guard `A.slot + 1 ≤ u + n`, the exact hBudgetFrom shape); (7) end MoltPetit.Model. No private helpers needed — window_producer_inj / badSlotsIn_union_le / theftSlots_card_le_exposed are reused as-is from KeyStealingBudget.lean, not re-proved."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/SyncRuleTimed.lean",
+   "outline": "namespace Molt. Imports: Molt.ClientRule (deep_block_span idiom already baked into sync_rule/stay_recent_client_safe so not called directly here; Molt vocabulary badKeyrot/badSlotsIn/faultBudget/KeyStealingEUFCMA/KeyStealingSigned), Molt.MaxSync (max_sync_period), MoltPetit.Model.KeyStealingTimed. Contents in order: (1) module docstring: 'the timed theft layer, composed' — explains each of the four wrappers is `<consumer> <...> (MoltPetit.Model.budget_of_reaction <...>) <...>`, i.e. literally the existing theorem with one argument substituted, no restatement of validity/recency/anchor plumbing; (2) abbrev Reacts := @MoltPetit.Model.Reacts (Prop-structure re-export idiom, cf. Molt/Rotation.lean:108 KeyStealingEUFCMA); (3) noncomputable def recentTheftProducersK (fresh Molt-named copy, identical body, FOLLOWING the Molt.badSlotsIn precedent (Molt/Assumptions.lean:33) rather than an abbrev, because it is Finset-valued and every other Finset-valued paper-vocabulary def in Molt/ is a fresh copy + `_eq_core` bridge, not an abbrev) plus theorem recentTheftProducersK_eq_core (:= rfl); (4) theorem client_refresh_rule_timed; (5) theorem sync_rule_timed; (6) theorem sync_rule_mem_timed; (7) theorem max_sync_period_timed; (8) end Molt."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Results/AxiomsKeyStealingTimed.lean",
+   "outline": "No namespace (matches MoltPetit/Results/Axioms.lean's own top level). Imports: MoltPetit.Model.KeyStealingTimed. A NEW guard file (per the task's constraint: additive axiom guards live in a fresh file, never edits to the existing MoltPetit/Results/Axioms.lean). One `#guard_msgs in #print axioms` block per new core theorem, in the exact Results/Axioms.lean format (`/-- info: '<name>' depends on axioms: [propext, Classical.choice, Quot.sound] -/` / `#guard_msgs in` / `#print axioms <name>`, 3-line-wrapped form if the emitted message exceeds ~100 columns — copy the emitted message verbatim, do not hand-write it, per results-molt.md's build-discovery note): MoltPetit.Model.exposedProducers_subset_recentTheftK, MoltPetit.Model.budget_of_reaction, MoltPetit.Model.anchored_budget_of_reaction. Expected axiom set for all three is [propext, Classical.choice, Quot.sound] by analogy with the mode-2 siblings actually audited at those lines (KeyStealingBudget.lean's own theftSlots_card_le_exposed / induced_byzantine_bounded at Results/Axioms.lean:338,341, and ScheduleTimed's exposedSched_subset_recentTheft at :500 — all three [propext, Classical.choice, Quot.sound]); MUST be re-confirmed with a bare `#print axioms` probe before finalizing, per results-molt.md's 'axiom set varies; run #print axioms first' note."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt/AxiomsSyncRuleTimed.lean",
+   "outline": "No namespace (matches Molt/Axioms.lean). Imports: Molt.SyncRuleTimed. A NEW guard file (same constraint: never edit Molt/Axioms.lean). One `#guard_msgs in #print axioms` block per new Molt theorem, exact Molt/Axioms.lean format: Molt.client_refresh_rule_timed, Molt.sync_rule_timed, Molt.sync_rule_mem_timed, Molt.max_sync_period_timed, plus Molt.recentTheftProducersK_eq_core (a `:= rfl` bridge; audited at [propext, Quot.sound] by analogy with Molt/Rotation.lean's own rfl bridges such as badKeyrot_eq_core, which are not individually guarded in the existing file — INCLUDE it here anyway since this file's discipline is 'guard everything new', matching Results/Axioms.lean's practice of guarding even internal lemmas like theftSlots_card_le_exposed). Expected axiom set for the four theorems: [propext, Classical.choice, Quot.sound] (every ingredient — client_refresh_rule, sync_rule, sync_rule_mem, max_sync_period, budget_of_reaction — is already guarded at that set). MUST be re-confirmed with a bare `#print axioms` probe before finalizing."
+  }
+ ],
+ "new_defs": [
+  {
+   "name": "MoltPetit.Model.Reacts",
+   "signature": "def Reacts (n Δconf d : Nat) (c₀ : Chain) (stolenAt : Nat → Nat → Nat → Prop) : Prop :=\n  ∀ i j r, stolenAt i j r → ∀ s, r + d ≤ s → j < inForce n Δconf c₀ i s",
+   "meaning": "The mode-1 REACTION hypothesis, playing the role NoPrematureTheft/ErasureTimed play in mode 2 (a new named operational assumption, not derived): a reaction delay `d` after a theft of producer `i`'s generation-`j` key at real slot `r`, the floor `c₀` confirms for producer `i` has moved strictly past `j` at every later slot `s ≥ r + d` — i.e. the emergency rotation is confirmed on the witness chain within `d` slots of the theft. Contrapositive form (what the subset lemma below actually uses): if `inForce n Δconf c₀ i s ≤ j` (the theft is STILL live at `s`, i.e. `theftOn` holds there), then `s < r + d` — the theft's real time is within `d` of `s`. `c₀`-parametrized because `inForce` is chain-relative; composed with a client theorem, `c₀ := stripSigs sc`, the same chain `badKeyrotOn`/`hBudgetFrom` already read from. Deliberately NOT reduced to anything about `NoPrematureTheft`-style provisioning periods, because mode 1's `inForce` floor has no period the way mode 2's `s / R` schedule does (`mode1-chain.md`: 'a theft_is_recent analogue needs a relation between inForce and real time that does not exist yet')."
+  },
+  {
+   "name": "MoltPetit.Model.recentTheftProducersK",
+   "signature": "noncomputable def recentTheftProducersK (n d : Nat) (stolenAt : Nat → Nat → Nat → Prop) (u : Nat) : Finset Nat :=\n  (Finset.range n).filter (fun i => ∃ j r, stolenAt i j r ∧ u < r + d)",
+   "meaning": "The mode-1 mirror of `recentTheftProducers` (KeyStealingScheduleTimed.lean:149): producers hit by a theft whose real time `r` is within `d` of window `u` (`u < r + d`). Unlike mode 2's census there is NO generation-floor conjunct analogous to `u / R ≤ j` — mode 2's floor conjunct is itself noted as 'redundant under NoPrematureTheft' (ScheduleTimed.lean:137-148), and mode 1 has no period to define an analogous floor from at all, so this census is exactly the reaction-delay-bounded window filter with nothing else attached. Future-inclusive in the same sense as mode 2 (a counted theft at `r` stays counted at every window `u < r + d`, and is never subtracted once the reaction actually fires — `Reacts` only says the corruption HEALS at `s ≥ r + d`, it says nothing that would shrink this census below `r + d`)."
+  },
+  {
+   "name": "Molt.Reacts",
+   "signature": "abbrev Reacts := @MoltPetit.Model.Reacts",
+   "meaning": "Paper-vocabulary re-export, the same Prop-structure abbrev idiom as `Molt.KeyStealingEUFCMA` (Molt/Rotation.lean:108) — literally the same term, no bridge theorem needed since `abbrev` is reducible and defeq-transparent at every use site (including as an argument to the core theorems)."
+  },
+  {
+   "name": "Molt.recentTheftProducersK",
+   "signature": "noncomputable def recentTheftProducersK (n d : Nat) (stolenAt : Nat → Nat → Nat → Prop) (u : Nat) : Finset Nat :=\n  (Finset.range n).filter (fun i => ∃ j r, stolenAt i j r ∧ u < r + d)\n\ntheorem recentTheftProducersK_eq_core :\n    recentTheftProducersK = MoltPetit.Model.recentTheftProducersK := rfl",
+   "meaning": "Fresh Molt-named copy with an `_eq_core` rfl bridge, following the `Molt.badSlotsIn` precedent (Molt/Assumptions.lean:33,81) for Finset-valued paper-vocabulary defs (as opposed to the `abbrev` idiom used for Prop-valued structures/predicates). Exists so a Molt-level theorem statement can be read in fully paper-aligned vocabulary; the bridge lets it pass by defeq into the core theorem's argument slots exactly as `badKeyrot`/`badSlotsIn`/`faultBudget` already do."
+  }
+ ],
+ "new_theorems": [
+  {
+   "name": "MoltPetit.Model.exposedProducers_subset_recentTheftK",
+   "hypotheses": [
+    "{n Δconf d : Nat} (hn : 0 < n)",
+    "{c₀ : Chain} {stolenAt : Nat → Nat → Nat → Prop}",
+    "(hReacts : Reacts n Δconf d c₀ stolenAt)",
+    "(u : Nat)"
+   ],
+   "conclusion": "exposedProducers n Δconf (stolenOf stolenAt) c₀ u ⊆ recentTheftProducersK n d stolenAt u",
+   "proof_sketch": "Direct mirror of `exposedSched_subset_recentTheft` (KeyStealingScheduleTimed.lean:156-172), with the arithmetic-division argument replaced by the `Reacts` contrapositive: `intro i hi; unfold exposedProducers at hi; obtain ⟨s, hs, rfl⟩ := Finset.mem_image.mp hi; rw [Finset.mem_filter] at hs; obtain ⟨hsIco, j, hle, r, hr⟩ := hs -- unpacking theftOn's ∃j, ≤j ∧ Stolen(=stolenOf stolenAt, itself ∃r, stolenAt); rw [Finset.mem_Ico] at hsIco; have hslt : s < r + d := by by_contra hcon; push_neg at hcon; have := hReacts _ j r hr s hcon; omega -- `this : j < inForce n Δconf c₀ (producerForSlot n s) s` contradicts `hle : inForce ... ≤ j`; refine Finset.mem_filter.mpr ⟨Finset.mem_range.mpr (by unfold producerForSlot; exact Nat.mod_lt _ hn), j, r, hr, by omega⟩ -- the final `u < r + d` from `hsIco.1 : u ≤ s` and `hslt : s < r + d`.` No division/multiplication reasoning at all (mode 2's `window_producer_inj`-adjacent arithmetic is not needed here — the theft floor is a bare inequality, not a periodic schedule), so the proof is shorter than its mode-2 counterpart.",
+   "reuses": [
+    {"name": "exposedSched_subset_recentTheft", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleTimed.lean", "line": 156, "how": "proof skeleton mirrored; not called"},
+    {"name": "theftOn", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingBudget.lean", "line": 42, "how": "unfolded to extract j, r, and the inForce ≤ j fact"},
+    {"name": "exposedProducers", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingBudget.lean", "line": 62, "how": "the Finset this lemma's LHS is defined over; unfolded via Finset.mem_image/mem_filter"},
+    {"name": "stolenOf", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleTimed.lean", "line": 90, "how": "unfolded to extract the theft's real time r"}
+   ]
+  },
+  {
+   "name": "MoltPetit.Model.budget_of_reaction",
+   "hypotheses": [
+    "{n Δconf d : Nat} (hn : 0 < n)",
+    "{rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop} {c₀ : Chain}",
+    "{guard : Nat → Prop} {Rrent T : Nat}",
+    "(hReacts : Reacts n Δconf d c₀ stolenAt)",
+    "(hRent : ∀ u, guard u → (badSlotsIn rented u n).card ≤ Rrent)",
+    "(hTheft : ∀ u, guard u → (recentTheftProducersK n d stolenAt u).card ≤ T)",
+    "(hRT : Rrent + T ≤ maxByzantine n)"
+   ],
+   "conclusion": "∀ u, guard u → (badSlotsIn (badKeyrotOn n Δconf rented (stolenOf stolenAt) c₀) u n).card ≤ maxByzantine n",
+   "proof_sketch": "Line-for-line mirror of `horizon_budget_of_timed` (KeyStealingScheduleTimed.lean:187-218) with `H ≤ u` generalized to an arbitrary `guard u` (the proof never inspects the guard beyond calling `hRent u hu`/`hTheft u hu`, so genericizing is a pure weakening of the statement, no new proof obligation) and the schedule-specific pieces (`theftSched`, `theftSlotsSched_card_le_exposed`, `exposedSched_subset_recentTheft`) swapped for their mode-1 counterparts (`theftOn`, `theftSlots_card_le_exposed`, `exposedProducers_subset_recentTheftK`): `intro u hu; have hsplit := badSlotsIn_union_le rented (theftOn n Δconf (stolenOf stolenAt) c₀) u n; have htheft := theftSlots_card_le_exposed n Δconf (stolenOf stolenAt) c₀ u; have hsub := exposedProducers_subset_recentTheftK hn hReacts u; have hcard := Finset.card_le_card hsub; have hrw : (badSlotsIn (badKeyrotOn n Δconf rented (stolenOf stolenAt) c₀) u n).card = (badSlotsIn (fun s => rented s ∨ theftOn n Δconf (stolenOf stolenAt) c₀ s) u n).card := rfl; rw [hrw]; calc _ ≤ (badSlotsIn rented u n).card + (badSlotsIn (theftOn n Δconf (stolenOf stolenAt) c₀) u n).card := hsplit; _ ≤ Rrent + T := Nat.add_le_add (hRent u hu) (le_trans htheft (le_trans hcard (hTheft u hu))); _ ≤ maxByzantine n := hRT.` The `rfl` step for `hrw` works because `badKeyrotOn` unfolds directly to `rented s ∨ theftOn ...` (KeyStealing.lean:47), exactly as `induced_byzantine_bounded`'s analogous step relies on.",
+   "reuses": [
+    {"name": "horizon_budget_of_timed", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleTimed.lean", "line": 187, "how": "proof skeleton mirrored; not called"},
+    {"name": "badSlotsIn_union_le", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingBudget.lean", "line": 52, "how": "called as-is (generic in the two ByzantineSlots predicates)"},
+    {"name": "theftSlots_card_le_exposed", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingBudget.lean", "line": 92, "how": "called as-is"},
+    {"name": "exposedProducers_subset_recentTheftK", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingTimed.lean", "how": "called as-is (this design's own new lemma)"},
+    {"name": "badKeyrotOn", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealing.lean", "line": 47, "how": "unfolds by rfl to rented ∨ theftOn, exactly as induced_byzantine_bounded's proof relies on"}
+   ]
+  },
+  {
+   "name": "MoltPetit.Model.anchored_budget_of_reaction",
+   "hypotheses": [
+    "{n Δconf d : Nat} (hn : 0 < n)",
+    "{rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop} {c₀ : Chain} {A : Block}",
+    "{Rrent T : Nat}",
+    "(hReacts : Reacts n Δconf d c₀ stolenAt)",
+    "(hRent : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn rented u n).card ≤ Rrent)",
+    "(hTheft : ∀ u, A.slot + 1 ≤ u + n → (recentTheftProducersK n d stolenAt u).card ≤ T)",
+    "(hRT : Rrent + T ≤ maxByzantine n)"
+   ],
+   "conclusion": "∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented (stolenOf stolenAt) c₀) u n).card ≤ maxByzantine n",
+   "proof_sketch": "One-line specialization, `:= budget_of_reaction hn hReacts hRent hTheft hRT` with `guard` unified to `fun u => A.slot + 1 ≤ u + n` by the expected type. Stated as a separate named theorem (rather than leaving callers to instantiate `budget_of_reaction` themselves) purely for documentation/discoverability, because this exact shape is the planner-specified deliverable and is what a reader wanting to hand a `Reacts`-derived budget straight to `honestSlotsUnique_keyrot_anchored` / `keyrot_recent_tip_ancestor_agreement_anchored` / `keyrot_recent_tip_ancestor_mem_anchored` should reach for first.",
+   "reuses": [
+    {"name": "budget_of_reaction", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingTimed.lean", "how": "called as-is at a fixed guard"}
+   ]
+  },
+  {
+   "name": "Molt.client_refresh_rule_timed",
+   "hypotheses": [
+    "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
+    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}",
+    "{rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop} {d : Nat}",
+    "{honestSigned : SigningLog} {now Δ : Nat} {G : Block}",
+    "{sc sc' : SignedChain Sig} {A : Block} {H : Nat}",
+    "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented (stolenOf stolenAt) honestSigned now Δ)",
+    "(hHash : SignedHashInjective (KeyStealingSigned n ops registry) G)",
+    "(hA : A ∈ stripSigs sc) (hA' : A ∈ stripSigs sc')",
+    "(hFresh : now ≤ A.slot + H)",
+    "{Rrent T : Nat}",
+    "(hReacts : Reacts n Δconf d (stripSigs sc) stolenAt)",
+    "(hRent : ∀ u, now < u + n + H → (badSlotsIn rented u n).card ≤ Rrent)",
+    "(hTheft : ∀ u, now < u + n + H → (recentTheftProducersK n d stolenAt u).card ≤ T)",
+    "(hRT : Rrent + T ≤ faultBudget n)",
+    "(hVal : validSignedChainK' n Δconf ops registry sc = true) (hVal' : validSignedChainK' n Δconf ops registry sc' = true)",
+    "{sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip) (hTipS' : (stripSigs sc').getLast? = some sTip')",
+    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+    "(hLong : n < (stripSigs sc).length) (hLong' : n < (stripSigs sc').length)",
+    "(hTipHeight : sTip.height = sTip'.height)",
+    "{B B' : Block} (hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B) (hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B')"
+   ],
+   "conclusion": "B = B'",
+   "proof_sketch": "`client_refresh_rule` (Molt/Rotation.lean:267) with its `hBudget` argument replaced by `MoltPetit.Model.budget_of_reaction (by omega) hReacts hRent hTheft hRT` (the `(by omega)` discharges `0 < n` from `hn : 1 ≤ n`, defeq-equal but written out per the codebase's own gotcha note that this conversion is spelled explicitly, not left to defeq): `client_refresh_rule hn hΔ hEUF hHash hA hA' hFresh (MoltPetit.Model.budget_of_reaction (by omega) hReacts hRent hTheft hRT) hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'`. No `rw` needed: `budget_of_reaction`'s `guard` unifies with `fun u => now < u + n + H` from `client_refresh_rule`'s own expected `hBudget` type, and its conclusion predicate `badKeyrotOn n Δconf rented (stolenOf stolenAt) (stripSigs sc)` passes by defeq into the slot typed `badKeyrot n Δconf rented (stolenOf stolenAt) (stripSigs sc)` (badKeyrot_eq_core, Molt/Rotation.lean:182) exactly as `client_refresh_rule`'s own internal `(fun u hu => hBudget u (by omega))` step already relies on defeq for its callers.",
+   "reuses": [
+    {"name": "client_refresh_rule", "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean", "line": 267, "how": "called with hBudget replaced by budget_of_reaction; every other argument passed through unchanged"},
+    {"name": "budget_of_reaction", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingTimed.lean", "how": "instantiated at guard := fun u => now < u + n + H"},
+    {"name": "badKeyrot_eq_core / faultBudget_eq_core", "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean", "line": 182, "how": "rfl bridges relied on for the defeq passthrough (faultBudget_eq_core at Molt/Protocol.lean:111)"}
+   ]
+  },
+  {
+   "name": "Molt.sync_rule_timed",
+   "hypotheses": [
+    "{n : Nat} (hn : 1 ≤ n)",
+    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}",
+    "{rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop} {d : Nat}",
+    "{honestSigned : SigningLog} {now Δ : Nat} {G : Block}",
+    "{sc sc' scPrev : SignedChain Sig} {A : Block}",
+    "(hEUF : KeyStealingEUFCMA n n ops registry rented (stolenOf stolenAt) honestSigned now Δ)",
+    "(hHash : SignedHashInjective (KeyStealingSigned n ops registry) G)",
+    "{t : Nat} {tipPrev : Block} (hVPrev : validSignedChainK' n n ops registry scPrev = true) (hTipPrev : (stripSigs scPrev).getLast? = some tipPrev) (hRecPrev : t ≤ tipPrev.slot + n) (hLongPrev : n < (stripSigs scPrev).length) (hAnchor : blockAt? (stripSigs scPrev) ((stripSigs scPrev).length - 1 - n) = some A)",
+    "(hCadence : now ≤ t + n)",
+    "(hA : A ∈ stripSigs sc) (hA' : A ∈ stripSigs sc')",
+    "{Rrent T : Nat}",
+    "(hReacts : Reacts n n d (stripSigs sc) stolenAt)",
+    "(hRent : ∀ u, now < u + 5 * n → (badSlotsIn rented u n).card ≤ Rrent)",
+    "(hTheft : ∀ u, now < u + 5 * n → (recentTheftProducersK n d stolenAt u).card ≤ T)",
+    "(hRT : Rrent + T ≤ faultBudget n)",
+    "(hVal : validSignedChainK' n n ops registry sc = true) (hVal' : validSignedChainK' n n ops registry sc' = true)",
+    "{sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip) (hTipS' : (stripSigs sc').getLast? = some sTip')",
+    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+    "(hLong : n < (stripSigs sc).length) (hLong' : n < (stripSigs sc').length)",
+    "(hTipHeight : sTip.height = sTip'.height)",
+    "{B B' : Block} (hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B) (hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B')"
+   ],
+   "conclusion": "B = B'",
+   "proof_sketch": "`sync_rule` (Molt/ClientRule.lean:238) with `hBudget` replaced: `sync_rule hn hEUF hHash hVPrev hTipPrev hRecPrev hLongPrev hAnchor hCadence hA hA' (MoltPetit.Model.budget_of_reaction (by omega) hReacts hRent hTheft hRT) hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'`. `budget_of_reaction`'s `guard` unifies with `fun u => now < u + 5 * n`, the literal guard `sync_rule` states (not an `H`-derived one — `sync_rule`'s own proof computes `H := 4 * n - 1` internally from `deep_block_span` and then still exposes `now < u + 5 * n` to its caller as the outward-facing hBudget guard, so this wrapper's `hRent`/`hTheft` are phrased at that same outward guard, matching `sync_rule`'s signature exactly with no knowledge of the internal `4n-1` needed).",
+   "reuses": [
+    {"name": "sync_rule", "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean", "line": 238, "how": "called with hBudget replaced by budget_of_reaction; every other argument passed through unchanged"},
+    {"name": "budget_of_reaction", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingTimed.lean", "how": "instantiated at guard := fun u => now < u + 5 * n"}
+   ]
+  },
+  {
+   "name": "Molt.sync_rule_mem_timed",
+   "hypotheses": [
+    "{n : Nat} (hn : 1 ≤ n)",
+    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}",
+    "{rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop} {d : Nat}",
+    "{honestSigned : SigningLog} {now Δ : Nat} {G : Block}",
+    "{sc sc' scPrev : SignedChain Sig} {A : Block}",
+    "(hEUF : KeyStealingEUFCMA n n ops registry rented (stolenOf stolenAt) honestSigned now Δ)",
+    "(hHash : SignedHashInjective (KeyStealingSigned n ops registry) G)",
+    "{t : Nat} {tipPrev : Block} (hVPrev : validSignedChainK' n n ops registry scPrev = true) (hTipPrev : (stripSigs scPrev).getLast? = some tipPrev) (hRecPrev : t ≤ tipPrev.slot + n) (hLongPrev : n < (stripSigs scPrev).length) (hAnchor : blockAt? (stripSigs scPrev) ((stripSigs scPrev).length - 1 - n) = some A)",
+    "(hCadence : now ≤ t + n)",
+    "(hA : A ∈ stripSigs sc) (hA' : A ∈ stripSigs sc')",
+    "{Rrent T : Nat}",
+    "(hReacts : Reacts n n d (stripSigs sc) stolenAt)",
+    "(hRent : ∀ u, now < u + 5 * n → (badSlotsIn rented u n).card ≤ Rrent)",
+    "(hTheft : ∀ u, now < u + 5 * n → (recentTheftProducersK n d stolenAt u).card ≤ T)",
+    "(hRT : Rrent + T ≤ faultBudget n)",
+    "(hVal : validSignedChainK' n n ops registry sc = true) (hVal' : validSignedChainK' n n ops registry sc' = true)",
+    "{sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip) (hTipS' : (stripSigs sc').getLast? = some sTip')",
+    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+    "(hLong : n < (stripSigs sc).length) (hLong' : n < (stripSigs sc').length)",
+    "(hLe : sTip.height ≤ sTip'.height)",
+    "{B : Block} (hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B)"
+   ],
+   "conclusion": "∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B",
+   "proof_sketch": "`sync_rule_mem` (Molt/ClientRule.lean:284) with `hBudget` replaced identically to `sync_rule_timed`: `sync_rule_mem hn hEUF hHash hVPrev hTipPrev hRecPrev hLongPrev hAnchor hCadence hA hA' (MoltPetit.Model.budget_of_reaction (by omega) hReacts hRent hTheft hRT) hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hLe hB`.",
+   "reuses": [
+    {"name": "sync_rule_mem", "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean", "line": 284, "how": "called with hBudget replaced by budget_of_reaction; every other argument passed through unchanged"},
+    {"name": "budget_of_reaction", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingTimed.lean", "how": "instantiated at guard := fun u => now < u + 5 * n"}
+   ]
+  },
+  {
+   "name": "Molt.max_sync_period_timed",
+   "hypotheses": [
+    "{n Δconf F : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
+    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}",
+    "{rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop} {d : Nat}",
+    "{honestSigned : SigningLog} {now Δ : Nat} {G : Block}",
+    "{sc sc' scPrev : SignedChain Sig} {A : Block}",
+    "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented (stolenOf stolenAt) honestSigned now Δ)",
+    "(hHash : SignedHashInjective (KeyStealingSigned n ops registry) G)",
+    "{t : Nat} {tipPrev : Block} (hVPrev : validSignedChainK' n Δconf ops registry scPrev = true) (hTipPrev : (stripSigs scPrev).getLast? = some tipPrev) (hRecPrev : t ≤ tipPrev.slot + n) (hLongPrev : n < (stripSigs scPrev).length) (hAnchor : blockAt? (stripSigs scPrev) ((stripSigs scPrev).length - 1 - n) = some A)",
+    "(hCadence : now ≤ t + F)",
+    "(hA : A ∈ stripSigs sc) (hA' : A ∈ stripSigs sc')",
+    "{Rrent T : Nat}",
+    "(hReacts : Reacts n Δconf d (stripSigs sc) stolenAt)",
+    "(hRent : ∀ u, now < u + F + 4 * n → (badSlotsIn rented u n).card ≤ Rrent)",
+    "(hTheft : ∀ u, now < u + F + 4 * n → (recentTheftProducersK n d stolenAt u).card ≤ T)",
+    "(hRT : Rrent + T ≤ faultBudget n)",
+    "(hVal : validSignedChainK' n Δconf ops registry sc = true) (hVal' : validSignedChainK' n Δconf ops registry sc' = true)",
+    "{sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip) (hTipS' : (stripSigs sc').getLast? = some sTip')",
+    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+    "(hLong : n < (stripSigs sc).length) (hLong' : n < (stripSigs sc').length)",
+    "(hTipHeight : sTip.height = sTip'.height)",
+    "{B B' : Block} (hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - n) = some B) (hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B')"
+   ],
+   "conclusion": "B = B'",
+   "proof_sketch": "`max_sync_period` (Molt/MaxSync.lean:176) with `hBudget` replaced: `max_sync_period hn hΔ hEUF hHash hVPrev hTipPrev hRecPrev hLongPrev hAnchor hCadence hA hA' (MoltPetit.Model.budget_of_reaction (by omega) hReacts hRent hTheft hRT) hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'`. `budget_of_reaction`'s `guard` unifies with `fun u => now < u + F + 4 * n`, `max_sync_period`'s own literal outward guard (parametric in the cadence `F`, generalizing `sync_rule_timed`'s fixed `F := n`).",
+   "reuses": [
+    {"name": "max_sync_period", "path": "/etheron-pod/mini-consensus-lean/Molt/MaxSync.lean", "line": 176, "how": "called with hBudget replaced by budget_of_reaction; every other argument passed through unchanged"},
+    {"name": "budget_of_reaction", "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingTimed.lean", "how": "instantiated at guard := fun u => now < u + F + 4 * n"}
+   ]
+  }
+ ],
+ "touches_existing": [
+  {
+   "path": "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
+   "change": "Add `import MoltPetit.Model.KeyStealingTimed` after line 32 (`import MoltPetit.Model.KeyStealingScheduleTimed`) and before line 33 (`import MoltPetit.Model.KeyRotationTests`); add `import MoltPetit.Results.AxiomsKeyStealingTimed` after line 34 (`import MoltPetit.Results.Axioms`) and before line 35 (`import MoltPetit.Custody`).",
+   "why_unavoidable": "The lakefile's four lean_libs have no glob roots (`docs/rollout/designs-partial/W3a-run2.md` §2.1 confirms: 'a new file is elaborated only if reachable from the root import chain'), so a new module not imported anywhere is never built and its axiom guard never enforced by the default `lake build`. This is exactly the one class of touch the task's own constraints permit ('the only permitted touches to existing files are import lines in the root modules')."
+  },
+  {
+   "path": "/etheron-pod/mini-consensus-lean/Molt.lean",
+   "change": "Add `import Molt.SyncRuleTimed` after line 7 (`import Molt.MaxSync`) and before line 8 (`import Molt.Liveness`); add `import Molt.AxiomsSyncRuleTimed` after line 9 (`import Molt.Axioms`).",
+   "why_unavoidable": "Same reachability requirement as MoltPetit.lean, for the `Molt` lean_lib and its own axiom-guard discipline (`Molt/Axioms.lean`'s docstring: 'lake build Molt fails if any theorem ever picks up an axiom beyond the three classical ones')."
+  }
+ ],
+ "depends_on": [],
+ "enables": [
+  {
+   "key": "W2",
+   "why": "`MoltPetit.Model.budget_of_reaction` is generic in both the witness chain `c₀` (an implicit) and the window guard, so a future certificate-level timed budget (extending W2's `AttestedHistoryK`-quantified `hBudget : ∀ c, AttestedHistoryK ... c → ∀ u, ... → ...`) could apply it pointwise at each attested history `c` rather than re-deriving the union-bound/exposure-census machinery a second time — W2's design already notes its own budget hypothesis is 'quantified over AttestedHistoryK' with no from-rates derivation attempted; this item's engine is the natural ingredient for that, later."
+  },
+  {
+   "key": "W3b",
+   "why": "This item's Honest-scope paragraph documents the same residual W3b is scoped to close: `Reacts` still lets a theft be counted at every window before `r + d` regardless of when any block was actually minted (future-inclusive within the reaction window), because there is still no mint-time EUF-CMA surface. A time-aware signature surface (W3b) would let a future item tighten `Reacts`'s conclusion from 'the floor has moved' to 'no signature under `j` exists after `r + d` was minted', shrinking the census further; W3a does not require W3b and stands alone."
+  }
+ ],
+ "paper_changes": [
+  {
+   "location": "paper/molt.tex, the retroactive-census paragraph following Theorem 3 (around the phrase 'the budget's census is retroactive', paper lines ~866-889 as of the salvage's grep)",
+   "change": "Add a remark that under an additional per-chain reaction-delay hypothesis (Lean `Reacts`, `MoltPetit/Model/KeyStealingTimed.lean`), the census can be read as recency-scoped rather than fully retroactive: a theft counts only for windows within `d` slots of the theft, not for the whole stretch. Cite `Reacts`, `recentTheftProducersK`, `budget_of_reaction`, and the four `*_timed` corollaries (`Molt.client_refresh_rule_timed`/`sync_rule_timed`/`sync_rule_mem_timed`/`max_sync_period_timed`)."
+  },
+  {
+   "location": "paper/molt.tex, 'Why the cadence cannot simply be enlarged' paragraph (around the phrase 'A deployment prepared to assume strictly more', paper lines ~891-936)",
+   "change": "That paragraph already gestures at 'theft times inside the signature assumptions' as the thing that would let a larger F be supported; add that a WEAKER intermediate step — a chain-observable reaction delay `d`, not full mint-time theft times — already gets a from-rates derivation (this item), while the mint-time surface itself (`SchedTimedUnforgeable`-style, X-3) remains future work (W3b)."
+  },
+  {
+   "location": "paper/molt.tex, Honest scope paragraph (around the phrase 'even if the theft only happens later', paper lines ~1163-1182)",
+   "change": "Add one sentence: 'A per-chain reaction-delay hypothesis (Lean `Reacts`) gives an alternative, from-rates derivation of the same budget with a recency-scoped rather than fully retroactive census; it does not by itself close the theft-before-mint gap noted above.'"
+  }
+ ],
+ "size_estimate_lines": 430,
+ "effort_sessions": "1",
+ "risks": [
+  {
+   "risk": "The `guard : Nat → Prop` genericization of `budget_of_reaction` is a design choice beyond the planner's literal working hypothesis (which sketched the derivation at the fixed anchored guard only); if a reviewer wants the item scoped EXACTLY to the anchored form with no generalization, the four Molt `*_timed` wrappers would instead need `anchored_budget_of_reaction` composed through an extra omega-conversion step at each call site (mirroring how `client_refresh_rule` itself converts its own `hBudget` argument today), which is mechanically easy but adds ~4 extra `have`/`omega` lines per wrapper.",
+   "mitigation": "The generic form is strictly more general (the anchored form is the one-line corollary `anchored_budget_of_reaction`, kept as a named deliverable exactly as asked), so no information or the planner's named shape is lost; implementers preferring the narrower reading can drop the generic `budget_of_reaction` and inline the anchored form four times instead, at the stated proof-line cost."
+  },
+  {
+   "risk": "The exact `#print axioms` output (axiom set and single-line vs 3-line wrap) for the seven new theorems is asserted by analogy with their closest existing siblings, not measured — a real build could reveal an unexpected extra axiom (unlikely, since every ingredient is already guarded at [propext, Classical.choice, Quot.sound], but not certain until built) or a different column-wrap.",
+   "mitigation": "Both new guard files' outlines explicitly instruct the implementer to probe with a bare `#print axioms` first and copy the emitted message verbatim, per the codebase's own established discovery idiom (results-molt.md)."
+  },
+  {
+   "risk": "`Reacts` is a genuinely new named hypothesis with no existing paper term (`docs/rollout/designs-partial/W3a-run2.md` confirms zero grep hits for 'reaction' in paper/molt.tex or the design docs) — a deployment-facing reviewer may object to introducing an unmotivated new primitive assumption rather than reducing it to something already stated.",
+   "mitigation": "The item's own goal_statement and the module docstring explain why no reduction is possible with the current chain model (inForce has no period, unlike mode 2's s/R); this is recorded as the leading open_questions_for_owner item so naming/motivation can be settled before or alongside implementation, without blocking the Lean content."
+  }
+ ],
+ "alternatives_rejected": [
+  {
+   "alt": "Derive a `theft_is_recent`-style backward-locality THEOREM for mode 1 from some periodic provisioning assumption analogous to `NoPrematureTheft`, instead of introducing `Reacts` as a primitive named hypothesis.",
+   "why": "Mode 1's floor `inForce` (KeyRotation.lean:72) has no period the way mode 2's flagship schedule `s / R` does — there is no 'generation provisioned at `j * R`' structure to hang a derivation on. `mode1-chain.md` states outright that the needed inForce-to-real-time relation 'does not exist yet'; inventing one would require new chain-level machinery well beyond this item's additive scope (an explicit announcement-to-confirmation timing theorem), so `Reacts` is assumed directly, mirroring how `NoPrematureTheft`/`ErasureTimed` are themselves named rather than derived in mode 2."
+  },
+  {
+   "alt": "State the budget derivation at the fixed guard `H ≤ u` (literally mirroring `horizon_budget_of_timed`), requiring each of the four Molt consumers to omega-convert at their own call site.",
+   "why": "`horizon_budget_of_timed`'s proof never inspects the guard beyond calling `hRent u hu`/`hTheft u hu` opaquely, so genericizing over an arbitrary `guard : Nat → Prop` costs nothing extra in the proof and delivers strictly more: one theorem, `budget_of_reaction`, serves the core anchored form AND all four Molt trailing forms with literally zero restatement, which is a stronger reading of the planner's own 'no restatement' requirement than a fixed-guard version would satisfy."
+  },
+  {
+   "alt": "Attach time-stamped theft to the existing `KeyStealingExecution`/`StolenMint` structure (KeyStealing.lean:101), which already carries a `steal_bad` bridge from minted blocks to bad real slots.",
+   "why": "That structure is consumed ONLY by `keyStealing_refines_timed` (mode1-chain.md open item (7)), which is not on the path to any client theorem — `client_refresh_rule`/`sync_rule`/`max_sync_period` consume `badKeyrotOn`/`badKeyrot` through a bare `Stolen : Nat → Nat → Prop`, with no reference to `KeyStealingExecution` anywhere. Wiring through it would add an unrelated, unused bridge for no payoff toward the planner's stated deliverable."
+  }
+ ],
+ "open_questions_for_owner": [
+  "Is `Reacts` the right name/framing, given 'reaction' appears nowhere in the current paper or design docs (confirmed: zero grep hits)? An alternative like `ReactionBound`/`TheftHeals` might read better once this gets a paper section, but the Lean content is independent of the name.",
+  "Should a fifth wrapper, `stay_recent_client_safe_timed` (mirroring `Molt.stay_recent_client_safe`, Molt/ClientRule.lean:174, the general-Δconf predecessor `sync_rule_timed` specializes), be added even though the planner's explicit consumer list names only sync_rule/sync_rule_mem/client_refresh_rule/max_sync_period? It is a one-line addition by the same pattern and would close the family, but is not required.",
+  "Does the owner want the generic `guard : Nat → Prop` form of `budget_of_reaction` (this design's choice) or a fixed-guard form closer to the planner's literal working hypothesis (see risks)? Both are fully specified above; the generic form is recommended but is a design decision worth confirming before implementation."
+ ],
+ "hypothesis_verdict": "CONFIRMED, with one simplification found. The planner's working hypothesis is correct on every load-bearing point verified against source: the theft-counts-at-slot-s reading (`inForce n Δconf c0 i s ≤ j`) matches `theftOn` exactly (KeyStealingBudget.lean:42-43); `Reacts` as stated (`stolenAt i j r → r + d ≤ s → j < inForce n Δconf c0 i s`) is exactly what makes the contrapositive argument in `exposedProducers_subset_recentTheftK` go through, mirroring `exposedSched_subset_recentTheft`'s structure step for step; the derivation genuinely must be per accepted chain (`badKeyrotOn` is chain-keyed, `Reacts` inherits the same `c₀`); the anchored/trailing budget derivation from `hRent + hTheft` (guarded identically) `+ hRT` mirrors `horizon_budget_of_timed` step by step with no structural surprises. One simplification versus the planner's sketch: `recentTheftProducersK` needs NO generation-floor conjunct analogous to mode 2's `u / R ≤ j` (which the mode-2 module itself calls 'redundant' under `NoPrematureTheft`) — mode 1 has no period to define such a floor from, and `Reacts`'s conclusion is already fully general in `j`, so the filter is exactly `∃ j r, stolenAt i j r ∧ u < r + d`, simpler than the planner's phrasing might suggest by analogy with mode 2.",
+ "recommendation": "Build as designed, in the order: MoltPetit/Model/KeyStealingTimed.lean first (self-contained, only needs KeyStealingBudget.lean + KeyStealingScheduleTimed.lean, both already landed) and its guard file, confirming axiom sets with a bare #print axioms probe before writing the guard blocks; then Molt/SyncRuleTimed.lean (four thin wrappers, each a single call to an existing Molt theorem with one argument substituted) and its guard file; then the two import-line edits, in that order so `lake build MoltPetit.Model.KeyStealingTimed` / `lake build Molt.SyncRuleTimed` can be checked standalone before wiring into the default build. No loop risk: every reused interface (sync_rule, sync_rule_mem, client_refresh_rule, max_sync_period, and the core anchored theorems) is already landed and stable, and this item changes no existing hypothesis anywhere.",
+ "files_read": [
+  "/etheron-pod/mini-consensus-lean/rollout/designs-partial/W3a-run2.md",
+  "/etheron-pod/mini-consensus-lean/rollout/designs/W2.json",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingBudget.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealing.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleTimed.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizonCore.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizon.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotation.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyIndex.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Definitions.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit/Results/Axioms.lean",
+  "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
+  "/etheron-pod/mini-consensus-lean/Molt.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/MaxSync.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Assumptions.lean",
+  "/etheron-pod/mini-consensus-lean/Molt/Axioms.lean"
+ ]
+}

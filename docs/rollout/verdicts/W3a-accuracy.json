@@ -1,0 +1,37 @@
+{
+  "work_item": "W3a",
+  "lens": "accuracy of reuse claims and feasibility",
+  "verdict": "sound",
+  "issues": [
+    {
+      "claim": "Results/Axioms.lean citation for badSlotsIn_union_le / induced_byzantine_bounded at 'Results/Axioms.lean:338,341'",
+      "actual": "The #print axioms lines for these two theorems are at Results/Axioms.lean:337 and :343 (theftSlots_card_le_exposed sits between them at :340); the design's numbers are off by 1-3 lines, likely counting the adjacent #guard_msgs/comment line instead of the #print axioms line itself.",
+      "severity": "minor",
+      "fix": "Re-grep and correct the three line numbers in the risks/reuses prose before finalizing the guard file's docstring citations; no code or proof content is affected."
+    }
+  ],
+  "confirmed_reuses": [
+    "MoltPetit.Model.stolenOf / stolenAt vocabulary — KeyStealingScheduleTimed.lean:90-91, def matches design verbatim (stolenOf stolenAt i j := ∃ r, stolenAt i j r)",
+    "MoltPetit.Model.badKeyrotOn — KeyStealing.lean:47-51, def matches design's c₀-keyed union-of-rented-or-theft-existential shape exactly",
+    "MoltPetit.Model.theftOn — KeyStealingBudget.lean:42-43, matches; and badKeyrotOn_iff_or (line 45-48, proved by Iff.rfl) independently confirms the 'rfl'-unfold step the design's budget_of_reaction proof relies on is legitimate — it is literally the same step induced_byzantine_bounded's own proof (KeyStealingBudget.lean:107-124) already performs verbatim ('have : ... := rfl')",
+    "MoltPetit.Model.exposedProducers — KeyStealingBudget.lean:62-65, matches design's Finset.filter.image description",
+    "MoltPetit.Model.badSlotsIn_union_le — KeyStealingBudget.lean:52-58, generic in the two ByzantineSlots predicates as claimed, callable as-is",
+    "MoltPetit.Model.theftSlots_card_le_exposed — KeyStealingBudget.lean:92-100, signature (n Δconf Stolen c₀ u) matches the design's call site exactly",
+    "MoltPetit.Model.horizon_budget_of_timed — KeyStealingScheduleTimed.lean:187-218; proof body confirmed to use `hu : H ≤ u` only opaquely (two calls `hRent u hu` / `hTheft u hu`), supporting the design's claim that genericizing H ≤ u into an arbitrary `guard u` is a pure weakening with no new proof obligation",
+    "MoltPetit.Model.exposedSched_subset_recentTheft — KeyStealingScheduleTimed.lean:156-172, exists and matches as the proof-skeleton mirror source",
+    "MoltPetit.Model.inForce — KeyRotation.lean (~line 72 region), chain-relative floor confirmed to read off a Chain via the ≤-pin discussion; matches design's description",
+    "Molt.client_refresh_rule — Molt/Rotation.lean:267, full signature (hFresh, hBudget at guard `now < u + n + H` over badKeyrot n Δconf rented Stolen (stripSigs sc), faultBudget n) matches design's reuse plan verbatim",
+    "Molt.sync_rule — Molt/ClientRule.lean:238, hBudget guard `now < u + 5 * n` matches exactly",
+    "Molt.sync_rule_mem — Molt/ClientRule.lean:284, full hypothesis list and conclusion (∃ i', i' + n < ... ∧ blockAt? ... = some B) matches design's reuse plan verbatim",
+    "Molt.max_sync_period — Molt/MaxSync.lean:176, hBudget guard `now < u + F + 4 * n` matches exactly",
+    "Molt.badKeyrot_eq_core — Molt/Rotation.lean:182, `badKeyrot = MoltPetit.Model.badKeyrotOn := rfl` confirmed — validates the design's central defeq-passthrough claim that budget_of_reaction's conclusion unifies with each wrapper's hBudget slot without restatement",
+    "Molt.faultBudget_eq_core — Molt/Protocol.lean:111, `faultBudget = MoltPetit.Model.maxByzantine := rfl` confirmed — second half of the same defeq-passthrough claim",
+    "Molt.badSlotsIn fresh-copy + _eq_core precedent — Molt/Assumptions.lean:33 (def) and :81 (badSlotsIn_eq_core := rfl), exact line numbers match the design's citation, correctly supporting the 'fresh Finset-valued copy, not abbrev' idiom choice for Molt.recentTheftProducersK",
+    "Molt.KeyStealingEUFCMA abbrev precedent — Molt/Rotation.lean:108, `abbrev KeyStealingEUFCMA := @MoltPetit.Model.KeyStealingEUFCMA` confirmed, correctly supporting the abbrev idiom choice for Molt.Reacts",
+    "MoltPetit.lean / Molt.lean import-line touch points — exact line numbers (32/33/34/35 in MoltPetit.lean; 7/8/9 in Molt.lean) confirmed against current file contents",
+    "honestSlotsUnique_keyrot_anchored (KeyStealingHorizonCore.lean:258) and keyrot_recent_tip_ancestor_agreement_anchored/_mem_anchored (KeyStealingHorizon.lean:134/222) — exact line numbers confirmed, and hBudgetFrom's guard shape `∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) u n).card ≤ maxByzantine n` confirmed byte-for-byte against the design's claimed 'byte-identical to the core anchored form' assertion, including c₀ := stripSigs sc (the first/lower chain)",
+    "No existing declaration named budget_of_reaction, Reacts, or recentTheftProducersK anywhere in the repo (grep across all .lean files returned nothing) — confirms no duplication of an existing theorem under a new name"
+  ],
+  "ordering_notes": "The design's own build order (MoltPetit/Model/KeyStealingTimed.lean + its guard file first, standalone-buildable against only already-landed KeyStealingBudget.lean/KeyStealingScheduleTimed.lean; then Molt/SyncRuleTimed.lean + its guard file, standalone-buildable against already-landed Molt/Rotation.lean, ClientRule.lean, MaxSync.lean; then the two import-line touches last) is sound and matches dependency reality: every reused interface on both sides (core and Molt) is already landed, stable, and unmodified by this design (no existing hypothesis anywhere is changed) — verified directly by reading the six reused theorem signatures in full and confirming zero mismatch with the design's stated call sites. No hidden dependency or ordering hazard was found.",
+  "revised_effort": "1 session, as estimated — line count (~430) and complexity (four thin one-argument-substitution wrappers, three core-mirror lemmas with proofs that are direct line-for-line analogues of already-landed and already-axiom-audited siblings, two additive guard files, two single-import-line touches) are consistent with the design's own estimate; no rework or re-derivation risk was found during verification since virtually every citation (line numbers, hypothesis lists, defeq bridges) was confirmed exact against source rather than merely plausible."
+}

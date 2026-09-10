@@ -1,0 +1,40 @@
+{
+ "work_item": "W5",
+ "lens": "accuracy of reuse claims and feasibility",
+ "verdict": "sound-with-corrections",
+ "issues": [
+  {
+   "claim": "window_shared_prefix reuses entry bundles `chainSlotsIn_card / chainSlotsIn_subset_Ico / mem_chainSlotsIn / exists_blockAt_of_mem` all at `MoltPetit/Model/Model.lean:60`",
+   "actual": "Only `chainSlotsIn_card` is at Model.lean:60. `mem_chainSlotsIn` is at :35, `chainSlotsIn_subset_Ico` at :40, `exists_blockAt_of_mem` at :71 (confirmed against source and the prior salvage evidence). All four names exist with the expected statements, so this does not block feasibility.",
+   "severity": "minor",
+   "fix": "Split the bundled reuse entry into per-name line numbers so a reader can jump straight to each declaration; no change to the proof plan needed."
+  },
+  {
+   "claim": "window_shared_prefix reuses entry bundles `MaturedWindowsDense / ValidChain / HonestSlotsUnique / IdInjective / ChainInRecord / badSlotsIn` all at `MoltPetit/Model/Definitions.lean:484`",
+   "actual": "Only `MaturedWindowsDense` is at :484. `ValidChain` is at :490, `ChainInRecord` at :494, `HonestSlotsUnique` at :498, `IdInjective` at :503, `badSlotsIn` at :509. All six exist with the forms the design assumes.",
+   "severity": "minor",
+   "fix": "Same as above: split into per-name lines. Purely a citation-precision nit."
+  },
+  {
+   "claim": "paper_changes cites 11 alternative phrasings in paper/molt.tex as anchors to edit",
+   "actual": "A prior evidence-gathering pass (see W5-accuracy-partial.md §3 item 3) greped for the 11 phrases and found only 13 matching lines; three phrases (\"its budget credit: honest scope below\", \"counts thefts across all generations together\", and the ρ+T one) did not show a hit, though the ρ+T miss may be a shell-escaping artifact rather than a real absence. This affects only the paper_changes section, not any Lean reuse/proof-feasibility claim.",
+   "severity": "minor",
+   "fix": "Before editing paper/molt.tex, re-grep the three unmatched phrases without shell-escaping ambiguity (e.g. via the Grep tool) to confirm the exact anchor text/line before writing the diff."
+  }
+ ],
+ "confirmed_reuses": [
+  "PackageB.erasure_freeze (MoltPetit/Model/KeyStealingScheduleBudget.lean:337) — type is exactly `∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T`, syntactically identical to LockstepPackageGen.genBound and to lockstep_aligned_budget's hGen hypothesis; verbatim field-pass is valid.",
+  "erasure_freeze_of_exposedBound (MoltPetit/Model/KeyStealingScheduleBudget.lean:364) — signature confirmed by direct read: `(hExposed : ∀ u, (exposedProducersSched n schedule Stolen u).card ≤ T) (hFull : ∀ j, ∃ u, ∀ s, u ≤ s → s < u + n → schedule s = j) : ∀ j, (…filter (Stolen · j)…).card ≤ T`. LockstepPackage.toGen's derivation of hFull j via u := (W+1)*n from hSurj is arithmetically correct given lagSched's definition.",
+  "lagSched (MoltPetit/Model/KeyStealingLockstep.lean:112) — confirmed `def lagSched (n) (rosterGen) (s) := rosterGen (s / n - 1)`; the toGen hFull computation (s ∈ [(W+1)n,(W+2)n) ⇒ s/n=W+1 ⇒ lagSched s = rosterGen W) checks out under Nat subtraction with no underflow.",
+  "LockstepPackage (MoltPetit/Model/KeyStealingLockstep.lean:252) — full field list confirmed by direct read (mono, unforgeable : SchedCoreUnforgeable n (fun _ => 0) …, declared, hashInj, genesis_gen, rentBound, exposedBound at lagSched n rosterGen, budget_le); LockstepPackage.toGen's plan to copy unforgeable/declared/hashInj/rentBound/budget_le verbatim and derive only genBound is consistent with these types.",
+  "lockstep_declares_rosterGen (MoltPetit/Model/KeyStealingLockstep.lean:299-463) — full proof body read. Confirmed that the strong induction on W, the base case at genesis (hHead, head_slot_min), and hlow (rosterGen(W-1) ≤ B.keyIndex) exist ONLY to discharge theftSched's `∃ j ≥ lagSched, Stolen(_, j)` existential side-condition when invoking hP.exposedBound. The by_contra/census argument that charges every non-rented, non-honestly-explained slot in a window to the single generation g = B.keyIndex works standalone, with no dependency on any other window, once the design swaps the consumed budget from exposedBound (cumulative, needs `≥ lagSched`) to genBound (per-generation, no ordering side-condition). This validates the design's central technical claim (non-inductive, genesis-free pinning) as mathematically sound, not merely asserted.",
+  "lockstepOk / lockstepOk_iff_pairwise (public, KeyStealingLockstep.lean:76/84) and lockstep_rel / lockstep_const / window_producer_inj' (private, :172/195/220) — all confirmed present and private by direct source read; their bodies use only public primitives (List.pairwise_iff_getElem, exists_blockAt_of_mem, strictSlots_lt), so the design's plan to re-prove lockstep_const_gen and aligned_producer_inj under new names from lockstepOk_iff_pairwise is feasible.",
+  "SchedCoreUnforgeable (MoltPetit/Model/KeyStealingScheduleCert.lean:200) — full structure read. Its `unforgeable` field is universally quantified over the target generation j (not tied to a schedule value at the block's own slot), so instantiating at j := B.keyIndex (as the design's sketch does via sigOk) is a valid, intended use, not a misuse.",
+  "schedCore0_of_lock (MoltPetit/Model/KeyStealingLockstep.lean) — body confirmed to derive validSignedChainSchedCore n (fun _ => 0) … from validSignedChainLock; matches every design usage.",
+  "exposedBound_not_of_genBound's counter-witness (n=2, T=1, rosterGen ≡ 0, Stolen i j := i=j) — manually re-derived: per-generation census is ≤ 1 for every j (⊆ {j}), but exposedProducersSched at u=0 evaluates to {0,1} (card 2 > T), since lagSched is constant 0 so theftSched holds for every slot. The impossibility-of-pure-budget-transport claim (goal statement item (1)) is correctly refuted by this witness.",
+  "NoPrematureTheft / ErasureTimed (MoltPetit/Model/KeyStealingScheduleTimed.lean:96/102) and the two _iff_flagship equivalences — pointwise algebra (Nat.le_div_iff_mul_le, Nat.div_lt_iff_lt_mul ∘ Nat.lt_succ_iff.symm) re-derived and confirmed correct at rosterGen := id, R := n.",
+  "No new-theorem name collides with an existing declaration: the prior evidence-gathering pass's case-insensitive grep for the design's proposed new names (UniqueOn, AlignedBounded, badLockAt, aligned_*, length_le_tip, tip_slot_ge, slot_ge_length, chain_length_le, window_shared, shared_prefix) over all of MoltPetit + Molt found no hits except the pre-existing, deliberately-related horizon_shared_prefix and sigma_shared_prefix."
+ ],
+ "ordering_notes": "Out of scope for this lens (accuracy of reuse claims), but noted in passing: depends_on/enables entries for W1/W3a/W4/W6/W7 were not touched by the prior accuracy salvage or by this pass; a separate ordering-lens review should verify those claims against W5-ordering-partial.md.",
+ "revised_effort": "3-5 sessions (vs. the design's stated 3-4). The core novel proof (lockstep_window_declares_rosterGen) is mathematically sound and closely templated on an existing, fully-read proof (lockstep_declares_rosterGen), which lowers risk on the riskiest single item. The design's own flagged risk — omega-hostile 2n index arithmetic in the depth-2n headlines, plus three private-lemma reproofs and axiom-guard string probing — is real and adequately mitigated in the design, but this class of Finset/Nat.div arithmetic reliably costs more wall-clock than estimated in this codebase; budget a half-session of extra slack beyond what the design already reserves."
+}

@@ -1,455 +1,458 @@
 {
- "work_item": "W2",
- "title": "Mode 1 anchored / trailing-5n client rule at the certificate presentation (GroundedCertK + suffix), as a corollary of a generic-Signed anchored deep-block engine applied to the reconstructed chains",
- "goal_statement": "Prove, additively and axiom-clean, that two verifying GroundedCertK certificates each extended by a validated recent suffix agree on every block at the same global height that is n-deep in both suffixes, with the corruption budget consulted ONLY on windows ending after a client anchor A (core form), and derive from it the Molt-level refresh-rule family at the certificate presentation: an H-parametric form (mirror of Molt.client_refresh_rule), the trailing-5n form with the previous sync itself in certificate form (mirror of Molt.stay_recent_client_safe), and the Δconf := n sync rule (mirror of Molt.sync_rule). Answers to the item's questions, all confirmed against source: (1) the anchor enters as membership in the EXPOSED SUFFIX (hA : A ∈ s₁ :: srest, hA' : A ∈ s₁' :: srest'), lifted to the reconstructed chain by List.mem_append_right; it need not and cannot usefully be located inside the certified prefix (the verifier cannot check that), and the protocol reading is 'the prover starts the suffix at or before the client's anchor' (≤ 4n slots back under the sync rule, so still O(n) blocks); (2) the confirmed floors are read as inForce over the RECONSTRUCTED chain inside badKeyrotOn c, exactly as in keyrot_recent_certified_suffix_agreement, with the budget quantified over AttestedHistoryK; the floor snapshot fl enters only through GroundedCertK/keyMonoFrom and is never consulted by the budget (a verifier-visible floor-based budget predicate is sound only for slots s ≥ cl.tipSlot + Δconf and is left as a refinement); (3) the trailing window is measured from the VERIFIER CLOCK: windows [u, u+n) with now < u + 5n; via the anchored engine only windows with u + n > A.slot are ever consulted, and since A ∈ suffix, every consulted window ends strictly after the claim tip cl.tipSlot — the certified prefix touches consulted windows only through its last n-1 slots, i.e. exactly the cl.tail buffer; (4) reusable as-is via the reconstruction: groundedCertK_suffix_history, exists_signedChain_of_covered, AttestedHistoryK, honestSlotsUnique_keyrot_anchored, horizon_shared_prefix, idInjective_keyrot, versionedUnforgeable_of_keyStealingEUFCMA, slot_le_tip_of_mem, deep_block_span (Molt), and the census lemmas (they are already generic in the witness chain c₀, so they apply to any attested history unchanged); (5) state it as a COROLLARY of a chain-level theorem applied to the reconstructed chains — but the existing chain-level anchored theorem (keyrot_recent_tip_ancestor_agreement_anchored) is tip-shaped and fixes hHash over KeyStealingSigned, so one new generic-Signed, arbitrary-depth anchored engine (keyrot_deep_block_agreement_anchored, ~80 lines, composed from existing lemmas) is added first; nothing is re-proved from the record.",
- "new_files": [
-  {
-   "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCertAnchored.lean",
-   "outline": "namespace MoltPetit.Model. Imports: MoltPetit.Model.KeyStealingCert (GroundedCertK, groundedCertK_suffix_history, exists_signedChain_of_covered, AttestedHistoryK, SignedDeclared) and MoltPetit.Model.KeyStealingHorizon (transitively KeyStealingHorizonCore.honestSlotsUnique_keyrot_anchored, KeyStealingScheduleHorizon.horizon_shared_prefix, KeyStealingUnique.idInjective_keyrot / versionedUnforgeable_of_keyStealingEUFCMA / chainInRecord_left/right, Liveness.slot_le_tip_of_mem, Soundness.blockAt_getLast). Contents in order: (1) module docstring stating the anchor-in-suffix reading and the AttestedHistoryK budget reading; (2) theorem keyrot_deep_block_agreement_anchored — chain-level, generic Signed, arbitrary depth k, anchored budget; (3) structure AcceptedSuffixK — the seven per-(claim, floor, suffix) acceptance facts a certificate client checks, plus AcceptedSuffixK.history (one-line application of groundedCertK_suffix_history); (4) theorem keyrot_certified_suffix_agreement_anchored — flat statement mirroring keyrot_recent_certified_suffix_agreement (KeyStealingCert.lean:583) hypothesis-for-hypothesis, with hBudget replaced by the anchored, AttestedHistoryK-quantified hBudgetFrom and hA/hA' added; (5) end MoltPetit.Model. No private helpers needed (the anchored core's hand-rolled 'anchor below tip' argument is replaced by slot_le_tip_of_mem)."
-  },
-  {
-   "path": "/etheron-pod/mini-consensus-lean/Molt/CertClientRule.lean",
-   "outline": "namespace Molt. Imports: Molt.ClientRule (deep_block_span, client_refresh_rule idiom, Molt vocabulary) and MoltPetit.Model.KeyStealingCertAnchored. Contents: (1) abbrev AcceptedSuffixK := @MoltPetit.Model.AcceptedSuffixK; abbrev AttestedHistoryK := @MoltPetit.Model.AttestedHistoryK (no Molt abbrev exists yet; Rotation.lean only abbrevs GroundedCertK and SignedDeclared); (2) alias keyrot_certified_suffix_agreement_anchored := MoltPetit.Model.keyrot_certified_suffix_agreement_anchored, with docstring superseding the 'future work' remark of Rotation.lean:303-307; (3) theorem cert_client_refresh_rule — H-parametric form over AcceptedSuffixK bundles, budget guard now < u + n + H, over Molt names badKeyrot/badSlotsIn/faultBudget/blockAt? (all rfl-bridged, passed by defeq exactly as client_refresh_rule does); (4) theorem cert_stay_recent_client_safe — previous sync given as an AcceptedSuffixK bundle plus anchor position / cadence, budget now < u + 5 * n; (5) theorem cert_sync_rule — Δconf := n instance (term-mode, Nat.le_refl n); (6) optional theorem cert_max_sync_period — cadence F, budget now < u + F + 4 * n (same proof skeleton as (4) with H := F + 3n - 1, mirrors Molt.max_sync_period). end Molt."
-  },
-  {
-   "path": "/etheron-pod/mini-consensus-lean/Molt/AxiomsCertAnchored.lean",
-   "outline": "No namespace. Imports Molt.CertClientRule (which brings the core module). One `#guard_msgs in #print axioms` block per new theorem, in the exact Molt/Axioms.lean:41-44 format: MoltPetit.Model.keyrot_deep_block_agreement_anchored, MoltPetit.Model.AcceptedSuffixK.history, MoltPetit.Model.keyrot_certified_suffix_agreement_anchored, Molt.keyrot_certified_suffix_agreement_anchored (alias; guarding aliases works, cf. Molt/Axioms.lean:107), Molt.cert_client_refresh_rule, Molt.cert_stay_recent_client_safe, Molt.cert_sync_rule, Molt.cert_max_sync_period (if included). Expected axiom list [propext, Classical.choice, Quot.sound] for all (every ingredient is already guarded at that set: groundedCertK_suffix_history at Results/Axioms.lean:300, honestSlotsUnique_keyrot_anchored at :595, deep_block_span at Molt/Axioms.lean:47). The two core names exceed the ~100-column wrap, so their docstrings must reproduce Lean's 3-line wrap exactly as Results/Axioms.lean:596-598 does — copy the emitted message, do not hand-write it."
-  }
- ],
- "new_defs": [
-  {
-   "name": "MoltPetit.Model.AcceptedSuffixK",
-   "signature": "structure AcceptedSuffixK (n : Nat) (Signed : Block → Prop) (G : Block) (cl : CertClaim) (fl : Nat → Nat) (s₁ : Block) (srest : Chain) (sTip : Block) : Prop where\n  cert   : GroundedCertK n Signed G cl fl\n  tip    : (s₁ :: srest).getLast? = some sTip\n  link   : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId\n  links  : linksOk (s₁ :: srest) = true\n  dense  : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n\n  mono   : keyMonoFrom n fl (s₁ :: srest) = true\n  signed : ∀ B ∈ s₁ :: srest, Signed B",
-   "meaning": "Everything a certificate client checks about one (claim, floor snapshot, suffix) triple before acting: the certificate verifies (GroundedCertK), the suffix links to the claim, is internally linked, quorum-dense over the tail buffer plus suffix, clears the floor snapshot (keyMonoFrom), and is blockwise Signed. Field shapes are byte-identical to the hypotheses of keyrot_recent_certified_suffix_agreement / groundedCertK_suffix_history (KeyStealingCert.lean:462-475) and to the triple ts_validateSuffix_sound emits (TS/Bridge.lean:506), so a TS-level bridge can build it field by field. Introduced so the trailing-5n theorem, which carries THREE such triples (previous sync, and the two chains under test), stays readable; the flat core theorem does not use it."
-  },
-  {
-   "name": "MoltPetit.Model.AcceptedSuffixK.history",
-   "signature": "theorem AcceptedSuffixK.history {n : Nat} (Δconf : Nat) (hn : 1 ≤ n) {Signed : Block → Prop} {G : Block} {cl : CertClaim} {fl : Nat → Nat} {s₁ : Block} {srest : Chain} {sTip : Block} (h : AcceptedSuffixK n Signed G cl fl s₁ srest sTip) : ∃ c : Chain, validChainK' n Δconf (c ++ s₁ :: srest) = true ∧ blockAt? (c ++ s₁ :: srest) 0 = some G ∧ c.length = cl.tipHeight + 1 ∧ (∀ B ∈ c ++ s₁ :: srest, Signed B)",
-   "meaning": "One-line projection: groundedCertK_suffix_history Δconf hn h.cert h.tip h.link h.links h.dense h.mono h.signed. Gives the reconstructed full pinned chain behind an accepted triple."
-  },
-  {
-   "name": "Molt.AcceptedSuffixK / Molt.AttestedHistoryK",
-   "signature": "abbrev AcceptedSuffixK := @MoltPetit.Model.AcceptedSuffixK\nabbrev AttestedHistoryK := @MoltPetit.Model.AttestedHistoryK",
-   "meaning": "Paper-namespace re-exports following the Rotation.lean:314 idiom (abbrev for Prop structures / predicates, literally the same terms, no bridge needed)."
-  }
- ],
- "new_theorems": [
-  {
-   "name": "MoltPetit.Model.keyrot_deep_block_agreement_anchored",
-   "hypotheses": [
-    "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
-    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {Signed : Block → Prop} {G : Block} {sc sc' : SignedChain Sig} {A : Block}",
-    "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ)",
-    "(hHash : SignedHashInjective Signed G)  -- generic Signed, as in keyrot_recent_tip_ancestor_agreement_horizon (KeyStealingHorizon.lean:69)",
-    "(hSig  : ∀ B ∈ stripSigs sc,  B = G ∨ Signed B)",
-    "(hSig' : ∀ B ∈ stripSigs sc', B = G ∨ Signed B)",
-    "(hA : A ∈ stripSigs sc) (hA' : A ∈ stripSigs sc')",
-    "(hBudgetFrom : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) u n).card ≤ maxByzantine n)  -- byte-identical to KeyStealingHorizon.lean:143-145",
-    "(hVal  : validSignedChainK' n Δconf ops registry sc  = true)",
-    "(hVal' : validSignedChainK' n Δconf ops registry sc' = true)",
-    "{sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip) (hTipS' : (stripSigs sc').getLast? = some sTip')",
-    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
-    "{k : Nat} {B B' : Block} (hB : blockAt? (stripSigs sc) k = some B) (hB' : blockAt? (stripSigs sc') k = some B')",
-    "(hLen : k + n < (stripSigs sc).length) (hLen' : k + n < (stripSigs sc').length)"
-   ],
-   "conclusion": "B = B'",
-   "proof_sketch": "Same skeleton as keyrot_recent_tip_ancestor_agreement_anchored (KeyStealingHorizon.lean:134-196) with three changes: hId from the generic hSig/hSig' instead of keyStealingSigned_of_mem; depth k arbitrary with hLen/hLen' instead of length-1-n with hLong/hLong'/hTipHeight (no hLenEq step); the anchor-below-tip facts by slot_le_tip_of_mem instead of the 15-line hand argument. Steps: hVc/hVc' : ValidChain via `rw [validSignedChainK', Bool.and_eq_true] at hVal; exact (validChainK'_sound hVal.2).1`; hId := idInjective_keyrot hHash hSig hSig'; hUniq := honestSlotsUnique_keyrot_anchored hn hΔ (versionedUnforgeable_of_keyStealingEUFCMA hEUF) hA hA' hBudgetFrom hId hVal hVal' ⟨sTip, hTipS, hRecent⟩ ⟨sTip', hTipS', hRecent'⟩; hAle := slot_le_tip_of_mem hVc.2.1 hTipS hA; hAle' likewise; rcases Nat.le_total sTip.slot sTip'.slot; in the first case obtain ⟨P, hPc, hPc'⟩ := horizon_shared_prefix hn hUniq hId hVc hVc' chainInRecord_left chainInRecord_right hTipS hTipS' hle (hBudgetFrom (sTip.slot + 1 - n) (by omega)) (k := k) hLen; in the second case swap roles (record is symmetric: chainInRecord_right / chainInRecord_left, hkdeep := hLen'); close with `rw [hB] at hPc; rw [hB'] at hPc'; rw [Option.some.inj hPc, Option.some.inj hPc']`. The omega side goal A.slot + 1 ≤ (sTip.slot + 1 - n) + n follows from hAle in both Nat-truncation branches. No genesis, no CommonPrefixUpTo, no global budget anywhere.",
-   "reuses": [
+  "work_item": "W2",
+  "title": "Mode 1 anchored / trailing-5n client rule at the certificate presentation (GroundedCertK + suffix), as a corollary of a generic-Signed anchored deep-block engine applied to the reconstructed chains",
+  "goal_statement": "Prove, additively and axiom-clean, that two verifying GroundedCertK certificates each extended by a validated recent suffix agree on every block at the same global height that is n-deep in both suffixes, with the corruption budget consulted ONLY on windows ending after a client anchor A (core form), and derive from it the Molt-level refresh-rule family at the certificate presentation: an H-parametric form (mirror of Molt.client_refresh_rule), the trailing-5n form with the previous sync itself in certificate form (mirror of Molt.stay_recent_client_safe), and the Δconf := n sync rule (mirror of Molt.sync_rule). Answers to the item's questions, all confirmed against source: (1) the anchor enters as membership in the EXPOSED SUFFIX (hA : A ∈ s₁ :: srest, hA' : A ∈ s₁' :: srest'), lifted to the reconstructed chain by List.mem_append_right; it need not and cannot usefully be located inside the certified prefix (the verifier cannot check that), and the protocol reading is 'the prover starts the suffix at or before the client's anchor' (≤ 4n slots back under the sync rule, so still O(n) blocks); (2) the confirmed floors are read as inForce over the RECONSTRUCTED chain inside badKeyrotOn c, exactly as in keyrot_recent_certified_suffix_agreement, with the budget quantified over AttestedHistoryK; the floor snapshot fl enters only through GroundedCertK/keyMonoFrom and is never consulted by the budget (a verifier-visible floor-based budget predicate is sound only for slots s ≥ cl.tipSlot + Δconf and is left as a refinement); (3) the trailing window is measured from the VERIFIER CLOCK: windows [u, u+n) with now < u + 5n; via the anchored engine only windows with u + n > A.slot are ever consulted, and since A ∈ suffix, every consulted window ends strictly after the claim tip cl.tipSlot — the certified prefix touches consulted windows only through its last n-1 slots, i.e. exactly the cl.tail buffer; (4) reusable as-is via the reconstruction: groundedCertK_suffix_history, exists_signedChain_of_covered, AttestedHistoryK, honestSlotsUnique_keyrot_anchored, horizon_shared_prefix, idInjective_keyrot, versionedUnforgeable_of_keyStealingEUFCMA, slot_le_tip_of_mem, deep_block_span (Molt), and the census lemmas (they are already generic in the witness chain c₀, so they apply to any attested history unchanged); (5) state it as a COROLLARY of a chain-level theorem applied to the reconstructed chains — but the existing chain-level anchored theorem (keyrot_recent_tip_ancestor_agreement_anchored) is tip-shaped and fixes hHash over KeyStealingSigned, so one new generic-Signed, arbitrary-depth anchored engine (keyrot_deep_block_agreement_anchored, ~80 lines, composed from existing lemmas) is added first; nothing is re-proved from the record.",
+  "new_files": [
     {
-     "name": "keyrot_recent_tip_ancestor_agreement_anchored",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizon.lean",
-     "line": 134,
-     "how": "proof skeleton copied; not called"
+      "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCertAnchored.lean",
+      "outline": "namespace MoltPetit.Model. Imports: MoltPetit.Model.KeyStealingCert (GroundedCertK, groundedCertK_suffix_history, exists_signedChain_of_covered, AttestedHistoryK, SignedDeclared) and MoltPetit.Model.KeyStealingHorizon (transitively KeyStealingHorizonCore.honestSlotsUnique_keyrot_anchored, KeyStealingScheduleHorizon.horizon_shared_prefix, KeyStealingUnique.idInjective_keyrot / versionedUnforgeable_of_keyStealingEUFCMA / chainInRecord_left/right, Liveness.slot_le_tip_of_mem, Soundness.blockAt_getLast). Contents in order: (1) module docstring stating the anchor-in-suffix reading and the AttestedHistoryK budget reading; (2) theorem keyrot_deep_block_agreement_anchored — chain-level, generic Signed, arbitrary depth k, anchored budget; (3) structure AcceptedSuffixK — the seven per-(claim, floor, suffix) acceptance facts a certificate client checks, plus AcceptedSuffixK.history (one-line application of groundedCertK_suffix_history); (4) theorem keyrot_certified_suffix_agreement_anchored — flat statement mirroring keyrot_recent_certified_suffix_agreement (KeyStealingCert.lean:583) hypothesis-for-hypothesis, with hBudget replaced by the anchored, AttestedHistoryK-quantified hBudgetFrom and hA/hA' added; (5) end MoltPetit.Model. No private helpers needed (the anchored core's hand-rolled 'anchor below tip' argument is replaced by slot_le_tip_of_mem)."
     },
     {
-     "name": "honestSlotsUnique_keyrot_anchored",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizonCore.lean",
-     "line": 258,
-     "how": "called as-is for HonestSlotsUnique (badKeyrotOn … (stripSigs sc)) (chainUnionRecord sc sc') from the anchored budget"
+      "path": "/etheron-pod/mini-consensus-lean/Molt/CertClientRule.lean",
+      "outline": "namespace Molt. Imports: Molt.ClientRule (deep_block_span, client_refresh_rule idiom, Molt vocabulary) and MoltPetit.Model.KeyStealingCertAnchored. Contents: (1) abbrev AcceptedSuffixK := @MoltPetit.Model.AcceptedSuffixK; abbrev AttestedHistoryK := @MoltPetit.Model.AttestedHistoryK (no Molt abbrev exists yet; Rotation.lean only abbrevs GroundedCertK and SignedDeclared); (2) alias keyrot_certified_suffix_agreement_anchored := MoltPetit.Model.keyrot_certified_suffix_agreement_anchored, with docstring superseding the 'future work' remark of Rotation.lean:303-307; (3) theorem cert_client_refresh_rule — H-parametric form over AcceptedSuffixK bundles, budget guard now < u + n + H, over Molt names badKeyrot/badSlotsIn/faultBudget/blockAt? (all rfl-bridged, passed by defeq exactly as client_refresh_rule does); (4) theorem cert_stay_recent_client_safe — previous sync given as an AcceptedSuffixK bundle plus anchor position / cadence, budget now < u + 5 * n; (5) theorem cert_sync_rule — Δconf := n instance (term-mode, Nat.le_refl n); (6) optional theorem cert_max_sync_period — cadence F, budget now < u + F + 4 * n (same proof skeleton as (4) with H := F + 3n - 1, mirrors Molt.max_sync_period). end Molt."
     },
     {
-     "name": "horizon_shared_prefix",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleHorizon.lean",
-     "line": 161,
-     "how": "called as-is at the lower tip's top window with k arbitrary (hkdeep := hLen or hLen')"
-    },
-    {
-     "name": "idInjective_keyrot",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean",
-     "line": 70,
-     "how": "IdInjective (chainUnionRecord sc sc') from generic hHash/hSig/hSig'"
-    },
-    {
-     "name": "versionedUnforgeable_of_keyStealingEUFCMA",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean",
-     "line": 184,
-     "how": "converts hEUF to the VersionedUnforgeable surface the anchored uniqueness lemma takes"
-    },
-    {
-     "name": "chainInRecord_left / chainInRecord_right",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean",
-     "line": 54,
-     "how": "ChainInRecord facts for horizon_shared_prefix"
-    },
-    {
-     "name": "validChainK'_sound",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotation.lean",
-     "line": 122,
-     "how": "ValidChain from the pinned validator (standard idiom)"
-    },
-    {
-     "name": "slot_le_tip_of_mem",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Liveness.lean",
-     "line": 63,
-     "how": "A.slot ≤ sTip.slot from hA and StrictSlots (replaces the anchored core's hand argument)"
+      "path": "/etheron-pod/mini-consensus-lean/Molt/AxiomsCertAnchored.lean",
+      "outline": "No namespace. Imports Molt.CertClientRule (which brings the core module). One `#guard_msgs in #print axioms` block per new theorem, in the exact Molt/Axioms.lean:41-44 format: MoltPetit.Model.keyrot_deep_block_agreement_anchored, MoltPetit.Model.AcceptedSuffixK.history, MoltPetit.Model.keyrot_certified_suffix_agreement_anchored, Molt.keyrot_certified_suffix_agreement_anchored (alias; guarding aliases works, cf. Molt/Axioms.lean:107), Molt.cert_client_refresh_rule, Molt.cert_stay_recent_client_safe, Molt.cert_sync_rule, Molt.cert_max_sync_period (if included). Expected axiom list [propext, Classical.choice, Quot.sound] for all (every ingredient is already guarded at that set: groundedCertK_suffix_history at Results/Axioms.lean:300, honestSlotsUnique_keyrot_anchored at :595, deep_block_span at Molt/Axioms.lean:47). The two core names exceed the ~100-column wrap, so their docstrings must reproduce Lean's 3-line wrap exactly as Results/Axioms.lean:596-598 does — copy the emitted message, do not hand-write it."
     }
-   ]
-  },
-  {
-   "name": "MoltPetit.Model.keyrot_certified_suffix_agreement_anchored",
-   "hypotheses": [
-    "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
-    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {A : Block}",
-    "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ)",
-    "(hHash : SignedHashInjective (SignedDeclared n ops registry) G)  -- same (weaker) domain as keyrot_recent_certified_suffix_agreement",
-    "{cl cl' : CertClaim} {fl fl' : Nat → Nat} (hcl : GroundedCertK n (SignedDeclared n ops registry) G cl fl) (hcl' : GroundedCertK n (SignedDeclared n ops registry) G cl' fl')",
-    "{s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block} (hTipS : (s₁ :: srest).getLast? = some sTip) (hTipS' : (s₁' :: srest').getLast? = some sTip')",
-    "(hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId) (hLinks : linksOk (s₁ :: srest) = true) (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n) (hMono : keyMonoFrom n fl (s₁ :: srest) = true) (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)",
-    "(hLink' … hLinks' … hDense' … hMono' … hSigned' …)  -- primed copies, byte-identical to KeyStealingCert.lean:604-613",
-    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
-    "(hA : A ∈ s₁ :: srest) (hA' : A ∈ s₁' :: srest')  -- NEW: the anchor is exposed in both suffixes",
-    "(hBudgetFrom : ∀ c : Chain, AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c → ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen c) u n).card ≤ maxByzantine n)  -- REPLACES the global hBudget: anchored windows only, still quantified over the first pair's attestable histories",
-    "{i i' : Nat} {B B' : Block} (hB : blockAt? (s₁ :: srest) i = some B) (hB' : blockAt? (s₁' :: srest') i' = some B')",
-    "(hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i') (hDeep : i + n < (s₁ :: srest).length) (hDeep' : i' + n < (s₁' :: srest').length)"
-   ],
-   "conclusion": "B = B'",
-   "proof_sketch": "Copy of keyrot_recent_certified_suffix_agreement's body (KeyStealingCert.lean:624-684) up to and including hB'full/hkEq and hSig/hSig', with the genesis block (hGenesis) deleted and the closing call changed. Steps: obtain ⟨c, hK, hHead, hLen, hCov⟩ := groundedCertK_suffix_history Δconf hn hcl hTipS hLink hLinks hDense hMono hSigned, likewise primed; obtain ⟨sc, hstrip, hsigs⟩ := exists_signedChain_of_covered (Sig := Sig) (fun B hB => hCov B hB), likewise primed; hVal/hVal' by `rw [validSignedChainK', Bool.and_eq_true]; exact ⟨hsigs, by rw [hstrip]; exact hK⟩`; hBud : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn … (stripSigs sc)) u n).card ≤ maxByzantine n := by rw [hstrip]; exact hBudgetFrom _ ⟨hK, hHead, hCov, c, rfl, hLen⟩; hAsc : A ∈ stripSigs sc := by rw [hstrip]; exact List.mem_append_right c hA, likewise primed; hfullTip/hfullTip' via `rw [List.getLast?_append, hTipS]; rfl`; hBfull/hB'full via List.getElem?_append_right and hkEq : c'.length + i' = c.length + i by omega from hLen/hLen'/hHeight; hSig/hSig' as Or.inr (hCov b hb); close with keyrot_deep_block_agreement_anchored hn hΔ hEUF hHash hSig hSig' hAsc hAsc' hBud hVal hVal' (by rw [hstrip]; exact hfullTip) (by rw [hstrip']; exact hfullTip') hRecent hRecent' (k := c.length + i) (by rw [hstrip]; exact hBfull) (by rw [hstrip']; exact hB'full) (by rw [hstrip, List.length_append]; omega) (by rw [hstrip', List.length_append]; omega). Shared genesis is NOT used (both certs still mention one G because GroundedCertK, AttestedHistoryK and the hHash exemption do).",
-   "reuses": [
+  ],
+  "new_defs": [
     {
-     "name": "keyrot_recent_certified_suffix_agreement",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
-     "line": 583,
-     "how": "statement and proof body mirrored; not called"
+      "name": "MoltPetit.Model.AcceptedSuffixK",
+      "signature": "structure AcceptedSuffixK (n : Nat) (Signed : Block → Prop) (G : Block) (cl : CertClaim) (fl : Nat → Nat) (s₁ : Block) (srest : Chain) (sTip : Block) : Prop where\n  cert   : GroundedCertK n Signed G cl fl\n  tip    : (s₁ :: srest).getLast? = some sTip\n  link   : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId\n  links  : linksOk (s₁ :: srest) = true\n  dense  : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n\n  mono   : keyMonoFrom n fl (s₁ :: srest) = true\n  signed : ∀ B ∈ s₁ :: srest, Signed B",
+      "meaning": "Everything a certificate client checks about one (claim, floor snapshot, suffix) triple before acting: the certificate verifies (GroundedCertK), the suffix links to the claim, is internally linked, quorum-dense over the tail buffer plus suffix, clears the floor snapshot (keyMonoFrom), and is blockwise Signed. Field shapes are byte-identical to the hypotheses of keyrot_recent_certified_suffix_agreement / groundedCertK_suffix_history (KeyStealingCert.lean:462-475) and to the triple ts_validateSuffix_sound emits (TS/Bridge.lean:506), so a TS-level bridge can build it field by field. Introduced so the trailing-5n theorem, which carries THREE such triples (previous sync, and the two chains under test), stays readable; the flat core theorem does not use it."
     },
     {
-     "name": "groundedCertK_suffix_history",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
-     "line": 462,
-     "how": "reconstructs each full validChainK' chain c ++ s₁ :: srest with G at 0, c.length = tipHeight+1, blockwise Signed"
+      "name": "MoltPetit.Model.AcceptedSuffixK.history",
+      "signature": "theorem AcceptedSuffixK.history {n : Nat} (Δconf : Nat) (hn : 1 ≤ n) {Signed : Block → Prop} {G : Block} {cl : CertClaim} {fl : Nat → Nat} {s₁ : Block} {srest : Chain} {sTip : Block} (h : AcceptedSuffixK n Signed G cl fl s₁ srest sTip) : ∃ c : Chain, validChainK' n Δconf (c ++ s₁ :: srest) = true ∧ blockAt? (c ++ s₁ :: srest) 0 = some G ∧ c.length = cl.tipHeight + 1 ∧ (∀ B ∈ c ++ s₁ :: srest, Signed B)",
+      "meaning": "One-line projection: groundedCertK_suffix_history Δconf hn h.cert h.tip h.link h.links h.dense h.mono h.signed. Gives the reconstructed full pinned chain behind an accepted triple."
     },
     {
-     "name": "exists_signedChain_of_covered",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
-     "line": 247,
-     "how": "materialises SignedChain sc with stripSigs sc = c ++ suffix and sigsOk (needs (Sig := Sig))"
-    },
-    {
-     "name": "AttestedHistoryK",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
-     "line": 541,
-     "how": "budget quantifier domain, instantiated once at ⟨hK, hHead, hCov, c, rfl, hLen⟩"
-    },
-    {
-     "name": "keyrot_deep_block_agreement_anchored",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCertAnchored.lean",
-     "how": "the new engine, called at k := c.length + i"
-    },
-    {
-     "name": "validSignedChainK'",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotation.lean",
-     "line": 385,
-     "how": "assembled by rw + ⟨hsigs, hK⟩ exactly as the existing proof"
+      "name": "Molt.AcceptedSuffixK / Molt.AttestedHistoryK",
+      "signature": "abbrev AcceptedSuffixK := @MoltPetit.Model.AcceptedSuffixK\nabbrev AttestedHistoryK := @MoltPetit.Model.AttestedHistoryK",
+      "meaning": "Paper-namespace re-exports following the Rotation.lean:314 idiom (abbrev for Prop structures / predicates, literally the same terms, no bridge needed)."
     }
-   ]
-  },
-  {
-   "name": "Molt.cert_client_refresh_rule",
-   "hypotheses": [
-    "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
-    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {A : Block} {H : Nat}",
-    "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ)",
-    "(hHash : SignedHashInjective (SignedDeclared n ops registry) G)",
-    "{cl cl' : CertClaim} {fl fl' : Nat → Nat} {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}",
-    "(hAcc  : AcceptedSuffixK n (SignedDeclared n ops registry) G cl  fl  s₁  srest  sTip)",
-    "(hAcc' : AcceptedSuffixK n (SignedDeclared n ops registry) G cl' fl' s₁' srest' sTip')",
-    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
-    "(hA : A ∈ s₁ :: srest) (hA' : A ∈ s₁' :: srest')",
-    "(hFresh : now ≤ A.slot + H)",
-    "(hBudget : ∀ c : Chain, AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c → ∀ u, now < u + n + H → (badSlotsIn (badKeyrot n Δconf rented Stolen c) u n).card ≤ faultBudget n)",
-    "{i i' : Nat} {B B' : Block} (hB : blockAt? (s₁ :: srest) i = some B) (hB' : blockAt? (s₁' :: srest') i' = some B')",
-    "(hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i') (hDeep : i + n < (s₁ :: srest).length) (hDeep' : i' + n < (s₁' :: srest').length)"
-   ],
-   "conclusion": "B = B'",
-   "proof_sketch": "Mirror of Molt.client_refresh_rule (Rotation.lean:267-296). Term-mode: MoltPetit.Model.keyrot_certified_suffix_agreement_anchored hn hΔ hEUF hHash hAcc.cert hAcc'.cert hAcc.tip hAcc'.tip hAcc.link hAcc.links hAcc.dense hAcc.mono hAcc.signed hAcc'.link hAcc'.links hAcc'.dense hAcc'.mono hAcc'.signed hRecent hRecent' hA hA' (fun c hc u hu => hBudget c hc u (by omega)) hB hB' hHeight hDeep hDeep'. No eq_core rewrite: badKeyrot, badSlotsIn, faultBudget, blockAt? are rfl-bridges (Rotation.lean:182, Assumptions.lean:81-82, Results.lean:42) and AttestedHistoryK/AcceptedSuffixK are abbrevs; the omega goal is A.slot + 1 ≤ u + n from now < u + n + H and now ≤ A.slot + H — wait, direction: the core guard is the hypothesis; from hu : A.slot + 1 ≤ u + n and hFresh derive now < u + n + H, exactly as client_refresh_rule.",
-   "reuses": [
+  ],
+  "new_theorems": [
     {
-     "name": "client_refresh_rule",
-     "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
-     "line": 267,
-     "how": "wrapper idiom and omega step copied"
+      "name": "MoltPetit.Model.keyrot_deep_block_agreement_anchored",
+      "hypotheses": [
+        "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
+        "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {Signed : Block → Prop} {G : Block} {sc sc' : SignedChain Sig} {A : Block}",
+        "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ)",
+        "(hHash : SignedHashInjective Signed G)  -- generic Signed, as in keyrot_recent_tip_ancestor_agreement_horizon (KeyStealingHorizon.lean:69)",
+        "(hSig  : ∀ B ∈ stripSigs sc,  B = G ∨ Signed B)",
+        "(hSig' : ∀ B ∈ stripSigs sc', B = G ∨ Signed B)",
+        "(hA : A ∈ stripSigs sc) (hA' : A ∈ stripSigs sc')",
+        "(hBudgetFrom : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen (stripSigs sc)) u n).card ≤ maxByzantine n)  -- byte-identical to KeyStealingHorizon.lean:143-145",
+        "(hVal  : validSignedChainK' n Δconf ops registry sc  = true)",
+        "(hVal' : validSignedChainK' n Δconf ops registry sc' = true)",
+        "{sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip) (hTipS' : (stripSigs sc').getLast? = some sTip')",
+        "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+        "{k : Nat} {B B' : Block} (hB : blockAt? (stripSigs sc) k = some B) (hB' : blockAt? (stripSigs sc') k = some B')",
+        "(hLen : k + n < (stripSigs sc).length) (hLen' : k + n < (stripSigs sc').length)"
+      ],
+      "conclusion": "B = B'",
+      "proof_sketch": "Same skeleton as keyrot_recent_tip_ancestor_agreement_anchored (KeyStealingHorizon.lean:134-206) with three changes: hId from the generic hSig/hSig' instead of keyStealingSigned_of_mem; depth k arbitrary with hLen/hLen' instead of length-1-n with hLong/hLong'/hTipHeight (no hLenEq step); the anchor-below-tip facts by slot_le_tip_of_mem instead of the 15-line hand argument. Steps: hVc/hVc' : ValidChain via `rw [validSignedChainK', Bool.and_eq_true] at hVal; exact (validChainK'_sound hVal.2).1`; hId := idInjective_keyrot hHash hSig hSig'; hUniq := honestSlotsUnique_keyrot_anchored hn hΔ (versionedUnforgeable_of_keyStealingEUFCMA hEUF) hA hA' hBudgetFrom hId hVal hVal' ⟨sTip, hTipS, hRecent⟩ ⟨sTip', hTipS', hRecent'⟩; hAle := slot_le_tip_of_mem hVc.2.1 hTipS hA (gives A.slot ≤ sTip.slot); hAle' likewise (A.slot ≤ sTip'.slot); rcases Nat.le_total sTip.slot sTip'.slot; in the first case obtain ⟨P, hPc, hPc'⟩ := horizon_shared_prefix hn hUniq hId hVc hVc' chainInRecord_left chainInRecord_right hTipS hTipS' hle (hBudgetFrom (sTip.slot + 1 - n) (by omega)) (k := k) hLen — the omega side goal A.slot + 1 ≤ (sTip.slot + 1 - n) + n closes from hAle; in the second case (NOT a mechanical role-swap of only chainInRecord/hkdeep, per KeyStealingHorizon.lean:196-206: the budget-instantiation argument also swaps) obtain ⟨P, hPc', hPc⟩ := horizon_shared_prefix hn hUniq hId hVc' hVc chainInRecord_right chainInRecord_left hTipS' hTipS hle (hBudgetFrom (sTip'.slot + 1 - n) (by omega)) (k := k) hLen' — the omega side goal A.slot + 1 ≤ (sTip'.slot + 1 - n) + n closes from hAle' (same pattern as hAle in branch 1, verified against the source lemma both branches reuse); close both cases with `rw [hB] at hPc; rw [hB'] at hPc'; rw [Option.some.inj hPc, Option.some.inj hPc']`. No genesis, no CommonPrefixUpTo, no global budget anywhere.",
+      "reuses": [
+        {
+          "name": "keyrot_recent_tip_ancestor_agreement_anchored",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizon.lean",
+          "line": 134,
+          "how": "proof skeleton copied; not called"
+        },
+        {
+          "name": "honestSlotsUnique_keyrot_anchored",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizonCore.lean",
+          "line": 258,
+          "how": "called as-is for HonestSlotsUnique (badKeyrotOn … (stripSigs sc)) (chainUnionRecord sc sc') from the anchored budget"
+        },
+        {
+          "name": "horizon_shared_prefix",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleHorizon.lean",
+          "line": 161,
+          "how": "called as-is at the lower tip's top window with k arbitrary (hkdeep := hLen or hLen')"
+        },
+        {
+          "name": "idInjective_keyrot",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean",
+          "line": 70,
+          "how": "IdInjective (chainUnionRecord sc sc') from generic hHash/hSig/hSig'"
+        },
+        {
+          "name": "versionedUnforgeable_of_keyStealingEUFCMA",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean",
+          "line": 184,
+          "how": "converts hEUF to the VersionedUnforgeable surface the anchored uniqueness lemma takes"
+        },
+        {
+          "name": "chainInRecord_left / chainInRecord_right",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean",
+          "line": 54,
+          "how": "ChainInRecord facts for horizon_shared_prefix"
+        },
+        {
+          "name": "validChainK'_sound",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotation.lean",
+          "line": 122,
+          "how": "ValidChain from the pinned validator (standard idiom)"
+        },
+        {
+          "name": "slot_le_tip_of_mem",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Liveness.lean",
+          "line": 63,
+          "how": "A.slot ≤ sTip.slot from hA and StrictSlots (replaces the anchored core's hand argument)"
+        }
+      ]
     },
     {
-     "name": "badKeyrot_eq_core / faultBudget_eq_core / badSlotsIn_eq_core / blockAt?_eq_core",
-     "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
-     "line": 182,
-     "how": "rfl bridges: Molt hypotheses pass to the core theorem by defeq"
+      "name": "MoltPetit.Model.keyrot_certified_suffix_agreement_anchored",
+      "hypotheses": [
+        "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
+        "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {A : Block}",
+        "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ)",
+        "(hHash : SignedHashInjective (SignedDeclared n ops registry) G)  -- same (weaker) domain as keyrot_recent_certified_suffix_agreement",
+        "{cl cl' : CertClaim} {fl fl' : Nat → Nat} (hcl : GroundedCertK n (SignedDeclared n ops registry) G cl fl) (hcl' : GroundedCertK n (SignedDeclared n ops registry) G cl' fl')",
+        "{s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block} (hTipS : (s₁ :: srest).getLast? = some sTip) (hTipS' : (s₁' :: srest').getLast? = some sTip')",
+        "(hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId) (hLinks : linksOk (s₁ :: srest) = true) (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n) (hMono : keyMonoFrom n fl (s₁ :: srest) = true) (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)",
+        "(hLink' … hLinks' … hDense' … hMono' … hSigned' …)  -- primed copies, byte-identical to KeyStealingCert.lean:604-613",
+        "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+        "(hA : A ∈ s₁ :: srest) (hA' : A ∈ s₁' :: srest')  -- NEW: the anchor is exposed in both suffixes",
+        "(hBudgetFrom : ∀ c : Chain, AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c → ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn n Δconf rented Stolen c) u n).card ≤ maxByzantine n)  -- REPLACES the global hBudget: anchored windows only, still quantified over the first pair's attestable histories",
+        "{i i' : Nat} {B B' : Block} (hB : blockAt? (s₁ :: srest) i = some B) (hB' : blockAt? (s₁' :: srest') i' = some B')",
+        "(hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i') (hDeep : i + n < (s₁ :: srest).length) (hDeep' : i' + n < (s₁' :: srest').length)"
+      ],
+      "conclusion": "B = B'",
+      "proof_sketch": "Copy of keyrot_recent_certified_suffix_agreement's body (KeyStealingCert.lean:624-684) up to and including hB'full/hkEq and hSig/hSig', with the genesis block (hGenesis) deleted and the closing call changed. Steps: obtain ⟨c, hK, hHead, hLen, hCov⟩ := groundedCertK_suffix_history Δconf hn hcl hTipS hLink hLinks hDense hMono hSigned, likewise primed; obtain ⟨sc, hstrip, hsigs⟩ := exists_signedChain_of_covered (Sig := Sig) (fun B hB => hCov B hB), likewise primed; hVal/hVal' by `rw [validSignedChainK', Bool.and_eq_true]; exact ⟨hsigs, by rw [hstrip]; exact hK⟩`; hBud : ∀ u, A.slot + 1 ≤ u + n → (badSlotsIn (badKeyrotOn … (stripSigs sc)) u n).card ≤ maxByzantine n := by rw [hstrip]; exact hBudgetFrom _ ⟨hK, hHead, hCov, c, rfl, hLen⟩; hAsc : A ∈ stripSigs sc := by rw [hstrip]; exact List.mem_append_right c hA, likewise primed; hfullTip/hfullTip' via `rw [List.getLast?_append, hTipS]; rfl`; hBfull/hB'full via List.getElem?_append_right and hkEq : c'.length + i' = c.length + i by omega from hLen/hLen'/hHeight; hSig/hSig' as Or.inr (hCov b hb); close with keyrot_deep_block_agreement_anchored hn hΔ hEUF hHash hSig hSig' hAsc hAsc' hBud hVal hVal' (by rw [hstrip]; exact hfullTip) (by rw [hstrip']; exact hfullTip') hRecent hRecent' (k := c.length + i) (by rw [hstrip]; exact hBfull) (by rw [hstrip']; exact hB'full) (by rw [hstrip, List.length_append]; omega) (by rw [hstrip', List.length_append]; omega). Shared genesis is NOT used (both certs still mention one G because GroundedCertK, AttestedHistoryK and the hHash exemption do).",
+      "reuses": [
+        {
+          "name": "keyrot_recent_certified_suffix_agreement",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
+          "line": 583,
+          "how": "statement and proof body mirrored; not called"
+        },
+        {
+          "name": "groundedCertK_suffix_history",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
+          "line": 462,
+          "how": "reconstructs each full validChainK' chain c ++ s₁ :: srest with G at 0, c.length = tipHeight+1, blockwise Signed"
+        },
+        {
+          "name": "exists_signedChain_of_covered",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
+          "line": 247,
+          "how": "materialises SignedChain sc with stripSigs sc = c ++ suffix and sigsOk (needs (Sig := Sig))"
+        },
+        {
+          "name": "AttestedHistoryK",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean",
+          "line": 541,
+          "how": "budget quantifier domain, instantiated once at ⟨hK, hHead, hCov, c, rfl, hLen⟩"
+        },
+        {
+          "name": "keyrot_deep_block_agreement_anchored",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCertAnchored.lean",
+          "how": "the new engine, called at k := c.length + i"
+        },
+        {
+          "name": "validSignedChainK'",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotation.lean",
+          "line": 385,
+          "how": "assembled by rw + ⟨hsigs, hK⟩ exactly as the existing proof"
+        }
+      ]
+    },
+    {
+      "name": "Molt.cert_client_refresh_rule",
+      "hypotheses": [
+        "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
+        "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {A : Block} {H : Nat}",
+        "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ)",
+        "(hHash : SignedHashInjective (SignedDeclared n ops registry) G)",
+        "{cl cl' : CertClaim} {fl fl' : Nat → Nat} {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}",
+        "(hAcc  : AcceptedSuffixK n (SignedDeclared n ops registry) G cl  fl  s₁  srest  sTip)",
+        "(hAcc' : AcceptedSuffixK n (SignedDeclared n ops registry) G cl' fl' s₁' srest' sTip')",
+        "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+        "(hA : A ∈ s₁ :: srest) (hA' : A ∈ s₁' :: srest')",
+        "(hFresh : now ≤ A.slot + H)",
+        "(hBudget : ∀ c : Chain, AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c → ∀ u, now < u + n + H → (badSlotsIn (badKeyrot n Δconf rented Stolen c) u n).card ≤ faultBudget n)",
+        "{i i' : Nat} {B B' : Block} (hB : blockAt? (s₁ :: srest) i = some B) (hB' : blockAt? (s₁' :: srest') i' = some B')",
+        "(hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i') (hDeep : i + n < (s₁ :: srest).length) (hDeep' : i' + n < (s₁' :: srest').length)"
+      ],
+      "conclusion": "B = B'",
+      "proof_sketch": "Mirror of Molt.client_refresh_rule (Rotation.lean:267-296). Term-mode: MoltPetit.Model.keyrot_certified_suffix_agreement_anchored hn hΔ hEUF hHash hAcc.cert hAcc'.cert hAcc.tip hAcc'.tip hAcc.link hAcc.links hAcc.dense hAcc.mono hAcc.signed hAcc'.link hAcc'.links hAcc'.dense hAcc'.mono hAcc'.signed hRecent hRecent' hA hA' (fun c hc u hu => hBudget c hc u (by omega)) hB hB' hHeight hDeep hDeep'. No eq_core rewrite: badKeyrot, badSlotsIn, faultBudget, blockAt? are rfl-bridges (Rotation.lean:182, Assumptions.lean:81-82, Results.lean:42) and AttestedHistoryK/AcceptedSuffixK are abbrevs; the omega goal is A.slot + 1 ≤ u + n from now < u + n + H and now ≤ A.slot + H — wait, direction: the core guard is the hypothesis; from hu : A.slot + 1 ≤ u + n and hFresh derive now < u + n + H, exactly as client_refresh_rule.",
+      "reuses": [
+        {
+          "name": "client_refresh_rule",
+          "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
+          "line": 267,
+          "how": "wrapper idiom and omega step copied"
+        },
+        {
+          "name": "badKeyrot_eq_core / faultBudget_eq_core / badSlotsIn_eq_core / blockAt?_eq_core",
+          "path": "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean",
+          "line": 182,
+          "how": "rfl bridges: Molt hypotheses pass to the core theorem by defeq"
+        }
+      ]
+    },
+    {
+      "name": "Molt.cert_stay_recent_client_safe",
+      "hypotheses": [
+        "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
+        "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {A : Block}",
+        "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ)",
+        "(hHash : SignedHashInjective (SignedDeclared n ops registry) G)",
+        "-- the previous sync, at clock time t, itself a certificate verification",
+        "{clP : CertClaim} {flP : Nat → Nat} {s₁P : Block} {srestP : Chain} {tipPrev : Block} {t : Nat}",
+        "(hAccPrev : AcceptedSuffixK n (SignedDeclared n ops registry) G clP flP s₁P srestP tipPrev)",
+        "(hRecPrev : t ≤ tipPrev.slot + n)",
+        "(hLongPrev : n < (s₁P :: srestP).length)  -- the n-deep block below the previous tip is exposed in the previous suffix",
+        "(hAnchor : blockAt? (s₁P :: srestP) ((s₁P :: srestP).length - 1 - n) = some A)",
+        "(hCadence : now ≤ t + n)",
+        "-- the two chains under test",
+        "{cl cl' : CertClaim} {fl fl' : Nat → Nat} {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}",
+        "(hAcc : AcceptedSuffixK n (SignedDeclared n ops registry) G cl fl s₁ srest sTip) (hAcc' : AcceptedSuffixK n (SignedDeclared n ops registry) G cl' fl' s₁' srest' sTip')",
+        "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
+        "(hA : A ∈ s₁ :: srest) (hA' : A ∈ s₁' :: srest')",
+        "(hBudget : ∀ c : Chain, AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c → ∀ u, now < u + 5 * n → (badSlotsIn (badKeyrot n Δconf rented Stolen c) u n).card ≤ faultBudget n)",
+        "{i i' : Nat} {B B' : Block} (hB : blockAt? (s₁ :: srest) i = some B) (hB' : blockAt? (s₁' :: srest') i' = some B')",
+        "(hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i') (hDeep : i + n < (s₁ :: srest).length) (hDeep' : i' + n < (s₁' :: srest').length)"
+      ],
+      "conclusion": "B = B'",
+      "proof_sketch": "Mirror of Molt.stay_recent_client_safe (ClientRule.lean:174-231) with the previous chain reconstructed from its certificate. obtain ⟨cP, hKP, -, hLenP, -⟩ := hAccPrev.history Δconf hn; hVcP : MoltPetit.Model.ValidChain n (cP ++ s₁P :: srestP) := (MoltPetit.Model.validChainK'_sound hKP).1; hfullTip : (cP ++ s₁P :: srestP).getLast? = some tipPrev := by rw [List.getLast?_append, hAccPrev.tip]; rfl; hTipIdx := MoltPetit.Model.blockAt_getLast hfullTip; hAfull : MoltPetit.Model.blockAt? (cP ++ s₁P :: srestP) (cP.length + ((s₁P :: srestP).length - 1 - n)) = some A by `unfold blockAt? at hAnchor ⊢; rw [List.getElem?_append_right (by omega)]; simpa using hAnchor` (same step as KeyStealingCert.lean:660-663); hidx : cP.length + ((s₁P :: srestP).length - 1 - n) + n = (cP ++ s₁P :: srestP).length - 1 by `rw [List.length_append]; omega` (uses hLongPrev); hspan : tipPrev.slot < A.slot + 2 * n := deep_block_span hn hVcP hAfull (by rw [hidx]; exact hTipIdx) — deep_block_span takes Molt.ValidChain/Molt.blockAt?, both defeq to core, exactly as stay_recent_client_safe passes core-derived facts to it; hFresh : now ≤ A.slot + (4 * n - 1) by omega from hRecPrev, hspan, hCadence; exact cert_client_refresh_rule hn hΔ hEUF hHash hAcc hAcc' hRecent hRecent' hA hA' hFresh (fun c hc u hu => hBudget c hc u (by omega)) hB hB' hHeight hDeep hDeep'.",
+      "reuses": [
+        {
+          "name": "stay_recent_client_safe",
+          "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
+          "line": 174,
+          "how": "derivation of hFresh copied; not called"
+        },
+        {
+          "name": "deep_block_span",
+          "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
+          "line": 123,
+          "how": "called as-is on the reconstructed previous chain (the reason this theorem lives in Molt/)"
+        },
+        {
+          "name": "blockAt_getLast",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Soundness.lean",
+          "line": 97,
+          "how": "tip at index length-1"
+        },
+        {
+          "name": "validChainK'_sound",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotation.lean",
+          "line": 122,
+          "how": "ValidChain of the reconstructed previous chain"
+        },
+        {
+          "name": "AcceptedSuffixK.history",
+          "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCertAnchored.lean",
+          "how": "reconstruction of the previous chain"
+        },
+        {
+          "name": "cert_client_refresh_rule",
+          "path": "/etheron-pod/mini-consensus-lean/Molt/CertClientRule.lean",
+          "how": "closing call at H := 4n - 1"
+        }
+      ]
+    },
+    {
+      "name": "Molt.cert_sync_rule",
+      "hypotheses": [
+        "exactly cert_stay_recent_client_safe's with Δconf := n everywhere: no hΔ; KeyStealingEUFCMA n n …; AcceptedSuffixK unchanged (it carries no Δconf); AttestedHistoryK n n …; badKeyrot n n …"
+      ],
+      "conclusion": "B = B'",
+      "proof_sketch": "Term-mode: cert_stay_recent_client_safe hn (Nat.le_refl n) hEUF hHash hAccPrev hRecPrev hLongPrev hAnchor hCadence hAcc hAcc' hRecent hRecent' hA hA' hBudget hB hB' hHeight hDeep hDeep' — mirror of Molt.sync_rule (ClientRule.lean:238-281).",
+      "reuses": [
+        {
+          "name": "sync_rule",
+          "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
+          "line": 238,
+          "how": "shape mirrored"
+        }
+      ]
+    },
+    {
+      "name": "Molt.cert_max_sync_period (optional)",
+      "hypotheses": [
+        "as cert_stay_recent_client_safe with {F : Nat}, (hCadence : now ≤ t + F), and (hBudget : … ∀ u, now < u + F + 4 * n → …)"
+      ],
+      "conclusion": "B = B'",
+      "proof_sketch": "Same body as cert_stay_recent_client_safe with hFresh : now ≤ A.slot + (F + 3 * n - 1) and cert_client_refresh_rule at H := F + 3n - 1 — mirror of Molt.max_sync_period (MaxSync.lean:176). The census lemmas census_accumulates / census_accumulates_later_thefts / no_budget_beyond (MaxSync.lean:95/135/156) are already stated for an arbitrary witness chain c₀ and so apply verbatim to every attested history; no certificate-specific census lemma is needed.",
+      "reuses": [
+        {
+          "name": "max_sync_period",
+          "path": "/etheron-pod/mini-consensus-lean/Molt/MaxSync.lean",
+          "line": 176,
+          "how": "shape mirrored"
+        }
+      ]
     }
-   ]
-  },
-  {
-   "name": "Molt.cert_stay_recent_client_safe",
-   "hypotheses": [
-    "{n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)",
-    "{Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {A : Block}",
-    "(hEUF : KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ)",
-    "(hHash : SignedHashInjective (SignedDeclared n ops registry) G)",
-    "-- the previous sync, at clock time t, itself a certificate verification",
-    "{clP : CertClaim} {flP : Nat → Nat} {s₁P : Block} {srestP : Chain} {tipPrev : Block} {t : Nat}",
-    "(hAccPrev : AcceptedSuffixK n (SignedDeclared n ops registry) G clP flP s₁P srestP tipPrev)",
-    "(hRecPrev : t ≤ tipPrev.slot + n)",
-    "(hLongPrev : n < (s₁P :: srestP).length)  -- the n-deep block below the previous tip is exposed in the previous suffix",
-    "(hAnchor : blockAt? (s₁P :: srestP) ((s₁P :: srestP).length - 1 - n) = some A)",
-    "(hCadence : now ≤ t + n)",
-    "-- the two chains under test",
-    "{cl cl' : CertClaim} {fl fl' : Nat → Nat} {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}",
-    "(hAcc : AcceptedSuffixK n (SignedDeclared n ops registry) G cl fl s₁ srest sTip) (hAcc' : AcceptedSuffixK n (SignedDeclared n ops registry) G cl' fl' s₁' srest' sTip')",
-    "(hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)",
-    "(hA : A ∈ s₁ :: srest) (hA' : A ∈ s₁' :: srest')",
-    "(hBudget : ∀ c : Chain, AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c → ∀ u, now < u + 5 * n → (badSlotsIn (badKeyrot n Δconf rented Stolen c) u n).card ≤ faultBudget n)",
-    "{i i' : Nat} {B B' : Block} (hB : blockAt? (s₁ :: srest) i = some B) (hB' : blockAt? (s₁' :: srest') i' = some B')",
-    "(hHeight : cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i') (hDeep : i + n < (s₁ :: srest).length) (hDeep' : i' + n < (s₁' :: srest').length)"
-   ],
-   "conclusion": "B = B'",
-   "proof_sketch": "Mirror of Molt.stay_recent_client_safe (ClientRule.lean:174-231) with the previous chain reconstructed from its certificate. obtain ⟨cP, hKP, -, hLenP, -⟩ := hAccPrev.history Δconf hn; hVcP : MoltPetit.Model.ValidChain n (cP ++ s₁P :: srestP) := (MoltPetit.Model.validChainK'_sound hKP).1; hfullTip : (cP ++ s₁P :: srestP).getLast? = some tipPrev := by rw [List.getLast?_append, hAccPrev.tip]; rfl; hTipIdx := MoltPetit.Model.blockAt_getLast hfullTip; hAfull : MoltPetit.Model.blockAt? (cP ++ s₁P :: srestP) (cP.length + ((s₁P :: srestP).length - 1 - n)) = some A by `unfold blockAt? at hAnchor ⊢; rw [List.getElem?_append_right (by omega)]; simpa using hAnchor` (same step as KeyStealingCert.lean:660-663); hidx : cP.length + ((s₁P :: srestP).length - 1 - n) + n = (cP ++ s₁P :: srestP).length - 1 by `rw [List.length_append]; omega` (uses hLongPrev); hspan : tipPrev.slot < A.slot + 2 * n := deep_block_span hn hVcP hAfull (by rw [hidx]; exact hTipIdx) — deep_block_span takes Molt.ValidChain/Molt.blockAt?, both defeq to core, exactly as stay_recent_client_safe passes core-derived facts to it; hFresh : now ≤ A.slot + (4 * n - 1) by omega from hRecPrev, hspan, hCadence; exact cert_client_refresh_rule hn hΔ hEUF hHash hAcc hAcc' hRecent hRecent' hA hA' hFresh (fun c hc u hu => hBudget c hc u (by omega)) hB hB' hHeight hDeep hDeep'.",
-   "reuses": [
+  ],
+  "touches_existing": [
     {
-     "name": "stay_recent_client_safe",
-     "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
-     "line": 174,
-     "how": "derivation of hFresh copied; not called"
+      "path": "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
+      "change": "add one line `import MoltPetit.Model.KeyStealingCertAnchored` after line 31 (`import MoltPetit.Model.KeyStealingHorizon`)",
+      "why_unavoidable": "lakefile.toml declares [[lean_lib]] name = \"MoltPetit\" with no globs, so lake build / nix run .#verify-lean only elaborate modules reachable from MoltPetit.lean; without the line the new core file is built only by the explicit `/etheron-pod/toolchains/lake.sh build MoltPetit.Model.KeyStealingCertAnchored`. Permitted touch (root-module import line)."
     },
     {
-     "name": "deep_block_span",
-     "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
-     "line": 123,
-     "how": "called as-is on the reconstructed previous chain (the reason this theorem lives in Molt/)"
-    },
-    {
-     "name": "blockAt_getLast",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Soundness.lean",
-     "line": 97,
-     "how": "tip at index length-1"
-    },
-    {
-     "name": "validChainK'_sound",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyRotation.lean",
-     "line": 122,
-     "how": "ValidChain of the reconstructed previous chain"
-    },
-    {
-     "name": "AcceptedSuffixK.history",
-     "path": "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCertAnchored.lean",
-     "how": "reconstruction of the previous chain"
-    },
-    {
-     "name": "cert_client_refresh_rule",
-     "path": "/etheron-pod/mini-consensus-lean/Molt/CertClientRule.lean",
-     "how": "closing call at H := 4n - 1"
+      "path": "/etheron-pod/mini-consensus-lean/Molt.lean",
+      "change": "add two lines `import Molt.CertClientRule` (after `import Molt.MaxSync`) and `import Molt.AxiomsCertAnchored` (after `import Molt.Axioms`)",
+      "why_unavoidable": "same build-discovery reason for the Molt lib; the guard file is enforced only if a root imports it. Permitted touch (root-module import lines + new guard file instead of editing Molt/Axioms.lean)."
     }
-   ]
-  },
-  {
-   "name": "Molt.cert_sync_rule",
-   "hypotheses": [
-    "exactly cert_stay_recent_client_safe's with Δconf := n everywhere: no hΔ; KeyStealingEUFCMA n n …; AcceptedSuffixK unchanged (it carries no Δconf); AttestedHistoryK n n …; badKeyrot n n …"
-   ],
-   "conclusion": "B = B'",
-   "proof_sketch": "Term-mode: cert_stay_recent_client_safe hn (Nat.le_refl n) hEUF hHash hAccPrev hRecPrev hLongPrev hAnchor hCadence hAcc hAcc' hRecent hRecent' hA hA' hBudget hB hB' hHeight hDeep hDeep' — mirror of Molt.sync_rule (ClientRule.lean:238-281).",
-   "reuses": [
+  ],
+  "depends_on": [],
+  "enables": [
     {
-     "name": "sync_rule",
-     "path": "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean",
-     "line": 238,
-     "how": "shape mirrored"
-    }
-   ]
-  },
-  {
-   "name": "Molt.cert_max_sync_period (optional)",
-   "hypotheses": [
-    "as cert_stay_recent_client_safe with {F : Nat}, (hCadence : now ≤ t + F), and (hBudget : … ∀ u, now < u + F + 4 * n → …)"
-   ],
-   "conclusion": "B = B'",
-   "proof_sketch": "Same body as cert_stay_recent_client_safe with hFresh : now ≤ A.slot + (F + 3 * n - 1) and cert_client_refresh_rule at H := F + 3n - 1 — mirror of Molt.max_sync_period (MaxSync.lean:176). The census lemmas census_accumulates / census_accumulates_later_thefts / no_budget_beyond (MaxSync.lean:95/135/156) are already stated for an arbitrary witness chain c₀ and so apply verbatim to every attested history; no certificate-specific census lemma is needed.",
-   "reuses": [
+      "key": "W3a",
+      "why": "The certificate-level budget hypothesis is fixed here as `∀ c, AttestedHistoryK … c → ∀ u, now < u + 5n → (badSlotsIn (badKeyrot n Δconf rented Stolen c) u n).card ≤ faultBudget n`; a timed theft layer that derives the trailing budget must produce it uniformly in the witness chain c (as the census lemmas already are), and then plugs into cert_stay_recent_client_safe / cert_sync_rule with no restatement. If W3a instead changes the budget's SHAPE (e.g. a time-indexed Stolen), the cert theorems here are unaffected because they are generic in Stolen; only their instantiation changes."
+    },
     {
-     "name": "max_sync_period",
-     "path": "/etheron-pod/mini-consensus-lean/Molt/MaxSync.lean",
-     "line": 176,
-     "how": "shape mirrored"
+      "key": "W4",
+      "why": "cert_sync_rule (and cert_client_refresh_rule) is the per-sync agreement instance at the certificate presentation, and AcceptedSuffixK is the natural per-sync client state; an induction over syncs abstracted over per-sync agreement can be instantiated at both presentations. Soft: W4 does not need W2 to land first."
+    },
+    {
+      "key": "W3b",
+      "why": "AcceptedSuffixK's fields are byte-identical to the ts_validateSuffix_sound triple plus keyMonoFrom/SignedDeclared, so a time-aware or TS-level surface only has to swap hEUF / build the bundle; keyrot_deep_block_agreement_anchored is generic in Signed, so a different Signed domain needs no new engine."
+    },
+    {
+      "key": "W1",
+      "why": "Not a dependency either way, but the pattern 'generic-Signed anchored engine + reconstruction corollary + AcceptedSuffix bundle' is the shape a mode-3 certificate wrapper can copy; no shared code."
     }
-   ]
-  }
- ],
- "touches_existing": [
-  {
-   "path": "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
-   "change": "add one line `import MoltPetit.Model.KeyStealingCertAnchored` after line 31 (`import MoltPetit.Model.KeyStealingHorizon`)",
-   "why_unavoidable": "lakefile.toml declares [[lean_lib]] name = \"MoltPetit\" with no globs, so lake build / nix run .#verify-lean only elaborate modules reachable from MoltPetit.lean; without the line the new core file is built only by the explicit `/etheron-pod/toolchains/lake.sh build MoltPetit.Model.KeyStealingCertAnchored`. Permitted touch (root-module import line)."
-  },
-  {
-   "path": "/etheron-pod/mini-consensus-lean/Molt.lean",
-   "change": "add two lines `import Molt.CertClientRule` (after `import Molt.MaxSync`) and `import Molt.AxiomsCertAnchored` (after `import Molt.Axioms`)",
-   "why_unavoidable": "same build-discovery reason for the Molt lib; the guard file is enforced only if a root imports it. Permitted touch (root-module import lines + new guard file instead of editing Molt/Axioms.lean)."
-  }
- ],
- "depends_on": [],
- "enables": [
-  {
-   "key": "W3a",
-   "why": "The certificate-level budget hypothesis is fixed here as `∀ c, AttestedHistoryK … c → ∀ u, now < u + 5n → (badSlotsIn (badKeyrot n Δconf rented Stolen c) u n).card ≤ faultBudget n`; a timed theft layer that derives the trailing budget must produce it uniformly in the witness chain c (as the census lemmas already are), and then plugs into cert_stay_recent_client_safe / cert_sync_rule with no restatement. If W3a instead changes the budget's SHAPE (e.g. a time-indexed Stolen), the cert theorems here are unaffected because they are generic in Stolen; only their instantiation changes."
-  },
-  {
-   "key": "W4",
-   "why": "cert_sync_rule (and cert_client_refresh_rule) is the per-sync agreement instance at the certificate presentation, and AcceptedSuffixK is the natural per-sync client state; an induction over syncs abstracted over per-sync agreement can be instantiated at both presentations. Soft: W4 does not need W2 to land first."
-  },
-  {
-   "key": "W3b",
-   "why": "AcceptedSuffixK's fields are byte-identical to the ts_validateSuffix_sound triple plus keyMonoFrom/SignedDeclared, so a time-aware or TS-level surface only has to swap hEUF / build the bundle; keyrot_deep_block_agreement_anchored is generic in Signed, so a different Signed domain needs no new engine."
-  },
-  {
-   "key": "W1",
-   "why": "Not a dependency either way, but the pattern 'generic-Signed anchored engine + reconstruction corollary + AcceptedSuffix bundle' is the shape a mode-3 certificate wrapper can copy; no shared code."
-  }
- ],
- "paper_changes": [
-  {
-   "location": "paper/molt.tex §6.3 mode 1, end of the paragraph 'Why the cadence cannot simply be enlarged', phrase `but under the global, all-window budget: carrying the anchored, trailing-$5n$ form to certificates is future work.` (currently ~lines 890-898; docs/rollout/ROLLOUT_NOTES.md row W2 / AN/21)",
-   "change": "Replace with: `and under the same trailing-$5n$ budget (\\code{cert\\_sync\\_rule}; engine \\code{keyrot\\_certified\\_suffix\\_agreement\\_anchored}): the client's anchor must lie in the exposed suffix --- the prover starts the suffix at or before the anchor, at most ${\\approx}\\,4n$ slots back, so the download stays $O(n)$ --- and the budget is read, as before, off every history the certificate could attest.` Keep the preceding clause about attesting claim and floor together unchanged."
-  },
-  {
-   "location": "paper/molt.tex §6.3 'A realistic mode-1 deployment, end to end', sentence beginning `Conclusion, machine-checked (\\code{sync\\_rule}, \\code{sync\\_rule\\_mem}): any two chains such a client accepts at a sync` (~line 981)",
-   "change": "Append after the equal-height clause: `--- and the same for a certificate client, which fetches a certificate plus a suffix reaching back to its anchor and agrees on every height exposed by both suffixes (\\code{cert\\_sync\\_rule})`. Note the certificate form is the equal-global-height form only; if the owner wants the unequal-height (membership) half at certificate level, that is a separate small theorem (see open questions)."
-  },
-  {
-   "location": "paper/molt.tex §6.3 same paragraph, last sentence `At the full-chain presentation this is the complete story.` (~line 999)",
-   "change": "Change to `At both presentations this is the complete story, up to the membership form, which at the certificate presentation is not stated.` (or drop the qualifier if the membership cert form is also added)."
-  },
-  {
-   "location": "paper/molt.tex §4 Validate item 5, phrase `at certificate level they are proved for modes 1--2` (~line 429)",
-   "change": "No change required (still true). If the sentence is touched for W1, mention that mode 1's certificate form is now anchored/trailing (`cert\\_sync\\_rule`) while mode 2's remains global-budget."
-  },
-  {
-   "location": "paper/molt.tex Table of modes / any cell reading 'certificate: global budget' for mode 1 (grep `all-window` and `global` in the table environment; the mode-2 sentence at ~line 1077 `Only the certificate form is proved under the global all-window budget` is about mode 2 and stays)",
-   "change": "If a mode-1 cell says the certificate form is global-budget, change it to 'trailing $5n$, anchor in suffix'."
-  },
-  {
-   "location": "Lean docstrings, not the paper (logged so the later pass finds them): Molt/Rotation.lean:303-307 (alias docstring 'the anchored, trailing-window form is future work at this presentation'), MoltPetit/Model/KeyStealingCert.lean header line 41-46 and 533-540, memory/paper-rewrite-plan.md:55-58 ('also trailing-5n cert form for mode 1')",
-   "change": "Cannot be edited under the additive rule now; the new module's docstring states that it supersedes the remark. A later docstring-only pass should point them at keyrot_certified_suffix_agreement_anchored / cert_sync_rule."
-  }
- ],
- "size_estimate_lines": 430,
- "effort_sessions": "1-2 sessions: ~0.5 for keyrot_deep_block_agreement_anchored (copy-adapt of a 60-line proof), ~0.5 for the certificate corollary (copy-adapt of a 60-line proof) and the bundle, ~0.5 for the three Molt wrappers and the guard file (mostly statement typing and one deep_block_span index computation), plus build/guard iteration.",
- "risks": [
-  {
-   "risk": "Anchor-in-suffix is a protocol constraint on the prover (the suffix must start at or before the client's anchor); a reviewer may object that a certificate can 'swallow' the anchor and then the client has nothing to check.",
-   "mitigation": "State it explicitly in the docstring and the paper edit: under the sync rule the anchor is < 4n slots old, so the required suffix is O(n) blocks; a client rejects any (certificate, suffix) pair whose suffix does not contain its anchor, exactly as the full-chain client rejects chains not containing it. If reach into the tail buffer is wanted, add groundedCertK_suffix_history_tail (copy of KeyStealingCert.lean:462-527 also returning hist.tail_eq, ~90 lines) and weaken hA to A ∈ cl.tail ++ s₁ :: srest — an additive follow-up, not a redo."
-  },
-  {
-   "risk": "The anchored budget is still quantified over AttestedHistoryK (every history the first certificate could attest) because badKeyrotOn reads inForce over the full reconstructed chain; someone may expect the trailing form to make the budget verifier-visible from (fl, suffix).",
-   "mitigation": "Document precisely: inForce (c ++ suffix) i s ≥ fl i holds only for s ≥ cl.tipSlot + Δconf (confirmedPrefix then contains all of c; keyFloor_le_extend), while for smaller s the confirmed prefix cuts inside the certified prefix and fl is only an UPPER bound — so a floor-snapshot budget predicate is sound (implies the AttestedHistoryK one) only above cl.tipSlot + Δconf. Left as a named refinement; the existing global certificate theorem has the same status."
-  },
-  {
-   "risk": "Guard docstrings for the two long core names (MoltPetit.Model.keyrot_deep_block_agreement_anchored, MoltPetit.Model.keyrot_certified_suffix_agreement_anchored) must reproduce Lean's ~100-column wrap byte-for-byte (cf. Results/Axioms.lean:596-598).",
-   "mitigation": "Run `#print axioms` first, paste the emitted message; do not hand-write. Molt.-prefixed names fit on one line."
-  },
-  {
-   "risk": "Build discovery: new files are not elaborated by `lake build` unless imported from MoltPetit.lean / Molt.lean.",
-   "mitigation": "Add the three root import lines (permitted) and, during development, build explicitly with `/etheron-pod/toolchains/lake.sh build MoltPetit.Model.KeyStealingCertAnchored Molt.CertClientRule Molt.AxiomsCertAnchored`."
-  },
-  {
-   "risk": "Layering: cert_stay_recent_client_safe needs deep_block_span, which lives in Molt/ (its countP helpers are private), so the trailing-5n theorem cannot be a core (MoltPetit.Model) theorem without a ~100-line re-proof.",
-   "mitigation": "Place it in Molt/CertClientRule.lean as designed; the core file holds only the H-free anchored engine and corollary, which need nothing from Molt/. This matches the existing split (client_refresh_rule/stay_recent_client_safe are Molt-only)."
-  },
-  {
-   "risk": "Lean-version syntax drift in the copied proof fragments (`push Not`, `List.getElem?_append_right`, `List.getLast?_append`).",
-   "mitigation": "All fragments are copied from proofs that compile at the pinned toolchain (v4.30.0-rc2) in KeyStealingCert.lean:624-684 and KeyStealingHorizon.lean:134-196; the hand-rolled hAle block is replaced by the existing slot_le_tip_of_mem, removing the only `push Not`-style fragility."
-  },
-  {
-   "risk": "Δconf and the previous-sync bundle: AcceptedSuffixK carries no Δconf (the certificate fold is Δconf-free), so cert_sync_rule's Δconf := n instantiation touches only hEUF/AttestedHistoryK/badKeyrot — if someone later adds a Δconf-dependent field to a new bundle, the mirror breaks.",
-   "mitigation": "Keep AcceptedSuffixK exactly the groundedCertK_suffix_history hypothesis list; Δconf is an explicit argument of .history, as it is of groundedCertK_suffix_history."
-  }
- ],
- "alternatives_rejected": [
-  {
-   "alt": "Cheapest corollary: apply keyrot_recent_tip_ancestor_agreement_anchored (KeyStealingHorizon.lean:134) directly to the reconstructed signed chains, adding no chain-level lemma.",
-   "why": "It fixes hHash over KeyStealingSigned (∃-version), a STRICTLY STRONGER hash assumption than the SignedDeclared domain of keyrot_recent_certified_suffix_agreement (SignedHashInjective is antitone in the domain; keyStealingSigned_of_declared goes the wrong way), and yields only the tip-shaped conclusion (block n below equal-height tips), losing the arbitrary-depth (i, i', hHeight) shape that the TS/Results consumers of the certificate theorems use. The generic-Signed, arbitrary-k engine costs ~80 copied lines and removes both defects. Kept as the fallback if the planner wants the absolute minimum."
-  },
-  {
-   "alt": "Re-prove the certificate theorem directly on a SlotRecord (the recent_certified_suffix_agreement style in Grounded.lean:371).",
-   "why": "No benefit: the key-stealing engine (honestSlotsUnique_keyrot_anchored + horizon_shared_prefix) is already stated over chainUnionRecord of signed chains; the reconstruction route is the established idiom of KeyStealingCert.lean and reuses everything."
-  },
-  {
-   "alt": "Anchor via the claim tip (client checks cl.tipId = A.id ∧ cl.tipSlot = A.slot ∧ cl.tipHeight = A.height).",
-   "why": "GroundedHistoryK.tip only relates the reconstructed tip block to A by id/slot/height; equality as a Block needs id-injectivity with A in the record, which A is not unless it is in a suffix anyway. Messier and not stronger than suffix membership."
-  },
-  {
-   "alt": "Anchor anywhere in the verifier-visible blocks cl.tail ++ suffix.",
-   "why": "Needs a copied reconstruction lemma exposing hist.tail_eq (groundedCertK_suffix_history returns only valid/head/len/signed), ~90 lines for at most n-1 extra blocks of reach. Deferred; listed as an open question and additive follow-up."
-  },
-  {
-   "alt": "A verifier-visible budget predicate computed from (fl, suffix) instead of AttestedHistoryK.",
-   "why": "Sound only for slots s ≥ cl.tipSlot + Δconf (below that the confirmed prefix cuts inside the certified prefix, where fl is an upper bound on inForce, the wrong direction). A refinement with its own design, not this item."
-  },
-  {
-   "alt": "Previous sync given as a full chain scPrev (stay_recent_client_safe's exact shape) instead of a certificate triple.",
-   "why": "Fewer hypotheses, but dishonest for a certificate-only client, which never holds a full chain; the cert form costs one AcceptedSuffixK bundle plus the same three anchor/cadence facts. Offered as an open question in case the owner prefers the hybrid."
-  },
-  {
-   "alt": "Put the trailing-5n theorem in the core namespace.",
-   "why": "deep_block_span is Molt-only and its countP helpers are private; a core version would need a ~100-line re-proof or an inverted import (core importing Molt)."
-  },
-  {
-   "alt": "Extend Molt/Axioms.lean and fix the stale docstring at Molt/Rotation.lean:303-307.",
-   "why": "Forbidden by the additive rule; a new guard file and a superseding docstring in the new module are used instead."
-  }
- ],
- "open_questions_for_owner": [
-  "Anchor reach: is 'anchor must be in the exposed suffix' (prover starts the suffix at or before the anchor) the intended certificate-client contract, or should the tail buffer cl.tail also count (costs the ~90-line tail-exposing reconstruction lemma)?",
-  "Previous sync in certificate form (AcceptedSuffixK bundle + anchor position in the previous suffix, as designed) or in full-chain form (scPrev : validSignedChainK', exactly stay_recent_client_safe's shape)? The former is honest for a certificate-only client; the latter has fewer hypotheses.",
-  "Is a membership (unequal-height, ∃ i') certificate-level form wanted? None exists for any certificate theorem today; the deep-block shape with free i, i' already covers unequal tip heights whenever both suffixes expose the height. It would be a further ~60-line corollary of the same engine via horizon_shared_prefix's existential.",
-  "Guard placement: one new file Molt/AxiomsCertAnchored.lean guarding both the core and the Molt names (as designed), or split into MoltPetit/Results/AxiomsCertAnchored.lean + Molt/AxiomsCertAnchored.lean to mirror the existing two-ledger layout?",
-  "Include the optional cert_max_sync_period (parametric F) now, or leave the F_max story at the full-chain presentation?",
-  "Naming: cert_sync_rule / cert_stay_recent_client_safe / cert_client_refresh_rule (prefix) vs sync_rule_cert (suffix); and keyrot_certified_suffix_agreement_anchored vs keyrot_recent_certified_suffix_agreement_anchored (the existing name carries 'recent').",
-  "The now-stale 'future work' docstrings (Molt/Rotation.lean:303-307, KeyStealingCert.lean header) cannot be edited under the additive rule; confirm they are to be swept in a later docstring pass together with the paper edit."
- ],
- "files_read": [
-  "/etheron-pod/rollout-work/designs-partial/W2.md",
-  "/etheron-pod/rollout-work/maps/core-grounded-cert1.md",
-  "/etheron-pod/rollout-work/maps/results-molt.md",
-  "/etheron-pod/rollout-work/maps/mode1-chain.md",
-  "/etheron-pod/rollout-work/maps/design-docs.md (grep only)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean (lines 330-360, 440-685)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizon.lean (lines 40-310)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizonCore.lean (lines 225-330)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleHorizon.lean (lines 60-80, 130-200)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean (lines 40-80, 180-200)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Results/KeyStealingResults.lean (lines 204-229)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Model.lean (lines 47-83 via grep)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Soundness.lean (lines 97-101 via grep)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Liveness.lean (lines 63-67 via grep)",
-  "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean (lines 100-300)",
-  "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean (lines 250-320)",
-  "/etheron-pod/mini-consensus-lean/Molt/Results.lean (lines 44-108)",
-  "/etheron-pod/mini-consensus-lean/Molt/Protocol.lean (lines 60-95, 105-135)",
-  "/etheron-pod/mini-consensus-lean/Molt/Verifier.lean (abbrev lines via grep)",
-  "/etheron-pod/mini-consensus-lean/Molt/Axioms.lean (lines 1-20, 40-60, 105-113)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit/Results/Axioms.lean (lines 1-20, 285-312, 590-602)",
-  "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
-  "/etheron-pod/mini-consensus-lean/Molt.lean",
-  "/etheron-pod/mini-consensus-lean/lakefile.toml",
-  "/etheron-pod/mini-consensus-lean/docs/rollout/ROLLOUT_NOTES.md",
-  "/etheron-pod/mini-consensus-lean/memory/paper-rewrite-plan.md (lines 45-70)",
-  "/etheron-pod/mini-consensus-lean/paper2/molt.tex (lines 815-900, 936-1000, 1070-1085, 1125-1135, 1168-1182, plus grep)"
- ]
+  ],
+  "paper_changes": [
+    {
+      "location": "paper/molt.tex §6.3 mode 1, end of the paragraph 'Why the cadence cannot simply be enlarged', phrase `but under the global, all-window budget: carrying the anchored, trailing-$5n$ form to certificates is future work.` (currently ~lines 890-898; docs/rollout/ROLLOUT_NOTES.md row W2 / AN/21)",
+      "change": "Replace with: `and under the same trailing-$5n$ budget (\\code{cert\\_sync\\_rule}; engine \\code{keyrot\\_certified\\_suffix\\_agreement\\_anchored}): the client's anchor must lie in the exposed suffix --- the prover starts the suffix at or before the anchor, at most ${\\approx}\\,4n$ slots back, so the download stays $O(n)$ --- and the budget is read, as before, off every history the certificate could attest.` Keep the preceding clause about attesting claim and floor together unchanged."
+    },
+    {
+      "location": "paper/molt.tex §6.3 'A realistic mode-1 deployment, end to end', sentence beginning `Conclusion, machine-checked (\\code{sync\\_rule}, \\code{sync\\_rule\\_mem}): any two chains such a client accepts at a sync` (~line 981)",
+      "change": "Append after the equal-height clause: `--- and the same for a certificate client, which fetches a certificate plus a suffix reaching back to its anchor and agrees on every height exposed by both suffixes (\\code{cert\\_sync\\_rule})`. Note the certificate form is the equal-global-height form only; if the owner wants the unequal-height (membership) half at certificate level, that is a separate small theorem (see open questions)."
+    },
+    {
+      "location": "paper/molt.tex §6.3 same paragraph, last sentence `At the full-chain presentation this is the complete story.` (~line 999)",
+      "change": "Change to `At both presentations this is the complete story, up to the membership form, which at the certificate presentation is not stated.` (or drop the qualifier if the membership cert form is also added)."
+    },
+    {
+      "location": "paper/molt.tex §4 Validate item 5, phrase `at certificate level they are proved for modes 1--2` (~line 429)",
+      "change": "No change required (still true). If the sentence is touched for W1, mention that mode 1's certificate form is now anchored/trailing (`cert\\_sync\\_rule`) while mode 2's remains global-budget."
+    },
+    {
+      "location": "paper/molt.tex Table of modes / any cell reading 'certificate: global budget' for mode 1 (grep `all-window` and `global` in the table environment; the mode-2 sentence at ~line 1077 `Only the certificate form is proved under the global all-window budget` is about mode 2 and stays)",
+      "change": "If a mode-1 cell says the certificate form is global-budget, change it to 'trailing $5n$, anchor in suffix'."
+    },
+    {
+      "location": "Lean docstrings, not the paper (logged so the later pass finds them): Molt/Rotation.lean:303-307 (alias docstring 'the anchored, trailing-window form is future work at this presentation'), MoltPetit/Model/KeyStealingCert.lean header line 41-46 and 533-540, memory/paper-rewrite-plan.md:55-58 ('also trailing-5n cert form for mode 1')",
+      "change": "Cannot be edited under the additive rule now; the new module's docstring states that it supersedes the remark. A later docstring-only pass should point them at keyrot_certified_suffix_agreement_anchored / cert_sync_rule."
+    }
+  ],
+  "size_estimate_lines": 430,
+  "effort_sessions": "1-2 sessions: ~0.5 for keyrot_deep_block_agreement_anchored (copy-adapt of a 60-line proof), ~0.5 for the certificate corollary (copy-adapt of a 60-line proof) and the bundle, ~0.5 for the three Molt wrappers and the guard file (mostly statement typing and one deep_block_span index computation), plus build/guard iteration.",
+  "risks": [
+    {
+      "risk": "Anchor-in-suffix is a protocol constraint on the prover (the suffix must start at or before the client's anchor); a reviewer may object that a certificate can 'swallow' the anchor and then the client has nothing to check.",
+      "mitigation": "State it explicitly in the docstring and the paper edit: under the sync rule the anchor is < 4n slots old, so the required suffix is O(n) blocks; a client rejects any (certificate, suffix) pair whose suffix does not contain its anchor, exactly as the full-chain client rejects chains not containing it. If reach into the tail buffer is wanted, add groundedCertK_suffix_history_tail (copy of KeyStealingCert.lean:462-527 also returning hist.tail_eq, ~90 lines) and weaken hA to A ∈ cl.tail ++ s₁ :: srest — an additive follow-up, not a redo."
+    },
+    {
+      "risk": "The anchored budget is still quantified over AttestedHistoryK (every history the first certificate could attest) because badKeyrotOn reads inForce over the full reconstructed chain; someone may expect the trailing form to make the budget verifier-visible from (fl, suffix).",
+      "mitigation": "Document precisely: inForce (c ++ suffix) i s ≥ fl i holds only for s ≥ cl.tipSlot + Δconf (confirmedPrefix then contains all of c; keyFloor_le_extend), while for smaller s the confirmed prefix cuts inside the certified prefix and fl is only an UPPER bound — so a floor-snapshot budget predicate is sound (implies the AttestedHistoryK one) only above cl.tipSlot + Δconf. Left as a named refinement; the existing global certificate theorem has the same status."
+    },
+    {
+      "risk": "Guard docstrings for the two long core names (MoltPetit.Model.keyrot_deep_block_agreement_anchored, MoltPetit.Model.keyrot_certified_suffix_agreement_anchored) must reproduce Lean's ~100-column wrap byte-for-byte (cf. Results/Axioms.lean:596-598).",
+      "mitigation": "Run `#print axioms` first, paste the emitted message; do not hand-write. Molt.-prefixed names fit on one line."
+    },
+    {
+      "risk": "Build discovery: new files are not elaborated by `lake build` unless imported from MoltPetit.lean / Molt.lean.",
+      "mitigation": "Add the three root import lines (permitted) and, during development, build explicitly with `/etheron-pod/toolchains/lake.sh build MoltPetit.Model.KeyStealingCertAnchored Molt.CertClientRule Molt.AxiomsCertAnchored`."
+    },
+    {
+      "risk": "Layering: cert_stay_recent_client_safe needs deep_block_span, which lives in Molt/ (its countP helpers are private), so the trailing-5n theorem cannot be a core (MoltPetit.Model) theorem without a ~100-line re-proof.",
+      "mitigation": "Place it in Molt/CertClientRule.lean as designed; the core file holds only the H-free anchored engine and corollary, which need nothing from Molt/. This matches the existing split (client_refresh_rule/stay_recent_client_safe are Molt-only)."
+    },
+    {
+      "risk": "Lean-version syntax drift in the copied proof fragments (`push Not`, `List.getElem?_append_right`, `List.getLast?_append`).",
+      "mitigation": "All fragments are copied from proofs that compile at the pinned toolchain (v4.30.0-rc2) in KeyStealingCert.lean:624-684 and KeyStealingHorizon.lean:134-196; the hand-rolled hAle block is replaced by the existing slot_le_tip_of_mem, removing the only `push Not`-style fragility."
+    },
+    {
+      "risk": "Δconf and the previous-sync bundle: AcceptedSuffixK carries no Δconf (the certificate fold is Δconf-free), so cert_sync_rule's Δconf := n instantiation touches only hEUF/AttestedHistoryK/badKeyrot — if someone later adds a Δconf-dependent field to a new bundle, the mirror breaks.",
+      "mitigation": "Keep AcceptedSuffixK exactly the groundedCertK_suffix_history hypothesis list; Δconf is an explicit argument of .history, as it is of groundedCertK_suffix_history."
+    }
+  ],
+  "alternatives_rejected": [
+    {
+      "alt": "Cheapest corollary: apply keyrot_recent_tip_ancestor_agreement_anchored (KeyStealingHorizon.lean:134) directly to the reconstructed signed chains, adding no chain-level lemma.",
+      "why": "It fixes hHash over KeyStealingSigned (∃-version), a STRICTLY STRONGER hash assumption than the SignedDeclared domain of keyrot_recent_certified_suffix_agreement (SignedHashInjective is antitone in the domain; keyStealingSigned_of_declared goes the wrong way), and yields only the tip-shaped conclusion (block n below equal-height tips), losing the arbitrary-depth (i, i', hHeight) shape that the TS/Results consumers of the certificate theorems use. The generic-Signed, arbitrary-k engine costs ~80 copied lines and removes both defects. Kept as the fallback if the planner wants the absolute minimum."
+    },
+    {
+      "alt": "Re-prove the certificate theorem directly on a SlotRecord (the recent_certified_suffix_agreement style in Grounded.lean:371).",
+      "why": "No benefit: the key-stealing engine (honestSlotsUnique_keyrot_anchored + horizon_shared_prefix) is already stated over chainUnionRecord of signed chains; the reconstruction route is the established idiom of KeyStealingCert.lean and reuses everything."
+    },
+    {
+      "alt": "Anchor via the claim tip (client checks cl.tipId = A.id ∧ cl.tipSlot = A.slot ∧ cl.tipHeight = A.height).",
+      "why": "GroundedHistoryK.tip only relates the reconstructed tip block to A by id/slot/height; equality as a Block needs id-injectivity with A in the record, which A is not unless it is in a suffix anyway. Messier and not stronger than suffix membership."
+    },
+    {
+      "alt": "Anchor anywhere in the verifier-visible blocks cl.tail ++ suffix.",
+      "why": "Needs a copied reconstruction lemma exposing hist.tail_eq (groundedCertK_suffix_history returns only valid/head/len/signed), ~90 lines for at most n-1 extra blocks of reach. Deferred; listed as an open question and additive follow-up."
+    },
+    {
+      "alt": "A verifier-visible budget predicate computed from (fl, suffix) instead of AttestedHistoryK.",
+      "why": "Sound only for slots s ≥ cl.tipSlot + Δconf (below that the confirmed prefix cuts inside the certified prefix, where fl is an upper bound on inForce, the wrong direction). A refinement with its own design, not this item."
+    },
+    {
+      "alt": "Previous sync given as a full chain scPrev (stay_recent_client_safe's exact shape) instead of a certificate triple.",
+      "why": "Fewer hypotheses, but dishonest for a certificate-only client, which never holds a full chain; the cert form costs one AcceptedSuffixK bundle plus the same three anchor/cadence facts. Offered as an open question in case the owner prefers the hybrid."
+    },
+    {
+      "alt": "Put the trailing-5n theorem in the core namespace.",
+      "why": "deep_block_span is Molt-only and its countP helpers are private; a core version would need a ~100-line re-proof or an inverted import (core importing Molt)."
+    },
+    {
+      "alt": "Extend Molt/Axioms.lean and fix the stale docstring at Molt/Rotation.lean:303-307.",
+      "why": "Forbidden by the additive rule; a new guard file and a superseding docstring in the new module are used instead."
+    }
+  ],
+  "open_questions_for_owner": [
+    "Anchor reach: is 'anchor must be in the exposed suffix' (prover starts the suffix at or before the anchor) the intended certificate-client contract, or should the tail buffer cl.tail also count (costs the ~90-line tail-exposing reconstruction lemma)?",
+    "Previous sync in certificate form (AcceptedSuffixK bundle + anchor position in the previous suffix, as designed) or in full-chain form (scPrev : validSignedChainK', exactly stay_recent_client_safe's shape)? The former is honest for a certificate-only client; the latter has fewer hypotheses.",
+    "Is a membership (unequal-height, ∃ i') certificate-level form wanted? None exists for any certificate theorem today; the deep-block shape with free i, i' already covers unequal tip heights whenever both suffixes expose the height. It would be a further ~60-line corollary of the same engine via horizon_shared_prefix's existential.",
+    "Guard placement: one new file Molt/AxiomsCertAnchored.lean guarding both the core and the Molt names (as designed), or split into MoltPetit/Results/AxiomsCertAnchored.lean + Molt/AxiomsCertAnchored.lean to mirror the existing two-ledger layout?",
+    "Include the optional cert_max_sync_period (parametric F) now, or leave the F_max story at the full-chain presentation?",
+    "Naming: cert_sync_rule / cert_stay_recent_client_safe / cert_client_refresh_rule (prefix) vs sync_rule_cert (suffix); and keyrot_certified_suffix_agreement_anchored vs keyrot_recent_certified_suffix_agreement_anchored (the existing name carries 'recent').",
+    "The now-stale 'future work' docstrings (Molt/Rotation.lean:303-307, KeyStealingCert.lean header) cannot be edited under the additive rule; confirm they are to be swept in a later docstring pass together with the paper edit."
+  ],
+  "files_read": [
+    "/etheron-pod/rollout-work/designs-partial/W2.md",
+    "/etheron-pod/rollout-work/maps/core-grounded-cert1.md",
+    "/etheron-pod/rollout-work/maps/results-molt.md",
+    "/etheron-pod/rollout-work/maps/mode1-chain.md",
+    "/etheron-pod/rollout-work/maps/design-docs.md (grep only)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingCert.lean (lines 330-360, 440-685)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizon.lean (lines 40-310)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingHorizonCore.lean (lines 225-330)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingScheduleHorizon.lean (lines 60-80, 130-200)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Model/KeyStealingUnique.lean (lines 40-80, 180-200)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Results/KeyStealingResults.lean (lines 204-229)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Model.lean (lines 47-83 via grep)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Soundness.lean (lines 97-101 via grep)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Model/Liveness.lean (lines 63-67 via grep)",
+    "/etheron-pod/mini-consensus-lean/Molt/ClientRule.lean (lines 100-300)",
+    "/etheron-pod/mini-consensus-lean/Molt/Rotation.lean (lines 250-320)",
+    "/etheron-pod/mini-consensus-lean/Molt/Results.lean (lines 44-108)",
+    "/etheron-pod/mini-consensus-lean/Molt/Protocol.lean (lines 60-95, 105-135)",
+    "/etheron-pod/mini-consensus-lean/Molt/Verifier.lean (abbrev lines via grep)",
+    "/etheron-pod/mini-consensus-lean/Molt/Axioms.lean (lines 1-20, 40-60, 105-113)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit/Results/Axioms.lean (lines 1-20, 285-312, 590-602)",
+    "/etheron-pod/mini-consensus-lean/MoltPetit.lean",
+    "/etheron-pod/mini-consensus-lean/Molt.lean",
+    "/etheron-pod/mini-consensus-lean/lakefile.toml",
+    "/etheron-pod/mini-consensus-lean/docs/rollout/ROLLOUT_NOTES.md",
+    "/etheron-pod/mini-consensus-lean/memory/paper-rewrite-plan.md (lines 45-70)",
+    "/etheron-pod/mini-consensus-lean/paper2/molt.tex (lines 815-900, 936-1000, 1070-1085, 1125-1135, 1168-1182, plus grep)"
+  ],
+  "changes_made": [
+    "Finding 1 (major, keyrot_deep_block_agreement_anchored proof sketch): CONFIRMED by direct read of MoltPetit/Model/KeyStealingHorizon.lean:196-206 (keyrot_recent_tip_ancestor_agreement_anchored, the theorem this proof sketch is copied from). Branch 1 (sTip.slot <= sTip'.slot) instantiates horizon_shared_prefix's budget argument as (hBudgetFrom (sTip.slot + 1 - n) (by omega)); branch 2 (the swapped case) instantiates it as (hBudgetFrom (sTip'.slot + 1 - n) (by omega)) -- the tip variable inside hBudgetFrom also swaps, not just chainInRecord_left/right and hkdeep as the old sketch said. Fixed the proof_sketch field to spell out both branches explicitly with the swapped budget call and to note the omega side-goal for branch 2 closes from hAle' (A.slot <= sTip'.slot) exactly as branch 1 closes from hAle, mirroring the real theorem line-for-line. No hypothesis, signature, or dependency changed -- this is a proof-sketch text fix only, so it does not ripple into keyrot_certified_suffix_agreement_anchored or the Molt-level corollaries, which call keyrot_deep_block_agreement_anchored as a black box and never re-derive its internal case split."
+  ]
 }
