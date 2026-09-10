@@ -29,6 +29,7 @@ import MoltPetit.Model.KeyStealingScheduleHorizon
 import MoltPetit.Model.KeyStealingLockstep
 import MoltPetit.Model.KeyStealingHorizonCore
 import MoltPetit.Model.KeyStealingHorizon
+import MoltPetit.Model.KeyStealingCertAnchored
 import MoltPetit.Model.KeyStealingScheduleTimed
 import MoltPetit.Model.KeyStealingTimed
 import MoltPetit.Model.KeyStealingTimedScope
