@@ -1,0 +1,162 @@
+{
+  "order": [
+    {
+      "step": 1,
+      "items": ["W1", "W2", "W3a", "W4", "W5", "W6"],
+      "rationale": "None of these six has a hard Lean-level prerequisite: each is additive purely against the existing baseline (KeyStealing*.lean / ClientRule.lean / Rotation.lean etc.), not against any other work item's new content. All soft depends_on entries (W1-on-W5, W1-on-W3b, W5-on-W1, W5-on-W3a, W4-on-W2, W6-on-W3a) are explicitly self-described as 'no dependency, build order free' or 'not needed for this item, only for a future extension'. All six also already have their major/blocking review findings resolved in changes_made (proof-sketch fix for W2, stale enables-edge deletion for W5, citation-convention wrapper fix for W6) or had none to begin with (W1, W3a, W4). W3a is included here (not deferred to its own step) because at 1 session it is the fastest item and should finish early in this batch so W3b (step 3) is not left waiting on a slow neighbor.",
+      "parallelizable": true
+    },
+    {
+      "step": 2,
+      "items": ["Serial integration of MoltPetit.lean and Molt.lean import-line edits produced by every step-1 item"],
+      "rationale": "This is the one genuinely shared, non-parallel resource in the whole rollout: the lakefile's lean_libs have no glob roots, so every item's new files are only checked by the default build once imported from these two root files. The edits themselves are pure appends (no item edits another's line), so there is no semantic conflict -- but applying six items' worth of import-line edits to the same two files from six branches needs one serial pass so the merge order, not the proof order, is what's being fixed. This step must complete for W3a specifically (files + guards + import lines all landed) before step 3 can begin.",
+      "parallelizable": false
+    },
+    {
+      "step": 3,
+      "items": ["W3b"],
+      "rationale": "Hard dependency on W3a: every new definition and theorem in W3b's design is stated directly against W3a's exact vocabulary (Reacts, recentTheftProducersK, budget_of_reaction, max_sync_period_timed) and its own touches_existing places its import lines immediately after W3a's, so both W3a's Lean files and W3a's root-file integration (step 2) must exist on disk first. Internally stage the item itself: land the low-risk census-tightening chain (defs 1-2, theorems 1-4, max_sync_period_tight) as the committed deliverable first; treat the paced-schedule separation theorems (5-7) as a stretch goal, per the design's own recommendation, since they are the item's main source of implementation risk (unspelled arithmetic squeeze, no witnessed c0). Do not begin until the verdict discrepancy noted in missing_items (recorded 'flawed / blocked by absence of design content' despite a full from-scratch design now existing) is closed by a fresh review pass.",
+      "parallelizable": false
+    }
+  ],
+  "shared_structures": [
+    {
+      "name": "MoltPetit.lean and Molt.lean root import lists",
+      "owner": "No single work item -- recommend one rollout integrator merges every item's import-line addition serially, rather than each implementer merging independently",
+      "consumers": ["W1", "W2", "W3a", "W4", "W5", "W6", "W3b"],
+      "why": "The lakefile's four lean_libs declare no roots/globs, so `lake build` / `nix run .#verify-lean` only elaborate modules reachable from these two files; every item's new files and axiom guards are invisible to the default build without an import line here. It is the one touch every single item in the rollout makes, and the only place independent, parallel work has to be serialized -- purely for merge mechanics, since every edit is an append near a named anchor line, never a change to another item's line."
+    },
+    {
+      "name": "MoltPetit/Model/KeyStealingTimed.lean + Molt/SyncRuleTimed.lean (Reacts, recentTheftProducersK, budget_of_reaction, max_sync_period_timed, Molt.max_sync_period_timed's composition pattern)",
+      "owner": "W3a",
+      "consumers": ["W3b"],
+      "why": "W3b's every new definition and theorem is stated directly in terms of this exact vocabulary (names, argument order, guard-genericization choice); this is the one HARD dependency in the whole rollout -- W3b cannot compile, and its proof sketches cannot even be checked for well-formedness, until these files exist on disk with matching signatures."
+    },
+    {
+      "name": "Molt.SyncInductionData / .invariant",
+      "owner": "W4",
+      "consumers": [
+        "W1 (optional reuse for a future mode-3 per-generation induction, not required reading)",
+        "W2 (future certificate-level instantiation, but needs an additional not-yet-designed cert-level mem-lemma first -- see missing_items)"
+      ],
+      "why": "Crypto- and protocol-free induction engine parameterised only over Nat->Block / Nat->Chain with a prefix/membership pattern; explicitly designed so later items supply their own hStep discharge and reuse .invariant verbatim rather than re-deriving an induction-over-syncs argument from scratch."
+    },
+    {
+      "name": "GroundedCertLock reconstruction lemmas (groundedCertLock_history / _suffix_history / _signedChain) and lockstep_cert_gen_pinned / lockstep_cert_declares_rosterGen",
+      "owner": "W1",
+      "consumers": [
+        "W5 (a future D1'-full / per-generation-census certificate corollary, ~25-line twin per W1's own depends_on-W5 entry)",
+        "W4 (a mode-generic per-sync-agreement abstraction over both mode 2 and mode 3 at the certificate presentation, if ever pursued)"
+      ],
+      "why": "The certificate-side chain-reconstruction machinery any future mode-3 certificate statement needs; owning it in W1 means a later join is a one-theorem corollary rather than a re-derivation, provided the reconstructed hypothesis shape (full chain, explicit window, no hHead) is kept stable as W5's own enables-W1 entry specifies."
+    },
+    {
+      "name": "KeyStealingWindowCore / window_shared_prefix",
+      "owner": "W5",
+      "consumers": ["W7, if ever un-skipped"],
+      "why": "A validator- and mode-agnostic aligned-window pigeonhole engine (uniqueness on an arbitrary chosen window, not just the trailing one) that W5's own enables entry flags as the reusable core any future multi-chain liveness argument would want. Not consumed by anything scheduled in this rollout since W7 is skipped; recorded only so a future W7 revival knows where to start instead of rebuilding the pigeonhole."
+    }
+  ],
+  "loop_risks": [
+    {
+      "risk": "MoltPetit.lean and Molt.lean root import lists are touched by every one of the 7 non-skipped items (all add append-only import lines, since the lakefile's lean_libs have no glob roots). If items are built on divergent branches in parallel and merged carelessly, edits can collide or a sibling's line can be silently dropped even though nothing here is semantically an edit.",
+      "avoided_by": "Build/verify each item's own new files independently and in parallel (they never reference each other's Lean content), but route the two-root-file touch through one serial integration step per batch: apply each item's import-line addition one at a time. Because every touch is a pure append near a named anchor line, ordering among items 1-6 does not matter and nothing needs re-proving — only the merge order is serialized, not the engineering."
+    },
+    {
+      "risk": "W3b's touches_existing places its new import lines 'immediately after W3a's import' in both root files; if W3b's integration is attempted before W3a's files + import lines are actually merged, the edit has no anchor and is fragile/undefined.",
+      "avoided_by": "Treat W3a as a hard predecessor not just for its Lean content (W3b's defs cite W3a's exact names) but for its root-file integration too: land W3a's full package (files, guards, and root-file imports) before starting W3b's integration step. W3a is only ~1 session, so this costs nothing in the parallel batch-1 window."
+    },
+    {
+      "risk": "A future session reads only the planner's original three-step working hypothesis for W6 (bridge/custody/no-back-dating) without this design's obstruction analysis, and re-attempts a positive per-mode no-back-dating derivation that this design already machine-checked as infeasible under the additive-only constraint (unsound via bad:=rented-only, or silently over-strengthens KeyStealingEUFCMA/SchedCoreUnforgeable's premise beyond what it actually offers).",
+      "avoided_by": "Land W6's two obstruction-witness theorems (badSched_single_key_safe_not_enough / badKeyrot_single_key_safe_not_enough) and the ass:rotation-honest text-only assumption now; any future attempt at the positive derivation is directed to read and cite them first, and is told explicitly (in W6's own open_questions) that it requires relaxing additive-only for those two structures specifically -- a different, explicitly-scoped track, not a rerun of this item."
+    },
+    {
+      "risk": "Building W7's cheap restatement-only sketch now and trying to extend it later into the real adversary-bearing liveness theorem: the design's own risks note the delivery-hypothesis shape 'almost certainly has to change' once a genuine adversary/fork-choice-convergence argument is added, so the cheap version's plumbing (netStep/Views) is not reusable -- building it first would not save time and is exactly the redo-loop the no-loops constraint exists to prevent.",
+      "avoided_by": "Skip W7 for this rollout entirely (matches the design's own SKIP recommendation). If a reviewer later pushes on multi-chain liveness, budget the full 4-6 session adversary-bearing version directly from Network.lean rather than starting from the sketch."
+    },
+    {
+      "risk": "W1 and W3b/W5 have soft, informational cross-links (W1's depends_on W3b notes a possible future 'package-name substitution' if the signature surface is reshaped; W5's enables W1 notes a future W1xW5 join needs W1's cert-reconstruction hypothesis shape to stay exact) that could be misread as blocking prerequisites and scheduled as such.",
+      "avoided_by": "Both are explicitly-flagged additive follow-up corollaries, not edits to anything landing in this batch. Recorded here only so the planner does not gate batch-1 on them or schedule needless rework if W3b's surface changes later -- W1's own cert theorem is unaffected because it consumes its hypotheses opaquely."
+    },
+    {
+      "risk": "W4's 'enables W2' claim assumes a not-yet-designed certificate-level 'mem'-shaped per-sync lemma (mirroring sync_rule_mem) that W2's current cert_sync_rule (equal-height only) does not provide; treating this as already covered would create a false sense that W2's certificate presentation is induction-ready.",
+      "avoided_by": "Ship W4 now against the full-chain presentation only (Molt.sync_rule_mem); explicitly defer the certificate-level induction to a future W2-extension work item that adds the missing mem-lemma -- SyncInductionData/.invariant need zero change when that lands, so nothing here is at risk of being redone."
+    }
+  ],
+  "per_item_status": [
+    {
+      "key": "W1",
+      "status": "ready",
+      "blocking_issues": [],
+      "effort": "2-3 sessions (design's own estimate; a possible 3rd session flagged for guard-message wrapping / Nat-division lemma-name drift)",
+      "recommend": "Implement in parallel batch 1. Both review lenses are clean (sound, 0 blocking, 0 major). Owner should pick the Molt-presentation naming question (abbrev/alias vs fresh Molt.noMixingFrom) before or during implementation -- cheap, does not block engineering."
+    },
+    {
+      "key": "W2",
+      "status": "ready",
+      "blocking_issues": [],
+      "effort": "1-2 sessions (design's own estimate)",
+      "recommend": "Implement in parallel batch 1. The one major finding (proof-sketch text fix for keyrot_deep_block_agreement_anchored's branch-2 budget-argument swap) is already resolved in changes_made and did not touch any hypothesis or signature, so nothing downstream (Molt-level corollaries) is affected. Owner should resolve the anchor-reach and previous-sync-form open questions before finalizing the client-facing contract."
+    },
+    {
+      "key": "W5",
+      "status": "ready",
+      "blocking_issues": [],
+      "effort": "3-4 sessions (design's own estimate; division-heavy 2n-window arithmetic flagged as the main proof-engineering risk, with an explicit mitigation recipe)",
+      "recommend": "Implement in parallel batch 1. The one major finding (a stale W5-enables-W6 edge asserting a forward dependency W6's finalized content does not exercise) is already fixed by deleting that entry; no other enables/depends_on entries needed touching. Keep the Molt-side wrapper (Molt/LockstepGen.lean) optional/deferrable to the paper pass as the design allows, to shrink this item's critical-path length if needed."
+    },
+    {
+      "key": "W3a",
+      "status": "ready",
+      "blocking_issues": [],
+      "effort": "1 session (design's own estimate)",
+      "recommend": "Implement in parallel batch 1, and prioritize finishing it early within the batch since W3b hard-depends on it. Both review lenses are clean (sound, 0 blocking, 0 major) and hypothesis_verdict is CONFIRMED with only a minor simplification (no generation-floor conjunct needed, unlike mode 2)."
+    },
+    {
+      "key": "W4",
+      "status": "ready",
+      "blocking_issues": [],
+      "effort": "1 session (design's own estimate; the full structure/theorems were already compiled against the live repo in a scratch file during design, so implementing is bookkeeping -- docstrings, guard file, imports, lint spacing -- not new proof engineering)",
+      "recommend": "Implement in parallel batch 1. hypothesis_verdict CONFIRMED with two refinements already folded into the design (raw hBase hypothesis, verified 21-argument sync_rule_mem instantiation). Owner should decide hBase-derivation-now-vs-later and Delta-fixed-vs-generic before implementation; neither blocks the engineering as designed."
+    },
+    {
+      "key": "W6",
+      "status": "ready (descoped)",
+      "blocking_issues": [
+        "The item's ORIGINAL goal -- a positive per-mode no-back-dating derivation -- is REFUTED as infeasible under the additive-only constraint (structural per-key-vs-per-slot premise mismatch between TimedExecution/NoBackdate and KeyStealingEUFCMA/SchedCoreUnforgeable), not merely under-designed. This is a hard ceiling, not a fixable finding."
+      ],
+      "effort": "~0.3 session (design's own estimate) for the two obstruction-witness theorems + Molt wrappers + text-only paper assumption; the positive derivation has no further Lean effort to estimate because none is deliverable here",
+      "recommend": "Land the low-cost substitute now in parallel batch 1: the text-only ass:rotation-honest paper assumption (near-zero cost, closes an honesty gap) plus, optionally, the two small obstruction-witness theorems so the paper's 'not derived' claim is machine-checked rather than asserted. Do not attempt the positive derivation under the current constraint; per the design's own open_questions, that would require relaxing additive-only specifically for KeyStealingEUFCMA/SchedCoreUnforgeable's unforgeable field -- a separate, explicitly-scoped review track, not this rollout."
+    },
+    {
+      "key": "W7",
+      "status": "defer/skip",
+      "blocking_issues": [
+        "Design's own hypothesis_verdict: a genuine convergence theorem is 4-6 un-scoped sessions of new adversary/fork-choice machinery; the cheap 1-session restatement-only version is 'close to vacuous' and citing it against the paper's liveness sentence would overstate what was proved.",
+        "Building the cheap version now creates a redo-loop risk that this plan is explicitly meant to avoid: its netStep/Views plumbing is flagged by the design itself as not obviously reusable once a real adversary is added."
+      ],
+      "effort": "1 session for the (not recommended) cheap sketch; 4-6 sessions, unscoped, for the real version",
+      "recommend": "SKIP for this rollout, matching the design's own explicit recommendation. Do not build even the cheap restatement. Revisit only if a reviewer specifically pushes on multi-chain liveness in review, and if so budget the full adversary-bearing version directly rather than growing the sketch."
+    },
+    {
+      "key": "W3b",
+      "status": "needs-more-work",
+      "blocking_issues": [
+        "Recorded verdict still reads 'flawed / blocked by absence of design content' (1 blocking) for both review lenses, even though changes_made in the same fixup pass shows a complete from-scratch design (293 lines, all fields populated, cross-checked against W3a and the live Lean sources) was written. This is either a stale verdict that was never re-run against the new content, or a real residual concern not surfaced in changes_made -- either way it needs a fresh review pass to close out explicitly before the item is treated as ready, rather than being waved through on content-inspection alone.",
+        "Independent of the verdict-currency question, the design's own risks/open_questions flag two genuine implementation gaps in the paced-separation theorems (5-7): the arithmetic squeeze in recentTheftProducersTight_card_le_one_of_paced is sketched at the 'omega will close it' level, not spelled out; and no witnessed chain c0 satisfying Reacts+NoTheftBackdating+hFloor0 jointly is constructed anywhere in the design (est. +100-150 lines not in the current size estimate)."
+      ],
+      "effort": "2 sessions (design's own estimate) covers the low-risk census-tightening chain + Molt composition (theorems 1-4); the paced-separation stretch goal (theorems 5-7) is unbudgeted beyond that",
+      "recommend": "IMPLEMENT -- matches the design's own recommendation ('implement W3a first, hard prerequisite, then this item') -- but only after (a) a fresh review closes the blocking-verdict discrepancy above, and (b) W3a's files + root-file imports actually exist on disk (hard dependency, confirmed at both the definition level and the touches_existing placement level). Stage internally: commit to the census-tightening chain and max_sync_period_tight as the deliverable; treat theorems 5-7 as a stretch goal not yet promised to the paper, per the design's own time-boxing advice."
+    }
+  ],
+  "missing_items": [
+    "No item derives NoTheftBackdating (W3b's core new hypothesis) from an actual mint-time-aware EUF-CMA primitive -- both W3a and W3b flag the fully derived route as a distinct, much larger, not-yet-scoped follow-on (comparable in size to the whole KeyStealing*.lean stack).",
+    "W3b's paced-separation theorems (5-7) have no witnessed chain c0 demonstrating Reacts + NoTheftBackdating + hFloor0 are jointly satisfiable -- flagged in W3b's own open_questions as +100-150 lines not included in its current size estimate; without it those three theorems remain hypothesis-conditional rather than exhibited.",
+    "No item builds the certificate-level 'mem'-shaped per-sync lemma that W4's own enables-W2 claim requires before SyncInductionData can be instantiated at W2's certificate presentation -- a real, currently-unclosed gap between what W4 promises and what W2 currently delivers (equal-height cert_sync_rule only).",
+    "No item revisits KeyStealingEUFCMA/SchedCoreUnforgeable's per-key-vs-per-slot premise shape -- the one edit W6 identifies as the actual unlock for a positive no-back-dating derivation. Explicitly out of scope for this additive-only rollout per W6's own open_questions; would need a separate edit-track review.",
+    "No TS/Rust extraction-side bridge for W1's lockstepFrom (noted in W1's own open_questions as a separate future item, distinct from the Lean-model-side work scoped here).",
+    "A fresh review/re-verification pass for W3b: its recorded verdict still reads 'flawed / blocked by absence of design content (1 blocking)', but changes_made shows a full from-scratch design was written in the same fixup pass. This looks like the verdict was never re-run against the new content -- procedurally missing before W3b can be called ready, independent of the content itself looking sound.",
+    "No owner decisions yet on several cheap, non-blocking open questions that will affect naming/wording consistency across items if deferred too long: Molt-side alias vs fresh-definition choice for W1/W5/W6 (noMixingFrom, LockstepPackageGen vs PackageC, ass:rotation-honest wording), anchor-reach and previous-sync-form for W2, Delta-generic-vs-fixed for W4. None block the Lean engineering, but resolving them before implementation avoids re-litigating names in the paper pass."
+  ],
+  "notes": "Read all eight design JSONs in full (W1 590 lines, W2 458, W5 751, W3a 324, W4 212, W6 172, W7 108, W3b 293) plus their changes_made/hypothesis_verdict/recommendation/risks/open_questions_for_owner fields. Real dependency graph is much sparser than the depends_on/enables arrays suggest: only W3a->W3b is a hard, must-land-first dependency (confirmed both at the definition-vocabulary level and at the file-integration level, since W3b's touches_existing places its import lines relative to W3a's). Every other depends_on entry across all eight items is explicitly self-described in the source text as soft/no-real-dependency/'build order free', so W1, W2, W3a, W4, W5, W6 can all be developed fully in parallel against the current baseline with no risk of redo. The only true shared, contended resource is the pair of root import files (MoltPetit.lean, Molt.lean) that every item must append to for the default build to see it -- this needs one serialized integration pass but imposes no ordering on the actual proof engineering. W7 is excluded from the rollout on the strength of its own design's SKIP recommendation and an explicit redo-loop risk it flags itself. W6's originally-scoped positive derivation is refuted by its own hypothesis_verdict (a genuine structural obstruction, not a fixable defect) and the item should be understood as delivering a much smaller substitute (text-only paper assumption + optional negative witness), which is fully ready. W3b is the one item where I flag a live discrepancy: its recorded verdict still says 'flawed, blocked by absence of design content' even though the fixup pass wrote a complete design in the same run -- I did not attempt to resolve this myself (I have no way to re-run the review), and instead marked it needs-more-work pending a fresh verification pass, while confirming its content and hard dependency (W3a) are otherwise sound and its own recommendation is to implement."
+}
