@@ -45,7 +45,7 @@ record. Full blow-by-blow: `docs/rollout/journal-scan.md`.
 |---|---|---|---|---|---|
 | W6 | No-back-dating: obstruction witness + text-only assumption | **landed** (2026-09-10) | 133 | 0.3 session | none — mechanical, confirmed |
 | W4 | Induction over syncs (abstract engine + full-chain instance) | **landed** (2026-09-10) | 167 | 1 session | none — confirmed, matched the prior scratch-build exactly |
-| W3a | Timed theft layer for mode 1 (`Reacts`, trailing budget) | reviewed, clean | 430 | 1 session | low |
+| W3a | Timed theft layer for mode 1 (`Reacts`, trailing budget) | **landed** (2026-09-10) | 391 | 1 session | none — confirmed |
 | W2 | Mode 1 anchored/trailing-5n at certificate level | reviewed, 1 major fixed | 430 | 1-2 sessions | low |
 | W1 | Mode 3 (lockstep) at certificate level | reviewed, clean | 720 | 2-3 sessions | medium (new induction: `lockstepOk_append_of_from`) |
 | W5 | Mode 3 per-generation census (D1'-full) | reviewed, 1 major fixed | 1050 | 3-4 sessions | medium-high (new aligned-window engine, 2n-depth arithmetic) |
