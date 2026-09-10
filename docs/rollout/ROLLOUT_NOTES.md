@@ -105,6 +105,7 @@ Policy: none, except the two kinds of touch listed at the top. Log every one her
 |---|---|---|---|---|
 | 2026-09-10 | `MoltPetit/Model/KeyStealingTimedScope.lean` | `badSched_single_key_safe_not_enough`, `badKeyrotOn_single_key_safe_not_enough` (W6) | `MoltPetit/Results/AxiomsKeyStealingTimedScope.lean` | landed; `lake build MoltPetit Molt` clean; both axiom-free (`#print axioms` measured, not guessed) |
 | 2026-09-10 | `Molt/KeyStealingTimedScope.lean` | `Molt.badSched_single_key_safe_not_enough`, `Molt.badKeyrot_single_key_safe_not_enough` (W6, paper-namespace re-presentation) | `Molt/AxiomsKeyStealingTimedScope.lean` | landed; same build; both axiom-free |
+| 2026-09-10 | `Molt/SyncInduction.lean` | `SyncInductionData`, `SyncInductionData.invariant` (axiom-free), `mem_of_blockAt?` (`[propext]`), `sync_induction_full_chain` (W4, the machine-checked induction over syncs) | `Molt/AxiomsSyncInduction.lean` | landed; `lake build MoltPetit Molt` clean; all three axiom sets measured, matched the design's own prior scratch-build exactly |
 
 ## 3b. Provisional effort and ordering (NOT yet verified)
 
