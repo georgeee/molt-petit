@@ -3,10 +3,12 @@ import Molt.Verifier
 import Molt.Assumptions
 import Molt.Results
 import Molt.Rotation
+import Molt.KeyStealingTimedScope
 import Molt.ClientRule
 import Molt.MaxSync
 import Molt.Liveness
 import Molt.Axioms
+import Molt.AxiomsKeyStealingTimedScope
 
 /-!
 # Molt — the paper-aligned codebase

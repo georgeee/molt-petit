@@ -43,7 +43,7 @@ record. Full blow-by-blow: `docs/rollout/journal-scan.md`.
 
 | item | title | design status | size | effort | headline risk |
 |---|---|---|---|---|---|
-| W6 | No-back-dating: obstruction witness + text-only assumption | reviewed, 1 major fixed | 190 | 0.3 session | none — mechanical |
+| W6 | No-back-dating: obstruction witness + text-only assumption | **landed** (2026-09-10) | 133 | 0.3 session | none — mechanical, confirmed |
 | W4 | Induction over syncs (abstract engine + full-chain instance) | reviewed, clean; **scratch-compiled** | 210 | 1 session | none — already verified once |
 | W3a | Timed theft layer for mode 1 (`Reacts`, trailing budget) | reviewed, clean | 430 | 1 session | low |
 | W2 | Mode 1 anchored/trailing-5n at certificate level | reviewed, 1 major fixed | 430 | 1-2 sessions | low |

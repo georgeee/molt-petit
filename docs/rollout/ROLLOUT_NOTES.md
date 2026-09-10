@@ -103,7 +103,8 @@ Policy: none, except the two kinds of touch listed at the top. Log every one her
 
 | Date | Module | Headline names | Guard file | Status |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| 2026-09-10 | `MoltPetit/Model/KeyStealingTimedScope.lean` | `badSched_single_key_safe_not_enough`, `badKeyrotOn_single_key_safe_not_enough` (W6) | `MoltPetit/Results/AxiomsKeyStealingTimedScope.lean` | landed; `lake build MoltPetit Molt` clean; both axiom-free (`#print axioms` measured, not guessed) |
+| 2026-09-10 | `Molt/KeyStealingTimedScope.lean` | `Molt.badSched_single_key_safe_not_enough`, `Molt.badKeyrot_single_key_safe_not_enough` (W6, paper-namespace re-presentation) | `Molt/AxiomsKeyStealingTimedScope.lean` | landed; same build; both axiom-free |
 
 ## 3b. Provisional effort and ordering (NOT yet verified)
 
