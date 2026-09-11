@@ -53,7 +53,7 @@ record. Full blow-by-blow: `docs/rollout/journal-scan.md`.
 | W2 | Mode 1 anchored/trailing-5n at certificate level | **landed** (2026-09-10) | 491 | 1-2 sessions | none — confirmed |
 | W1 | Mode 3 (lockstep) at certificate level | **landed** (2026-09-10) | 712 | 2-3 sessions | none — confirmed |
 | W5 | Mode 3 per-generation census (D1'-full) | **landed** (2026-09-11) | 1400 | 3-4 sessions | none — confirmed; one optional consistency witness (`exposedBound_not_of_genBound`) dropped to prose per the design's own escape hatch (Finset decidability diamond) |
-| W3b | Time-aware signature surface (larger F_max) — **stretch** | **landed** (2026-09-11), full scope including the separation theorems | 363 | 2 sessions | none — confirmed |
+| W3b | Time-aware signature surface (larger F_max) — **stretch** | **landed** (2026-09-11), full scope; separation theorem corrected and witnessed on review (`docs/rollout/ROLLOUT_NOTES.md` §6) | 363 + 96 | 2 sessions | none — the one vacuous statement found on review is fixed and the impossibility it hid is now a theorem |
 | W7 | Multi-chain liveness — **deferred, not attempted** | sketch, SKIP recommended | — | — | — |
 
 *W3b's own review verdict predated the fixup that wrote its final content from
@@ -138,8 +138,14 @@ cache.
 - No item derives `NoTheftBackdating` (W3b's core new hypothesis) from an actual
   mint-time-aware EUF-CMA primitive — flagged by both W3a and W3b as a distinct,
   much larger follow-on (comparable in size to the whole `KeyStealing*.lean` stack).
-- W3b's paced-separation theorems have no witnessed chain `c0` demonstrating its three
-  hypotheses are jointly satisfiable (flagged as +100-150 lines, not in its estimate).
+- ~~W3b's paced-separation theorems have no witnessed chain `c0` demonstrating its three
+  hypotheses are jointly satisfiable~~ — **closed 2026-09-11, and the original framing was
+  wrong.** The three hypotheses are not merely unwitnessed, they are *contradictory* for
+  `d < n`; the separation theorem has been restated without the two timing hypotheses
+  (neither conjunct used them) and is now witnessed outright by
+  `Molt.paced_separation_witnessed` at concrete parameters. The impossibility of the
+  originally-intended shape is itself recorded as a theorem
+  (`Molt.paced_budget_holds_under_timing`). See `docs/rollout/ROLLOUT_NOTES.md` §6.
 - No item builds the certificate-level "mem"-shaped per-sync lemma W4's `enables → W2`
   would need (see loop risks above).
 - No item revisits `KeyStealingEUFCMA`/`SchedCoreUnforgeable`'s per-key-vs-per-slot

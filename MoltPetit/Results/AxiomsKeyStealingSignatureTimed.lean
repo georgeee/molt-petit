@@ -17,3 +17,7 @@ Same discipline as `MoltPetit/Results/Axioms.lean`.
 /-- info: 'MoltPetit.Model.anchored_budget_of_reaction_tight' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.anchored_budget_of_reaction_tight
+
+/-- info: 'MoltPetit.Model.theft_exposure_window' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in
+#print axioms MoltPetit.Model.theft_exposure_window

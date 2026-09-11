@@ -5,14 +5,34 @@ import MoltPetit.Model.KeyStealingSignatureTimed
 /-!
 # The tightened census, composed, plus the separation it buys (rollout W3b)
 
-`max_sync_period_tight` below is this item's concrete cash-out of "larger
-`F_max`": composed with a two-sided theft census (`Reacts` +
-`NoTheftBackdating`), the sync-period guard's budget no longer accumulates
-retroactively. `pacedStolenAt_safe_under_tight_unsafe_under_untimed` is the
-machine-checked counterpart of the paper's own illustrative paced-theft
-adversary: a witnessed schedule the tight census bounds by a fixed constant
-for every window, that the SAME schedule provably defeats the untimed
-(`Reacts`-free) census's budget at the very first window.
+`max_sync_period_tight` composes the two-sided theft census (`Reacts` +
+`NoTheftBackdating`) into the sync-period rule. What that buys, stated
+precisely enough to cite:
+
+* `MoltPetit.Model.theft_exposure_window` — a theft at real slot `r` exposes
+  chain-slots only in `[r, r + d)`. Fixed width, independent of where the
+  window sits in the run. This is "the census is no longer retroactive".
+* `paced_tight_census_bound_all_F` — for a paced adversary the census
+  hypothesis of `max_sync_period_tight` is discharged at `T := 1` for EVERY
+  `F`. This is the formal residue of "`F_max` rises": the census, which
+  under the untimed reading grew with the stretch being checked, no longer
+  constrains `F` at all. It is *not* a proof that a larger `F` is safe on
+  its own — rent still has to be bounded over the same stretch.
+* `pacedStolenAt_safe_under_tight_unsafe_under_untimed`, and its
+  hypothesis-free instance `paced_separation_witnessed` — the same paced
+  schedule has a tight census of `1` at every window while its untimed
+  bad-slot count at window `0` already exceeds the fault budget.
+
+**What this does NOT show, and a correction.** There is no execution in
+which `Reacts` + `NoTheftBackdating` hold and the untimed budget
+nevertheless fails: `paced_budget_holds_under_timing` proves the opposite,
+that under those hypotheses the paced adversary satisfies the old budget
+too. An earlier version of the combined separation theorem carried
+`Reacts`/`NoTheftBackdating` as hypotheses alongside `hFloor0`, which made
+it VACUOUS (those three are jointly contradictory — see that theorem's own
+docstring). The honest reading is that the timed route changes which
+hypotheses a deployment can *defend* — a fixed per-window concurrency bound
+instead of a per-stretch total — not which executions are safe.
 -/
 
 namespace Molt
@@ -147,18 +167,32 @@ theorem pacedStolenAt_exceeds_untimed_budget
     rw [Finset.card_image_of_injOn hInj.injOn, Finset.card_range]
   exact no_budget_beyond (c₀ := c₀) (rented := rented) hP (by rw [hcard]; omega)
 
-/-- **The separation, combined.** The paced schedule is safe under the
-tight census — bounded by `1` regardless of `F` — while the same schedule
-already defeats the untimed census's budget at the very first window.
-Composing the left conjunct into a concrete `max_sync_period_tight`
-instance (at `T := 1`) is a direct application, left to the caller. -/
+/-- **The separation, combined.** For one and the same paced schedule: the
+tight census is bounded by `1` at every window — no `c₀`, no timing
+hypotheses, and in particular no dependence on the sync period — while the
+untimed bad-slot count at window `0` already exceeds the fault budget on a
+chain whose floors have not yet risen.
+
+The two conjuncts are deliberately conditioned differently, and that is the
+whole content: the left one needs nothing but the pacing `n + d ≤ P`, the
+right one needs only `hFloor0`, and `hFloor0` is satisfiable (the empty
+chain gives floors `0`), so the statement is not vacuous —
+`paced_separation_witnessed` below discharges every hypothesis at concrete
+parameters.
+
+**This theorem deliberately does NOT assume `Reacts`/`NoTheftBackdating`.**
+An earlier version carried them, meaning to record "the paced schedule is
+one the tight route legitimately applies to"; that was a mistake, because
+those hypotheses together with `hFloor0` are *contradictory* (see
+`paced_budget_holds_under_timing` for why, in positive form). A separation
+of the shape "the timed hypotheses hold and the untimed budget still fails"
+does not exist — which is a fact about the timed hypotheses being strong
+enough, not a defect. -/
 theorem pacedStolenAt_safe_under_tight_unsafe_under_untimed
     {n Δconf P d : Nat} (hn : 1 ≤ n) (hP : n + d ≤ P)
     {c₀ : Chain} {ι : Nat → Nat} (hInj : Function.Injective ι)
     (hRange : ∀ k, k < n → ι k < n)
     (hFloor0 : ∀ k, k < n → ∀ s, s < n → inForce n Δconf c₀ (ι k) s = 0)
-    (hReacts : Reacts n Δconf d c₀ (pacedStolenAt ι P))
-    (hNoBack : NoTheftBackdating n Δconf c₀ (pacedStolenAt ι P))
     {rented : ByzantineSlots} {m : Nat} (hm : faultBudget n < m) (hmn : m ≤ n) :
     (∀ u, (recentTheftProducersTight n d (pacedStolenAt ι P) u).card ≤ 1) ∧
       ¬ (badSlotsIn
@@ -166,5 +200,82 @@ theorem pacedStolenAt_safe_under_tight_unsafe_under_untimed
           ≤ faultBudget n :=
   ⟨fun u => recentTheftProducersTight_card_le_one_of_paced hP u,
     pacedStolenAt_exceeds_untimed_budget hn hInj hRange hFloor0 hm hmn⟩
+
+/-- **The separation, fully witnessed — no hypotheses at all.** At `n = 4`,
+`d = 1`, `P = 5`, victims `ι = id`, and the empty witness chain: the tight
+census is `≤ 1` at every window, while the untimed bad-slot count at window
+`0` exceeds `faultBudget 4 = 1` outright. Closes the "hypotheses stated but
+never shown jointly satisfiable" gap the design left open. -/
+theorem paced_separation_witnessed :
+    (∀ u, (recentTheftProducersTight 4 1 (pacedStolenAt id 5) u).card ≤ 1) ∧
+      ¬ ((badSlotsIn (badKeyrot 4 0 (fun _ => False)
+            (MoltPetit.Model.stolenOf (pacedStolenAt id 5)) []) 0 4).card ≤ faultBudget 4) := by
+  refine ⟨fun u => recentTheftProducersTight_card_le_one_of_paced (by omega) u, ?_⟩
+  exact pacedStolenAt_exceeds_untimed_budget (n := 4) (Δconf := 0) (P := 5)
+    (by omega) Function.injective_id (fun k hk => hk)
+    (fun _ _ _ _ => rfl) (m := 2) (by decide) (by omega)
+
+-- ===========================================================================
+-- What the timed hypotheses actually rule out
+-- ===========================================================================
+
+/-- **Under the timed hypotheses the UNTIMED census is already bounded.**
+For a paced schedule, `Reacts` + `NoTheftBackdating` confine each theft's
+exposure to `[r, r + d)` (`theft_exposure_window`), and pacing `n + d ≤ P`
+puts at most one such interval in any window — so the *cumulative*
+`exposedProducers` census, the one the untimed budget reads, is itself
+`≤ 1` everywhere. -/
+theorem exposedProducers_card_le_one_of_paced
+    {n Δconf d P : Nat} (hn : 0 < n) (hP : n + d ≤ P) {ι : Nat → Nat} {c₀ : Chain}
+    (hReacts : Reacts n Δconf d c₀ (pacedStolenAt ι P))
+    (hNoBack : NoTheftBackdating n Δconf c₀ (pacedStolenAt ι P))
+    (u : Nat) :
+    (MoltPetit.Model.exposedProducers n Δconf
+      (MoltPetit.Model.stolenOf (pacedStolenAt ι P)) c₀ u).card ≤ 1 := by
+  have hsub := MoltPetit.Model.exposedProducers_subset_recentTheftTight hn hReacts hNoBack u
+  have hone := recentTheftProducersTight_card_le_one_of_paced
+    (n := n) (d := d) (P := P) (ι := ι) hP u
+  rw [recentTheftProducersTight_eq_core] at hone
+  exact le_trans (Finset.card_le_card hsub) hone
+
+/-- **Why no "both hypotheses hold and the untimed budget fails" separation
+exists.** Under `Reacts` + `NoTheftBackdating`, the paced adversary does not
+break the untimed budget either — it *satisfies* it, for any rent rate
+leaving one seat of headroom. So the timed hypotheses do not merely make the
+budget easier to attest: for this adversary family they make the old budget
+true as well. The gain the timed route buys is therefore about which
+hypotheses a deployment can *defend* (a fixed per-window concurrency bound
+versus a per-stretch total), not about executions the untimed route gets
+wrong — and the paper should say it that way. -/
+theorem paced_budget_holds_under_timing
+    {n Δconf d P : Nat} (hn : 0 < n) (hP : n + d ≤ P) {ι : Nat → Nat} {c₀ : Chain}
+    {rented : ByzantineSlots} {Rrent : Nat}
+    (hReacts : Reacts n Δconf d c₀ (pacedStolenAt ι P))
+    (hNoBack : NoTheftBackdating n Δconf c₀ (pacedStolenAt ι P))
+    (hRent : ∀ u, (badSlotsIn rented u n).card ≤ Rrent)
+    (hRT : Rrent + 1 ≤ faultBudget n) :
+    ∀ u, (badSlotsIn (badKeyrot n Δconf rented
+        (MoltPetit.Model.stolenOf (pacedStolenAt ι P)) c₀) u n).card ≤ faultBudget n := by
+  intro u
+  rw [badKeyrot_eq_core]
+  refine MoltPetit.Model.budget_of_reaction_tight (guard := fun _ => True) hn hReacts hNoBack
+    (fun u _ => hRent u) (fun u _ => ?_) hRT u trivial
+  have hone := recentTheftProducersTight_card_le_one_of_paced
+    (n := n) (d := d) (P := P) (ι := ι) hP u
+  rw [recentTheftProducersTight_eq_core] at hone
+  exact hone
+
+/-- **The census hypothesis of `max_sync_period_tight` holds for EVERY `F`.**
+The formal residue of "`F_max` rises": for a paced adversary the tight
+census bound is a single per-window fact, so it discharges
+`max_sync_period_tight`'s `hTheft` at `T := 1` for an arbitrary sync period.
+Nothing here proves a larger `F` is *safe* on its own — rent still has to be
+bounded over the same stretch — but the census, which is what the untimed
+route made grow with the stretch, no longer constrains `F` at all. -/
+theorem paced_tight_census_bound_all_F
+    {n d P : Nat} (hP : n + d ≤ P) {ι : Nat → Nat} (F now : Nat) :
+    ∀ u, now < u + F + 4 * n →
+      (recentTheftProducersTight n d (pacedStolenAt ι P) u).card ≤ 1 :=
+  fun u _ => recentTheftProducersTight_card_le_one_of_paced hP u
 
 end Molt

@@ -33,3 +33,7 @@ used throughout `Results/Axioms.lean` / `Molt/Axioms.lean`.
 /-- info: 'MoltPetit.Model.lockstep_recent_certified_suffix_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.lockstep_recent_certified_suffix_agreement
+
+/-- info: 'MoltPetit.Model.groundedCertLock_gen_unique' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms MoltPetit.Model.groundedCertLock_gen_unique

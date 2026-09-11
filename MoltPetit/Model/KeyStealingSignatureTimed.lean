@@ -96,6 +96,29 @@ theorem exposedProducers_subset_recentTheftTight
   · omega
   · omega
 
+/-- **Non-retroactivity, sharp.** The precise content of "the census is no
+longer retroactive": under `Reacts` + `NoTheftBackdating`, a theft of
+version `j` at real slot `r` can expose a chain-slot `s` only for
+`s ∈ [r, r + d)` — never before the theft (that is `NoTheftBackdating`),
+and never once the reaction has fired (that is `Reacts`). The exposure
+window has fixed width `d`, independent of where `s` sits in the run, which
+is exactly what stops a census at an ancient window from accumulating
+later thefts. This is the statement a paper sentence about theft times
+should cite; the two-sided filter in `recentTheftProducersTight` is its
+Finset-level shadow. -/
+theorem theft_exposure_window
+    {n Δconf d : Nat} {c₀ : Chain} {stolenAt : Nat → Nat → Nat → Prop}
+    (hReacts : Reacts n Δconf d c₀ stolenAt)
+    (hNoBack : NoTheftBackdating n Δconf c₀ stolenAt)
+    {i j r s : Nat} (hst : stolenAt i j r)
+    (hexp : inForce n Δconf c₀ i s ≤ j) :
+    r ≤ s ∧ s < r + d := by
+  refine ⟨hNoBack i j r s hst hexp, ?_⟩
+  by_contra hcon
+  push Not at hcon
+  have := hReacts i j r hst s hcon
+  omega
+
 /-- **The mode-1 timed I3, tightened** — the exact budget hypothesis every
 mode-1 client theorem consumes, derived from a rent rate, a two-sided
 theft census, and the `1/3` bound, at an arbitrary window guard. Line-for

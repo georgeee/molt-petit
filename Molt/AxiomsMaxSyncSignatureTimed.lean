@@ -23,3 +23,19 @@ import Molt.MaxSyncSignatureTimed
 /-- info: 'Molt.pacedStolenAt_safe_under_tight_unsafe_under_untimed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Molt.pacedStolenAt_safe_under_tight_unsafe_under_untimed
+
+/-- info: 'Molt.paced_separation_witnessed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.paced_separation_witnessed
+
+/-- info: 'Molt.exposedProducers_card_le_one_of_paced' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.exposedProducers_card_le_one_of_paced
+
+/-- info: 'Molt.paced_budget_holds_under_timing' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.paced_budget_holds_under_timing
+
+/-- info: 'Molt.paced_tight_census_bound_all_F' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.paced_tight_census_bound_all_F

@@ -35,9 +35,13 @@ statements alone:
    the same simplification mode 2's certificate form already enjoyed.
 4. **The wire contract.** Beyond the plain claim, the certificate attests
    the tip generation `g` — the one-`Nat` analogue of `GroundedCertK`'s
-   floor vector. For `n ≥ 2` this is provably redundant
-   (`groundedCertLock_gen_of_tail`: the tip block is the last element of
-   `cl.tail`, so `g` is a function of the claim alone); only `n = 1` (empty
+   floor vector. For `n ≥ 2` this is provably redundant: `g` is a function
+   of the claim alone, in both halves of that phrase —
+   `groundedCertLock_gen_of_tail` gives existence (a tail block at the tip
+   slot carrying `g`) and `groundedCertLock_gen_unique` gives determinacy
+   (no tail block at that slot carries anything else), so a verifier
+   reading the tail recovers `g` and cannot recover a different value; only
+   `n = 1` (empty
    tail) genuinely needs the extra counter. Leaving `g` unauthenticated
    would be a real attack — `g* = 0` lets a suffix block signed under a
    stolen retired-generation key pass, exactly mode 2's `schedule* ≡ 0`
@@ -335,6 +339,41 @@ theorem groundedCertLock_gen_of_tail {n : Nat} (hn2 : 2 ≤ n) {Signed : Block �
   refine ⟨t, ?_, htSlot, htKey⟩
   rw [hist.tail_eq]
   exact List.mem_filter.mpr ⟨htmem, by rw [decide_eq_true_eq]; omega⟩
+
+/-- **The threaded generation is determined by the claim, not merely present
+in it.** Any tail block sitting at the claim's tip slot carries exactly `g`.
+Together with `groundedCertLock_gen_of_tail` (which supplies existence for
+`n ≥ 2`) this is what makes "`g` is a function of the claim alone" a
+theorem rather than a reading: a verifier that looks up the tail block at
+`cl.tipSlot` and reads its `keyIndex` cannot get any answer other than `g`,
+because the reconstructed history has strictly increasing slots and so at
+most one block sits at that slot. -/
+theorem groundedCertLock_gen_unique {n : Nat} (hn : 1 ≤ n) {Signed : Block → Prop}
+    {G : Block} {cl : CertClaim} {g : Nat}
+    (h : GroundedCertLock n Signed G cl g)
+    {t : Block} (ht : t ∈ cl.tail) (hslot : t.slot = cl.tipSlot) :
+    t.keyIndex = g := by
+  obtain ⟨c, hist⟩ := groundedCertLock_history hn h
+  obtain ⟨tt, hTipEq, -, httSlot, -, httKey⟩ := hist.tip
+  have htmem : t ∈ c := by
+    rw [hist.tail_eq] at ht
+    exact (List.mem_filter.mp ht).1
+  have httmem : tt ∈ c := by
+    have h' := blockAt_getLast hTipEq
+    unfold blockAt? at h'
+    exact List.mem_of_getElem? h'
+  have hStrict : StrictSlots c := (validChain_sound hist.valid).2.1
+  obtain ⟨i, hi⟩ := exists_blockAt_of_mem htmem
+  obtain ⟨j, hj⟩ := exists_blockAt_of_mem httmem
+  have hij : i = j := by
+    rcases Nat.lt_trichotomy i j with h' | h' | h'
+    · have := strictSlots_lt hStrict hi hj h'; omega
+    · exact h'
+    · have := strictSlots_lt hStrict hj hi h'; omega
+  rw [hij, hj] at hi
+  injection hi with hi
+  rw [← hi]
+  exact httKey
 
 /-- **Grounded-lock prefix + validated suffix = full accepted chain.** Mirrors
 `groundedCertSched_suffix_history`; the suffix-side rotation check is the

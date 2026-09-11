@@ -31,8 +31,8 @@ given by section and a grep-able phrase (line numbers drift).
 | W1 | — | §6 intro sentence `keyrot_recent_certified_suffix_agreement and its scheduled twin` | add the lockstep twin |
 | W2 | AN/21 | §6.3 mode 1, phrase `carrying the anchored, trailing-$5n$ form to certificates is future work` | replace with the new certified anchored theorem name; the deployment walkthrough's conclusion can then be stated for the certificate client |
 | W3a | AN/20, AN/17 | §6.3 mode 1, the paragraphs `Why the cadence cannot simply be enlarged` and `The standing assumption is then` | state the budget in the derived form (theft rate + reaction bound ⇒ trailing budget), cite the derivation; possibly quote the theorem in the one-line form |
-| W3a/W3b | AN/24, AN/29 | §6.3 mode 1 `theft \emph{times} inside the signature assumptions`; "Honest scope" first bound `distinguishing thefts before a block's creation` | rewrite according to what lands (W3a: theft times as a derivation layer; W3b: non-retroactive census) |
-| W4 | AN/26 | §6.3 mode 1 walkthrough, phrase `argued on paper, not itself machine-checked` and `an informal argument` | cite the machine-checked induction; keep the honest-tip-recency side condition as a stated hypothesis |
+| W3a/W3b | AN/24, AN/29 | §6.3 mode 1 `theft \emph{times} inside the signature assumptions`; "Honest scope" first bound `distinguishing thefts before a block's creation` | rewrite according to what lands (W3a: theft times as a derivation layer; W3b: non-retroactive census). Cite `MoltPetit.Model.theft_exposure_window` for "a theft at `r` exposes only `[r, r+d)`" and `Molt.paced_tight_census_bound_all_F` for "the census no longer constrains `F`". **Do NOT write** "there are executions the untimed budget gets wrong that the timed one gets right" — `Molt.paced_budget_holds_under_timing` proves there are none; the gain is in which hypotheses a deployment can defend, not in which executions are safe |
+| W4 | AN/26 | §6.3 mode 1 walkthrough, phrase `argued on paper, not itself machine-checked` and `an informal argument` | cite the machine-checked induction (`Molt.sync_induction_full_chain`). **Careful:** the side condition that absorbs the paper's informal *density* argument is `hRLe` (the reference tip is at least as tall at every sync), not tip-recency — recency is a separate hypothesis (`hRRecent`). The paper sentence must say the induction is machine-checked *conditional on `hRLe`*, which is what the density remark was arguing for; claiming the density argument itself is now machine-checked would overstate it. The module docstring states this correctly |
 | W5 | AN/9b | §2 mode 3 paragraph `erasure's per-generation credit against the budget is designed but not yet formalized`; §6.3 "Honest scope" second bound; mode 3 operator duties `(its budget credit: honest scope below)`; modes table erasure column | state the per-generation budget and cite it |
 | W6 | AN/34b | Appendix `What no-back-dating is`; each mode's "What must then be true of the world" list; §Limitations "Named seams" phrase `assumed, not derived from the timed model` | either list no-back-dating per mode as a named operational assumption (text-only variant) or cite the per-mode derivation |
 | W7 | AN/31 | §6.4, phrase `a fully multi-chain network model is future work` | only if W7 is done |
@@ -177,6 +177,32 @@ then move to the next item. If the workflow's own review turns up a design
 that is not implementable as specified, that is logged here and the item is
 either fixed again or explicitly deferred — never implemented against advice
 silently.
+
+## 6. Post-review corrections (2026-09-11, second pass)
+
+A review pass over the landed arc, checking the English claims against the
+Lean statements rather than re-checking the proofs, found one real defect and
+two overclaims. All three are now fixed in Lean, not just in prose:
+
+| Finding | Status |
+|---|---|
+| `Molt.pacedStolenAt_safe_under_tight_unsafe_under_untimed` was **vacuous**: it carried `hReacts`/`hNoBack` alongside `hFloor0`, and those are jointly contradictory (the paced schedule's first theft is at real slot `0`, so `Reacts` forces the victim's floor up by slot `d` while `hFloor0` pins it to `0` across `[0, n)` — contradictory whenever `d < n`, i.e. exactly the attractive fast-reaction regime) | **fixed**: the two timing hypotheses are dropped (neither conjunct ever needed them), so the theorem is now non-vacuous, and `Molt.paced_separation_witnessed` discharges every remaining hypothesis at concrete parameters (`n = 4, d = 1, P = 5, ι = id, c₀ = []`) — a separation with no hypotheses at all, closing the "never shown jointly satisfiable" gap the design left open |
+| "larger `F_max`" was asserted in prose but was not a theorem — `max_sync_period_tight` is F-parametric with exactly the same guard as the untimed form | **fixed**: `Molt.paced_tight_census_bound_all_F` states the actual formal residue (the census hypothesis discharges at `T := 1` for every `F`), and the module doc now says explicitly that this is not a proof that a larger `F` is safe, since rent still has to be bounded over the stretch |
+| the intended "timed hypotheses hold, untimed budget fails" separation is **impossible**, not merely unwitnessed | **proved**: `Molt.paced_budget_holds_under_timing` shows that under `Reacts` + `NoTheftBackdating` the paced adversary *satisfies* the old budget, via `Molt.exposedProducers_card_le_one_of_paced`. Recorded as positive content rather than left as a gap |
+
+Also added, closing smaller English-vs-Lean gaps found in the same pass:
+
+- `MoltPetit.Model.theft_exposure_window` — the sharp statement of
+  non-retroactivity (a theft at `r` exposes chain-slots only in `[r, r+d)`),
+  which is what a paper sentence about theft times should actually cite.
+  Measured `[propext, Quot.sound]`.
+- `MoltPetit.Model.groundedCertLock_gen_unique` — W1's module doc claimed the
+  threaded generation is "a function of the claim alone", but
+  `groundedCertLock_gen_of_tail` only gave existence; this supplies the
+  determinacy (any tail block at the tip slot carries exactly `g`), so the
+  claim is now a theorem rather than a reading.
+
+All six new declarations are axiom-guarded; `lake build MoltPetit Molt` clean.
 
 **Closed 2026-09-11.** All seven scoped items (W6, W4, W3a, W2, W1, W5, W3b)
 landed in that order, one per commit, each preceded by a clean standalone
