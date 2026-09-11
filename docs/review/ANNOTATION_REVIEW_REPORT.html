@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Molt Petit — Annotation Review Report (AN/1–AN/34)</title>
+<style>
+  :root{
+    --ink:#1a1d21; --muted:#5d6672; --faint:#8a929e; --rule:#e0e4e9;
+    --bg:#ffffff; --panel:#f7f8fa; --code-bg:#f5f6f8;
+    --del-bg:#fff1f0; --del-bd:#f0b7b2; --del-ink:#8a1c12;
+    --add-bg:#eefaf0; --add-bd:#a9ddb6; --add-ink:#11632a;
+    --warn-bg:#fff8e6; --warn-bd:#e8cf8a; --warn-ink:#7a5a05;
+    --info-bg:#eef4fd; --info-bd:#b6cdee; --info-ink:#1a4480;
+    --stop-bg:#fdeeee; --stop-bd:#e8b0b0; --stop-ink:#8c1d1d;
+    --lean-bg:#f4f1fa; --lean-bd:#cfc2e8; --lean-ink:#4a2f7a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px 120px}
+  header.top{border-bottom:2px solid var(--ink);padding:44px 0 26px;margin-bottom:34px}
+  h1{font-size:31px;line-height:1.22;margin:0 0 10px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:15.5px;max-width:76ch}
+  .meta{margin-top:18px;font-size:13px;color:var(--faint);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  h2{font-size:23px;margin:52px 0 6px;letter-spacing:-.01em;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+  h3{font-size:17.5px;margin:30px 0 8px;letter-spacing:-.005em}
+  h4{font-size:14px;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+  p{margin:0 0 13px;max-width:82ch}
+  ul,ol{margin:0 0 13px;padding-left:22px;max-width:82ch}
+  li{margin:5px 0}
+  a{color:#1a4480}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:3px;border:1px solid var(--rule)}
+  pre{background:var(--code-bg);border:1px solid var(--rule);border-radius:6px;padding:13px 15px;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.6px;line-height:1.55;margin:10px 0 14px}
+  pre code{background:none;border:none;padding:0;font-size:inherit}
+
+  /* nav */
+  nav.toc{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:18px 22px;margin:28px 0 10px}
+  nav.toc h4{margin-top:0}
+  nav.toc ul{list-style:none;padding:0;margin:0;columns:2;column-gap:34px;max-width:none}
+  nav.toc li{margin:3px 0;break-inside:avoid}
+  nav.toc a{text-decoration:none;font-size:14px}
+  nav.toc a:hover{text-decoration:underline}
+
+  /* annotation cards */
+  .ann{border:1px solid var(--rule);border-radius:9px;margin:22px 0;overflow:hidden;break-inside:avoid}
+  .ann > .head{background:var(--panel);padding:13px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .ann > .head .id{font-weight:700;font-size:16.5px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .ann > .head .ttl{font-size:15px;color:var(--ink);flex:1;min-width:240px}
+  .ann > .body{padding:16px 18px 6px}
+  .badge{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border-radius:11px;border:1px solid;white-space:nowrap}
+  .b-edit{background:var(--add-bg);border-color:var(--add-bd);color:var(--add-ink)}
+  .b-q{background:var(--info-bg);border-color:var(--info-bd);color:var(--info-ink)}
+  .b-lean{background:var(--lean-bg);border-color:var(--lean-bd);color:var(--lean-ink)}
+  .b-none{background:var(--panel);border-color:var(--rule);color:var(--muted)}
+  .b-open{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn-ink)}
+
+  /* diffs */
+  .diff{margin:10px 0 16px;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+  .diff .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;padding:5px 12px;font-weight:700}
+  .diff .before .lbl{background:var(--del-bg);color:var(--del-ink);border-bottom:1px solid var(--del-bd)}
+  .diff .after .lbl{background:var(--add-bg);color:var(--add-ink);border-top:1px solid var(--add-bd);border-bottom:1px solid var(--add-bd)}
+  .diff .txt{padding:11px 14px;font-size:14.2px;line-height:1.6}
+  .diff .before .txt{background:#fffafa}
+  .diff .after .txt{background:#fbfefb}
+  .diff .txt.tex{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.6px;line-height:1.55;white-space:pre-wrap}
+  .diff.proposed{border-color:var(--lean-bd);border-width:2px;border-style:dashed}
+  .propnote{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--lean-ink);background:var(--lean-bg);padding:5px 12px;border-bottom:1px solid var(--lean-bd)}
+
+  /* callouts */
+  .call{border-left:4px solid;border-radius:0 6px 6px 0;padding:11px 15px;margin:13px 0;font-size:14.4px}
+  .call .k{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.07em;display:block;margin-bottom:4px}
+  .c-warn{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn-ink)}
+  .c-stop{background:var(--stop-bg);border-color:var(--stop-bd);color:var(--stop-ink)}
+  .c-info{background:var(--info-bg);border-color:var(--info-bd);color:var(--info-ink)}
+  .c-lean{background:var(--lean-bg);border-color:var(--lean-bd);color:var(--lean-ink)}
+  .call p{max-width:none;margin:0 0 8px}
+  .call p:last-child{margin-bottom:0}
+  .call code{background:rgba(255,255,255,.6)}
+
+  /* tables */
+  table{border-collapse:collapse;width:100%;margin:14px 0 20px;font-size:14px}
+  th,td{border:1px solid var(--rule);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  td code{font-size:12.4px}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:12px;margin:20px 0 26px}
+  .stat{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:14px 16px}
+  .stat .n{font-size:27px;font-weight:700;line-height:1.1;letter-spacing:-.02em}
+  .stat .l{font-size:12.3px;color:var(--muted);margin-top:3px}
+
+  .src{font-size:12.4px;color:var(--faint);font-style:italic;margin:6px 0 12px}
+  .quote{background:#fbfaf6;border-left:4px solid #d8cfa8;border-radius:0 6px 6px 0;padding:10px 15px;margin:4px 0 14px}
+  .quote .qk{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:#8a7b45;display:block;margin-bottom:5px}
+  .quote .qt{font-size:15px;line-height:1.55;color:#3a3426;font-style:italic}
+  .quote .qp{font-size:11.5px;color:var(--faint);margin-top:6px;font-style:normal}
+  .ansbox{background:var(--info-bg);border:1px solid var(--info-bd);border-radius:6px;padding:12px 15px;margin:12px 0}
+  .ansbox .ak{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--info-ink);display:block;margin-bottom:5px}
+  .lean-head{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--lean-ink);font-weight:700;margin:16px 0 5px}
+  hr.sep{border:0;border-top:1px solid var(--rule);margin:36px 0}
+  .footnote{font-size:13.4px;color:var(--muted);max-width:82ch}
+  @media print{
+    body{font-size:11pt} .wrap{max-width:none;padding:0}
+    .ann,.call,.diff,table,pre{break-inside:avoid}
+    nav.toc{break-after:page}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>Molt Petit — Annotation Review Report</h1>
+  <div class="sub">
+    Every one of the 34 annotations placed on <code>paper/molt.tex</code> on 2026-09-04,
+    answered one after another: what was asked, what was done, and — where the answer
+    required new mathematics — the Lean statement that now carries it together with the
+    paper wording it unlocks. Followed by the material details of the review rounds and an
+    adversarial review of this report itself.
+  </div>
+  <div class="meta">
+    repo /etheron-pod/mini-consensus-lean &nbsp;·&nbsp; branch feature/key-rotation-sound &nbsp;·&nbsp;
+    HEAD 29527a9 &nbsp;·&nbsp; generated 2026-09-11
+  </div>
+</header>
+
+<div class="call c-stop">
+  <span class="k">Read this first — the paper is not edited for anything Lean-backed</span>
+  <p>
+    <strong>23</strong> of the 36 items produced paper edits, and those are
+    <strong>applied</strong> — 21 changed hunks across ten commits,
+    <code>e21376d</code> through <code>8b8b766</code>, all dated 2026-09-04.
+  </p>
+  <p>
+    <strong>No paper text was edited on account of any Lean that landed in this arc.</strong>
+    The ground rule was <em>the paper is not edited until the Lean lands</em>, and it never
+    was. For those items this report shows the Lean that now exists plus a
+    <strong>proposed, unapplied</strong> paper diff drawn from
+    <code>docs/review/PAPER_WORDING_PROPOSED.md</code>; proposed text always carries a dashed purple
+    border. <code>git log -- paper/molt.tex</code> confirms no commit after
+    <code>8b8b766</code> touches the paper.
+  </p>
+  <p>
+    Two items sit on both sides and are easy to misread: <strong>AN/20</strong> and
+    <strong>AN/24</strong> each had a wording half applied on 2026-09-04 <em>and</em> a Lean
+    half whose replacement wording is still only proposed.
+  </p>
+</div>
+
+<div class="call c-info">
+  <span class="k">Provenance of the annotation texts</span>
+  <p>
+    Every annotation below is quoted <strong>verbatim, typos and all</strong>, from
+    <code>/etheron-pod/inbox/molt_090107_annotations.md</code> — the extraction of the 34
+    highlight annotations from <code>molt_090107.pdf</code>, which records for each one the
+    PDF page, the highlighted passage, and the full annotation text. That file lives in the
+    inbox, not in the repo, which is why earlier working notes described the originals as
+    unavailable; they are not. Where this report paraphrases, it says so.
+  </p>
+</div>
+
+<h4>How to read the badges</h4>
+<p>
+  <span class="badge b-edit">edit applied</span> the annotation asked for a text change and it is in the paper today.<br>
+  <span class="badge b-q">question</span> the annotation asked something; the answer is reproduced, no text changed.<br>
+  <span class="badge b-lean">lean + proposed</span> the annotation needed new mathematics; the Lean landed, the paper wording is proposed and unapplied.<br>
+  <span class="badge b-open">open</span> something still needs your decision.<br>
+  <span class="badge b-none">merged / no action</span> subsumed by another annotation, or deliberately not acted on.
+</p>
+
+<nav class="toc">
+  <h4>Contents</h4>
+  <ul>
+    <li><a href="#glance">At a glance</a></li>
+    <li><a href="#p1">Part 1 — the 34 annotations</a></li>
+    <li><a href="#an1">AN/1 – AN/4 · abstract &amp; intro</a></li>
+    <li><a href="#an5">AN/5 – AN/8 · engineering claim, modes</a></li>
+    <li><a href="#an9">AN/9a – AN/11 · mode 3, validity, keyFor</a></li>
+    <li><a href="#an12">AN/12 – AN/16 · assumptions, Thm 1, timed model</a></li>
+    <li><a href="#an17">AN/17 – AN/21 · the 5n budget</a></li>
+    <li><a href="#an22">AN/22 – AN/27 · floor, theft times, VRF</a></li>
+    <li><a href="#an28">AN/28 – AN/34b · mode 3, liveness, appendix</a></li>
+    <li><a href="#p2">Part 2 — material details of the review rounds</a></li>
+    <li><a href="#vac">The vacuity defect, in full</a></li>
+    <li><a href="#imposs">The impossibility result</a></li>
+    <li><a href="#findings">All findings, tabulated</a></li>
+    <li><a href="#hygiene">Build &amp; axiom hygiene</a></li>
+    <li><a href="#p3">Part 3 — adversarial review of this report</a></li>
+    <li><a href="#p4">Part 4 — what is still open</a></li>
+  </ul>
+</nav>
+
+<h2 id="glance">At a glance</h2>
+
+<div class="stats">
+  <div class="stat"><div class="n">34</div><div class="l">annotations (36 items)</div></div>
+  <div class="stat"><div class="n">23</div><div class="l">with an applied paper edit</div></div>
+  <div class="stat"><div class="n">6</div><div class="l">questions answered</div></div>
+  <div class="stat"><div class="n">11</div><div class="l">drove landed Lean work</div></div>
+  <div class="stat"><div class="n">27</div><div class="l">new Lean files</div></div>
+  <div class="stat"><div class="n">65</div><div class="l">new axiom guards</div></div>
+  <div class="stat"><div class="n">8667</div><div class="l">build jobs, clean</div></div>
+  <div class="stat"><div class="n">0</div><div class="l">sorry / admit / axiom</div></div>
+</div>
+
+<div class="call c-info">
+  <span class="k">How these numbers are counted — they overlap on purpose</span>
+  <p>
+    There are 34 annotation <em>numbers</em> (AN/1–AN/34). Two are recorded in the sources as
+    two distinct asks each — AN/9 as 9a/9b and AN/34 as a clarity half plus 34b — giving
+    <strong>36 items</strong>, which is what the cards below enumerate. The other counts are
+    not a partition: several annotations were resolved in more than one way, so they are
+    counted under each.
+  </p>
+  <p>
+    <strong>23</strong> items had an applied paper edit. <strong>6</strong> were questions —
+    four answered in writing and recorded in <code>docs/rollout/ROLLOUT_NOTES.md</code> §1b (AN/21, AN/23,
+    AN/27, AN/29), two answered inside the paper itself (AN/11, AN/22).
+    <strong>11</strong> drove Lean work that landed (AN/9a, 9b, 17, 20, 21, 24, 26, 28, 29,
+    30, 34b); a twelfth, AN/31, drove work item W7 which was deliberately declined.
+    <strong>2</strong> needed no separate action (AN/1, merged into AN/3; AN/31, declined).
+    Overlaps: AN/20 and AN/24 are both an applied edit and a Lean item; AN/21 and AN/29 are
+    both a question and a Lean item; AN/11 and AN/22 are both a question and an applied edit.
+  </p>
+</div>
+
+<table>
+  <tr><th>Work item</th><th>From</th><th>What it closes</th><th>Status</th></tr>
+  <tr><td><strong>W1</strong></td><td>AN/9a, AN/28, AN/30</td><td>Mode 3 at the certificate presentation</td><td>landed <code>d59d244</code></td></tr>
+  <tr><td><strong>W2</strong></td><td>AN/21</td><td>Mode 1 anchored/trailing-5n budget at certificate level</td><td>landed <code>fc3d08b</code></td></tr>
+  <tr><td><strong>W3a</strong></td><td>AN/17, AN/20</td><td>Trailing budget derived from a theft rate + reaction delay</td><td>landed <code>71a5fa3</code></td></tr>
+  <tr><td><strong>W3b</strong></td><td>AN/24, AN/29</td><td>Non-retroactive census; what "larger F" means</td><td>landed <code>726d320</code>, corrected <code>14d2d11</code></td></tr>
+  <tr><td><strong>W4</strong></td><td>AN/26</td><td>The induction over syncs, machine-checked</td><td>landed <code>7017446</code></td></tr>
+  <tr><td><strong>W5</strong></td><td>AN/9b</td><td>Erasure's per-generation budget credit</td><td>landed <code>8df8b0c</code></td></tr>
+  <tr><td><strong>W6</strong></td><td>AN/34b</td><td>Why no-back-dating is assumed, not derived</td><td>landed <code>9eaadcd</code></td></tr>
+  <tr><td><strong>W7</strong></td><td>AN/31</td><td>Multi-chain liveness</td><td><strong>not attempted</strong>, by its own design's recommendation</td></tr>
+</table>
+
+<h2 id="p1">Part 1 — the 34 annotations</h2>
+
+<div class="call c-info">
+  <span class="k">On the record of what each annotation said</span>
+  <p>
+    The original PDF annotation texts are not in the repository. What exists is the
+    paraphrase written into each paper commit message at the time the edit was made, plus
+    the ledger rows in <code>docs/rollout/ROLLOUT_NOTES.md</code> §1 and the recorded answers in §1b.
+    Every "what was asked" below is quoted or closely paraphrased from those records, and
+    the source is named. Where a record is thin, that is said rather than embellished.
+  </p>
+</div>
+
+<h3 id="an1">AN/1 – AN/4 · abstract and intro &nbsp;<span class="src" style="font-style:normal">commit <code>e21376d</code>, p1</span></h3>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/1</span><span class="ttl">Empty highlight over the abstract's "rotation-mode results" span</span><span class="badge b-none">merged</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Rotation Results Scope &nbsp;·&nbsp; PDF p1</span><div class="qt">&ldquo;(empty annotation text)&rdquo;</div></div>
+    <p>An empty highlight covering the same span as AN/3 — no text of its own. Treated as part of AN/3 and resolved by that edit.</p>
+    <div class="src">Source: commit <code>e21376d</code> message — "AN/3 (and AN/1, an empty highlight over the same span)".</div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/2</span><span class="ttl">"with a build-enforced axiom audit" is too technical for the abstract</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Drop Axiom Audit &nbsp;·&nbsp; PDF p1</span><div class="qt">&ldquo;too technical remove&rdquo;</div></div>
+    <div class="src">Source: commit <code>e21376d</code> — "drop … from the abstract (too technical there; the intro keeps it)".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">as the recursive-proof circuit, and today's rotation-mode results at
+model level --- with a build-enforced axiom audit. Beyond the classical counting argument, we prove that forged</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">as the recursive-proof circuit, and today's key-rotation results at
+model level. Beyond the classical counting argument, we prove that forged</div></div>
+    </div>
+    <p>The audit claim was not lost — it moved to the intro and was strengthened there by AN/6.</p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/3</span><span class="ttl">"rotation-mode results" uses a term the abstract has not introduced</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Define Rotation Modes &nbsp;·&nbsp; PDF p1</span><div class="qt">&ldquo;unclear what is rotation mode&rdquo;</div></div>
+    <div class="src">Source: commit <code>e21376d</code>. Same hunk as AN/2, shown above: <code>rotation-mode results</code> → <code>key-rotation results</code>.</div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/4</span><span class="ttl">The sync-cadence theorem is about one mode of three — say so</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Clarify Active-Client Mode &nbsp;·&nbsp; PDF p1</span><div class="qt">&ldquo;not clear it is about only one mode out of three&rdquo;</div></div>
+    <div class="src">Source: commit <code>e21376d</code> — "say so, and say the other two ask nothing of the client".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">to a theorem that fixes the one rule an actively syncing client must
+obey (sync at least once every $n$ slots,
+Section~\ref{sec:rotation}).</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">to a theorem that fixes, in the one mode built for actively syncing
+clients, the single rule such a client must obey (sync at least once
+every $n$ slots, Section~\ref{sec:rotation}); clients of the other two
+modes obey no rule at all.</div></div>
+    </div>
+    <div class="call c-warn">
+      <span class="k">Later review found this slightly too strong</span>
+      <p>
+        Mode 2 and mode 3 clients still pass the <em>recency</em> check at every sync — it is
+        the hypothesis <code>hRecent : now ≤ tip.slot + Δ</code> in every one of their
+        theorems. What they are free of is a <em>cadence</em> rule. Proposed fix:
+        "clients of the other two modes obey no <em>cadence</em> rule at all."
+        (<code>docs/review/PAPER_WORDING_PROPOSED.md</code> §0c.)
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 id="an5">AN/5 – AN/8 · engineering claim and modes &nbsp;<span class="src" style="font-style:normal">commit <code>7d8890c</code>, p2</span></h3>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/5</span><span class="ttl">Say what the TypeScript path is actually for</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; TypeScript Model Role &nbsp;·&nbsp; PDF p2</span><div class="qt">&ldquo;I'd Rather say a separate typescript impl is proven using the same model in lean which is useful to keep the model impl agnostic while developing it using agentic coding&rdquo;</div></div>
+    <div class="src">Source: commit <code>7d8890c</code> — "a separate implementation proved against the SAME Lean model … rather than 'repeats the exercise to keep the model honest'".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">circuit, so the prover proves the predicate that was verified; and an
+independent
+TypeScript pipeline repeats the exercise to keep the model honest. Every
+headline theorem carries a build-enforced axiom audit. Measured on</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">circuit, so the prover proves the predicate that was verified; and a
+separate TypeScript implementation is proved sound against that
+\emph{same} Lean model --- which is what keeps the model
+implementation-agnostic while it is developed by agentic coding. A
+build-enforced audit fixes what every headline theorem may assume: the
+axioms of classical logic, and nothing else. Measured on</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/6</span><span class="ttl">State immediately what the axiom audit permits</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; State Classical Axioms &nbsp;·&nbsp; PDF p2</span><div class="qt">&ldquo;let's immediately state that only basic axioms of logic, classical ones are used&rdquo;</div></div>
+    <div class="src">Source: commit <code>7d8890c</code> — "classical logic and nothing else". Same hunk as AN/5 above.</div>
+    <p>
+      The claim is exact as written. Across the 65 guards added in this arc the measured sets
+      are <code>[propext, Classical.choice, Quot.sound]</code> (55), <code>[propext, Quot.sound]</code> (2),
+      <code>[propext]</code> (2), and six that depend on no axioms at all. Always a subset of
+      classical logic's three axioms, never a superset — the 55 are exactly that set, and the
+      remaining ten are strictly weaker.
+    </p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/7</span><span class="ttl">Mode 1's "deployment's duty" is really a conditional, not a duty</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Reframe Adversary Budget &nbsp;·&nbsp; PDF p2</span><div class="qt">&ldquo;stating depkoyments duty to cap adversary is confusing,rather it is like deployment will stay safe as longnas adversary controls via rent+theft no more than X slots per 5n or whatever window,&rdquo;</div></div>
+    <div class="src">Source: commit <code>7d8890c</code> — "reframe the deployment clause from a duty to cap the adversary into the conditional it actually is".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">outside the formal development. The deployment's duty: keep rented slots (controlled for one slot, then lost) plus stolen
+producers within the fault budget on every window starting in the</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">outside the formal development. The deployment stays safe for as long as
+rented slots (controlled for one slot, then lost) plus stolen
+producers stay within the fault budget on every window starting in the</div></div>
+    </div>
+    <p>This matches the Lean exactly: the budget is a hypothesis of the theorem, not an obligation the protocol enforces.</p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/8</span><span class="ttl">The cold root is deployment-wide, not a mode-2 invention</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Mode 2 Key Derivation &nbsp;·&nbsp; PDF p2</span><div class="qt">&ldquo;is some other mechanism possible f or mode1,or this sentence applies there too?&rdquo;</div></div>
+    <div class="src">Source: commit <code>7d8890c</code> — "what mode 2 adds is the just-in-time timing. Say that instead of implying it is mode-2 only".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">the validator refuses versions below it. The operator keeps one offline
+master key (a \emph{cold root}) per seat and derives each period's
+signing key --- each \emph{generation} --- just before its scheduled
+span (its \emph{era}) begins: the named operational assumptions
+\emph{not-before} and \emph{cold-root custody}</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">the validator refuses versions below it. Every mode signs under keys
+delegated from one offline master key (a \emph{cold root}) per seat
+(Section~\ref{sec:protocol}); what mode~2 adds is \emph{when}: the
+operator derives each period's signing key --- each \emph{generation}
+--- just before its scheduled span (its \emph{era}) begins, the named
+operational assumptions \emph{not-before} and \emph{cold-root custody}</div></div>
+    </div>
+  </div>
+</div>
+
+<h3 id="an9">AN/9a – AN/11 · mode 3, chain validity, keyFor</h3>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/9a</span><span class="ttl">Mode 3's guarantees are "currently proved for full chains" — close it</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Finish Mode 3 Proofs &nbsp;·&nbsp; PDF p3 &nbsp;·&nbsp; one annotation, recorded in the ledger as two asks (9a, 9b)</span><div class="qt">&ldquo;I want to tackle this future work, is it a lot of work?&rdquo;</div></div>
+    <div class="src">Source: <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, row "W1 | AN/9a, AN/28, AN/30". Became work item <strong>W1</strong>.</div>
+    <div class="ansbox">
+      <span class="ak">Direct answer to "is it a lot of work?"</span>
+      <p style="margin:0">
+        Both halves are now done, and the measured sizes are: <strong>W1 (the certificate
+        form) 712 lines</strong>, estimated 2–3 sessions and landed in one;
+        <strong>W5 (the erasure credit) 1400 lines</strong>, estimated 3–4 sessions and the
+        largest single item of the arc. So: substantial but bounded — roughly a third of the
+        whole rollout's Lean by volume, and neither needed any change to existing code.
+      </p>
+    </div>
+    <p>
+      Mode 3 (free-cadence lockstep) had safety only for clients that verify a whole signed
+      chain. The constant-size certificate client — the client the paper is written for —
+      had nothing. W1 supplies the certificate presentation.
+    </p>
+    <div class="lean-head">New Lean · <code>MoltPetit/Model/KeyStealingLockstepCert.lean</code></div>
+    <pre><code>inductive GroundedCertLock (n : Nat) (Signed : Block → Prop) (G : Block) :
+    CertClaim → Nat → Prop
+
+def lockstepFrom (n : Nat) : Nat → Nat → Chain → Bool
+
+theorem lockstep_recent_certified_suffix_agreement
+    {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} …
+    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    (hcl  : GroundedCertLock n (SignedDeclared n ops registry) G cl  g)
+    (hcl' : GroundedCertLock n (SignedDeclared n ops registry) G cl' g')
+    … (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
+    (hDeep  : i  + n &lt; (s₁  :: srest ).length)
+    (hDeep' : i' + n &lt; (s₁' :: srest').length) :
+    B = B'</code></pre>
+    <p>
+      In words: two certificates rooted in one genesis, each extended by a validated recent
+      suffix, agree on the block at the common global index that is <code>n</code> deep in
+      both suffixes — under the lockstep package alone, with no <code>AttestedHistory</code>
+      quantification. The fold check a verifier runs on the suffix is
+      <code>lockstepFrom</code>; the certificate's own counter is pinned to the roster's by
+      <code>lockstep_cert_gen_pinned</code> once its grid window matures.
+    </p>
+    <div class="diff proposed">
+      <div class="propnote">Proposed — not applied. §2, mode-3 paragraph. Wording file entry 1.</div>
+      <div class="before"><div class="lbl">Current paper</div><div class="txt tex">(Mode 3's guarantees are currently proved for full chains, and erasure's per-generation credit against the budget is designed but not yet formalized --- today's theorems count thefts across all generations within one budget, with or without erasure; both are future work, Section~\ref{sec:rotation}.)</div></div>
+      <div class="after"><div class="lbl">Proposed</div><div class="txt tex">(Mode 3's guarantees hold at the certificate presentation as well as for full chains (\code{lockstep\_recent\_certified\_suffix\_agreement}). Erasure's per-generation credit against the budget is machine-checked: under a per-generation census --- for each generation $j$ separately, at most $T$ seats whose generation-$j$ key is stolen --- the same agreement holds at confirmation depth $2n$ instead of $n$, and with no shared-genesis hypothesis (\code{lockstep\_client\_safety\_gen}); the cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/9b</span><span class="ttl">Erasure's per-generation credit is "designed but not yet formalized"</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Finish Mode 3 Proofs &nbsp;·&nbsp; PDF p3 &nbsp;·&nbsp; one annotation, recorded in the ledger as two asks (9a, 9b)</span><div class="qt">&ldquo;I want to tackle this future work, is it a lot of work?&rdquo;</div></div>
+    <div class="src">Source: <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, row "W5 | AN/9b". Became work item <strong>W5</strong>.</div>
+    <p>
+      The paper promised that real erasure ought to buy a budget credit — each generation's
+      thefts counted separately rather than all generations sharing one budget — and admitted
+      it was not formalized. W5 formalizes it, and makes erasure <em>load-bearing</em>: it is
+      consumed in the derivation, not decorative.
+    </p>
+    <div class="lean-head">New Lean · <code>MoltPetit/Model/KeyStealingLockstepGen.lean</code>, <code>…LockstepTimed.lean</code></div>
+    <pre><code>structure LockstepPackageGen (n : Nat) (rosterGen : Nat → Nat) … : Prop where
+  unforgeable : SchedCoreUnforgeable n (fun _ => 0) ops registry rented Stolen honestSigned now Δ
+  declared    : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B →
+                  B.keyIndex = rosterGen (s / n)
+  hashInj     : SignedHashInjective (SignedDeclared n ops registry) G
+  rentBound   : ∀ u, (badSlotsIn rented u n).card ≤ R
+  genBound    : ∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T
+  budget_le   : R + T ≤ maxByzantine n
+
+def ErasureTimedLock (n : Nat) (rosterGen : Nat → Nat)
+    (stolenAt : Nat → Nat → Nat → Prop) : Prop :=
+  ∀ i j r, stolenAt i j r → rosterGen (r / n) ≤ j
+
+theorem genBound_of_preRetirementBound
+    (hEr : ErasureTimedLock n rosterGen stolenAt)
+    (hLive : ∀ j, (preRetirementTheftProducers n rosterGen stolenAt j).card ≤ T) :
+    ∀ j : Nat, ((Finset.range n).filter (fun i => stolenOf stolenAt i j)).card ≤ T</code></pre>
+    <p>
+      <code>genBound</code> is the per-generation budget: for <em>each</em> generation
+      <code>j</code> separately, at most <code>T</code> seats have their generation-<code>j</code>
+      key stolen. <code>genBound_of_preRetirementBound</code> is where erasure earns its
+      keep — it converts the census a deployment can actually attest (seats lost
+      <em>while a generation is live</em>) into the timeless per-generation census the
+      safety engine needs, and the erasure hypothesis <code>hEr</code> is applied directly
+      in that proof. Two further facts are worth noting: the package drops
+      <code>mono</code> and <code>genesis_gen</code> (the new route is non-inductive and
+      genesis-free, so neither is consumed), and the price is confirmation depth
+      <code>2n</code> instead of <code>n</code>.
+    </p>
+    <div class="call c-lean">
+      <span class="k">Genesis agreement becomes a conclusion</span>
+      <p>
+        <code>lockstepGen_recent_genesis_agreement</code> has <em>no</em> shared-genesis
+        hypothesis and concludes
+        <code>∃ P, blockAt? (stripSigs sc) 0 = some P ∧ blockAt? (stripSigs sc') 0 = some P</code>.
+        That is a strengthening over Theorem 5, which assumes a shared genesis.
+      </p>
+    </div>
+    <p>The proposed §2 wording is the same block shown under AN/9a. The mode-3 section changes are entries 8, 9, 11 and 12 of the wording file; see AN/28 and AN/30 below.</p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/10</span><span class="ttl">Drop "there is no rotation-free variant to fall back to"</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Drop Rotation-Free Remark &nbsp;·&nbsp; PDF p4</span><div class="qt">&ldquo;seems like a historical remark of no use to the reader, remove pls&rdquo;</div></div>
+    <div class="src">Source: commit <code>3ee3deb</code> — "a historical remark of no use to the reader".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">deployment completes it by fixing one of three rotation \emph{pins}
+(Section~\ref{sec:rotation}), and there is no rotation-free variant to
+fall back to.</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">deployment completes it by fixing one of three rotation \emph{pins}
+(Section~\ref{sec:rotation}).</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/11</span><span class="ttl">"Do we need the concept of a directory at all?"</span><span class="badge b-edit">edit applied</span><span class="badge b-q">question</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Question Key Directory &nbsp;·&nbsp; PDF p4</span><div class="qt">&ldquo;do we need the concept if directory at all?&rdquo;</div></div>
+    <div class="src">Source: commit <code>3ee3deb</code> — a question, answered in place rather than in chat.</div>
+    <p>
+      <strong>Answer:</strong> no. <code>keyFor</code> is a mathematical parameter of the
+      model — which public key each (seat, version) pair denotes — not a service anyone
+      queries. A verifier looks nothing up, because the block carries its own witness: the
+      signing public key, a delegation certificate binding it to seat <em>and</em> version,
+      and the signature. The word "directory" in the <code>SigOps</code> bullet was what
+      primed the question, so it was changed too.
+    </p>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">  together with the versioned key directory $\mathit{keyFor}(i,j)$, the
+…
+One deployment note on $\mathit{keyFor}$, because it is where a trusted
+directory service would creep in: there is none. A block's</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">  together with the versioned key map $\mathit{keyFor}(i,j)$, the
+…
+One deployment note on $\mathit{keyFor}$, because it is where a trusted
+directory service would creep in: there is none, and a verifier looks
+nothing up. $\mathit{keyFor}$ is a mathematical parameter of the model
+--- which public key each $(\text{seat},\text{version})$ pair denotes
+--- and a block carries its own witness for it. A block's</div></div>
+    </div>
+  </div>
+</div>
+
+<h3 id="an12">AN/12 – AN/16 · assumptions, Theorem 1, the timed model</h3>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/12</span><span class="ttl">Stray "the" in the signing-log gloss</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Signing Log Wording &nbsp;·&nbsp; PDF p6</span><div class="qt">&ldquo;the seems to e out of place here&rdquo;</div></div>
+    <div class="src">Source: commit <code>07e95f4</code>.</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">The model gives each participant a \emph{signing log}: the at most one
+block per slot that its honest signing path signed (\code{SigningLog}).</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">The model gives each participant a \emph{signing log}: at most one
+block per slot, the one its honest signing path signed (\code{SigningLog}).</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/13</span><span class="ttl">Assumption 3 never says why classical collision resistance is not simply assumed</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Explain Hash Assumption &nbsp;·&nbsp; PDF p6</span><div class="qt">&ldquo;explained in a messy way, leaves a question of why not simply collision resistance classic?&rdquo;</div></div>
+    <div class="src">Source: commit <code>07e95f4</code> — "Say it: plain injectivity of H is false outright … and scoping the domain to blocks that occur is exactly what converts the one into the other."</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">producer signature, and that have equal ids, are equal. Stated over
+\emph{all} possible block values, the property would be simply false ---
+the type contains colliding values no execution produces --- so the
+domain is scoped to
+blocks that can actually occur, and every block of a validated certified
+chain is in it. We call this \emph{hash injectivity}; under rotation</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">producer signature, and that have equal ids, are equal. This is
+classical collision resistance in the form a proof can consume, not a
+weakening of it: plain injectivity of $H$ is false outright --- ids are
+shorter than blocks, so colliding values exist in the type --- while
+collision resistance says only that no adversary ever \emph{exhibits}
+one. Scoping the domain to blocks that can actually occur is what turns
+the second statement into the first; every block of a validated
+certified chain is in that domain.
+We call this \emph{hash injectivity}; under rotation</div></div>
+    </div>
+    <div class="call c-info">
+      <span class="k">Small note from the later review, not an error</span>
+      <p>
+        "ids are shorter than blocks, so colliding values exist in the type" is true of real
+        hashes. In the <em>model</em>, <code>Block.id</code> is an unbounded <code>Nat</code>
+        field not tied to the payload, so colliding values exist for the simpler reason that
+        nothing constrains the field. The sentence is fine as prose about hashes; flagged only
+        so the model's reason is not misattributed.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/14</span><span class="ttl">Two claims fused into one clause about Theorem 1</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Clarify Certificate Claim &nbsp;·&nbsp; PDF p7</span><div class="qt">&ldquo;wording not clear, a riddle&rdquo;</div></div>
+    <div class="src">Source: commit <code>3077827</code> — "unpick the sentence about what Theorem 1 is proved over and what the certificate-level counterpart is".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">(Theorem~\ref{thm:lc}), proved about the protocol's structural core:
+every chain the full validator accepts passes those checks
+(\code{validChainK\_structural}), and the certificate-level form the
+full protocol satisfies is each mode's certified theorem in
+Section~\ref{sec:rotation}</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">(Theorem~\ref{thm:lc}). It is proved about the protocol's structural
+core, and it covers the full validator because every chain the full
+validator accepts also passes those structural checks
+(\code{validChainK\_structural}). Its counterpart at the certificate
+presentation, under the full validator with its key discipline and pin,
+is each mode's certified theorem in Section~\ref{sec:rotation}</div></div>
+    </div>
+    <p>W1 adds a third name to the list that sentence ends with; see AN/9a and the wording file entry 3.</p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/15</span><span class="ttl">Drop the "that re-presentation argument is informal" sentence</span><span class="badge b-edit">edit applied</span><span class="badge b-open">open</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Drop Informal Caveat &nbsp;·&nbsp; PDF p7</span><div class="qt">&ldquo;let's drop the sentence?&rdquo;</div></div>
+    <div class="src">Source: commit <code>3077827</code> — the edit was made as asked, and the same commit message flagged the consequence for a decision.</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">a claim at every fold), so a holder can re-expose as many blocks as a
+comparison needs. That re-presentation argument is informal --- the
+proved representability lemmas are production-side only --- which is why
+the hypothesis stays in the statement rather than being proved away.</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">a claim at every fold), so a holder can re-expose as many blocks as a
+comparison needs.</div></div>
+    </div>
+    <div class="call c-warn">
+      <span class="k">Still open — your call</span>
+      <p>
+        This removed the paper's only disclosure that the representability lemmas are
+        production-side only. Theorem 1's "exposes that height" hypothesis now sits in the
+        statement with no stated reason for not being proved away, and a reviewer will ask.
+        It was flagged in the commit message at the time, carried in
+        <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, and re-flagged by the later review. A minimal
+        restoration that does not bring back the old sentence's weight:
+      </p>
+      <p><em>"… as a comparison needs — argued, not proved (the representability lemmas are production-side), which is why the hypothesis stays in the statement."</em></p>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/16</span><span class="ttl">Say that a bad real slot stamps blocks with any slot, not only its own</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Clarify Arbitrary Signing &nbsp;·&nbsp; PDF p7</span><div class="qt">&ldquo;worth explicitly mentioning: arbitrary blob, including blocks containing reference to any slot,not just real&rdquo;</div></div>
+    <div class="src">Source: commit <code>3077827</code>.</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">current block; at a bad real slot, arbitrarily many blocks of the
+adversary's choosing under that producer's key. The id-formation contract</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">current block; at a bad real slot, arbitrarily many blocks of the
+adversary's choosing under that producer's key --- arbitrary content,
+and stamped with any slot at all, not only the real slot at which the
+signing happens. The id-formation contract</div></div>
+    </div>
+    <p>This pairs with the AN/34 appendix edit, which makes the same point from the no-back-dating side.</p>
+  </div>
+</div>
+
+<h3 id="an17">AN/17 – AN/21 · the 5n budget</h3>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/17</span><span class="ttl">State the budget in its derived form, not only as an assumption</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Simplify 5n Window &nbsp;·&nbsp; PDF p9</span><div class="qt">&ldquo;wonderif there could be a simpler formulation&rdquo;</div></div>
+    <div class="src">Source: <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, row "W3a | AN/20, AN/17". Became work item <strong>W3a</strong>, together with AN/20.</div>
+    <p>
+      The paper assumed the trailing budget outright. W3a derives it from two things a
+      deployment can actually attest — a rent rate and a theft census — plus one named
+      operational hypothesis, a <em>reaction delay</em>.
+    </p>
+    <div class="call c-warn">
+      <span class="k">Honest note: AN/17 asked something narrower than what was built</span>
+      <p>
+        AN/17's own words are "wonder if there could be a simpler <em>formulation</em>", over
+        the highlighted budget clause "every <em>n</em>-slot window starting in the trailing
+        5<em>n</em> slots". W3a does not simplify that formulation — the
+        <code>5n</code> window and its clause are unchanged. What W3a does is let the clause
+        be <em>derived</em> rather than assumed. The ledger folded AN/17 into W3a alongside
+        AN/20; that is a reasonable home for it, but the literal ask — a simpler way to state
+        the window — was not answered, and remains open if you still want it.
+      </p>
+    </div>
+    <div class="lean-head">New Lean · <code>MoltPetit/Model/KeyStealingTimed.lean</code></div>
+    <pre><code>def Reacts (n Δconf d : Nat) (c₀ : Chain) (stolenAt : Nat → Nat → Nat → Prop) : Prop :=
+  ∀ i j r, stolenAt i j r → ∀ s, r + d ≤ s → j &lt; inForce n Δconf c₀ i s
+
+noncomputable def recentTheftProducersK (n d : Nat)
+    (stolenAt : Nat → Nat → Nat → Prop) (u : Nat) : Finset Nat :=
+  (Finset.range n).filter (fun i => ∃ j r, stolenAt i j r ∧ u &lt; r + d)
+
+theorem budget_of_reaction
+    (hReacts : Reacts n Δconf d c₀ stolenAt)
+    (hRent  : ∀ u, guard u → (badSlotsIn rented u n).card ≤ Rrent)
+    (hTheft : ∀ u, guard u → (recentTheftProducersK n d stolenAt u).card ≤ T)
+    (hRT    : Rrent + T ≤ maxByzantine n) :
+    ∀ u, guard u →
+      (badSlotsIn (badKeyrotOn n Δconf rented (stolenOf stolenAt) c₀) u n).card
+        ≤ maxByzantine n</code></pre>
+    <p>
+      <code>Reacts</code> says: within <code>d</code> slots of a theft, the victim's
+      confirmed floor has moved strictly past the stolen version. It is <em>asserted</em>,
+      exactly as <em>not-before</em> is in mode 2 — mode 1 has no schedule to derive a
+      real-time bound from. The theorem is generic in the window guard, so one derivation
+      serves all four client rules (<code>client_refresh_rule_timed</code>,
+      <code>sync_rule_timed</code>, <code>sync_rule_mem_timed</code>,
+      <code>max_sync_period_timed</code>).
+    </p>
+    <div class="diff proposed">
+      <div class="propnote">Proposed — not applied. §6.3 mode 1, after "The operator's half of the rule reads the same way". Wording file entry 5.</div>
+      <div class="after"><div class="lbl">Proposed addition</div><div class="txt tex">That budget need not be assumed outright. A deployment able to name a \emph{reaction delay} $d$ --- within $d$ slots of any theft, the victim's confirmed floor has moved past the stolen version (Lean \code{Reacts}) --- may instead assume a rent rate per window and a per-window census of producers hit by a theft within $d$ slots of the window; the trailing budget then follows (\code{budget\_of\_reaction}; composed into the client rules, \code{sync\_rule\_timed}, \code{max\_sync\_period\_timed}). The reaction delay is asserted, like \emph{not-before} in mode 2, not derived.</div></div>
+    </div>
+    <div class="call c-stop">
+      <span class="k">Do not say</span>
+      <p>
+        …that <em>this</em> census is non-retroactive. <code>recentTheftProducersK</code>
+        bounds a theft's real time from above relative to the window (<code>u &lt; r + d</code>)
+        but not from below, so an ancient window still counts a much later theft.
+        Non-retroactivity needs the second hypothesis and arrives in AN/24/AN/29 below.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/18</span><span class="ttl">The one-sentence summary names "the standing budget" without saying what it is</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Explain 5n Budget &nbsp;·&nbsp; PDF p9</span><div class="qt">&ldquo;still don't get what 5n budget does&rdquo;</div></div>
+    <div class="src">Source: commit <code>fcd6452</code> — "the 5n derivation that follows had nothing to attach to".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">accepted, at the price of the standing budget over the last $5n$ slots:
+about two minutes at the prototype's parameters.}
+
+Each summand of the $5n$ is one fact. At sync</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">accepted, at the price of one standing assumption: over the last $5n$
+slots --- about two minutes at the prototype's parameters --- rented
+slots plus producers suffering a theft of a then-live key total at most
+$\fmax$ per window.}
+
+The $5n$ is the reach of that assumption: how far back the anchor can
+sit, plus the one window the counting needs. Each summand is one fact. At sync</div></div>
+    </div>
+    <div class="call c-warn">
+      <span class="k">Later review: "then-live key" undercounts</span>
+      <p>
+        The Lean predicate charges a slot when <em>some version at or above the one in force
+        there</em> is stolen — <code>∃ j, inForce … ≤ j ∧ Stolen i j</code> — so a theft of a
+        <em>later, not-yet-used</em> version counts too. "Then-live" reads as exactly the
+        in-force version, which is narrower than what is assumed. Proposed:
+        "<em>producers with a stolen key not yet retired there — their version in force, or any
+        later one —</em>". Same fix needed in the mode-1 walkthrough. (Wording file §0a.)
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/19</span><span class="ttl">The retroactive-census claim is asserted without a reason</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Explain Retroactive Census &nbsp;·&nbsp; PDF p9</span><div class="qt">&ldquo;do notbget this paragraph at all&rdquo;</div></div>
+    <div class="src">Source: commit <code>fcd6452</code> — "Give the reason — the model carries no theft times".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">retroactive}. A theft counts at every window of the trailing stretch
+that precedes its healing --- including windows before the theft itself
+--- so the oldest windows of the stretch carry the \emph{total} theft
+count of the whole stretch, and healing never subtracts from them. A</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">retroactive}. The model carries no theft times, so the census at a
+window counts every producer whose version in force there is ever
+stolen and not yet retired by then --- a theft is charged to the
+windows \emph{before} it as well, for as long as the same version was in
+force, and rotating afterwards never subtracts from them. The oldest
+windows of a stretch therefore carry the \emph{total} theft count of the
+whole stretch, and the longer the stretch, the larger that total. A</div></div>
+    </div>
+    <p>
+      This is the diagnosis the whole W3a/W3b line of work then answers. The same
+      "whose version in force there" ambiguity noted under AN/18 applies here; the exact
+      phrasing is "any of whose versions not yet retired there is ever stolen".
+    </p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/20</span><span class="ttl">The plain form of the standing assumption "lands" — use it, and cite the derivation</span><span class="badge b-edit">edit applied</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Derive Theft Budget &nbsp;·&nbsp; PDF p10</span><div class="qt">&ldquo;OK, now I understand. could this be formally derived from the model where ad adversary stea!s the key and network reacts immediately with rotation?&rdquo;</div></div>
+    <div class="src">Source: commit <code>fcd6452</code> ("the plain form the reader later said landed (AN/20)") and <code>docs/rollout/ROLLOUT_NOTES.md</code> §1 row "W3a | AN/20, AN/17".</div>
+    <p>
+      Two halves. The wording half is applied — it is the AN/18 edit above, which states the
+      assumption in the plain form. The derivation half is W3a, shown under AN/17.
+    </p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/21</span><span class="ttl">"Carrying the anchored trailing-5n form to certificates: what will it buy us?"</span><span class="badge b-q">question</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Certificate 5n Value &nbsp;·&nbsp; PDF p10</span><div class="qt">&ldquo;what will it buy us?&rdquo;</div></div>
+    <div class="src">Source: question recorded verbatim in <code>docs/rollout/ROLLOUT_NOTES.md</code> §1b; became work item <strong>W2</strong>.</div>
+    <div class="call c-info">
+      <span class="k">Answer as given at the time</span>
+      <p>
+        Today the certified mode-1 theorem holds only under the global all-window budget —
+        i.e. the lifetime assumption the paper argues no deployment can defend under key
+        theft. So the constant-size client, the client the paper is written for, does not get
+        the two-minute budget; only a full-chain client does. Closing it removes a gap
+        between the headline claim and the certified form.
+      </p>
+    </div>
+    <p>That gap is now closed.</p>
+    <div class="lean-head">New Lean · <code>MoltPetit/Model/KeyStealingCertAnchored.lean</code>, <code>Molt/CertClientRule.lean</code></div>
+    <pre><code>theorem keyrot_certified_suffix_agreement_anchored
+    {n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf) …
+    (hcl  : GroundedCertK n (SignedDeclared n ops registry) G cl  fl)
+    (hcl' : GroundedCertK n (SignedDeclared n ops registry) G cl' fl')
+    (hA : A ∈ s₁ :: srest) (hA' : A ∈ s₁' :: srest')
+    (hBudgetFrom : ∀ c : Chain,
+        AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c →
+        ∀ u, A.slot + 1 ≤ u + n →
+          (badSlotsIn (badKeyrotOn n Δconf rented Stolen c) u n).card ≤ maxByzantine n)
+    … : B = B'
+
+-- client-facing, Molt namespace:
+theorem cert_client_refresh_rule …
+theorem cert_stay_recent_client_safe …
+theorem cert_sync_rule …
+theorem cert_max_sync_period …   -- guard: ∀ u, now &lt; u + F + 4 * n → …</code></pre>
+    <p>
+      The budget hypothesis is the <em>anchored</em> one — <code>∀ u, A.slot + 1 ≤ u + n → …</code>,
+      windows ending after the client's anchor — not the global all-window form. That is
+      exactly what the question asked for.
+    </p>
+    <div class="diff proposed">
+      <div class="propnote">Proposed — not applied. §6.3 mode 1, "carrying the anchored, trailing". Wording file entry 4.</div>
+      <div class="before"><div class="lbl">Current paper</div><div class="txt tex">(\code{keyrot\_recent\_certified\_suffix\_agreement}, over the strengthened grounding \code{GroundedCertK}) --- but under the global, all-window budget: carrying the anchored, trailing-$5n$ form to certificates is future work.</div></div>
+      <div class="after"><div class="lbl">Proposed</div><div class="txt tex">(\code{keyrot\_recent\_certified\_suffix\_agreement}, over the strengthened grounding \code{GroundedCertK}) --- and under the anchored, trailing form as well: two certificate-plus-suffix presentations that both contain the client's anchor agree $n$ deep, with the corruption budget consulted only on windows ending after the anchor, over every history the certificate could be attesting (\code{keyrot\_certified\_suffix\_agreement\_anchored}; the client rules at this presentation are \code{cert\_sync\_rule} and \code{cert\_max\_sync\_period}). So the constant-size client, not only the full-chain one, gets the two-minute budget.</div></div>
+    </div>
+    <div class="call c-stop">
+      <span class="k">Keep this phrase</span>
+      <p>
+        "over every history the certificate could be attesting" is not padding — the budget
+        hypothesis is quantified over <code>AttestedHistoryK</code>, every full chain the
+        certificate-plus-suffix could be a presentation of. Mode 1's budget is
+        <em>not</em> chain-independent (modes 2–3 are); do not present it as such.
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 id="an22">AN/22 – AN/27 · the floor, theft times, the VRF idea</h3>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/22</span><span class="ttl">What is "the floor" here?</span><span class="badge b-edit">edit applied</span><span class="badge b-q">question</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Define Floor &nbsp;·&nbsp; PDF p10</span><div class="qt">&ldquo;in this ctx its a mapping from producer to key ix, ritgh?&rdquo;</div></div>
+    <div class="src">Source: commit <code>e527ee5</code> — "yes — in this context the floor is the map from seat to version in force. Say so."</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">certificate presentation, with the floor carried as a snapshot in the
+claim --- the certificate must attest claim and floor \emph{together},</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">certificate presentation, with the floor --- the map sending each seat
+to its version in force --- carried as a snapshot in the
+claim --- the certificate must attest claim and floor \emph{together},</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/23</span><span class="ttl">"Would it follow from ρ+T &lt; f for F = n?"</span><span class="badge b-q">question</span><span class="badge b-open">open</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Relate Fmax to Budget &nbsp;·&nbsp; PDF p10</span><div class="qt">&ldquo;OK, this is clearer, would it follow from p+T&lt;f for F=n?&rdquo;</div></div>
+    <div class="src">Source: question and answer recorded verbatim in <code>docs/rollout/ROLLOUT_NOTES.md</code> §1b. No text change was made.</div>
+    <div class="call c-info">
+      <span class="k">Answer as given at the time</span>
+      <p>
+        Yes — and the paper already says so three paragraphs above where the question was
+        asked. A deployment keeping ρ+T within <em>f</em> on every window from genesis
+        satisfies the hypothesis outright, and <code>client_refresh_rule</code> at
+        <code>A :=</code> genesis recovers the lifetime statement exactly.
+        <code>F_max = S − 4n</code> at <code>S = 5n</code> gives <code>F = n</code>, the sync
+        rule. The point of the trailing form is that it demands strictly <em>less</em>.
+      </p>
+    </div>
+    <div class="call c-warn">
+      <span class="k">Carried item, never actioned</span>
+      <p>
+        The answer notes that a one-clause cross-reference at the <code>F_max</code> formula,
+        pointing back to "Two readings of the budget clause", would stop the re-read that
+        prompted the question. That cross-reference has <em>not</em> been added. It is listed
+        in <code>docs/rollout/ROLLOUT_NOTES.md</code> §1 among the carried items and is still outstanding.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/24</span><span class="ttl">The theft-times aside is unreadable — it never says what theft times do</span><span class="badge b-edit">edit applied</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Drop Theft-Time Aside &nbsp;·&nbsp; PDF p10</span><div class="qt">&ldquo;don't get it, is it material or could be dropped?&rdquo;</div></div>
+    <div class="src">Source: commit <code>e527ee5</code> — "the aside is material, not droppable — it names one of the two extra hypotheses that would buy a larger F".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">deployment prepared to assume strictly more --- honest producers never
+extending adversarial branches, and theft \emph{times} inside the
+signature assumptions --- could in principle support a larger $F$; that</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">deployment prepared to assume strictly more --- honest producers never
+extending adversarial branches, and theft \emph{times} inside the
+signature assumptions, so that a stolen key is charged from the moment
+it is stolen rather than to every window its version was in force
+--- could in principle support a larger $F$; that</div></div>
+    </div>
+    <p>
+      The sentence still says this is "outside the present development". That is no longer
+      true — W3b put theft times inside it. The replacement is shown under AN/29, which is
+      the question that motivated the same work item.
+    </p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/25</span><span class="ttl">"the rule engages once chains are longer than n blocks" is redundant</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Drop Obvious Length Rule &nbsp;·&nbsp; PDF p11</span><div class="qt">&ldquo;can be omitted, obviously implied by he rest&rdquo;</div></div>
+    <div class="src">Source: commit <code>4d950bb</code> — "implied by the rest of the mode-1 walkthrough; omit it".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">$n$-deep block of each verified chain; the rule engages once chains are
+longer than $n$ blocks. What must then be true of the world: the</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">$n$-deep block of each verified chain. What must then be true of the world: the</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/26</span><span class="ttl">The induction over syncs is "argued on paper, not itself machine-checked"</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Machine-Check Induction &nbsp;·&nbsp; PDF p11</span><div class="qt">&ldquo;worth machines checking it?&rdquo;</div></div>
+    <div class="src">Source: <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, row "W4 | AN/26". Became work item <strong>W4</strong>.</div>
+    <div class="lean-head">New Lean · <code>Molt/SyncInduction.lean</code></div>
+    <pre><code>structure SyncInductionData (n : Nat) where
+  a       : Nat → Block          -- the client's anchor at each sync
+  R       : Nat → Chain          -- an arbitrary reference-chain family
+  hPrefix : ∀ k, R k &lt;+: R (k + 1)
+  hBase   : a 0 ∈ R 0
+  hStep   : ∀ k, a k ∈ R (k + 1) → a (k + 1) ∈ R (k + 1)
+
+theorem SyncInductionData.invariant {n : Nat} (d : SyncInductionData n) :
+    ∀ k, d.a k ∈ d.R k          -- axiom-free
+
+theorem sync_induction_full_chain …
+    (hRLe     : ∀ k, (tip k).height ≤ (rTip k).height)
+    (hRRecent : ∀ k, now k ≤ (rTip k).slot + n)
+    (hRPrefix : ∀ k, stripSigs (R k) &lt;+: stripSigs (R (k + 1)))
+    (hBase    : a 0 ∈ stripSigs (R 0)) :
+    ∀ k, a k ∈ stripSigs (R k)</code></pre>
+    <p>
+      Two layers: an abstract engine that is <code>Nat.rec</code> in two lines and depends on
+      <em>no axioms at all</em>, and a concrete instantiation where each step is one
+      application of <code>Molt.sync_rule_mem</code>. The reference chain <code>R</code> is
+      not a privileged "honest chain" object — it is an arbitrary witness family the client
+      never learns is honest.
+    </p>
+    <p>
+      <strong>Three of its inputs are assumptions, not conclusions</strong>, and a reader
+      should see all three: <code>hRLe</code> (the reference tip is at least as tall at every
+      sync — what the density remark argues for informally), <code>hRRecent</code> (the
+      reference tip stays recent — a liveness-flavoured side condition), and
+      <code>hBase</code> (the client's first anchor is already on the reference chain — the
+      join checkpoint, taken as data). What the theorem contributes is that <em>given</em>
+      those, the induction itself is no longer a paper argument.
+    </p>
+    <div class="diff proposed">
+      <div class="propnote">Proposed — not applied. §6.3 mode-1 walkthrough. Wording file entry 7.</div>
+      <div class="before"><div class="lbl">Current paper</div><div class="txt tex">Agreement with the honest chain itself follows by an induction over syncs argued on paper, not itself machine-checked. Each sync's agreement keeps the next anchor on the honest chain while the honest tip is at least as tall as the accepted one (density keeps a recent taller fork's $n$-deep block below its divergence, hence on the honest chain --- an informal argument).</div></div>
+      <div class="after"><div class="lbl">Proposed</div><div class="txt tex">Agreement with the honest chain itself follows by an induction over syncs, machine-checked (\code{sync\_induction\_full\_chain}): each sync's agreement keeps the next anchor on a reference chain that grows over time, provided that chain's tip is at least as tall as the accepted one at every sync, and recent. The height comparison is a stated hypothesis of the theorem, not a conclusion --- it is what the density remark argues for informally (a recent taller fork's $n$-deep block sits below its divergence), and that remark is not itself machine-checked.</div></div>
+    </div>
+    <div class="call c-stop">
+      <span class="k">Do not say — and a ledger correction</span>
+      <p>
+        Do not say the density argument is machine-checked. The theorem <em>assumes</em>
+        <code>hRLe</code> (reference tip at least as tall), which is precisely the conclusion
+        that argument reaches informally.
+      </p>
+      <p>
+        The AN/26 ledger row originally instructed "keep the honest-tip-<em>recency</em> side
+        condition as a stated hypothesis". That named the wrong hypothesis: recency
+        (<code>hRRecent</code>) is a separate, liveness-flavoured side condition, while the one
+        absorbing the density argument is the <em>height comparison</em>. The ledger row has
+        been corrected; the module docstring had it right all along.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/27</span><span class="ttl">Could the next key be VRF-derived from the current one?</span><span class="badge b-q">question</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Alternative Key Derivation &nbsp;·&nbsp; PDF p11</span><div class="qt">&ldquo;a modification idea: derive next SK from current SK lys network wide seed aka VRF. key loss recovered by cold key, rotation will fail though because stealing is forward looking. or... maybe there is smth&rdquo;</div></div>
+    <div class="src">Source: question and answer recorded verbatim in <code>docs/rollout/ROLLOUT_NOTES.md</code> §1b. Design judgement, not a proved statement; no paper change unless you want it in Limitations.</div>
+    <div class="call c-info">
+      <span class="k">Answer as given at the time</span>
+      <p>
+        Your own diagnosis is right and it is fatal. If <code>SK_{j+1} = KDF(SK_j, seed)</code>
+        then a thief of <code>SK_j</code> owns every future generation, so rotation buys
+        nothing and healing — which mode 1's entire budget rests on — disappears. A public
+        seed does not help; the secret input is <code>SK_j</code>.
+      </p>
+      <p>
+        The nearest workable neighbour is forward security (evolve, then erase
+        <code>SK_j</code>), which fixes back-dating but not forward theft, and the paper
+        already cites it in the long-range-residual paragraph. Capping forward theft requires
+        that the cold root not be derivable from the live key — which is the current design.
+        If the motivation is fewer cold-root ceremonies, the dial that actually moves is the
+        era length <em>R</em> in mode 2.
+      </p>
+    </div>
+  </div>
+</div>
+
+<h3 id="an28">AN/28 – AN/34b · mode 3, liveness, appendix</h3>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/28</span><span class="ttl">Mode 3's client "verifies the full signed chain on wake, since the certificate presentation is future work"</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Complete Mode 3 Certificates &nbsp;·&nbsp; PDF p12</span><div class="qt">&ldquo;no, we need to make it present work, not future, and no verifying he whole chain on wakeup . only certificates&rdquo;</div></div>
+    <div class="src">Source: <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, row "W1 | AN/28" — "replace with the certificate recipe (fetch certificate + suffix, verify, recency), cite the new Lean name".</div>
+    <p>
+      The Lean is W1, shown under AN/9a. Two further results make the wire story exact: for
+      <code>n ≥ 2</code> the certificate's threaded generation is redundant, being recoverable
+      from the claim's own tail — and recoverable <em>uniquely</em>.
+    </p>
+    <div class="lean-head">New Lean · <code>MoltPetit/Model/KeyStealingLockstepCert.lean</code></div>
+    <pre><code>theorem groundedCertLock_gen_of_tail {n : Nat} (hn2 : 2 ≤ n) …
+    (h : GroundedCertLock n Signed G cl g) :
+    ∃ t ∈ cl.tail, t.slot = cl.tipSlot ∧ t.keyIndex = g
+
+theorem groundedCertLock_gen_unique {n : Nat} (hn : 1 ≤ n) …
+    (h : GroundedCertLock n Signed G cl g)
+    {t : Block} (ht : t ∈ cl.tail) (hslot : t.slot = cl.tipSlot) :
+    t.keyIndex = g</code></pre>
+    <p>
+      Existence plus determinacy together are what make "the certificate attests nothing
+      beyond the plain claim" a theorem rather than a reading: a verifier that looks up the
+      tail block at the claim's tip slot recovers <code>g</code>, and cannot recover anything
+      else. (<code>gen_unique</code> was added by the later review — the first pass had only
+      existence while the prose claimed determinacy.)
+    </p>
+    <div class="diff proposed">
+      <div class="propnote">Proposed — not applied. §6.3 "A realistic mode-3 deployment". Wording file entry 10.</div>
+      <div class="before"><div class="lbl">Current paper</div><div class="txt tex">Clients hold genesis and a clock, nothing else, and sleep arbitrarily long --- verifying the full signed chain on wake, since the certificate presentation is future work.</div></div>
+      <div class="after"><div class="lbl">Proposed</div><div class="txt tex">Clients hold genesis and a clock, nothing else, and sleep arbitrarily long; on wake they sync from a certificate plus an $O(n)$ suffix, as in modes 1--2. The certificate carries the claim and the tip generation; for $n \ge 2$ the generation is determined by the claim's own tail (\code{groundedCertLock\_gen\_of\_tail}, \code{groundedCertLock\_gen\_unique}), so the certificate attests nothing beyond the plain claim, and only $n = 1$ needs the extra counter --- which must then be attested with the claim: an unauthenticated counter readmits a stolen retired-generation key exactly as an unauthenticated floor does in mode 1.</div></div>
+    </div>
+    <div class="call c-stop">
+      <span class="k">Do not say</span>
+      <p>
+        …that the certificate client needs <em>less</em> than in mode 2. It carries the same
+        claim plus, for <code>n = 1</code> only, one counter. "Attests nothing beyond the plain
+        claim" is exact for <code>n ≥ 2</code> and only then.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/29</span><span class="ttl">"What would the theft-timing work buy — necessary, or vain curiosity?"</span><span class="badge b-q">question</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Value of Theft Timing &nbsp;·&nbsp; PDF p13</span><div class="qt">&ldquo;what this work would buy, is it necessary or just vain curiosity?&rdquo;</div></div>
+    <div class="src">Source: question and answer recorded verbatim in <code>docs/rollout/ROLLOUT_NOTES.md</code> §1b; became work item <strong>W3b</strong>.</div>
+    <div class="call c-info">
+      <span class="k">Answer as given at the time</span>
+      <p>
+        Not vain, not necessary. It removes the retroactive census, which is the one thing
+        forcing the <em>n</em>-slot cadence: with theft times a theft charges only windows at
+        or after it, so the budget stops being a per-stretch total and becomes closer to a
+        concurrency bound — far easier for an operator to attest — and <code>F_max</code>
+        rises. It is the single highest-leverage relaxation available.
+      </p>
+    </div>
+    <p>
+      That answer is now backed by Lean, and one half of it needed sharpening. The new
+      hypothesis is <code>NoTheftBackdating</code>; the payoff statement is
+      <code>theft_exposure_window</code>, which says exactly what "charges only windows at or
+      after it" means.
+    </p>
+    <div class="lean-head">New Lean · <code>MoltPetit/Model/KeyStealingSignatureTimed.lean</code></div>
+    <pre><code>def NoTheftBackdating (n Δconf : Nat) (c₀ : Chain)
+    (stolenAt : Nat → Nat → Nat → Prop) : Prop :=
+  ∀ i j r s, stolenAt i j r → inForce n Δconf c₀ i s ≤ j → r ≤ s
+
+noncomputable def recentTheftProducersTight (n d : Nat)
+    (stolenAt : Nat → Nat → Nat → Prop) (u : Nat) : Finset Nat :=
+  (Finset.range n).filter (fun i => ∃ j r, stolenAt i j r ∧ u &lt; r + d ∧ r &lt; u + n)
+
+theorem theft_exposure_window
+    (hReacts : Reacts n Δconf d c₀ stolenAt)
+    (hNoBack : NoTheftBackdating n Δconf c₀ stolenAt)
+    {i j r s : Nat} (hst : stolenAt i j r)
+    (hexp : inForce n Δconf c₀ i s ≤ j) :
+    r ≤ s ∧ s &lt; r + d</code></pre>
+    <p>
+      A theft at real slot <code>r</code> can expose chain-slots only in
+      <code>[r, r+d)</code> — never before the theft (that is <code>NoTheftBackdating</code>),
+      never once the reaction has fired (that is <code>Reacts</code>). Fixed width,
+      independent of where the window sits in the run. That is the precise content of
+      "non-retroactive", and it is what stops the census growing with the stretch.
+    </p>
+    <div class="diff proposed">
+      <div class="propnote">Proposed — not applied. §6.3, "could in principle support a larger $F$". Wording file entry 6. Replaces the AN/24 sentence.</div>
+      <div class="before"><div class="lbl">Current paper</div><div class="txt tex">A deployment prepared to assume strictly more --- honest producers never extending adversarial branches, and theft \emph{times} inside the signature assumptions, so that a stolen key is charged from the moment it is stolen rather than to every window its version was in force --- could in principle support a larger $F$; that stronger model is outside the present development (future work; honest scope below).</div></div>
+      <div class="after"><div class="lbl">Proposed</div><div class="txt tex">Theft times are now inside the development, as two named operational hypotheses: the reaction delay $d$ above (\code{Reacts}), and \emph{no stolen-key back-dating} --- a stolen version cannot be used to expose a slot that predates its theft (\code{NoTheftBackdating}). Together they confine what a theft at real slot $r$ can expose to the slots $[r, r{+}d)$ (\code{theft\_exposure\_window}): a stolen key is charged from the moment it is stolen until the reaction fires, and to no earlier window. The census a deployment attests is then per window and does not grow with the stretch: for the paced adversary above it is $1$ at every window, for every sync period (\code{paced\_tight\_census\_bound\_all\_F}; composed, \code{max\_sync\_period\_tight}). That is what ``a larger $F$'' means here --- the census no longer constrains $F$; rent still has to be bounded over the same stretch. Both hypotheses are asserted, like \emph{not-before}; deriving no-back-dating from a signature primitive aware of mint times is future work, and so is a model in which honest producers never extend adversarial branches.</div></div>
+    </div>
+    <div class="call c-stop">
+      <span class="k">Do not say — the single most important guard in this report</span>
+      <p>
+        <strong>Do not write that the timed budget admits executions the untimed one gets
+        wrong.</strong> There are none. <code>Molt.paced_budget_holds_under_timing</code>
+        proves that under <code>Reacts</code> + <code>NoTheftBackdating</code> the paced
+        adversary <em>satisfies</em> the old budget too. The separation that does exist is
+        between what the two routes ask a deployment to <em>attest</em> — a per-window census
+        of 1 versus a per-stretch total that already exceeds <em>f</em> at the first window —
+        not between which executions are safe. Details in
+        <a href="#imposs">Part 2</a>.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/30</span><span class="ttl">"Third, mode 3's theorems are about full chains" — delete that bound</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Present Mode 3 Certificates &nbsp;·&nbsp; PDF p13</span><div class="qt">&ldquo;needs tone done as present work&rdquo;</div></div>
+    <div class="src">Source: <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, row "W1 | AN/30 | §6.3 'Honest scope' … delete the third bound".</div>
+    <p>W1 makes the third bound false, so it goes. W3b and W5 rewrite the first two.</p>
+    <div class="diff proposed">
+      <div class="propnote">Proposed — not applied. §6.3 "Honest scope". Wording file entry 12.</div>
+      <div class="before"><div class="lbl">Current paper</div><div class="txt tex">\paragraph{Honest scope.} Three bounds on what this subsection claims.
+First, the budget counts a key as stolen in every window where it was in
+force, \emph{even if the theft only happens later} (within the trailing
+$5n$ slots, for mode 1); distinguishing thefts before a block's creation
+from thefts after it would need creation times inside the signature assumptions, and
+is future work. Second, mode 3's budget still counts thefts across all
+generations together, exactly as mode 2's does --- letting erasure cap
+each generation's count separately is designed but not yet formalized.
+Third, mode 3's theorems are about full chains; their certificate-level
+form is future work.</div></div>
+      <div class="after"><div class="lbl">Proposed</div><div class="txt tex">\paragraph{Honest scope.} Two bounds on what this subsection claims. First, in the base theorems the budget counts a key as stolen in every window where its version was not yet retired, \emph{even if the theft only happens later}. The timed layer removes this for a deployment that names a reaction delay and rules out stolen-key back-dating (\code{Reacts}, \code{NoTheftBackdating}): a theft is then charged only to the $d$ slots that follow it (\code{theft\_exposure\_window}). Both are asserted, like \emph{not-before}; deriving no-back-dating from a signature primitive aware of mint times is future work. Second, mode 3's per-generation form costs confirmation depth $2n$ --- exactly $n + ((t{+}1) \bmod n)$ --- and its census, like every census here, is future-inclusive within a generation's live span.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/31</span><span class="ttl">"A fully multi-chain network model is future work" — could it be closed?</span><span class="badge b-none">deliberately not attempted</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Multi-Chain Model Value &nbsp;·&nbsp; PDF p13</span><div class="qt">&ldquo;worth doing? and what would be the likely statement we would prove?&rdquo;</div></div>
+    <div class="src">Source: <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, row "W7 | AN/31 | §6.4 … only if W7 is done". W7 was designed and then declined.</div>
+    <div class="ansbox">
+      <span class="ak">Answering the second half — "what would the likely statement we would prove [be]?"</span>
+      <p>
+        The annotation asked two things and only the first was acted on. The statement W7
+        would have aimed at: <em>under a network model in which honest nodes may hold
+        different chains, and given the existing per-node liveness hypotheses, the honest
+        nodes' selected chains share a common prefix that grows</em> — i.e. the multi-chain
+        generalisation of the single-chain liveness the paper proves today, which is what
+        would justify replacing §6.4's "a fully multi-chain network model is future work".
+      </p>
+      <p style="margin-bottom:0">
+        The reason it was declined is precisely that the <em>cheap</em> version of that
+        statement — proved with no adversary — would not exercise <code>selectChain</code>'s
+        discriminating behaviour at all, so it would be honest but nearly vacuous, and citing
+        it against that sentence would overstate what was proved. The version that genuinely
+        earns the paper change needs 4–6 sessions of new machinery. No other item depends on
+        it, and building the cheap version first was judged a redo-trap: its plumbing is not
+        reusable once a real adversary is added.
+      </p>
+    </div>
+    <p><strong>The paper sentence stands unchanged.</strong> Revisit only if a reviewer pushes on multi-chain liveness.</p>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/32</span><span class="ttl">Trim the prover-cost aside</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Trim Prover Detail &nbsp;·&nbsp; PDF p13</span><div class="qt">&ldquo;not necessary so  let's top this part&rdquo;</div></div>
+    <div class="src">Source: commit <code>60bd4bd</code> — "the point that survives is that tau is set by prover economics and must keep the uncovered suffix under n blocks".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">economics, not network latency --- one recursive proof covering $k$
+blocks costs a large shared baseline plus a small per-block term, so
+proving is naturally batched, and the slot must be long enough for the
+pipeline to keep its uncovered suffix under $n$ blocks forever. The Lean</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">economics, not network latency: the slot must be long enough for the
+proving pipeline to keep its uncovered suffix under $n$ blocks forever. The Lean</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/33</span><span class="ttl">"at any recency window" reads as a caveat — it is the opposite</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Clarify Recency Window &nbsp;·&nbsp; PDF p16</span><div class="qt">&ldquo;not quite clear what it means&rdquo;</div></div>
+    <div class="src">Source: commit <code>8b8b766</code> — "the bar is a parameter the proof never uses. Say that."</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">In any timed execution satisfying the EUF-CMA bridge and no back-dating,
+Assumption~\ref{ass:sig}(c) holds for the projected log --- at any
+recency window.</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">In any timed execution satisfying the EUF-CMA bridge and no back-dating,
+Assumption~\ref{ass:sig}(c) holds for the projected log --- at every
+recency window, the bar being a parameter the proof never uses.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/34</span><span class="ttl">What exactly does no-back-dating constrain? (clarity half)</span><span class="badge b-edit">edit applied</span></div>
+  <div class="body">
+    <div class="quote"><span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Clarify No-Back-Dating &nbsp;·&nbsp; PDF p16</span><div class="qt">&ldquo;consider menntioning it in operational requirements of every mode. also rented/stolen keys still can sign arbitrary slot at any real slot, so no back dating is a constraint of honest slots, or how? relationship is not exactly clear&rdquo;</div></div>
+    <div class="src">Source: commit <code>8b8b766</code> — "the relationship asked about — no-back-dating constrains the STAMP, not the signer".</div>
+    <div class="diff">
+      <div class="before"><div class="lbl">Before</div><div class="txt tex">of the same producer may mint a block bearing that honest stamp}. The
+second clause is the whole content --- the bare timed model does allow</div></div>
+      <div class="after"><div class="lbl">After</div><div class="txt tex">of the same producer may mint a block bearing that honest stamp}. The
+constraint is on the \emph{stamp}, not on the signer: a rented or stolen
+key still signs arbitrary content at any real slot, stamped with any
+slot it likes --- any slot except one of its own producer's honest ones.
+The second clause is the whole content --- the bare timed model does allow</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ann">
+  <div class="head"><span class="id">AN/34b</span><span class="ttl">List no-back-dating per mode as a named operational assumption, or cite a derivation</span><span class="badge b-lean">lean + proposed</span></div>
+  <div class="body">
+    <div class="quote">
+      <span class="qk">George's annotation, verbatim &nbsp;·&nbsp; Clarify No-Back-Dating &nbsp;·&nbsp; PDF p16 &nbsp;·&nbsp; this is the first half; the second half is the AN/34 card above</span>
+      <div class="qt">&ldquo;consider menntioning it in operational requirements of every mode. also rented/stolen keys still can sign arbitrary slot at any real slot, so no back dating is a constraint of honest slots, or how? relationship is not exactly clear&rdquo;</div>
+    </div>
+    <div class="src">Source: <code>docs/rollout/ROLLOUT_NOTES.md</code> §1, row "W6 | AN/34b". Became work item <strong>W6</strong>.</div>
+    <p>
+      The annotation's first clause offered two routes — name no-back-dating per mode as an
+      operational assumption, or cite a derivation. W6 was asked to attempt the derivation,
+      reported back that it cannot be done additively, and then machine-checked <em>why</em>,
+      so the paper's "not derived" becomes a checked claim rather than an assertion. The
+      route actually taken is therefore the first: name it, and show the obstruction.
+    </p>
+    <div class="call c-warn">
+      <span class="k">Partly unanswered</span>
+      <p>
+        "Consider mentioning it in operational requirements of every mode" asked for
+        no-back-dating to appear in each mode's <em>"What must then be true of the world"</em>
+        list. The proposed wording (entry 13) adds the explanation to the appendix and one
+        clause to Limitations, but does <strong>not</strong> add a line to each mode's
+        operational list. If you want the per-mode listing, it is a further small edit.
+      </p>
+    </div>
+    <div class="lean-head">New Lean · <code>MoltPetit/Model/KeyStealingTimedScope.lean</code> — both axiom-free</div>
+    <pre><code>theorem badSched_single_key_safe_not_enough :
+    ∃ (n : Nat) (schedule : Nat → Nat) (rented : ByzantineSlots)
+      (Stolen : Nat → Nat → Prop) (s j : Nat),
+      ¬ rented s ∧ ¬ Stolen (producerForSlot n s) j ∧
+        badSched n schedule rented Stolen s
+
+theorem badKeyrotOn_single_key_safe_not_enough :
+    ∃ (n Δconf : Nat) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop)
+      (s j : Nat),
+      ¬ rented s ∧ ¬ Stolen (producerForSlot n s) j ∧
+        badKeyrotOn n Δconf rented Stolen ([] : Chain) s</code></pre>
+    <p>
+      Each exhibits a slot at which a <em>named</em> key version is demonstrably unstolen, yet
+      the slot is corrupt anyway — because a <em>different</em> version eligible at that slot
+      is stolen. That is the structural mismatch: a timed custody argument certifies facts
+      about a real <em>slot</em>, while the EUF-CMA surfaces are premised on a single key
+      <em>version</em> being safe, and one slot can host one safe version and one stolen one.
+    </p>
+    <div class="diff proposed">
+      <div class="propnote">Proposed — not applied. Appendix, after "What no-back-dating is"; plus one clause in Limitations. Wording file entry 13.</div>
+      <div class="after"><div class="lbl">Proposed addition</div><div class="txt tex">\emph{Why the rotation modes assume their surfaces rather than derive them.} The theorems of Section~\ref{sec:rotation} take each mode's key-stealing signature surface as a named assumption, and the timed model above does not deliver it --- not because of the deliberate refusal of no-back-dating for stolen keys, but for a structural reason: a timed custody argument certifies facts about a real \emph{slot}, while each surface is premised on a single key \emph{version} being safe, and one slot can host one safe version and one stolen one. We machine-check the mismatch as two witnesses --- a slot at which a named version is unstolen yet the slot is corrupt, because another version eligible there is stolen (\code{badSched\_single\_key\_safe\_not\_enough} for modes 2--3, \code{badKeyrotOn\_single\_key\_safe\_not\_enough} for mode 1). Closing the gap means changing the surfaces' premise from per-version to per-slot; that is an edit to an assumed structure, not an addition, and is left as such.</div></div>
+    </div>
+    <div class="call c-stop">
+      <span class="k">Do not say</span>
+      <p>
+        …that the witnesses show the timed model is <em>inconsistent</em> with the surface, or
+        that no-back-dating for stolen keys is being reintroduced. They show only that
+        per-version safety does not imply slot safety — the direction a derivation would need.
+      </p>
+    </div>
+  </div>
+</div>
+
+<h2 id="p2">Part 2 — material details of the review rounds</h2>
+
+<p>
+  The work happened in three rounds. <strong>Round 1</strong> (2026-09-10/11) implemented the
+  seven work items, one per commit, each built clean and axiom-guarded before the next
+  started. <strong>Round 2</strong> (<code>14d2d11</code>) checked the English claims against
+  the Lean statements and found one real defect plus two overclaims.
+  <strong>Round 3</strong> (<code>29527a9</code>) re-read the 2026-09-04 paper edits against
+  the Lean, re-read the new Lean for unproved remarks, and produced the wording proposal.
+</p>
+
+<h3 id="vac">The vacuity defect, in full</h3>
+
+<p>
+  This is the one finding that would have been embarrassing in review, so it is worth stating
+  completely. W3b originally shipped a theorem intended to be the headline separation:
+</p>
+
+<pre><code>-- ORIGINAL, DEFECTIVE
+theorem pacedStolenAt_safe_under_tight_unsafe_under_untimed
+    {n Δconf P d : Nat} (hn : 1 ≤ n) (hP : n + d ≤ P)
+    {c₀ : Chain} {ι : Nat → Nat} (hInj : Function.Injective ι)
+    (hRange  : ∀ k, k &lt; n → ι k &lt; n)
+    (hFloor0 : ∀ k, k &lt; n → ∀ s, s &lt; n → inForce n Δconf c₀ (ι k) s = 0)
+    (hReacts : Reacts n Δconf d c₀ (pacedStolenAt ι P))            -- ← the problem
+    (hNoBack : NoTheftBackdating n Δconf c₀ (pacedStolenAt ι P))   -- ← the problem
+    {rented : ByzantineSlots} {m : Nat} (hm : faultBudget n &lt; m) (hmn : m ≤ n) :
+    (∀ u, (recentTheftProducersTight n d (pacedStolenAt ι P) u).card ≤ 1) ∧
+      ¬ (badSlotsIn (badKeyrot n Δconf rented … c₀) 0 n).card ≤ faultBudget n</code></pre>
+
+<p>
+  <code>hFloor0</code> and <code>hReacts</code> are <strong>contradictory whenever
+  <code>d &lt; n</code></strong>. The paced schedule's first theft is at real slot
+  <code>0 · P = 0</code>, so <code>Reacts</code> forces the victim's floor strictly above
+  <code>0</code> at every slot from <code>d</code> onward, while <code>hFloor0</code> pins that
+  same floor to <code>0</code> across all of <code>[0, n)</code>. Any slot in
+  <code>[d, n)</code> witnesses the contradiction. This was not reasoned about on paper — it
+  was proved in Lean before anything was changed:
+</p>
+
+<pre><code>theorem w3b_combined_vacuous_when_d_lt_n
+    {n Δconf P d : Nat} (hn : 1 ≤ n) (hdn : d &lt; n) … :
+    False := by
+  have htheft : pacedStolenAt ι P (ι 0) 0 0 := ⟨rfl, by simp⟩
+  have hpos : 0 &lt; inForce n Δconf c₀ (ι 0) d := hReacts (ι 0) 0 0 htheft d (by omega)
+  have hzero : inForce n Δconf c₀ (ι 0) d = 0 := hFloor0 0 hn d hdn
+  omega</code></pre>
+
+<div class="call c-warn">
+  <span class="k">Provenance of that snippet — it is not a repository artifact</span>
+  <p>
+    <code>w3b_combined_vacuous_when_d_lt_n</code> was a <strong>throwaway scratch file</strong>,
+    compiled once against the live toolchain to settle the question and then deleted. It is not
+    committed and <code>grep</code> will not find it in the repo. It is reproduced here because
+    it is the evidence for the claim, but a reviewer should treat it as the transcript of a
+    check that was run, not as a checked-in theorem. The <em>consequences</em> of that check —
+    the dropped hypotheses, <code>paced_separation_witnessed</code>, and
+    <code>paced_budget_holds_under_timing</code> — are all committed and axiom-guarded.
+  </p>
+</div>
+
+<div class="call c-warn">
+  <span class="k">Why it mattered</span>
+  <p>
+    <code>d</code> is the reaction delay. <code>d &lt; n</code> — reacting inside one window —
+    is precisely the <em>attractive</em> deployment regime. So the theorem said nothing exactly
+    where a reader would most want it to speak, while its name and docstring advertised a
+    headline separation.
+  </p>
+</div>
+
+<p>
+  <strong>The fix.</strong> Neither conjunct ever used the two timing hypotheses, so they were
+  dropped. The theorem is now non-vacuous, and a second theorem discharges every remaining
+  hypothesis at concrete parameters — a separation with <em>no hypotheses at all</em>:
+</p>
+
+<pre><code>theorem paced_separation_witnessed :
+    (∀ u, (recentTheftProducersTight 4 1 (pacedStolenAt id 5) u).card ≤ 1) ∧
+      ¬ ((badSlotsIn (badKeyrot 4 0 (fun _ => False)
+            (MoltPetit.Model.stolenOf (pacedStolenAt id 5)) []) 0 4).card ≤ faultBudget 4) := by
+  refine ⟨fun u => recentTheftProducersTight_card_le_one_of_paced (by omega) u, ?_⟩
+  exact pacedStolenAt_exceeds_untimed_budget (n := 4) (Δconf := 0) (P := 5)
+    (by omega) Function.injective_id (fun k hk => hk)
+    (fun _ _ _ _ => rfl) (m := 2) (by decide) (by omega)</code></pre>
+
+<p>
+  At <code>n = 4</code>, <code>d = 1</code>, <code>P = 5</code>, victims <code>ι = id</code>,
+  empty witness chain: the tight census is 1 at every window while the untimed bad-slot count
+  at window 0 already exceeds <code>faultBudget 4 = 1</code>. This also closes a gap the
+  original design had knowingly left open — it had recorded the hypotheses as "never shown
+  jointly satisfiable", which understated the problem.
+</p>
+
+<h3 id="imposs">The impossibility result — and what the paper may therefore claim</h3>
+
+<p>
+  Removing the hypotheses raised the obvious question: <em>could</em> the intended separation
+  be recovered with a better witness? The answer is no, and this is now a theorem rather than
+  a caveat:
+</p>
+
+<pre><code>theorem paced_budget_holds_under_timing
+    {n Δconf d P : Nat} (hn : 0 &lt; n) (hP : n + d ≤ P) {ι : Nat → Nat} {c₀ : Chain}
+    {rented : ByzantineSlots} {Rrent : Nat}
+    (hReacts : Reacts n Δconf d c₀ (pacedStolenAt ι P))
+    (hNoBack : NoTheftBackdating n Δconf c₀ (pacedStolenAt ι P))
+    (hRent : ∀ u, (badSlotsIn rented u n).card ≤ Rrent)
+    (hRT : Rrent + 1 ≤ faultBudget n) :
+    ∀ u, (badSlotsIn (badKeyrot n Δconf rented
+        (MoltPetit.Model.stolenOf (pacedStolenAt ι P)) c₀) u n).card ≤ faultBudget n</code></pre>
+
+<p>
+  Under the two timing hypotheses the paced adversary <em>satisfies</em> the old, untimed
+  budget. The mechanism is <code>theft_exposure_window</code>: the hypotheses confine each
+  theft's exposure to an interval of fixed width <code>d</code>, and pacing
+  <code>n + d ≤ P</code> puts at most one such interval in any window — so even the
+  cumulative census is bounded by 1 everywhere
+  (<code>exposedProducers_card_le_one_of_paced</code>).
+</p>
+
+<div class="call c-stop">
+  <span class="k">The consequence for the paper</span>
+  <p>
+    There is <strong>no execution</strong> in which the timed hypotheses hold and the untimed
+    budget fails. The gain from theft times is therefore <em>not</em> that safety changes; it
+    is that a deployment is asked to attest something different and defensible — a fixed
+    per-window concurrency bound instead of a per-stretch total that grows with the stretch.
+    The AN/29 answer as originally given ("a theft charges only windows at or after it … and
+    <code>F_max</code> rises") is accurate; what needed sharpening is the <em>reason</em>, and
+    any sentence implying an execution-level separation must be avoided.
+  </p>
+</div>
+
+<h3 id="findings">All findings from rounds 2 and 3</h3>
+
+<table>
+  <tr><th>#</th><th>Finding</th><th>Severity</th><th>Resolution</th></tr>
+  <tr>
+    <td>1</td>
+    <td>Combined separation theorem vacuous for <code>d &lt; n</code></td>
+    <td><strong>real defect</strong></td>
+    <td>Hypotheses dropped; <code>paced_separation_witnessed</code> added (zero hypotheses). Proved vacuity in Lean first.</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>The intended separation shape is impossible, not merely unwitnessed</td>
+    <td>material</td>
+    <td>Recorded as positive content: <code>paced_budget_holds_under_timing</code>, <code>exposedProducers_card_le_one_of_paced</code>.</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>"larger <code>F_max</code>" was prose, not a theorem — <code>max_sync_period_tight</code> is F-parametric with the same guard as the untimed form</td>
+    <td>overclaim</td>
+    <td><code>paced_tight_census_bound_all_F</code> states the actual residue; docstring now says explicitly this is not a proof that a larger F is safe.</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>AN/26 ledger row named tip-recency as the side condition to keep visible; the load-bearing one is the height comparison <code>hRLe</code></td>
+    <td>would mislead the paper pass</td>
+    <td>Ledger row corrected. Module docstring was already right.</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>W1 doc claimed the threaded generation is "a function of the claim alone" while the Lean gave only existence</td>
+    <td>overclaim</td>
+    <td><code>groundedCertLock_gen_unique</code> added; both halves of the phrase now theorems.</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>W5 doc asserted the exact depth <code>n + ((t+1) mod n)</code> without a proof</td>
+    <td>unproved remark</td>
+    <td><code>lockstepGen_shared_prefix_sharp</code> added and guarded.</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td><code>LockstepPackage.toGen</code> docstring said "exactly when" surjective; only the forward direction is proved</td>
+    <td>overclaim</td>
+    <td>Corrected to "when"; converse explicitly not claimed.</td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td>"a theft of a <strong>then-live</strong> key" undercounts the census (two places in the paper)</td>
+    <td>paper inaccuracy</td>
+    <td>Wording proposed (§0a). <strong>Not yet applied.</strong></td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>AN/15's edit removed the only disclosure that representability lemmas are production-side</td>
+    <td>open, your call</td>
+    <td>Restoring clause proposed (§0b). <strong>Not applied.</strong></td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>"clients of the other two modes obey no rule at all" — they still pass the recency check</td>
+    <td>paper imprecision</td>
+    <td>"no <em>cadence</em> rule" proposed (§0c). <strong>Not applied.</strong></td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td>W5's optional consistency witness (pure budget transport is impossible) hit a Finset decidability-instance diamond</td>
+    <td>scope reduction</td>
+    <td>Dropped to a prose argument in the module doc, per the design's own explicit escape hatch. Nothing depends on it.</td>
+  </tr>
+</table>
+
+<h3 id="hygiene">Build and axiom hygiene</h3>
+
+<ul>
+  <li><code>lake build</code> across all four <code>lean_lib</code>s (<code>MoltPetit</code>, <code>Rust</code>, <code>Thales</code>, <code>Molt</code>): <strong>clean, 8667 jobs</strong>. The untouched Rust and Thales extraction paths were verified unaffected.</li>
+  <li><strong>No <code>sorry</code>, no <code>admit</code>, no <code>axiom</code> declarations</strong> in any new file.</li>
+  <li><strong>65 new <code>#guard_msgs</code> axiom guards</strong>, all with measured (not hand-written) messages: 55 at <code>[propext, Classical.choice, Quot.sound]</code>, 2 at <code>[propext, Quot.sound]</code>, 2 at <code>[propext]</code>, and 6 depending on no axioms at all.</li>
+  <li>All four libraries are <code>defaultTargets</code>, so a bare <code>lake build</code> enforces every guard.</li>
+  <li><strong>Additive-only discipline held</strong>: no pre-existing Lean file was modified. The only touches to existing files are import lines in the two root modules <code>MoltPetit.lean</code> and <code>Molt.lean</code>, verified by <code>git diff</code> before each commit.</li>
+</ul>
+
+<h4>Commits in this arc</h4>
+<table>
+  <tr><th>Commit</th><th>When</th><th>What</th></tr>
+  <tr><td><code>9eaadcd</code></td><td>09-10 23:15</td><td>W6 — no-back-dating obstruction witnesses</td></tr>
+  <tr><td><code>7017446</code></td><td>09-10 23:18</td><td>W4 — induction over syncs</td></tr>
+  <tr><td><code>71a5fa3</code></td><td>09-10 23:23</td><td>W3a — timed theft layer for mode 1</td></tr>
+  <tr><td><code>fc3d08b</code></td><td>09-10 23:34</td><td>W2 — anchored client rule at certificate level</td></tr>
+  <tr><td><code>d59d244</code></td><td>09-10 23:50</td><td>W1 — mode 3 at certificate level</td></tr>
+  <tr><td><code>8df8b0c</code></td><td>09-11 00:12</td><td>W5 — per-generation census, depth 2n</td></tr>
+  <tr><td><code>726d320</code></td><td>09-11 00:19</td><td>W3b — time-aware signature surface (stretch)</td></tr>
+  <tr><td><code>5413d0d</code></td><td>09-11 00:19</td><td>Plan closeout</td></tr>
+  <tr><td><code>14d2d11</code></td><td>09-11 05:46</td><td><strong>Round 2</strong> — fix the vacuous theorem, prove what replaces it</td></tr>
+  <tr><td><code>29527a9</code></td><td>09-11 06:53</td><td><strong>Round 3</strong> — paper edits vs Lean, sharp-depth lemma, wording proposal</td></tr>
+</table>
+
+<h2 id="p3">Part 3 — adversarial review of this report</h2>
+
+<p>
+  A first draft of this report was put through a hostile review before you saw it: six
+  reviewers, each assigned one dimension and instructed to assume the author was sloppy or
+  self-serving, then every finding handed to a second reviewer told to <em>refute</em> it and
+  to default to "not a real problem" unless they could retrieve the evidence themselves.
+  Sixty-three agents in total. Roughly a third of the raised findings were refuted on
+  checking — including one that was disproved in Lean rather than by argument.
+</p>
+
+<div class="call c-warn">
+  <span class="k">Disclose first: this is not independent review</span>
+  <p>
+    The report, the Lean, the prior two review rounds, and this adversarial pass were all
+    produced by the same agent working from the same repository. The reviewers were given
+    hostile instructions and independent access to ground truth, and they did find real
+    errors in the author's own work — but a shared blind spot would not be caught by this
+    method, and no human has yet checked any of it. Treat Part 3 as self-review with
+    adversarial discipline, not as an external audit.
+  </p>
+</div>
+
+<h3>Confirmed findings, and what was done about each</h3>
+
+<table>
+  <tr><th>Severity</th><th>Finding</th><th>Action</th></tr>
+  <tr>
+    <td><strong>major</strong></td>
+    <td>The "read this first" box said <em>"Ten of the annotations produced paper edits"</em>. Ten is the number of <em>commits</em>; 23 annotations carry an applied edit. The highest-visibility box understated the applied work by more than half and disagreed with the report's own stats bar.</td>
+    <td><strong>Fixed.</strong> Box now reads 23 items / 21 hunks / ten commits.</td>
+  </tr>
+  <tr>
+    <td><strong>major</strong></td>
+    <td>The report quoted <code>w3b_combined_vacuous_when_d_lt_n</code> as if it were a repository artifact. It is not in the repo, in git history, or anywhere but this report — it was a scratch file, compiled once and deleted.</td>
+    <td><strong>Fixed.</strong> Provenance box added; the snippet is now labelled a transcript of a check, not a checked-in theorem.</td>
+  </tr>
+  <tr>
+    <td><strong>major</strong></td>
+    <td>Part 4 presented itself as the complete open list but omitted most of <code>docs/rollout/ROLLOUT_PLAN.md</code>'s own "Missing items" and "Loop risks" — notably that no certificate-level per-sync lemma exists, and the standing hazard that a future session may re-attempt W6's derivation.</td>
+    <td><strong>Fixed.</strong> Part 4 rewritten against the plan's own lists.</td>
+  </tr>
+  <tr>
+    <td><strong>major</strong></td>
+    <td>AN/34's verbatim text offers <em>two</em> routes ("consider mentioning it in operational requirements of every mode" <em>and</em> the clarity question). The report described only the route that was taken.</td>
+    <td><strong>Fixed</strong> by quoting the annotation verbatim on the card, so both halves are visible.</td>
+  </tr>
+  <tr>
+    <td><strong>major</strong></td>
+    <td>W4's <code>hBase</code> — the client's first anchor already lying on the reference chain — is raw assumed data, and the report discussed only <code>hRLe</code>.</td>
+    <td><strong>Fixed.</strong> AN/26 now names all three assumed inputs.</td>
+  </tr>
+  <tr>
+    <td>minor</td>
+    <td><em>"Everything that became a Lean work item did not touch the paper"</em> is false as written: AN/20 and AN/24 have both an applied edit and a Lean half.</td>
+    <td><strong>Fixed.</strong> Restated as "no paper text was edited on account of Lean", with the two straddling items called out.</td>
+  </tr>
+  <tr>
+    <td>minor</td>
+    <td>"a strict subset of classical logic" — the 55 principal guards are <em>exactly</em> the three classical axioms, not a strict subset.</td>
+    <td><strong>Fixed.</strong></td>
+  </tr>
+  <tr>
+    <td>minor</td>
+    <td>W5's incomparability claim ("the two packages are incomparable in general") rests on a prose witness: the Lean statement <code>exposedBound_not_of_genBound</code> was dropped when it hit a <code>Finset</code> decidability diamond.</td>
+    <td><strong>Disclosed</strong> in the findings table (row 11) and in Part 4. The asymmetry is real: W3b's analogous prose gap was closed by proving it; W5's was documented and left.</td>
+  </tr>
+  <tr>
+    <td>minor</td>
+    <td>AN/13's new clause "ids are shorter than blocks, so colliding values exist in the type" replaced a formulation that was accurate about the <em>model</em> (where <code>id</code> is an unbounded <code>Nat</code> not tied to the payload).</td>
+    <td><strong>Already disclosed</strong> in the AN/13 card; unchanged, since it is correct as prose about hashes.</td>
+  </tr>
+  <tr>
+    <td>minor</td>
+    <td>AN/31's annotation asked two things; the report answered only "worth doing?" and not "what would the likely statement we would prove [be]?"</td>
+    <td><strong>Fixed.</strong> The intended statement is now written out on the AN/31 card.</td>
+  </tr>
+</table>
+
+<h3>Notable refutations — findings raised and then knocked down</h3>
+
+<ul>
+  <li>
+    A reviewer argued the vacuity narrative was wrong because <code>NoTheftBackdating</code>
+    plays no part in the contradiction (at <code>j = 0, r = 0</code> its conclusion
+    <code>r ≤ s</code> is trivially true). The verifier <strong>disproved this in Lean</strong>
+    rather than by argument, and the report's narration stands: the contradiction is between
+    <code>hFloor0</code> and <code>hReacts</code>, exactly as described.
+  </li>
+  <li>
+    A reviewer claimed the build numbers were a stale round-1 fact presented as current. The
+    verifier re-ran the full default-target build at the banner commit and confirmed
+    8667 jobs, clean.
+  </li>
+  <li>
+    A reviewer alleged the work-item table and the per-annotation cards disagreed on badges.
+    Parsed directly; they agree.
+  </li>
+  <li>
+    A reviewer claimed no contemporaneous record of AN/20 requesting a derivation exists. The
+    verifier found the opposite, and the annotation's verbatim text settles it: <em>"could
+    this be formally derived from the model where an adversary steals the key and network
+    reacts immediately with rotation?"</em> — which is literally what <code>Reacts</code> is.
+  </li>
+</ul>
+
+<div class="call c-info">
+  <span class="k">The largest single correction came from outside the review</span>
+  <p>
+    While the adversarial pass was running, the parallel extraction found
+    <code>/etheron-pod/inbox/molt_090107_annotations.md</code> — the verbatim text of all 34
+    annotations. The first draft had asserted these were unavailable and had leaned on
+    commit-message paraphrases written by the same author who made the edits: exactly the
+    circularity the method dimension was probing for. Every card now quotes George's own
+    words, and that immediately exposed two substantive gaps (AN/17 and AN/31) that no amount
+    of paraphrase-reading would have revealed.
+  </p>
+</div>
+
+<h2 id="p4">Part 4 — what is still open</h2>
+
+<p>
+  This list is reconciled against <code>docs/rollout/ROLLOUT_PLAN.md</code>'s own "Missing items" and
+  "Loop risks" sections, so it should be the complete picture rather than a highlights reel.
+</p>
+
+<h4>Needing your decision</h4>
+<ol>
+  <li><strong>The paper is unedited for every Lean-backed annotation.</strong> Fourteen wording entries are proposed and none applied. By design — but the paper today still says "future work" about things that are done, and <code>paper/molt.pdf</code> on disk is the <em>pre-annotation</em> build.</li>
+  <li><strong>AN/15</strong> — restore the representability disclosure, or leave Theorem 1's hypothesis unexplained?</li>
+  <li><strong>AN/17's literal ask</strong> — a simpler <em>formulation</em> of the 5<em>n</em> window was never attempted; W3a derived the budget instead.</li>
+  <li><strong>AN/23's carried cross-reference</strong> — the one-clause pointer at the <code>F_max</code> formula was recommended in the answer and never added.</li>
+  <li><strong>Two inaccuracies in the current paper text</strong>, both introduced by the annotation round itself: "then-live key" (undercounts the census) and "no rule at all" (mode 2/3 clients still pass recency). Worth fixing whether or not the Lean-backed wording lands.</li>
+  <li><strong>AN/27</strong> — whether the VRF answer belongs in Limitations.</li>
+</ol>
+
+<h4>Deliberately out of scope, recorded so they are not lost</h4>
+<ol start="7">
+  <li><strong>Deriving <code>NoTheftBackdating</code></strong> from a mint-time-aware EUF-CMA primitive. Both W3a and W3b flag it as a distinct follow-on "comparable in size to the whole <code>KeyStealing*.lean</code> stack". Until then, <code>Reacts</code> and <code>NoTheftBackdating</code> are operational assumptions a deployment attests, not consequences of the cryptographic model — every claim the timed route buys is conditional on them.</li>
+  <li><strong>The per-version vs per-slot premise of the EUF-CMA surfaces</strong> — W6's finding, and the one edit that would unlock a positive no-back-dating derivation. It is an edit to an <em>assumed structure</em>, not an addition, so it is outside the additive-only rule and needs its own review track.</li>
+  <li><strong>No certificate-level "mem"-shaped per-sync lemma exists.</strong> W4's induction is proved at the full-chain presentation only. The plan is explicit: <em>"do not claim the certificate-level induction is ready."</em></li>
+  <li><strong>W5's <code>exposedBound_not_of_genBound</code></strong> — the formal statement that the two lockstep packages are incomparable in the other direction — was dropped to prose when it hit a <code>Finset</code> decidability diamond. If the paper asserts incomparability, that sentence is currently backed by prose, not a theorem.</li>
+  <li><strong>No TS/Rust extraction-side bridge</strong> for W1's <code>lockstepFrom</code>.</li>
+  <li><strong>W7 / AN/31</strong> remains deliberately unattempted; the statement it would have proved is written out on the AN/31 card.</li>
+</ol>
+
+<h4>Standing hazards for whoever picks this up next</h4>
+<ul>
+  <li>
+    <strong>Do not re-attempt W6's derivation from the original planner sketch.</strong> The
+    plan warns that a future session reading only that sketch may retry a derivation that is
+    unsound or that silently over-strengthens <code>KeyStealingEUFCMA</code> /
+    <code>SchedCoreUnforgeable</code>. W6's two witness theorems exist precisely to redirect
+    that attempt — read them first.
+  </li>
+  <li>
+    <strong>Do not build W7's cheap version "to save time later."</strong> Its own design
+    confirms the plumbing is not reusable once a real adversary is added.
+  </li>
+  <li>
+    Several naming and presentation questions are parked per-item in
+    <code>docs/rollout/designs/*.json</code> under <code>open_questions_for_owner</code>. None
+    block Lean work; worth settling before the paper pass so names are not re-litigated.
+  </li>
+</ul>
+
+</div>
+</body>
+</html>
