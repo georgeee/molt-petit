@@ -11,11 +11,13 @@ import Molt.LockstepCert
 import Molt.SyncInduction
 import Molt.SyncRuleTimed
 import Molt.MaxSync
+import Molt.MaxSyncSignatureTimed
 import Molt.Liveness
 import Molt.Axioms
 import Molt.AxiomsKeyStealingTimedScope
 import Molt.AxiomsSyncInduction
 import Molt.AxiomsSyncRuleTimed
+import Molt.AxiomsMaxSyncSignatureTimed
 import Molt.AxiomsCertAnchored
 import Molt.AxiomsLockstepGen
 import Molt.LockstepCertAxioms
