@@ -177,3 +177,15 @@ then move to the next item. If the workflow's own review turns up a design
 that is not implementable as specified, that is logged here and the item is
 either fixed again or explicitly deferred — never implemented against advice
 silently.
+
+**Closed 2026-09-11.** All seven scoped items (W6, W4, W3a, W2, W1, W5, W3b)
+landed in that order, one per commit, each preceded by a clean standalone
+build of the new module and followed by a clean `lake build MoltPetit Molt`.
+W7 was not attempted, per its own design's firm skip recommendation — the
+plan's own `docs/rollout/ROLLOUT_PLAN.md` records this as a deliberate, reasoned omission,
+not an oversight. A final full-library build (`lake build`, all four default
+targets) completed clean (8667/8667 jobs), confirming the Rust/Thales
+extraction paths this rollout never touched are unaffected. `paper/molt.tex`
+was not opened for editing at any point; §1 above remains the record of every
+paper change each item's design proposes, for the separate pass the owner
+controls.

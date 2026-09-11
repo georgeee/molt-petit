@@ -1,6 +1,10 @@
 # Rollout plan — the post-annotation Lean work
 
-Status: **planning complete, implementation starting.** Companion to `docs/rollout/ROLLOUT_NOTES.md`
+Status: **implementation complete.** All seven scoped work items (W6, W4, W3a, W2,
+W1, W5, W3b — including W3b's stretch separation theorems) landed 2026-09-10/11, in
+the sequence below, each fully built, axiom-guarded, and committed before the next
+started. W7 was not attempted, per its own design's firm skip recommendation (see
+item 8 below); no other item depends on it. Companion to `docs/rollout/ROLLOUT_NOTES.md`
 (ground rules, paper-change ledger, touched-file log) and `docs/rollout/` (the full designs,
 verdicts, maps, and salvage this plan is built from). This file is the single place
 that says, at any moment, what order things happen in and why — update it as each
@@ -52,12 +56,21 @@ record. Full blow-by-blow: `docs/rollout/journal-scan.md`.
 | W3b | Time-aware signature surface (larger F_max) — **stretch** | **landed** (2026-09-11), full scope including the separation theorems | 363 | 2 sessions | none — confirmed |
 | W7 | Multi-chain liveness — **deferred, not attempted** | sketch, SKIP recommended | — | — | — |
 
-*W3b's own review verdict predates the fixup that wrote its final content from
+*W3b's own review verdict predated the fixup that wrote its final content from
 scratch (the verdict's one blocking finding was "no design exists"; the fixup wrote
-one). The design itself is well-grounded (cites exact file:line throughout, was
-cross-checked against W3a's finalized design) but has not had a fresh accuracy/ordering
-pass against its *final* content. Treated as needing extra care during implementation,
-not as unreviewed.
+one), so implementation re-verified every reused signature live against the landed
+W3a/MaxSync source before writing any new code, in place of the missing fresh
+accuracy/ordering pass. Three small deviations from the design's proof sketches
+surfaced this way (a missing `c₀` argument to `badKeyrot`, a `Finset` decidability
+diamond needing an explicit `classical`, and a misplaced card-rewrite) — see the W3b
+commit message for the full account. Landed clean, full scope, stretch included.
+
+*W5's optional consistency witness (`exposedBound_not_of_genBound`, the
+machine-checked proof that a pure budget-transport lemma is impossible) hit its own
+`Finset` decidability-instance diamond that did not resolve within the item's budget
+and was dropped to a prose argument in the module doc, per the design's own explicit
+escape hatch ("if it fights, keep the prose, drop it"). Nothing else in the item
+depends on it; the mathematical content is unaffected.
 
 ## Implementation order
 
@@ -164,3 +177,15 @@ cache.
 The paper (`paper/molt.tex`) is not touched at any point in this protocol. Each
 item's `paper_changes` entries stay recorded in `docs/rollout/ROLLOUT_NOTES.md` §1 for a later,
 separate pass.
+
+## Closure (2026-09-11)
+
+All seven scoped items landed in the order above; each item's commit is listed in
+`docs/rollout/ROLLOUT_NOTES.md` §3. A final `lake build` (all four default targets — `MoltPetit`,
+`Rust`, `Thales`, `Molt` — not just the two this rollout touched) completed clean
+(8667/8667 jobs), confirming the untouched Rust/Thales extraction paths are
+unaffected. `paper/molt.tex` was never opened for editing at any point in this
+rollout; every item's `paper_changes` entries remain recorded in `docs/rollout/ROLLOUT_NOTES.md`
+§1, unapplied, for the separate paper pass the owner controls. Remaining open items,
+all deliberate and already recorded above: W7 (skipped), the "Missing items" list,
+and each design's `open_questions_for_owner` (naming/wording choices, none blocking).
