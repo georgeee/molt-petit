@@ -204,6 +204,33 @@ Also added, closing smaller English-vs-Lean gaps found in the same pass:
 
 All six new declarations are axiom-guarded; `lake build MoltPetit Molt` clean.
 
+### Second review round (2026-09-11): the annotation-round paper edits, and the Lean again
+
+The 2026-09-04 paper edits (commits `e21376d..8b8b766`, 129 changed lines) were
+read against the Lean; the new Lean was re-read for unused hypotheses, unproved
+remarks, and docstring precision. Proposed paper wording for every ledger row now
+lives in **`docs/review/PAPER_WORDING_PROPOSED.md`** (repo root; the paper itself is still
+untouched). Findings:
+
+| Finding | Where | Status |
+|---|---|---|
+| "a theft of a **then-live** key" undercounts the census: `badKeyrot` charges any version *at or above* the one in force (`∃ j, inForce ≤ j ∧ Stolen i j`), so later, not-yet-used versions count too | Theorem 3's one-sentence form and the mode-1 walkthrough (both from the AN/18–19 edit) | wording proposed (`docs/review/PAPER_WORDING_PROPOSED.md` §0a) |
+| AN/15's edit dropped the only disclosure that the representability lemmas are production-side; Theorem 1's "exposes that height" hypothesis now has no stated reason to remain | Theorem 1 paragraph | re-flagged, one restoring clause proposed (§0b); George's call, as before |
+| "clients of the other two modes obey no rule at all" — they still pass the recency check at each sync | §1 intro | "no *cadence* rule" proposed (§0c) |
+| W5's module doc asserted "exact worst case `n + ((t+1) mod n)`" without a proof | `KeyStealingLockstepGen.lean` | **proved**: `lockstepGen_shared_prefix_sharp`, guarded; the doc now cites it |
+| `LockstepPackage.toGen` docstring said "exactly when" surjective; only the forward direction is proved | `KeyStealingLockstepGen.lean` | docstring corrected to "when", converse explicitly not claimed |
+| unused hypotheses across all 14 new modules | build replay | none remain (only the pre-existing `open Classical` style note, matching `KeyStealingScheduleTimed.lean`) |
+
+Everything else in the annotation-round edits checked out against the Lean
+(abstract's audit claim, the TS-soundness sentence, `keyFor` as a model
+parameter, the timed model's "stamped with any slot" clause, the floor gloss,
+the F-max paragraph's "charged from the moment it is stolen" — which is now
+literally `theft_exposure_window`). The sentences those edits left as "future
+work" are exactly the ones the landed items retire; the wording file handles them
+row by row, with a "do not say" guard wherever a natural sentence would outrun
+the Lean (notably: no execution-level separation between the timed and untimed
+budgets exists, `paced_budget_holds_under_timing`).
+
 **Closed 2026-09-11.** All seven scoped items (W6, W4, W3a, W2, W1, W5, W3b)
 landed in that order, one per commit, each preceded by a clean standalone
 build of the new module and followed by a clean `lake build MoltPetit Molt`.

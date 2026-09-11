@@ -76,3 +76,7 @@ private-scope-adjacent helper.
 /-- info: 'MoltPetit.Model.lockstepTimed_recent_tip_ancestor_mem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.lockstepTimed_recent_tip_ancestor_mem
+
+/-- info: 'MoltPetit.Model.lockstepGen_shared_prefix_sharp' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms MoltPetit.Model.lockstepGen_shared_prefix_sharp

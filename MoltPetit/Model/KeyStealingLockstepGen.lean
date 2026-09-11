@@ -36,7 +36,8 @@ and pinned to one generation. The last such window below the lower tip's
 slot can start as low as `tip.slot + 2 − 2n` (the tip's own grid window is
 unmatured and cannot be used), so the deep, genesis-free headlines below are
 stated at `2n`; `lockstepGen_shared_prefix`'s core form is sharp (explicit
-window `W`) and the exact worst case is `n + (tip.slot + 1) mod n ≤ 2n − 1`.
+window `W`) and the exact requirement, `n + ((tip.slot + 1) mod n) ≤ 2n − 1`
+positions, is proved as `lockstepGen_shared_prefix_sharp`.
 
 Nothing here modifies `KeyStealingLockstep.lean`: `LockstepPackage`,
 `lockstep_declares_rosterGen`, `lockstep_validSignedChainSched`, and the
@@ -268,9 +269,12 @@ theorem LockstepPackageGen.alignedBudget {n : Nat} {rosterGen : Nat → Nat}
 
 /-- **Thin ⇒ gen when the counter skips no generation.** A `LockstepPackage`
 (cumulative census at the lagged schedule) delivers a `LockstepPackageGen`
-(per-generation census) exactly when `rosterGen` is surjective — the
-assumption-set comparison the module doc promises: in general the two
-packages are incomparable (§7 below, prose witness). -/
+(per-generation census) when `rosterGen` is surjective onto `ℕ` — every
+generation is eventually the roster's counter, so each per-generation
+census is realised as some full aligned window's cumulative one. Only this
+direction is proved; the converse (that no weaker condition suffices) is
+not claimed. In general the two packages are incomparable (§7 below,
+prose witness). -/
 theorem LockstepPackage.toGen {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
@@ -570,6 +574,58 @@ theorem lockstepGen_shared_prefix_deep
   set W := q - 1 with hWdef
   have hWq : W + 1 = q := by omega
   have hrmod : (sTip.slot + 1) % n < n := Nat.mod_lt _ (by omega)
+  have hdam : n * q + (sTip.slot + 1) % n = sTip.slot + 1 := Nat.div_add_mod (sTip.slot + 1) n
+  have hWeq : n * W + n = n * q := by
+    calc n * W + n = n * (W + 1) := (Nat.mul_succ n W).symm
+      _ = n * q := by rw [hWq]
+  have hcomm : n * W = W * n := Nat.mul_comm n W
+  have hWmat : W * n + n ≤ sTip.slot + 1 := by omega
+  have hBu : B.slot < W * n := by omega
+  exact lockstepGen_shared_prefix hn hP hVal hVal' hTipS hTipS' hRecent hRecent' hle
+    hWmat hB hBu
+
+/-- **The sharp depth.** `2n` in `lockstepGen_shared_prefix_deep` is the
+clean worst case; the exact requirement is `n + ((sTip.slot + 1) mod n)`
+positions above `k` — the tip's own (unmatured) grid window, whose width is
+that remainder, plus one full window. This is the statement behind the
+module doc's "exactly `n + ((t+1) mod n) ≤ 2n − 1`"; the `2n` form is the one
+the headlines use because a client cannot know the remainder without the
+tip. -/
+theorem lockstepGen_shared_prefix_sharp
+    {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
+    {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
+    {now Δ : Nat} {G : Block} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {sc sc' : SignedChain Sig}
+    (hVal : validSignedChainLock n ops registry sc = true)
+    (hVal' : validSignedChainLock n ops registry sc' = true)
+    {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
+    (hTipS' : (stripSigs sc').getLast? = some sTip')
+    (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
+    (hle : sTip.slot ≤ sTip'.slot)
+    {k : Nat} {B : Block} (hB : blockAt? (stripSigs sc) k = some B)
+    (hDeep : k + n + (sTip.slot + 1) % n < (stripSigs sc).length) :
+    ∃ P : Block, blockAt? (stripSigs sc) k = some P ∧ blockAt? (stripSigs sc') k = some P := by
+  have hVc : ValidChain n (stripSigs sc) := by
+    have h2 := hVal
+    rw [validSignedChainLock, Bool.and_eq_true, Bool.and_eq_true] at h2
+    exact (validChainK_sound h2.1.2).1
+  have hStrictC : StrictSlots (stripSigs sc) := hVc.2.1
+  have hTipAt : blockAt? (stripSigs sc) ((stripSigs sc).length - 1) = some sTip :=
+    blockAt_getLast hTipS
+  have hrmod : (sTip.slot + 1) % n < n := Nat.mod_lt _ (by omega)
+  have hgap : B.slot + n + (sTip.slot + 1) % n ≤ sTip.slot := by
+    have hstep := slot_gap_of_position_gap_win hStrictC
+      ((stripSigs sc).length - 1 - k) k hB
+      (by rw [show k + ((stripSigs sc).length - 1 - k) = (stripSigs sc).length - 1 by omega]
+          exact hTipAt)
+    omega
+  have hq1 : 1 ≤ (sTip.slot + 1) / n :=
+    (Nat.le_div_iff_mul_le (by omega : 0 < n)).mpr (by omega)
+  set q := (sTip.slot + 1) / n with hqdef
+  set W := q - 1 with hWdef
+  have hWq : W + 1 = q := by omega
   have hdam : n * q + (sTip.slot + 1) % n = sTip.slot + 1 := Nat.div_add_mod (sTip.slot + 1) n
   have hWeq : n * W + n = n * q := by
     calc n * W + n = n * (W + 1) := (Nat.mul_succ n W).symm
