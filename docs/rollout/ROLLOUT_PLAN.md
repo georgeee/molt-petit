@@ -48,7 +48,7 @@ record. Full blow-by-blow: `docs/rollout/journal-scan.md`.
 | W3a | Timed theft layer for mode 1 (`Reacts`, trailing budget) | **landed** (2026-09-10) | 391 | 1 session | none — confirmed |
 | W2 | Mode 1 anchored/trailing-5n at certificate level | **landed** (2026-09-10) | 491 | 1-2 sessions | none — confirmed |
 | W1 | Mode 3 (lockstep) at certificate level | **landed** (2026-09-10) | 712 | 2-3 sessions | none — confirmed |
-| W5 | Mode 3 per-generation census (D1'-full) | reviewed, 1 major fixed | 1050 | 3-4 sessions | medium-high (new aligned-window engine, 2n-depth arithmetic) |
+| W5 | Mode 3 per-generation census (D1'-full) | **landed** (2026-09-11) | 1400 | 3-4 sessions | none — confirmed; one optional consistency witness (`exposedBound_not_of_genBound`) dropped to prose per the design's own escape hatch (Finset decidability diamond) |
 | W3b | Time-aware signature surface (larger F_max) — **stretch** | reviewed*, hard-depends on W3a | 620 | 2 sessions | medium (paced-schedule arithmetic) |
 | W7 | Multi-chain liveness — **deferred, not attempted** | sketch, SKIP recommended | — | — | — |
 

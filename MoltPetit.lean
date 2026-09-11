@@ -26,7 +26,10 @@ import MoltPetit.Results.KeyStealingScheduleResults
 import MoltPetit.Model.KeyStealingScheduleCert
 import MoltPetit.Model.KeyStealingScheduleBudget
 import MoltPetit.Model.KeyStealingScheduleHorizon
+import MoltPetit.Model.KeyStealingWindowCore
 import MoltPetit.Model.KeyStealingLockstep
+import MoltPetit.Model.KeyStealingLockstepGen
+import MoltPetit.Model.KeyStealingLockstepTimed
 import MoltPetit.Model.KeyStealingLockstepCert
 import MoltPetit.Model.KeyStealingHorizonCore
 import MoltPetit.Model.KeyStealingHorizon
@@ -38,4 +41,5 @@ import MoltPetit.Model.KeyRotationTests
 import MoltPetit.Results.Axioms
 import MoltPetit.Results.AxiomsKeyStealingTimed
 import MoltPetit.Results.AxiomsKeyStealingTimedScope
+import MoltPetit.Results.AxiomsLockstepGen
 import MoltPetit.Results.LockstepCertAxioms

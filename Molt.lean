@@ -6,6 +6,7 @@ import Molt.Rotation
 import Molt.KeyStealingTimedScope
 import Molt.ClientRule
 import Molt.CertClientRule
+import Molt.LockstepGen
 import Molt.LockstepCert
 import Molt.SyncInduction
 import Molt.SyncRuleTimed
@@ -16,6 +17,7 @@ import Molt.AxiomsKeyStealingTimedScope
 import Molt.AxiomsSyncInduction
 import Molt.AxiomsSyncRuleTimed
 import Molt.AxiomsCertAnchored
+import Molt.AxiomsLockstepGen
 import Molt.LockstepCertAxioms
 
 /-!
