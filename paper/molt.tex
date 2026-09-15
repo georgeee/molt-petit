@@ -16,6 +16,10 @@
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
 \usepackage{xcolor}
+\usepackage{graphicx}
+
+\definecolor{yakink}{HTML}{3A3733}
+\definecolor{yakaccent}{HTML}{C3401F}
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{assumption}{Assumption}
@@ -27,11 +31,25 @@
 
 \title{\textbf{Molt Petit: A Machine-Checked Slot-Based BFT Consensus
 Protocol with Recursive Certificates}}
-\author{George Agapov\\ \normalsize o1Labs}
-\date{August 2026}
+\author{George Agapov\\ \normalsize Yak Software, Andorra}
+\date{September 2026, draft}
 
 \begin{document}
-\maketitle
+
+\noindent{\LARGE\bfseries\raggedright\hyphenpenalty=10000 \exhyphenpenalty=10000
+Molt Petit: A Machine-Checked Slot-Based BFT Consensus
+Protocol with Recursive Certificates\par}
+\vspace{4pt}
+\noindent\begin{minipage}[b]{\dimexpr\textwidth-26mm\relax}
+  George Agapov \textperiodcentered\ Yak Software, Andorra\par
+  \vspace{2pt}
+  {\small\color{yakink}September 2026, draft \textperiodcentered\ yak.finance/molt-petit\par}
+\end{minipage}%
+\hfill
+\begin{minipage}[b]{20mm}
+  \hfill\includegraphics[width=\linewidth]{yak-wordmark.pdf}%
+\end{minipage}
+\vspace{1em}
 
 \begin{abstract}
 Molt Petit is a slot-based Byzantine-fault-tolerant consensus protocol

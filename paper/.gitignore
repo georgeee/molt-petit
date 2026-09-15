@@ -2,6 +2,10 @@
 *.log
 *.out
 *.pdf
+# ...except the brand asset, which is source, not a build artefact:
+!yak-wordmark.pdf
 *.fls
 *.fdb_latexmk
 *.toc
+# page renders for header review — not repo content:
+page-*.png
