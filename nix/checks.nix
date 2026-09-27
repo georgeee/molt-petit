@@ -14,7 +14,7 @@
 # re-checked by `nix run .#verify-lean`, which needs the network and therefore
 # cannot be a check.  Run both, or you have gated on half the claim.
 #
-# SCOPE: `rust-keyrot/` and `rust-keyrot-p3/` are deliberately outside this
+# SCOPE: `rust-keyrot/` and `rust-keyrot-p3/` (in georgeee/mini-consensus-lean) are deliberately outside this
 # flake — they are plonky2 demos that reuse the `molt_petit` crate as a
 # library, nothing in the Lean development derives from them, and their
 # `rust-toolchain.toml` says `channel = "stable"`.  Nothing below covers them.

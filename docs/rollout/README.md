@@ -1,5 +1,8 @@
 # Rollout planning record (2026-09-04/05)
 
+> **Note:** Paths and files referenced in this directory that do not exist in this repository refer to the historical parent repository `georgeee/mini-consensus-lean`.
+
+
 The planning artifacts for the post-annotation Lean work, produced by a
 multi-agent planning run and preserved here because they were expensive to
 generate and are the input to the implementation. The working copy lives

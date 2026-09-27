@@ -19,7 +19,7 @@ This file provides exactly that, as faithful bounded analogues of the audited
 * `no_deep_fork_le` — `no_deep_fork` with the honest hypothesis weakened to
   `∀ τ ≤ M, …` for a bound `M` dominating both depth witnesses' slots.
 * `deep_block_shared_le` — the bounded membership-finality lemma.
-* `confirmed_mem_iff_le` — **opt-A** (see `PHASE2_DESIGN.md` §7.5): with
+* `confirmed_mem_iff_le` — **opt-A** (see `georgeee/mini-consensus-lean: PHASE2_DESIGN.md` §7.5): with
   `Δconf ≥ 2n` and both chains carrying a block at the coexistence slot `σ`, the
   confirmed prefixes (`b.slot + Δconf ≤ σ`) agree on membership, using only
   uniqueness at slots `< σ`. The trick is to pick **minimal** depth witnesses in
@@ -248,7 +248,7 @@ confirmed block (`b.slot + Δconf ≤ σ`), needing honest-slot uniqueness only 
 slots **strictly below `σ`**. The depth witnesses are chosen minimal — in the
 matured window `[b.slot+n, b.slot+2n)`, which (given `Δconf ≥ 2n`) sits in
 `[b.slot+1, σ)` and is matured in both chains because both reached `σ`. This is
-the cycle-breaking lemma of `PHASE2_DESIGN.md` §7.5. -/
+the cycle-breaking lemma of `georgeee/mini-consensus-lean: PHASE2_DESIGN.md` §7.5. -/
 theorem confirmed_mem_iff_le
     {n Δconf : Nat} (hn : 1 ≤ n) (hΔ : 2 * n ≤ Δconf)
     {bad : ByzantineSlots} {record : SlotRecord}

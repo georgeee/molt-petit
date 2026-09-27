@@ -6,7 +6,7 @@ import MoltPetit.Model.KeyStealing
 The key-stealing safety theorems assume `ByzantineBounded n (badKeyrotOn …)` —
 the `1/3` bound over the *joint* rent-or-theft corruption. This module derives
 that joint budget from two independently meaningful quantities, closing the I3
-seam (`KEY_ROTATION_SOUND.md` §3):
+seam (`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §3):
 
 * a **rent budget** `R`: at most `R` rented slots per `n`-window (the classical
   slot-corruption rate), and

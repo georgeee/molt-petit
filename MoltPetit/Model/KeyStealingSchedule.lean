@@ -3,7 +3,7 @@ import MoltPetit.Model.KeyStealingCert
 /-!
 # MoltPetit — the scheduled-rotation variant (the anchor-discharging device)
 
-`KEY_ROTATION_SOUND.md` §10 records two optional operational packages
+`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10 records two optional operational packages
 (A: fixed scheduled/shadow rotation without erasure; B: erasure + lockstep
 forced rotation) that discharge the recency anchor `H-ANCHOR`, restoring a
 **stateless, genesis-only light client**. §10.0 shows both license the *same*
@@ -200,7 +200,7 @@ tips, agree on any block `n`-deep in both — under key theft with the
 corruption predicate is a pure function of the slot, this budget is a global fact
 a light client accepts without trusting either chain, and the theorem needs no
 `Δconf`, no confirmed-prefix reconciliation, and no anchor beyond the shared
-genesis. This is the formal content of `KEY_ROTATION_SOUND.md` §10 — the two
+genesis. This is the formal content of `georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10 — the two
 operational packages (A/B) are the two assumptions that license treating
 `schedule` as a legitimate function of the slot. -/
 theorem sched_deep_block_agreement

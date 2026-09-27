@@ -37,7 +37,7 @@ Every block carries a per-producer **delegate-key index** `keyIndex`
     e`. Chain-connected: per settled state the indexed scheme **is** the
     original static-registry scheme.
 
-See `KEY_INDEX_DESIGN.md`.
+See `georgeee/mini-consensus-lean: KEY_INDEX_DESIGN.md`.
 -/
 
 namespace MoltPetit.Model

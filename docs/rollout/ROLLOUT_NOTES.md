@@ -9,7 +9,7 @@ Companion to `docs/rollout/ROLLOUT_PLAN.md`. Ground rules for this arc, from Geo
   modified. The only touches permitted to existing files are (a) one import line per
   new module in a root module (`MoltPetit.lean`, `Molt.lean`) and (b) new axiom-guard
   files rather than edits to an existing `Axioms.lean`. Every touch is logged in §2.
-- Axiom hygiene as in `CLAUDE.md`: every new headline theorem gets a `#guard_msgs`
+- Axiom hygiene as in `georgeee/mini-consensus-lean: CLAUDE.md`: every new headline theorem gets a `#guard_msgs`
   guard; `#print axioms` must yield exactly `[propext, Classical.choice, Quot.sound]`.
 
 Build in this container (see `/etheron-pod/toolchains/lake.sh`):

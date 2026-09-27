@@ -365,7 +365,8 @@ axiom-hygiene claim. The Rust path is audited in `Rust/Axioms.lean`.
 /-- info: 'MoltPetit.Model.keyMonoFrom_congr_lt' does not depend on any axioms -/
 #guard_msgs in
 #print axioms MoltPetit.Model.keyMonoFrom_congr_lt
--- The scheduled-rotation variant (KEY_ROTATION_SOUND §10 — the anchor-discharging
+-- The scheduled-rotation variant
+-- (georgeee/mini-consensus-lean: KEY_ROTATION_SOUND §10 — the anchor-discharging
 -- device). Position-determined generation `schedule s` replaces the chain-local
 -- inForce, so badSched is chain-independent and honest-slot uniqueness is DIRECT —
 -- the finality↔uniqueness cycle (confirmed_mem_iff_le + strong induction + Δconf≥2n)
@@ -381,7 +382,8 @@ axiom-hygiene claim. The Rust path is audited in `Rust/Axioms.lean`.
 /-- info: 'MoltPetit.Model.sched_deep_block_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.sched_deep_block_agreement
--- The scheduled main-theorem set (KEY_ROTATION_SOUND §10, task step 1): the
+-- The scheduled main-theorem set
+-- (georgeee/mini-consensus-lean: KEY_ROTATION_SOUND §10, task step 1): the
 -- tip-ancestor forms over validSignedChainSched/badSched. The statements carry
 -- NO Δconf gate and a chain-independent budget — no anchor beyond genesis.
 /-- info: 'MoltPetit.Model.sched_deep_block_agreement_of_length' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -430,7 +432,8 @@ axiom-hygiene claim. The Rust path is audited in `Rust/Axioms.lean`.
 /-- info: 'MoltPetit.Model.induced_byzantine_bounded_sched' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.induced_byzantine_bounded_sched
--- The two operational packages (KEY_ROTATION_SOUND §10.1/§10.2) as Lean structures,
+-- The two operational packages as Lean structures
+-- (georgeee/mini-consensus-lean: KEY_ROTATION_SOUND §10.1/§10.2),
 -- each delivering the anchor-free light-client conclusions in both forms. PackageB
 -- extends PackageA (erasure_freeze added), so PackageB.toPackageA records the
 -- assumption-set inclusion "B assumes A plus erasure"; the packageB_* proofs are

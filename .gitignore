@@ -1,9 +1,4 @@
 /.lake
-/bench-server-results.txt
-/bench-server-results2.txt
-/moltpetit-bench.tar.gz
-/.claude/*
-!/.claude/memory/
 
 # nix build output symlinks (flake.nix)
 /result

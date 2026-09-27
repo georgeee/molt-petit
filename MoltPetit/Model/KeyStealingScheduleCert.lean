@@ -5,7 +5,7 @@ import MoltPetit.Results.KeyStealingScheduleResults
 
 The certificate wrapper for the scheduled-rotation variant, mirroring
 `KeyStealingCert.lean` — but **strictly simpler**, in exactly the way
-`KEY_ROTATION_SOUND.md` §10 promises:
+`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10 promises:
 
 **The scheduled certificate carries NO floor snapshot.** In the default model
 the certificate had to thread an authenticated per-producer floor vector

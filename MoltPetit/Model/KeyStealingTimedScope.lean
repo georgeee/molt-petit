@@ -9,13 +9,13 @@ import MoltPetit.Model.KeyStealing
 model, mirroring `sigUnforgeableRecent_of_timed` (`TimedSig.lean`). The
 finding, independent of the owner's separate, already-settled rejection of
 `NoBackdate`/forward security as a constraint on *stolen* keys
-(`memory/key-rotation-mission.md`): a timed custody argument
-(`TimedExecution`'s `honest_once`/`honest_stamp`) only ever certifies "the
-whole real slot is safe", while the existing EUF-CMA surfaces are premised on
-a single key *version* being safe. One real slot can host one safe key and
-one stolen key simultaneously, so single-key safety does not imply slot
-safety, and the derivation does not go through without weakening an
-already-assumed primitive's type — forbidden by the additive-only rule.
+(`georgeee/mini-consensus-lean: memory/key-rotation-mission.md`):
+a timed custody argument (`TimedExecution`'s `honest_once`/`honest_stamp`) only
+ever certifies "the whole real slot is safe", while the existing EUF-CMA
+surfaces are premised on a single key *version* being safe. One real slot can
+host one safe key and one stolen key simultaneously, so single-key safety does
+not imply slot safety, and the derivation does not go through without weakening
+an already-assumed primitive's type — forbidden by the additive-only rule.
 
 The two theorems below exhibit the gap concretely: a slot where one named key
 is unstolen, yet the slot is bad anyway because a *different* key eligible at

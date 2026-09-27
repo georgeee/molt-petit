@@ -9,7 +9,7 @@ assumed) into a **discharged validator rule**: the in-force index a block may
 sign under is read off the chain's own **confirmed prefix**, so a rotated-out key
 cannot extend a chain past its rotation.
 
-See `KEY_ROTATION_SOUND.md` for the model and the full proof DAG. Phase 1 (this
+See `georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` for the model and the full proof DAG. Phase 1 (this
 file, no adversary yet):
 
 * `inForce` — the in-force delegate index, a pure function of the **confirmed**
@@ -223,7 +223,7 @@ height `k`; here we also rule out the case where the other chain is too **short*
 to reach height `k`. A short chain that nonetheless observed a deep slot would
 place an observed block *below* `b`'s height yet at a *larger* slot, which
 `StrictSlots` forbids. With this, `inForce` becomes execution-global on the
-confirmed zone with no assumed agreement — the property `KEY_ROTATION_SOUND.md`
+confirmed zone with no assumed agreement — the property `georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md`
 §2.1 needs to make `badKeyrot` a genuine, chain-independent slot predicate. -/
 
 /-- A block addressed at height `k` of `c` is a member of `c`. -/
@@ -344,7 +344,7 @@ both observed past the confirmation horizon `s` carry the **same in-force index*
 for every participant at `s` — with **no agreement hypothesis assumed**, it is
 discharged from finality (`deep_block_shared`). With `Δconf ≥ n` the confirmed
 prefix is finalized, so the in-force schedule it records is execution-global.
-This is the Phase-1 node that lets `KEY_ROTATION_SOUND.md` §2.1 define
+This is the Phase-1 node that lets `georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §2.1 define
 `badKeyrot` as a genuine, chain-independent `ByzantineSlots` predicate. -/
 theorem inForce_agreement
     {n Δconf : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)
@@ -375,7 +375,7 @@ checked against `registry (producer, keyIndex)` (`sigOk`). Composing the two:
 every block of an accepted index-pinned signed chain verifies under its
 **declared** registry entry, which is **never a rotated-out version** (declared ≥
 in-force). A block keyed to a rotated-out version cannot be accepted. This is the
-validator-side half of `KEY_ROTATION_SOUND.md` §4A; Phase 2 supplies the crypto
+validator-side half of `georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §4A; Phase 2 supplies the crypto
 half — an adversary holding only stolen keys, none of them at-or-above the
 in-force index, cannot produce a verifying signature under any acceptable entry,
 by unforgeability. -/

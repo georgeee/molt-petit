@@ -4,7 +4,7 @@ import MoltPetit.Model.KeyStealingScheduleBudget
 /-!
 # MoltPetit — the timed theft layer (§10.4, the temporal seam)
 
-`KEY_ROTATION_SOUND.md` §10.4 leaves one seam open in the scheduled variant:
+`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10.4 leaves one seam open in the scheduled variant:
 the packages' temporal content — A3/B3's "no theft before provisioning", B2's
 "no theft after erasure" — lived in prose, and the budget hypothesis was
 consumed in a timeless reading. This module gives that content a formal home

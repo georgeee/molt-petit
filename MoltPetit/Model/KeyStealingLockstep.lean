@@ -10,7 +10,7 @@ coordination is lockstep: no mixing of generations. The scheduled device
 (`PackageA`/`PackageB`) does *not* capture this: there advancement is forced
 by position, `gen(s) ≤ keyIndex` for a protocol-constant `gen`.
 
-This module captures it, by reduction rather than re-proof (`LOCKSTEP_DESIGN.md`
+This module captures it, by reduction rather than re-proof (`georgeee/mini-consensus-lean: LOCKSTEP_DESIGN.md`
 D1′-thin). Three ingredients:
 
 * **The lockstep validator** `validSignedChainLock`: signatures + structure +
@@ -50,7 +50,7 @@ The package's budget field is `exposedBound` at the lagged schedule — the
 per-generation census (`erasure_freeze` as the load-bearing bound) is **not**
 delivered: the agreement engine's pigeonhole runs at the sliding trailing
 window, which straddles the un-pinned tip window, so the consulted census
-stays cumulative (`LOCKSTEP_DESIGN.md`, audit obstruction 2). Earning the
+stays cumulative (`georgeee/mini-consensus-lean: LOCKSTEP_DESIGN.md`, audit obstruction 2). Earning the
 per-generation reading is the D1′-full increment. The EUF-CMA surface is
 assumed at the **weakest** validator (`SchedCoreUnforgeable` at the constant-0
 schedule) so that its scope covers lockstep-accepted chains without

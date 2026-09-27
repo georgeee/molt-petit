@@ -6,7 +6,7 @@ import MoltPetit.Model.KeyStealingHorizonCore
 (Phase 3 core)
 
 This module assembles the Phase-2 pieces into the light-client deep-block-agreement
-**core** under the **strong key-stealing adversary** (`KEY_ROTATION_SOUND.md`
+**core** under the **strong key-stealing adversary** (`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md`
 v3): two **index-pinned signed chains** (`validSignedChainK'`) with recent tips
 and a shared genesis agree on every block that is `n`-deep in both — even though
 a stolen delegate key can sign anything, at any slot, forever. The defense rests
@@ -20,7 +20,7 @@ The theorem is the key-rotation strengthening of the model deep-block agreement
 
 * **P2-A** the induced Byzantine budget `ByzantineBounded n (badKeyrotOn …)` — a
   named hypothesis here (its rent-budget + per-window-theft-rate justification is
-  off the light-client critical path; see `PHASE2_DESIGN.md` increment I3);
+  off the light-client critical path; see `georgeee/mini-consensus-lean: PHASE2_DESIGN.md` increment I3);
 * **P2-B** honest-slot uniqueness, consumed in its σ-localized strengthening
   `honestSlotsUnique_keyrot_horizon` (`KeyStealingHorizonCore.lean`, this module's
   import), which needs only `n ≤ Δconf` — the cycle-breaking result;

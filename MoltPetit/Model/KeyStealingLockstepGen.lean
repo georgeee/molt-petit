@@ -141,7 +141,7 @@ theorem signedDeclared_of_mem_lock {σ sk pk : Type} {n : Nat}
 -- (2) The per-generation corruption predicate and the aligned budget
 -- ===========================================================================
 
-/-- The per-generation corruption predicate (`LOCKSTEP_DESIGN.md:127-133`): a
+/-- The per-generation corruption predicate (`georgeee/mini-consensus-lean: LOCKSTEP_DESIGN.md:127-133`): a
 slot is bad if rented, or its producer's key OF THE GENERATION THE ROSTER IS
 AT IN THAT GRID WINDOW is stolen. Chain-independent, un-lagged, no `∃ j ≥ …`
 cumulative reading. Sound for honest-slot uniqueness exactly on windows

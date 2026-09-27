@@ -3,7 +3,7 @@
 // This file is the protocol definition. It is compiled to Lean 4 by
 // thales (https://github.com/jessealama/thales); the emitted sidecar is
 // vendored at MoltPetit/TS.lean and proved sound against the verified
-// model by MoltPetit/V2/TSBridge.lean.
+// model by MoltPetit/TS/Bridge.lean.
 //
 // Subset constraints shape the code:
 //  * all functions are @total, so every recursion is structural — the
@@ -85,7 +85,7 @@ type Hash = bigint;
 // their declared key version must hash differently — otherwise that
 // assumption is uninstantiable once a producer has rotated (two versions
 // of the same producer exist). The plonky2 prototype's block_id
-// (rust-keyrot/src/poseidon_util.rs) is the reference layout. Because the
+// (georgeee/mini-consensus-lean: rust-keyrot/src/poseidon_util.rs) is the reference layout. Because the
 // id commits contentsHash and keyIndex, id equality subsumes comparing
 // those fields wherever blocks are matched by id (see eqChain).
 
@@ -94,7 +94,7 @@ type Hash = bigint;
 // `keyIndex` is the per-producer delegate-key version the block signed
 // under (consensus-maintained, in-band key rotation): the verifier selects
 // the public key as keyFor(producerForSlot(n, slot), keyIndex). See
-// MoltPetit/V2/KeyIndex.lean and KEY_INDEX_DESIGN.md.
+// MoltPetit/Model/KeyIndex.lean and georgeee/mini-consensus-lean: KEY_INDEX_DESIGN.md.
 type Chain =
   | { kind: 'nil' }
   | { kind: 'cons'; slot: bigint; height: bigint; prev: Hash | null; id: Hash; contentsHash: Hash; keyIndex: bigint; tail: Chain };

@@ -3,9 +3,9 @@ import MoltPetit.Model.KeyRotation
 /-!
 # MoltPetit — the key-stealing adversary (Phase 2, increment I1)
 
-The strong adversary of `KEY_ROTATION_SOUND.md` (v3): a stolen delegate key
+The strong adversary of `georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` (v3): a stolen delegate key
 `dk(i,j)` signs **anything, at any slot, forever** — no forward security. This
-module lays the foundation (see `PHASE2_DESIGN.md`, increment I1):
+module lays the foundation (see `georgeee/mini-consensus-lean: PHASE2_DESIGN.md`, increment I1):
 
 * `badKeyrotOn` — the induced corruption as a **chain-independent slot predicate**,
   keyed on the in-force index read off a **fixed** witness chain `c₀`'s finalized

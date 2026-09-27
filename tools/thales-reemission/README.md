@@ -1,6 +1,6 @@
 # Thales re-emission record (2026-07-11)
 
-The vendored `MoltPetit/TS.lean` header long carried the caveat that the
+The vendored `MoltPetit/TS/Emitted.lean` (historically `MoltPetit/TS.lean`) header long carried the caveat that the
 indexed-validator functions and the certificate-boundary floor machinery
 were *hand-mirrored* "pending re-emission through the Thales toolchain
 (unavailable in the development environment)". This directory records the
@@ -32,7 +32,7 @@ re-emission that discharged that caveat.
 
 ## Reconciliation verdict
 
-The emission agrees with the vendored `MoltPetit/TS.lean` body on every
+The emission agrees with the vendored `MoltPetit/TS/Emitted.lean` body on every
 previously hand-mirrored function, up to the header's documented deviation
 classes (derive-clause fixes) and block ordering, and **differs at exactly
 three sites where the raw emitter output is itself wrong** — the vendored

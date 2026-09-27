@@ -24,7 +24,7 @@ let
   # Every app must run at the repo root; refuse politely otherwise.
   atRepoRoot = ''
     if [ ! -f lakefile.toml ] || [ ! -f moltPetit.ts ]; then
-      echo "error: run this from the root of the mini-consensus-lean checkout" >&2
+      echo "error: run this from the root of the molt-petit checkout" >&2
       exit 1
     fi
   '';

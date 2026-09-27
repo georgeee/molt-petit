@@ -5,7 +5,7 @@ import MoltPetit.Model.KeyStealingBudget
 # MoltPetit — the scheduled budget, decomposed, and the two operational packages
 
 Two results, closing the schedule variant's assumption story
-(`KEY_ROTATION_SOUND.md` §10.1/§10.2):
+(`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10.1/§10.2):
 
 **1. The scheduled I3** (`induced_byzantine_bounded_sched`): the
 chain-independent budget `ByzantineBounded n (badSched …)` that every scheduled

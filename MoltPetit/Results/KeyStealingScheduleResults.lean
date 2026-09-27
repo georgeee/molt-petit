@@ -30,7 +30,7 @@ Contrast the default-model `keyrot_*` theorems: they carry a confirmation gate
 induction. Here neither is present —
 `badSched` takes no chain argument, so the two chains are judged by the *same*
 corruption predicate by construction, which is the entire formal content of
-"the recency anchor is discharged" (`KEY_ROTATION_SOUND.md` §10.0).
+"the recency anchor is discharged" (`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10.0).
 
 ## Honest scope (read before relying on the anchor-free reading)
 
@@ -125,7 +125,7 @@ statement is strictly leaner: there is **no `Δconf ≥ 2n`** and the budget
 `ByzantineBounded n (badSched …)` takes **no chain argument** — the two chains
 are judged by the same, position-determined corruption predicate. Beyond the
 shared genesis and recency (the domain scope of `SchedUnforgeable`) there is
-**no anchor hypothesis** (`KEY_ROTATION_SOUND.md` §10). The defense is entirely
+**no anchor hypothesis** (`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10). The defense is entirely
 the scheduled index pin (`schedPinned`) plus recency; no key-evolving
 signatures. The two operational packages A/B (see `KeyStealingScheduleBudget`)
 are what license treating `schedule` as a legitimate function of the slot.
@@ -220,9 +220,10 @@ theorem sched_recent_tip_ancestor_mem
 -- ===========================================================================
 
 /-- **An old-generation tip is stale** — the formal content of
-`KEY_ROTATION_SOUND.md` §10.0's second consequence ("a rotated-out key is
-rule-dead at recent slots ⇒ old-key forks have old tips"), and the precise
-formal scope of §10.1's "A2 harmless — retired-key secrecy is not required".
+`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10.0's second
+consequence ("a rotated-out key is rule-dead at recent slots ⇒ old-key forks
+have old tips"), and the precise formal scope of §10.1's "A2 harmless —
+retired-key secrecy is not required".
 
 **Tip-only** (review-strengthened): if an accepted scheduled chain's tip
 declares an index at-or-below `J`, and every era-`≤ J` slot is more than `Δ`

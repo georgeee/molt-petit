@@ -38,7 +38,7 @@ per-producer delegate-key version it signed under (custody-style in-band
 key rotation, ported into the core protocol). `SigOps.keyFor` is now
 two-argument — `keyFor producer keyIndex` — so the verifier selects the
 public key by the block's in-band index. See `MoltPetit/Model/KeyIndex.lean`
-for the soundness/agreement proofs and `KEY_INDEX_DESIGN.md`.
+for the soundness/agreement proofs and `georgeee/mini-consensus-lean: KEY_INDEX_DESIGN.md`.
 
 `Thales.TS.Runtime` resolves to the stub at `Thales/TS/Runtime.lean`:
 the protocol source avoids every construct that lowers to a runtime

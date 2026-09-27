@@ -6,9 +6,9 @@ import MoltPetit.Model.KeyStealingSafety
 (Phase 2, increments I2b + I2c)
 
 This module closes the finality↔uniqueness cycle for the strong key-stealing
-adversary (`KEY_ROTATION_SOUND.md` v3). The cross-chain honest-slot uniqueness
+adversary (`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` v3). The cross-chain honest-slot uniqueness
 property `honestSlotsUnique_keyrot` is derived by a **single strong induction on
-the slot** (opt-A, `PHASE2_DESIGN.md` §7.5), discharged by the bounded safety
+the slot** (opt-A, `georgeee/mini-consensus-lean: PHASE2_DESIGN.md` §7.5), discharged by the bounded safety
 core of `KeyStealingSafety.lean`.
 
 * `chainUnionRecord` / `mem_chainUnionRecord` / `chainInRecord_left` /
@@ -125,7 +125,7 @@ reduced to the timed model. The classical-adversary analogue
 `SigUnforgeableRecent` is *derived* (`sigUnforgeableRecent_of_timed`) from a
 `TimedExecution` plus `NoBackdate`, with `noBackdate_independent` witnessing that
 the extra assumption has real content. The key-stealing adversary deliberately
-**refuses** `NoBackdate`/forward security (`KEY_ROTATION_SOUND.md` §1–2), so that
+**refuses** `NoBackdate`/forward security (`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §1–2), so that
 derivation is unavailable by design; `KeyStealingEUFCMA` is therefore taken as a
 named primitive. What the development **does** prove on top of it is the index-pin
 half: `versionedUnforgeable_of_keyStealingEUFCMA` discharges the "the verifying

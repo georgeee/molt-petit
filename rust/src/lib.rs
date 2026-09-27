@@ -55,7 +55,7 @@ pub struct Block {
     /// The per-producer delegate-key index this block signed under
     /// (consensus-maintained in-band key rotation). The verifier selects the
     /// public key as `key_for(producer_for_slot(n, slot), key_index)`. See
-    /// `MoltPetit/V2/KeyIndex.lean` and `KEY_INDEX_DESIGN.md`.
+    /// `MoltPetit/Model/KeyIndex.lean` and `georgeee/mini-consensus-lean: KEY_INDEX_DESIGN.md`.
     pub key_index: u64,
 }
 
@@ -238,7 +238,7 @@ pub fn valid_chain(n: u64, c: &Chain) -> bool {
 // `Rust/Axioms.lean`. `valid_chain_be` (the circuit backend) is deliberately
 // NOT extended: the `Backend` trait lacks the needed comparisons, and widening
 // it would break the verbatim `Equiv.lean` proof; the in-circuit index rules
-// live in the plonky2 prototype (`rust-keyrot/src/spec.rs`).
+// live in the plonky2 prototype (`georgeee/mini-consensus-lean: rust-keyrot/src/spec.rs`).
 // ---------------------------------------------------------------------------
 
 /// Every block of `rest` produced by the same producer as `(n, slot)` declares
