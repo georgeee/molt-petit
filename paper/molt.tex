@@ -613,8 +613,8 @@ be built on. \quad\textit{(Lean: \code{HonestBlocksCover}.)}
 The results come in a fixed order. First, light-client safety
 (Theorem~\ref{thm:lc}), proved directly in the timed model
 (\code{timed\_light\_client\_safety}). Next, the timed model, where forged
-chains take real time (Theorem~\ref{thm:forge}); this forged-time bound is
-the engine of Theorem~\ref{thm:lc}. Then the rotation results per mode
+chains take real time (Theorem~\ref{thm:forge}); this forged-time bound rests on
+the same rate argument as Theorem~\ref{thm:lc}. Then the rotation results per mode
 (Section~\ref{sec:rotation}), and finally liveness.
 
 Two adversaries appear, and it matters which one a result faces. The
@@ -670,12 +670,15 @@ agree on everything at least $n$ blocks below the lower tip.
 Two remarks. First, the conclusion also covers a chain the node
 \emph{produced} rather than received, because production ships nothing
 that does not pass the same validator (Section~\ref{sec:rules}). Second,
-honest-slot uniqueness is derived, not assumed: in the timed model, honest
-slots sign only their current block at most once, and coerced signatures
-advance forks at only half speed. The proof idea is: availability by real
-slot $R$, plus the half-speed forging bound (Theorem~\ref{thm:forge}),
-plus the counting argument ($2\quorum > n + \fmax$) forcing the two chains
-through a shared honest block.
+honest-slot uniqueness of chain blocks is derived, not assumed: the model
+constrains only what honest real slots sign. A block signed \emph{late}
+--- at a real slot after its stamp --- can only come from a bad real slot,
+and on a chain meeting the real-time recency bar such blocks form a tail
+of at most $\fmax$ blocks inside one window (\code{late\_tail\_short}; the
+same rate argument as Theorem~\ref{thm:forge}). Below that tail every
+honest-slot block is the unique block signed at its slot, and the classic
+count $2\quorum > n + \fmax$ forces the two chains through a shared honest
+block.
 
 A third remark on the untimed model: the earlier result
 \code{Molt.light\_client\_safety} reaches the same conclusion in an
@@ -736,10 +739,12 @@ $\quorum$ blocks per \emph{stamped} window while the budget supplies only
 $\fmax$ bad slots per \emph{real} window. The ratio
 $\quorum/\fmax \approx 2$ is the theorem.
 
-Theorem~\ref{thm:forge} is the engine of Theorem~\ref{thm:lc}. A fork
-meeting the real-time recency bar has had too little real time to forge an
-$n$-deep ancestor, and Theorem~\ref{thm:lc} is the machine-checked statement
-of exactly that at staleness $n$. A patient adversary \emph{can} grow a
+Theorem~\ref{thm:forge} and Theorem~\ref{thm:lc} rest on the same rate
+argument: coercion buys at most $\fmax$ signatures per $n$ real slots, while
+density demands $\quorum$ blocks per $n$ stamped slots. A fork meeting the
+real-time recency bar has had too little real time to forge an $n$-deep
+ancestor, and Theorem~\ref{thm:lc} is the machine-checked statement of
+exactly that at staleness $n$. A patient adversary \emph{can} grow a
 fork forever by harvesting coerced signatures window after window --- but only
 at half speed, so its tip falls ever further behind real time, and a
 stale tip is exactly what the recency check refuses.

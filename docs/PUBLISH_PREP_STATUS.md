@@ -98,7 +98,7 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
 - [ ] **Pass 12: remaining audit findings.** Resolve every finding F-01..F-11 in `verify-out/findings.md` (if that
   directory is gone, regenerate it with the `lean-paper-verify` workflow). Each one is either fixed, or answered in this
   file with the reason it is not a defect.
-- [ ] **Pass 13: Mode 1 sync-rule budget** *(reviewer spec pending)*. The `sync_rule` budget is stated over a
+- [ ] **Pass 13: Mode 1 sync-rule budget**. Spec: `docs/PASS13_SYNC_RULE_SPEC.md`. The `sync_rule` budget is stated over a
   chain-dependent fault predicate (`badKeyrot ... (stripSigs sc)`); a deployment cannot check it in advance.
 - [ ] **Pass 14: final consistency.** Re-run `lake build` (all targets) and `bash paper/build.sh`; refresh the table in §2
   so every row is accurate; then append the line `STATUS: READY FOR REVIEW`. Never write `STATUS: COMPLETE`:
