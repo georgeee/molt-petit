@@ -95,8 +95,9 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
   `sched_recent_tip_ancestor_mem_horizon` the primary statement of Theorem 4 (thm:sched) and state the global-budget
   `scheduled_client_safety` as the corollary, with the exact Lean hypotheses of each.
   - Reworked Theorem 4 (`thm:sched`) to headline `sched_recent_tip_ancestor_agreement_horizon` and `sched_recent_tip_ancestor_mem_horizon` with full Lean hypotheses, stated genesis agreement consequence and `scheduled_client_safety` corollary, and shortened realistic mode-2 deployment paragraph.
-- [ ] **Pass 11: thm:lock-gen hypotheses (paper).** State `hTipHeight` (equal tip heights) and `hLong` (`2n <
+- [x] **Pass 11: thm:lock-gen hypotheses (paper).** State `hTipHeight` (equal tip heights) and `hLong` (`2n <
   length`) explicitly in Theorem 5b, as in `Molt.lockstep_client_safety_gen` (audit findings F-07, F-09).
+  - Stated `hTipHeight` and `hLong` explicitly in Theorem 5b (`thm:lock-gen`), distinguished equal-heights agreement from unequal-heights membership via `lockstepGen_recent_tip_ancestor_mem`, and updated §2 overview sentence.
 - [ ] **Pass 12: remaining audit findings.** Resolve every finding F-01..F-11 in `verify-out/findings.md` (if that
   directory is gone, regenerate it with the `lean-paper-verify` workflow). Each one is either fixed, or answered in this
   file with the reason it is not a defect.

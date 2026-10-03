@@ -234,8 +234,11 @@ full chains (\code{lockstep\_recent\_certified\_suffix\_agreement}).
 Erasure's per-generation credit against the budget is machine-checked:
 under a per-generation census --- for each generation $j$ separately, at
 most $T$ seats whose generation-$j$ key is stolen --- the same agreement
-holds at confirmation depth $2n$ instead of $n$, and with no
-shared-genesis hypothesis (\code{lockstep\_client\_safety\_gen}); the
+holds at confirmation depth $2n$ instead of $n$ (at equal tip heights,
+\code{lockstep\_client\_safety\_gen}; at unequal heights the lower
+chain's $2n$-deep block lies on the taller,
+\code{lockstepGen\_recent\_tip\_ancestor\_mem}), and with no
+shared-genesis hypothesis; the
 cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)
 
 Everything that follows makes these paragraphs precise: the protocol and
@@ -1179,8 +1182,23 @@ a $\rho + T \le \fmax$ adversary cannot supply. Pinning makes every
 accepted lockstep chain pass mode 2's validator at the (one-grid-window-lagged)
 counter, so the whole scheduled theorem set transports.
 
-\begin{theorem}[Lockstep safety, per-generation census; Lean \code{lockstep\_client\_safety\_gen}]\label{thm:lock-gen}
-Under the lockstep validator and the per-generation package --- honest signatures declare their grid window's counter; hash injectivity; the pin-free core signature surface; rent at most $\rho$ per window and, for every generation $j$ separately, at most $T$ seats whose generation-$j$ key is stolen; $\rho + T \le \fmax$ --- any two accepted chains with recent tips agree on the block $2n$ below each tip, and, through the parent-id chain, on their whole common prefix down to height $0$: no shared genesis is assumed (\code{lockstepGen\_recent\_genesis\_agreement}).
+\begin{theorem}[Lockstep safety, per-generation census; Lean \code{lockstep\_client\_safety\_gen},\hfil\penalty0
+\code{lockstepGen\_recent\_tip\_ancestor\_mem}]\label{thm:lock-gen}
+Under the lockstep validator (\code{validSignedChainLock}) and the
+per-generation package --- honest signatures declare their grid window's
+counter; hash injectivity; the pin-free core signature surface; rent at most
+$\rho$ per window and, for every generation $j$ separately, at most $T$ seats
+whose generation-$j$ key is stolen; $\rho + T \le \fmax$; recency
+$\mathit{now} \le \mathit{tip.slot} + \Delta$ for both tips; and chain length
+$2n < \mathit{length}$ (\code{hLong}, for both chains at equal heights;
+for the lower chain at unequal heights) --- any two accepted chains agree:
+at equal tip heights (\code{hTipHeight}), on the block $2n$ below each tip
+(\code{lockstep\_client\_safety\_gen}); at unequal tip heights, the lower
+chain's $2n$-deep block is a block of the taller chain, at least $2n$ deep
+there (\code{lockstepGen\_recent\_tip\_ancestor\_mem}).
+Through the parent-id chain, they agree on their whole common prefix down
+to height $0$: no shared genesis is assumed
+(\code{lockstepGen\_recent\_genesis\_agreement}).
 \end{theorem}
 
 The route is a second pinning theorem that needs neither induction nor genesis (\code{lockstep\_window\_declares\_rosterGen}): the last grid window matured below the lower tip declares one generation on both chains, so the counting argument runs on a window whose corruption reading is at a single generation (\code{window\_shared\_prefix}). The unmatured tip window cannot be used, and that is what costs depth $2n$ --- exactly $n + ((t{+}1) \bmod n)$ positions for lower tip slot $t$ (\code{lockstepGen\_shared\_prefix\_sharp}). The two packages are incomparable in general; the cumulative one delivers the per-generation one when the counter skips no generation (\code{LockstepPackage.toGen}).

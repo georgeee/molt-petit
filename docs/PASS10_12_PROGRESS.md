@@ -25,7 +25,19 @@ Tracking edits to `paper/molt.tex` and findings resolution per `docs/PASS10_12_S
   - `bash tools/check.sh` prints `check: all green`.
 
 ## Pass 11: Theorem 5b (`thm:lock-gen`) Hypotheses (Audit F-07, F-09)
-- [ ] Pending.
+- [x] **Theorem 5b Statement**:
+  - Title cites both `lockstep_client_safety_gen` and `lockstepGen_recent_tip_ancestor_mem`.
+  - Stated `validSignedChainLock` on both chains.
+  - Stated `hLong` ($2n < \mathit{length}$) explicitly for both chains at equal heights and for lower chain at unequal heights.
+  - Stated `hTipHeight` (equal tip heights) for `lockstep_client_safety_gen` ($2n$-deep block agreement $B = B'$).
+  - Stated unequal-height agreement via `lockstepGen_recent_tip_ancestor_mem`: the lower chain's $2n$-deep block appears on the taller chain at least $2n$ deep.
+  - Retained `lockstepGen_recent_genesis_agreement` for prefix agreement and absence of shared-genesis hypothesis.
+- [x] **§2 Overview Sentence (F-09)**:
+  - Updated §2 overview paragraph to clarify that depth-$2n$ agreement holds at equal tip heights via `lockstep_client_safety_gen`, while unequal heights are captured by `lockstepGen_recent_tip_ancestor_mem`.
+- [x] **Verification**:
+  - Both Lean names exist in `Molt/` and `MoltPetit/`.
+  - `bash paper/build.sh` runs with zero overfull/underfull warnings and zero errors.
+  - `bash tools/check.sh` prints `check: all green`.
 
 ## Pass 12: Remaining Audit Findings F-01..F-11
 - [ ] Pending.
