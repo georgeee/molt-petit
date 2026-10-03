@@ -275,6 +275,176 @@ theorem late_chain {n : Nat} (hn : 1 ≤ n)
       exact hB
     exact late_step hn hexec hBudget hc hHead hAvail hkd hMat hBsucc hMsig hBsig hLateM
 
+theorem belowCount_mono (c : Chain) {a b : Nat} (h : a ≤ b) :
+    belowCount c a ≤ belowCount c b := by
+  induction c with
+  | nil => rfl
+  | cons x xs ih =>
+    rw [belowCount_cons, belowCount_cons]
+    have : (if x.slot < a then 1 else 0) ≤ (if x.slot < b then 1 else 0) := by
+      split_ifs with h1 h2
+      · rfl
+      · omega
+      · exact Nat.zero_le 1
+      · rfl
+    omega
+
+theorem div_zero_of_quorum_le {q f K m : Nat}
+    (hq : 2 * f + 1 ≤ q) (hdens : q * K ≤ m) (hbud : m ≤ f * (K + 1)) :
+    K = 0 ∧ m ≤ f := by
+  have hK : K = 0 := by
+    cases K with
+    | zero => rfl
+    | succ K =>
+      have h1 : (2 * f + 1) * (K + 1) ≤ q * (K + 1) :=
+        Nat.mul_le_mul_right (K + 1) hq
+      have h2 : q * (K + 1) ≤ f * (K + 2) := le_trans hdens hbud
+      have h3 : (2 * f + 1) * (K + 1) ≤ f * (K + 2) := le_trans h1 h2
+      have h4 : f * (K + 1) + (f + 1) * (K + 1) ≤ f * (K + 1) + f := by
+        calc f * (K + 1) + (f + 1) * (K + 1)
+            = (2 * f + 1) * (K + 1) := by ring
+          _ ≤ f * (K + 2) := h3
+          _ = f * (K + 1) + f := by ring
+      have h5 : (f + 1) * (K + 1) ≤ f := Nat.le_of_add_le_add_left h4
+      have h6 : f + 1 ≤ (f + 1) * (K + 1) :=
+        Nat.le_mul_of_pos_right (f + 1) (Nat.succ_pos K)
+      omega
+  have hm : m ≤ f := by
+    subst hK
+    simpa using hbud
+  exact ⟨hK, hm⟩
+
+/-- Step 3 (Late tail is short on a recent chain): on a chain meeting recency at R,
+the tail of blocks from any late index ℓ has length at most f,
+and the tip slot + 1 is strictly less than L.slot + n. -/
+theorem late_tail_short {n : Nat} (hn : 1 ≤ n)
+    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    (hBudget : ByzantineBounded n bad)
+    {c : Chain} (hc : ValidChain n c)
+    (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {tip : Block} (hTip : c.getLast? = some tip)
+    (hRecent : R ≤ tip.slot + n)
+    {ℓ : Nat} (hℓ1 : 1 ≤ ℓ) (hℓlen : ℓ < c.length)
+    {L : Block} (hL : blockAt? c ℓ = some L)
+    (hLsig : ∃ r, L ∈ log r)
+    (hLateL : L.slot < Nat.find hLsig) :
+    c.length - ℓ ≤ maxByzantine n ∧ tip.slot + 1 < L.slot + n := by
+  classical
+  have hGprev : G.prev = none := hc.2.2.1 hHead
+  have hS : StrictSlots c := hc.2.1
+  have hPL : ParentLinked c := hc.2.2.1
+  have hMat : MaturedWindowsDense n c := hc.2.2.2
+  have hTipAt : blockAt? c (c.length - 1) = some tip := blockAt_getLast hTip
+  have hLmem : L ∈ c := by unfold blockAt? at hL; exact List.mem_of_getElem? hL
+  have hLs : L.slot ≤ tip.slot := slot_le_tip_of_mem hS hTip hLmem
+  set s := tip.slot + 1 - L.slot with hsdef
+  have hs_pos : 0 < s := by omega
+  set K := s / n with hKdef
+  set m := c.length - ℓ with hmdef
+  have hwin : ∀ j < K, quorum n ≤ windowCount c (L.slot + j * n) n := by
+    intro j hj
+    apply hMat hTipAt
+    calc L.slot + j * n + n
+        = L.slot + (j + 1) * n := by ring
+      _ ≤ L.slot + K * n := Nat.add_le_add_left (Nat.mul_le_mul_right n (by omega)) _
+      _ ≤ L.slot + s := Nat.add_le_add_left (Nat.div_mul_le_self s n) _
+      _ = tip.slot + 1 := by omega
+  obtain ⟨P, hPat⟩ : ∃ P, blockAt? c (ℓ - 1) = some P := by
+    have : ℓ - 1 < c.length := by omega
+    exact ⟨getElem c (ℓ - 1) this, by unfold blockAt?; exact List.getElem?_eq_getElem this⟩
+  have hPslot : P.slot < L.slot := strictSlots_lt hS hPat hL (by omega)
+  have hbelowP := belowCount_prefix hS hPat
+  have hP1 : (ℓ - 1) + 1 = ℓ := by omega
+  rw [hP1] at hbelowP
+  have hbelowL : ℓ ≤ belowCount c L.slot := by
+    have hmono := belowCount_mono c (show P.slot + 1 ≤ L.slot by omega)
+    exact le_trans hbelowP hmono
+  have hbelowWin := belowCount_windows c L.slot n (quorum n) K hwin
+  have hcount : ℓ + quorum n * K ≤ c.length :=
+    calc ℓ + quorum n * K ≤ belowCount c L.slot + quorum n * K := Nat.add_le_add_right hbelowL _
+      _ ≤ belowCount c (L.slot + K * n) := hbelowWin
+      _ ≤ c.length := belowCount_le _ _
+  have hdens : quorum n * K ≤ m := by
+    have : quorum n * K ≤ c.length - ℓ := Nat.le_sub_of_add_le (by omega)
+    exact this
+  have hLr : L ∈ log (Nat.find hLsig) := Nat.find_spec hLsig
+  have hbadL : bad (Nat.find hLsig) := bad_of_signed_ne_slot hexec hLr (ne_of_lt hLateL)
+  have hmodL : L.slot % n = (Nat.find hLsig) % n := hexec.key_match hLr
+  have hLn : L.slot + n ≤ Nat.find hLsig := add_le_of_mod_eq_of_lt hmodL hLateL
+  have hFpos : 1 ≤ maxByzantine n := maxByzantine_pos_of_bad hn hBudget hbadL
+  have h4n : 4 ≤ n := four_le_of_maxByzantine_pos hFpos
+  have h2n : 2 ≤ n := by omega
+  have hsig : ∀ k, ∃ r, ℓ ≤ k → k < c.length →
+      (L.slot + n ≤ r ∧ r ≤ R ∧ bad r ∧ ∃ B, blockAt? c k = some B ∧ B ∈ log r ∧ ∀ r' < r, B ∉ log r') := by
+    intro k
+    by_cases hk : ℓ ≤ k ∧ k < c.length
+    · obtain ⟨hk1, hk2⟩ := hk
+      have hB : blockAt? c k = some (getElem c k hk2) := by
+        unfold blockAt?; exact List.getElem?_eq_getElem hk2
+      obtain ⟨hBne, rB, hrBle, hrBmem⟩ := block_signed hGprev hPL hAvail (by omega) hB
+      have hBsig : ∃ r, (getElem c k hk2) ∈ log r := ⟨rB, hrBmem⟩
+      have hLateB := late_chain hn hexec hBudget hc hHead hAvail (k - ℓ) hℓ1 hL
+        (show blockAt? c (ℓ + (k - ℓ)) = some (getElem c k hk2) by rw [show ℓ + (k - ℓ) = k by omega]; exact hB)
+        hLsig hBsig hLateL
+      have hmono := sigTime_mono_chain hexec hGprev hPL hAvail (k - ℓ) hℓ1 hL
+        (show blockAt? c (ℓ + (k - ℓ)) = some (getElem c k hk2) by rw [show ℓ + (k - ℓ) = k by omega]; exact hB)
+        hLsig hBsig
+      have hBr : (getElem c k hk2) ∈ log (Nat.find hBsig) := Nat.find_spec hBsig
+      have hbadB : bad (Nat.find hBsig) := bad_of_signed_ne_slot hexec hBr (ne_of_lt hLateB)
+      refine ⟨Nat.find hBsig, fun _ _ => ⟨?_, ?_, hbadB, getElem c k hk2, hB, hBr, fun r' hr' => Nat.find_min hBsig hr'⟩⟩
+      · exact le_trans hLn hmono
+      · exact le_trans (Nat.find_min' hBsig hrBmem) hrBle
+    · exact ⟨0, fun h1 h2 => absurd ⟨h1, h2⟩ hk⟩
+  choose σ hσ using hsig
+  have hcard : m ≤ ((Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s).card := by
+    have hmaps : ∀ a ∈ Finset.Ico ℓ c.length, σ a ∈ (Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s := by
+      intro a ha
+      rw [Finset.mem_Ico] at ha
+      obtain ⟨h0, h1, h2, -⟩ := hσ a ha.1 ha.2
+      rw [Finset.mem_filter, Finset.mem_Ico]
+      exact ⟨⟨h0, by omega⟩, h2⟩
+    have hinj : Set.InjOn σ (Finset.Ico ℓ c.length) := by
+      intro a ha b hb hab
+      simp only [Finset.coe_Ico, Set.mem_Ico] at ha hb
+      by_contra hne
+      rcases Nat.lt_or_ge a b with h | h
+      · obtain ⟨-, -, -, B, hBat, hBr, hBmin⟩ := hσ a ha.1 ha.2
+        obtain ⟨-, -, -, B', hB'at, hB'r, hB'min⟩ := hσ b hb.1 hb.2
+        rw [hab] at hBr hBmin
+        exact one_real_slot_one_block h2n hexec hGprev hc hAvail (by omega) h hBat hB'at hBr hBmin hB'r hB'min
+      · have h' : b < a := by omega
+        obtain ⟨-, -, -, B, hBat, hBr, hBmin⟩ := hσ a ha.1 ha.2
+        obtain ⟨-, -, -, B', hB'at, hB'r, hB'min⟩ := hσ b hb.1 hb.2
+        rw [hab] at hBr hBmin
+        exact one_real_slot_one_block h2n hexec hGprev hc hAvail (by omega) h' hB'at hBat hB'r hB'min hBr hBmin
+    have := Finset.card_le_card_of_injOn σ hmaps hinj
+    rwa [Nat.card_Ico] at this
+  have hbound : R + 1 ≤ (L.slot + n) + (K + 1) * n := by
+    have hs_bound : s ≤ (K + 1) * n := by
+      have hle := le_div_succ_mul s n hn
+      change s + 1 ≤ (K + 1) * n at hle
+      omega
+    calc R + 1 ≤ tip.slot + n + 1 := by omega
+      _ = (L.slot + s) + n := by omega
+      _ = (L.slot + n) + s := by ring
+      _ ≤ (L.slot + n) + (K + 1) * n := Nat.add_le_add_left hs_bound _
+  have hbad : ((Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s).card ≤ maxByzantine n * (K + 1) := by
+    calc ((Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s).card
+        ≤ ((Finset.Ico (L.slot + n) ((L.slot + n) + (K + 1) * n)).filter fun s => bad s).card :=
+          Finset.card_le_card (Finset.filter_subset_filter _ (Finset.Ico_subset_Ico le_rfl hbound))
+      _ ≤ maxByzantine n * (K + 1) := bad_budget_Ico hBudget (L.slot + n) (K + 1)
+  have hbud : m ≤ maxByzantine n * (K + 1) := le_trans hcard hbad
+  have h2f1 : 2 * maxByzantine n + 1 ≤ quorum n := two_mul_maxByzantine_add_one_le_quorum n hn
+  obtain ⟨hK0, hm_le⟩ := div_zero_of_quorum_le h2f1 hdens hbud
+  have hs_lt : s < n := by
+    by_contra hge
+    have hge' : n ≤ s := by omega
+    have hdiv_pos : 1 ≤ s / n := (Nat.le_div_iff_mul_le (by omega)).mpr (by omega)
+    omega
+  refine ⟨hm_le, by omega⟩
+
 theorem timed_tip_ancestor_agreement {n : Nat} (hn : 1 ≤ n)
     {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)

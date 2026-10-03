@@ -82,7 +82,7 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
   - [x] **Pass 7b: Step 1 (No pre-signing).** Prove $B.slot \le \sigma(B)$ for all chain indices $k \ge 1$.
     - Commit `66d0cda`: Proved `slot_le_sigTime` and `slot_le_firstSigned` in `MoltPetit/Model/TimedSafety.lean`.
   - [x] **Pass 7c: Step 2 (Late is forever).** Prove that any descendant of a late block is late.
-  - [ ] **Pass 7d: Step 3 (Late tail is short).** Prove late tail length $m \le f$ and $T.slot + 1 < L.slot + n$ on recent chains.
+  - [x] **Pass 7d: Step 3 (Late tail is short).** Prove late tail length $m \le f$ and $T.slot + 1 < L.slot + n$ on recent chains.
   - [ ] **Pass 7e: Step 4 (Main argument).** Complete `timed_tip_ancestor_agreement` via post-divergence window analysis.
 - [ ] **Pass 8: certified-history timed safety (Lean)** *(reviewer spec pending)*. The certificate form over attested
   histories; removes Theorem 1's "exposes that height" clause.

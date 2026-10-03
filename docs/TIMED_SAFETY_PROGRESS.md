@@ -23,7 +23,10 @@ e r$ implies $bad\ r$
   - `late_step`: if $P$ (index $\ge 1$) is late and $N$ is its child, then $N$ is late.
   - `late_chain`: any descendant at index $k + d$ of a late block is late.
   - Proved by contradiction: if $N$ were on time, $N.slot = \sigma(N) \ge \sigma(P) \ge P.slot + n$, making window $[P.slot + 1, P.slot + n]$ matured at $N$. The window can contain only $N$ among chain blocks, giving windowCount $\le 1 < 3 \le q$, contradiction.
-- [ ] **Step 3: Late tail is short on a recent chain** (Pass 7d)
-  - Goal: Tail of late blocks has length $m \le f$ and $T.slot + 1 < L.slot + n$.
+- [x] **Step 3: Late tail is short on a recent chain** (Pass 7d)
+  - `belowCount_mono`: monotonicity of belowCount in slot bound.
+  - `div_zero_of_quorum_le`: arithmetic forcing $K = 0$ and $m \le f$ from $q \cdot K \le m \le f \cdot (K + 1)$ and $2f + 1 \le q$.
+  - `late_tail_short`: for any chain meeting recency $R \le tip.slot + n$, tail from any late index $\ell \ge 1$ has length $c.length - \ell \le f$ and $tip.slot + 1 < L.slot + n$.
+  - Proved by density ($q \cdot K \le m$ from $K$ consecutive matured windows) vs budget ($m \le f \cdot (K+1)$ from bad slot count via injection of late blocks into $Ico (L.slot + n) (R + 1)$).
 - [ ] **Step 4: Main argument** (Pass 7e)
   - Goal: Prove `timed_tip_ancestor_agreement` using divergence index, matured window $W_1$, honest slot disjointness and cases.
