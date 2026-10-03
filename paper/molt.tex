@@ -913,9 +913,25 @@ to its version in force --- carried as a snapshot in the
 claim --- the certificate must attest claim and floor \emph{together},
 an unauthenticated floor readmits stolen retired keys
 (\code{keyrot\_recent\_certified\_suffix\_agreement}, over the
-strengthened grounding \code{GroundedCertK}) --- but under the global,
-all-window budget: carrying the anchored, trailing-$5n$ form to
-certificates is future work.
+strengthened grounding \code{GroundedCertK}) --- and under the anchored,
+trailing form as well: two certificate-plus-suffix presentations that
+both contain the client's anchor agree $n$ deep, with the corruption
+budget consulted only on windows ending after the anchor, over every
+history the certificate could be attesting
+(\code{keyrot\_certified\_suffix\_agreement\_anchored}; the client
+rules at this presentation are \code{cert\_sync\_rule} and
+\code{cert\_max\_sync\_period}). So the constant-size client, not
+only the full-chain one, gets the two-minute budget.
+
+That budget need not be assumed outright. A deployment able to name a
+\emph{reaction delay} $d$ --- within $d$ slots of any theft, the
+victim's confirmed floor has moved past the stolen version (Lean
+\code{Reacts}) --- may instead assume a rent rate per window and a
+per-window census of producers hit by a theft within $d$ slots of the
+window; the trailing budget then follows (\code{budget\_of\_reaction};
+composed into the client rules, \code{sync\_rule\_timed},
+\code{max\_sync\_period\_timed}). The reaction delay is asserted,
+like \emph{not-before} in mode 2, not derived.
 
 \emph{The maximum sync period, both directions formal.} Write $F$ for
 the client's sync period. \emph{Upward} (\code{max\_sync\_period}):
@@ -946,14 +962,23 @@ victims whose retirements postdate the divergence (pre-divergence
 rotations are inherited through the anchor and stay dead); in the bare
 model, where nothing constrains which branch honest producers extend,
 the count falls toward $\fmax + 1$. Certifying one such execution
-end-to-end in Lean is future work. A
-deployment prepared to assume strictly more --- honest producers never
-extending adversarial branches, and theft \emph{times} inside the
-signature assumptions, so that a stolen key is charged from the moment
-it is stolen rather than to every window its version was in force
---- could in principle support a larger $F$; that
-stronger model is outside the present development (future work; honest
-scope below). The sync rule is the $F = n$, $S = 5n$ instance.
+end-to-end in Lean is future work. Theft times are now inside the
+development, as two named operational hypotheses: the reaction
+delay $d$ above (\code{Reacts}), and \emph{no stolen-key back-dating} ---
+a stolen version cannot be used to expose a slot that predates its
+theft (\code{NoTheftBackdating}). Together they confine what a theft
+at real slot $r$ can expose to the slots $[r, r{+}d)$
+(\code{theft\_exposure\_window}): a stolen key is charged from the
+moment it is stolen until the reaction fires, and to no earlier window.
+The census a deployment attests is then per window and does not grow
+with the stretch: for the paced adversary above it is $1$ at every
+window, for every sync period (\code{paced\_tight\_census\_bound\_all\_F};
+composed, \code{max\_sync\_period\_tight}). That is what ``a larger
+$F$'' means here --- the census no longer constrains $F$; rent still
+has to be bounded over the same stretch. Both hypotheses are asserted,
+like \emph{not-before}; deriving no-back-dating from a signature
+primitive aware of mint times is future work, and so is a model in
+which honest producers never extend adversarial branches. The sync rule is the $F = n$, $S = 5n$ instance.
 (Engine: \code{client\_refresh\_rule}, parametric in
 the anchor's age; \code{stay\_recent\_client\_safe} derives the age
 bound.)
@@ -1004,12 +1029,15 @@ client accepts at a sync --- both, by its rule, containing its anchor
 --- agree: at equal heights on the block $n$ below each tip, and the
 lower tip's $n$-deep block lies on every taller one --- hence, block by
 block through the parent-id chain (\code{same\_block\_same\_prefix}), on
-the lower chain's whole confirmed prefix. Agreement with the honest
-chain itself follows by an induction over syncs argued on paper, not
-itself machine-checked. Each sync's agreement keeps the next anchor on
-the honest chain while the honest tip is at least as tall as the
-accepted one (density keeps a recent taller fork's $n$-deep block below
-its divergence, hence on the honest chain --- an informal argument).
+the lower chain's whole confirmed prefix. Agreement with the honest chain itself follows by an induction over
+syncs, machine-checked (\code{sync\_induction\_full\_chain}): each
+sync's agreement keeps the next anchor on a reference chain that
+grows over time, provided that chain's tip is at least as tall as the
+accepted one at every sync, and recent. The height comparison is a
+stated hypothesis of the theorem, not a conclusion --- it is what the
+density remark argues for informally (a recent taller fork's $n$-deep
+block sits below its divergence), and that remark is not itself
+machine-checked.
 The join checkpoint starts the induction as the op-model's fresh trust
 event: a checkpoint no older than ${\approx}\,4n$ slots satisfies the
 general Lean form \code{client\_refresh\_rule}. And the honest tip
