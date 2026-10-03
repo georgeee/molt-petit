@@ -84,7 +84,7 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
   - [x] **Pass 7c: Step 2 (Late is forever).** Prove that any descendant of a late block is late.
   - [x] **Pass 7d: Step 3 (Late tail is short).** Prove late tail length $m \le f$ and $T.slot + 1 < L.slot + n$ on recent chains.
   - [x] **Pass 7e: Step 4 (Main argument).** Complete `timed_tip_ancestor_agreement` via post-divergence window analysis.
-- [ ] **Pass 8: certified-history timed safety (Lean)** *(reviewer spec pending)*. The certificate form over attested
+- [ ] **Pass 8: certified-history timed safety (Lean)**. Spec: `docs/TIMED_CERT_SPEC.md`; pinned `timed_certified_agreement`, guard `Molt/AxiomsTimedSafetyCert.lean`. The certificate form over attested
   histories; removes Theorem 1's "exposes that height" clause.
 - [ ] **Pass 9: Theorem 1 and recency rework (paper)** *(reviewer spec pending)*. The timed theorem becomes the headline
   safety result; abstract, §6.1, Assumption 1 and Appendix A reframed; clock assumption stated as recency bar plus clock

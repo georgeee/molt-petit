@@ -11,6 +11,7 @@ import MoltPetit.Results.Results
 import MoltPetit.TS.Results
 import MoltPetit.Model.TimedSig
 import MoltPetit.Model.TimedSafety
+import MoltPetit.Model.TimedSafetyCert
 import MoltPetit.Model.KeyIndex
 import MoltPetit.Model.KeyRotation
 import MoltPetit.Model.KeyStealing
