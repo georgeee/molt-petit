@@ -25,6 +25,10 @@ this file with every new headline theorem.
 #guard_msgs in
 #print axioms Molt.light_client_safety
 
+/-- info: 'Molt.timed_light_client_safety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.timed_light_client_safety
+
 -- Theorem 2: forged chains take real time (paper §6.2).
 /-- info: 'Molt.forged_time_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in

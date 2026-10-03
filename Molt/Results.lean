@@ -1,6 +1,7 @@
 import Molt.Assumptions
 import MoltPetit.Results.Results
 import MoltPetit.Model.TimedSig
+import MoltPetit.Model.TimedSafetyCert
 
 /-!
 # What the theorems guarantee: safety and forged time (paper §6.1–6.2)
@@ -34,6 +35,12 @@ residue of the id-formation contract (a block can be signed only once its
 parent is available, because the parent's id preimage contains the
 parent's signature). -/
 abbrev TimedExecution := MoltPetit.Model.TimedExecution
+
+/-- The adversary's slot budget. -/
+abbrev ByzantineBounded := MoltPetit.Model.ByzantineBounded
+
+/-- Semantic grounded history of a certificate claim. -/
+abbrev GroundedHistory := MoltPetit.Model.GroundedHistory
 
 /-- The block at a given height (list indexing). -/
 def blockAt? (c : Chain) (h : Nat) : Option Block := getElem? c h
@@ -92,6 +99,52 @@ theorem light_client_safety
   exact MoltPetit.Model.recent_certified_suffix_agreement hn hBudget hSig hHash
     hcl hcl' hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'
     hSigned hSigned' hRecent hRecent' hB hB' hHeight hDeep hDeep'
+
+/-- **Timed certified light-client safety** (paper §6.1). What a light client
+actually holds is a recursive certificate claim plus a suffix of signed blocks.
+Every history the certificate's grounding attests, extended by its suffix, agrees
+with the other presentation's at every height that is at least `n` below both
+tips. No block needs to be *exposed* in either suffix: the conclusion is about
+the attested histories themselves.
+
+Transported from `MoltPetit.Model.timed_certified_agreement`. -/
+theorem timed_light_client_safety {n : Nat} (hn : 1 ≤ n)
+    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    (hBudget : ByzantineBounded n bad)
+    {Signed : Block → Prop} {R : Nat}
+    (hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r ≤ R, B ∈ log r)
+    {cl cl' : CertClaim}
+    (hcl  : GroundedCert n Signed G cl)
+    (hcl' : GroundedCert n Signed G cl')
+    {s₁ s₁' : Block} {srest srest' : Chain}
+    {sTip sTip' : Block}
+    (hTipS  : (s₁  :: srest).getLast?  = some sTip)
+    (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hLink  : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 →
+        quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
+        s₁'.prev = some cl'.tipId)
+    (hLinks' : linksOk (s₁' :: srest') = true)
+    (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip'.slot + 1 →
+        quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
+    (hSigned  : ∀ B ∈ s₁ :: srest,  Signed B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', Signed B)
+    (hRecent  : R ≤ sTip.slot  + n)
+    (hRecent' : R ≤ sTip'.slot + n)
+    {c c' : Chain}
+    (hc  : GroundedHistory n Signed G cl c)
+    (hc' : GroundedHistory n Signed G cl' c')
+    {h : Nat}
+    (hDeep  : h + n < (c ++ s₁ :: srest).length)
+    (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
+    blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
+  rw [linksOk_eq_core] at hLinks hLinks'
+  exact MoltPetit.Model.timed_certified_agreement hn hexec hBudget hbridge hcl hcl'
+    hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'
+    hSigned hSigned' hRecent hRecent' hc hc' hDeep hDeep'
 
 /-! ## Theorem 2: forged chains take real time -/
 
