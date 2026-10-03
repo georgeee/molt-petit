@@ -53,7 +53,11 @@ open Classical
 chain-slot `s` that predates the theft: if the floor `c₀` confirms for `i`
 at `s` has not yet reached `j`, the theft cannot have happened before `s`.
 Contrapositively: once the floor at `s` has reached `j`, any theft of that
-version happened at or before `s`. -/
+version happened at or before `s`.
+
+This hypothesis is degenerate: it forces every theft to real slot 0
+(`noTheftBackdating_degenerate`); the result is retained only as a documented
+negative result. -/
 def NoTheftBackdating (n Δconf : Nat) (c₀ : Chain) (stolenAt : Nat → Nat → Nat → Prop) :
     Prop :=
   ∀ i j r s, stolenAt i j r → inForce n Δconf c₀ i s ≤ j → r ≤ s
@@ -69,7 +73,22 @@ theorem noTheftBackdating_degenerate {n Δconf : Nat} (hΔ : 1 ≤ Δconf)
     {c₀ : Chain} {stolenAt : Nat → Nat → Nat → Prop}
     (h : NoTheftBackdating n Δconf c₀ stolenAt)
     {i j r : Nat} (hst : stolenAt i j r) : r = 0 := by
-  sorry
+  have hcp : confirmedPrefix Δconf c₀ 0 = [] := by
+    unfold confirmedPrefix
+    have : (fun b : Block => decide (b.slot + Δconf ≤ 0)) = (fun _ => false) := by
+      funext b
+      simp only [decide_eq_false_iff_not]
+      omega
+    rw [this]
+    induction c₀ with
+    | nil => rfl
+    | cons b rest ih => simp
+  have hforce : inForce n Δconf c₀ i 0 ≤ j := by
+    unfold inForce
+    rw [hcp]
+    simp [keyFloor]
+  have hrle : r ≤ 0 := h i j r 0 hst hforce
+  omega
 
 /-- The two-sided-bounded census: `recentTheftProducersK` with the extra
 conjunct `r < u + n`, pinning a qualifying theft's real time to the fixed
@@ -81,7 +100,11 @@ noncomputable def recentTheftProducersTight (n d : Nat)
 
 /-- **The subset bound `Reacts` + `NoTheftBackdating` buy, tightened.**
 Every producer exposed at window `u` was hit by a theft real-time-recent to
-`u`, from BOTH sides. -/
+`u`, from BOTH sides.
+
+This hypothesis is degenerate: it forces every theft to real slot 0
+(`noTheftBackdating_degenerate`); the result is retained only as a documented
+negative result. -/
 theorem exposedProducers_subset_recentTheftTight
     {n Δconf d : Nat} (hn : 0 < n) {c₀ : Chain}
     {stolenAt : Nat → Nat → Nat → Prop}
@@ -118,7 +141,11 @@ window has fixed width `d`, independent of where `s` sits in the run, which
 is exactly what stops a census at an ancient window from accumulating
 later thefts. This is the statement a paper sentence about theft times
 should cite; the two-sided filter in `recentTheftProducersTight` is its
-Finset-level shadow. -/
+Finset-level shadow.
+
+This hypothesis is degenerate: it forces every theft to real slot 0
+(`noTheftBackdating_degenerate`); the result is retained only as a documented
+negative result. -/
 theorem theft_exposure_window
     {n Δconf d : Nat} {c₀ : Chain} {stolenAt : Nat → Nat → Nat → Prop}
     (hReacts : Reacts n Δconf d c₀ stolenAt)
@@ -136,7 +163,11 @@ theorem theft_exposure_window
 mode-1 client theorem consumes, derived from a rent rate, a two-sided
 theft census, and the `1/3` bound, at an arbitrary window guard. Line-for
 -line mirror of `budget_of_reaction` with the tighter subset lemma
-substituted. -/
+substituted.
+
+This hypothesis is degenerate: it forces every theft to real slot 0
+(`noTheftBackdating_degenerate`); the result is retained only as a documented
+negative result. -/
 theorem budget_of_reaction_tight
     {n Δconf d : Nat} (hn : 0 < n)
     {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop} {c₀ : Chain}
@@ -166,7 +197,11 @@ theorem budget_of_reaction_tight
     _ ≤ maxByzantine n := hRT
 
 /-- The one-line specialization at the core anchored guard — exact mirror
-of `anchored_budget_of_reaction`. -/
+of `anchored_budget_of_reaction`.
+
+This hypothesis is degenerate: it forces every theft to real slot 0
+(`noTheftBackdating_degenerate`); the result is retained only as a documented
+negative result. -/
 theorem anchored_budget_of_reaction_tight
     {n Δconf d : Nat} (hn : 0 < n)
     {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop} {c₀ : Chain}

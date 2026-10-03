@@ -53,7 +53,11 @@ theorem recentTheftProducersTight_eq_core :
 
 /-- `max_sync_period` at a `Reacts` + `NoTheftBackdating`-derived (tight)
 budget — the item's headline consumer, the sync-period parameter `F` this
-item's title names. -/
+item's title names.
+
+This hypothesis is degenerate: it forces every theft to real slot 0
+(`noTheftBackdating_degenerate`); the result is retained only as a documented
+negative result. -/
 theorem max_sync_period_tight
     {n Δconf F : Nat} (hn : 1 ≤ n) (hΔ : n ≤ Δconf)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
@@ -224,7 +228,11 @@ For a paced schedule, `Reacts` + `NoTheftBackdating` confine each theft's
 exposure to `[r, r + d)` (`theft_exposure_window`), and pacing `n + d ≤ P`
 puts at most one such interval in any window — so the *cumulative*
 `exposedProducers` census, the one the untimed budget reads, is itself
-`≤ 1` everywhere. -/
+`≤ 1` everywhere.
+
+This hypothesis is degenerate: it forces every theft to real slot 0
+(`noTheftBackdating_degenerate`); the result is retained only as a documented
+negative result. -/
 theorem exposedProducers_card_le_one_of_paced
     {n Δconf d P : Nat} (hn : 0 < n) (hP : n + d ≤ P) {ι : Nat → Nat} {c₀ : Chain}
     (hReacts : Reacts n Δconf d c₀ (pacedStolenAt ι P))
@@ -246,7 +254,11 @@ budget easier to attest: for this adversary family they make the old budget
 true as well. The gain the timed route buys is therefore about which
 hypotheses a deployment can *defend* (a fixed per-window concurrency bound
 versus a per-stretch total), not about executions the untimed route gets
-wrong — and the paper should say it that way. -/
+wrong — and the paper should say it that way.
+
+This hypothesis is degenerate: it forces every theft to real slot 0
+(`noTheftBackdating_degenerate`); the result is retained only as a documented
+negative result. -/
 theorem paced_budget_holds_under_timing
     {n Δconf d P : Nat} (hn : 0 < n) (hP : n + d ≤ P) {ι : Nat → Nat} {c₀ : Chain}
     {rented : ByzantineSlots} {Rrent : Nat}
