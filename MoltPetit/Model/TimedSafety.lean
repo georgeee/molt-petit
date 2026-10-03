@@ -586,6 +586,204 @@ theorem bad_of_same_slot_on_time
     exact hexec.honest_once hNotBad h1 h2
   exact disjoint_blocks_of_lastCommonHeight hc hc' hLast hB hB' hh hh' hEq
 
+theorem slot_ge_of_height_gap {c : Chain} (hS : StrictSlots c)
+    {i : Nat} {Bi : Block} (hi : blockAt? c i = some Bi) :
+    ∀ {j : Nat} {Bj : Block}, blockAt? c j = some Bj → i ≤ j →
+      Bi.slot + (j - i) ≤ Bj.slot := by
+  intro j
+  induction j with
+  | zero =>
+    intro Bj hj hij
+    have hiz : i = 0 := Nat.eq_zero_of_le_zero hij
+    subst hiz; rw [hi] at hj; simp [Option.some.inj hj]
+  | succ j' ih =>
+    intro Bj hj hij
+    rcases Nat.eq_or_lt_of_le hij with rfl | hlt
+    · rw [hi] at hj; simp [Option.some.inj hj]
+    · have hij' : i ≤ j' := Nat.lt_succ_iff.mp hlt
+      obtain ⟨Bj', hBj'⟩ := exists_blockAt_of_le (Nat.le_succ j') hj
+      have hIH := ih hBj' hij'
+      have hStep : Bj'.slot < Bj.slot := strictSlots_lt hS hBj' hj (Nat.lt_succ_self j')
+      omega
+
+theorem two_mul_min_gt (n : Nat) (hn : 1 ≤ n) :
+    n + maxByzantine n < 2 * min (n + 1 - maxByzantine n) (quorum n) := by
+  have h3 : 3 * maxByzantine n < n := by
+    unfold maxByzantine
+    omega
+  have h2q : n + maxByzantine n < 2 * quorum n := by
+    unfold maxByzantine quorum
+    omega
+  have h2sub : n + maxByzantine n < 2 * (n + 1 - maxByzantine n) := by
+    omega
+  cases min_cases (n + 1 - maxByzantine n) (quorum n) with
+  | inl h =>
+    rw [h.1]
+    exact h2sub
+  | inr h =>
+    rw [h.1]
+    exact h2q
+
+theorem exists_ontime_slots_in_window
+    {n : Nat} (hn : 1 ≤ n)
+    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    (hBudget : ByzantineBounded n bad)
+    {c : Chain} (hc : ValidChain n c)
+    (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {tip : Block} (hTip : c.getLast? = some tip)
+    (hRecent : R ≤ tip.slot + n)
+    {h : Nat} {D : Block} (hD : blockAt? c h = some D)
+    (hLen : h + 1 + n < c.length) :
+    ∃ S : Finset Nat,
+      S ⊆ Finset.Ico (D.slot + 1) (D.slot + 1 + n) ∧
+      min (n + 1 - maxByzantine n) (quorum n) ≤ S.card ∧
+      ∀ s ∈ S, ∃ B ∈ c, B.slot = s ∧ FirstSigned log B s ∧ h < B.height := by
+  classical
+  have hGprev : G.prev = none := hc.2.2.1 hHead
+  have hS : StrictSlots c := hc.2.1
+  have hPL : ParentLinked c := hc.2.2.1
+  set u := D.slot + 1
+  let S : Finset Nat := (Finset.Ico u (u + n)).filter fun s =>
+    ∃ B ∈ c, B.slot = s ∧ FirstSigned log B s ∧ h < B.height
+  have hS_sub : S ⊆ Finset.Ico u (u + n) := Finset.filter_subset _ _
+  have hS_prop : ∀ s ∈ S, ∃ B ∈ c, B.slot = s ∧ FirstSigned log B s ∧ h < B.height := by
+    intro s hs
+    rw [Finset.mem_filter] at hs
+    exact hs.2
+  let LateIndex (k : Nat) : Prop :=
+    1 ≤ k ∧ k < c.length ∧ ∃ B, blockAt? c k = some B ∧ ∃ (hBsig : ∃ r, B ∈ log r), B.slot < Nat.find hBsig
+  by_cases hLateInW : ∃ k, LateIndex k ∧ ∃ B, blockAt? c k = some B ∧ B.slot ∈ Finset.Ico u (u + n)
+  · obtain ⟨k, hkLate, B_k, hB_k, hB_k_in⟩ := hLateInW
+    have hExists : ∃ j, LateIndex j := ⟨k, hkLate⟩
+    set ℓ := Nat.find hExists
+    have hPℓ : LateIndex ℓ := Nat.find_spec hExists
+    obtain ⟨hℓ1, hℓlen, L, hL, hLsig, hLateL⟩ := hPℓ
+    obtain ⟨hm_le, -⟩ := late_tail_short hn hexec hBudget hc hHead hAvail hTip hRecent hℓ1 hℓlen hL hLsig hLateL
+    have h3f : 3 * maxByzantine n < n := three_mul_maxByzantine_lt n hn
+    have h_e_le_ℓ : h + 1 ≤ ℓ := by
+      by_contra hlt
+      have : ℓ < h + 1 := by omega
+      have : c.length - (h + 1) < c.length - ℓ := by omega
+      omega
+    have h_card_le : n + 1 - maxByzantine n ≤ ℓ - (h + 1) := by omega
+    let g (j : Nat) : Nat := match blockAt? c j with | some B => B.slot | none => 0
+    have hmaps : ∀ a ∈ Finset.Ico (h + 1) ℓ, g a ∈ S := by
+      intro a ha
+      rw [Finset.mem_Ico] at ha
+      have ha_len : a < c.length := by omega
+      have haAt : blockAt? c a = some (getElem c a ha_len) := by
+        unfold blockAt?; exact List.getElem?_eq_getElem ha_len
+      have hga : g a = (getElem c a ha_len).slot := by dsimp [g]; rw [haAt]
+      rw [hga]
+      rw [Finset.mem_filter, Finset.mem_Ico]
+      have hmem : getElem c a ha_len ∈ c := List.getElem_mem ha_len
+      have hheight : h < (getElem c a ha_len).height := by
+        have := hc.1 haAt
+        omega
+      have ha_ge_1 : 1 ≤ a := by omega
+      obtain ⟨-, ra, -, hramem⟩ := block_signed hGprev hPL hAvail ha_ge_1 haAt
+      have hasig : ∃ r, getElem c a ha_len ∈ log r := ⟨ra, hramem⟩
+      have hnot_late : ¬ (getElem c a ha_len).slot < Nat.find hasig := by
+        intro hlate
+        have hP_a : LateIndex a := ⟨ha_ge_1, ha_len, getElem c a ha_len, haAt, hasig, hlate⟩
+        have : ℓ ≤ a := Nat.find_min' hExists hP_a
+        omega
+      have hle_sig := slot_le_sigTime hn hexec hBudget hc hHead hAvail a ha_ge_1 haAt hasig
+      have hsig_eq : Nat.find hasig = (getElem c a ha_len).slot := by omega
+      have hontime : FirstSigned log (getElem c a ha_len) (getElem c a ha_len).slot := by
+        rw [← hsig_eq]
+        exact (firstSigned_iff_find hasig).mpr rfl
+      have hslot_gt : u ≤ (getElem c a ha_len).slot := by
+        have hlt_slot := strictSlots_lt hS hD haAt (by omega)
+        omega
+      have hslot_lt : (getElem c a ha_len).slot < u + n := by
+        have hℓ_le_k : ℓ ≤ k := Nat.find_min' hExists hkLate
+        have ha_lt_k : a < k := by omega
+        have hlt_slot := strictSlots_lt hS haAt hB_k ha_lt_k
+        rw [Finset.mem_Ico] at hB_k_in
+        omega
+      exact ⟨⟨hslot_gt, hslot_lt⟩, getElem c a ha_len, hmem, rfl, hontime, hheight⟩
+    have hinj : Set.InjOn g (Finset.Ico (h + 1) ℓ) := by
+      intro a ha b hb hab
+      simp only [Finset.coe_Ico, Set.mem_Ico] at ha hb
+      rcases Nat.lt_trichotomy a b with hlt | heq | hgt
+      · have ha_len : a < c.length := by omega
+        have hb_len : b < c.length := by omega
+        have haAt : blockAt? c a = some (getElem c a ha_len) := by
+          unfold blockAt?; exact List.getElem?_eq_getElem ha_len
+        have hbAt : blockAt? c b = some (getElem c b hb_len) := by
+          unfold blockAt?; exact List.getElem?_eq_getElem hb_len
+        have hga : g a = (getElem c a ha_len).slot := by dsimp [g]; rw [haAt]
+        have hgb : g b = (getElem c b hb_len).slot := by dsimp [g]; rw [hbAt]
+        have hlt_slot := strictSlots_lt hS haAt hbAt hlt
+        omega
+      · exact heq
+      · have ha_len : a < c.length := by omega
+        have hb_len : b < c.length := by omega
+        have haAt : blockAt? c a = some (getElem c a ha_len) := by
+          unfold blockAt?; exact List.getElem?_eq_getElem ha_len
+        have hbAt : blockAt? c b = some (getElem c b hb_len) := by
+          unfold blockAt?; exact List.getElem?_eq_getElem hb_len
+        have hga : g a = (getElem c a ha_len).slot := by dsimp [g]; rw [haAt]
+        have hgb : g b = (getElem c b hb_len).slot := by dsimp [g]; rw [hbAt]
+        have hlt_slot := strictSlots_lt hS hbAt haAt hgt
+        omega
+    have hle_card := Finset.card_le_card_of_injOn g hmaps hinj
+    rw [Nat.card_Ico] at hle_card
+    refine ⟨S, hS_sub, ?_, hS_prop⟩
+    have : min (n + 1 - maxByzantine n) (quorum n) ≤ n + 1 - maxByzantine n := min_le_left _ _
+    omega
+  · have hSub : chainSlotsIn c u n ⊆ S := by
+      intro s hs
+      obtain ⟨B, hBmem, ⟨hB_ge, hB_lt⟩, rfl⟩ := mem_chainSlotsIn.mp hs
+      have hBwin : u ≤ B.slot ∧ B.slot < u + n := ⟨hB_ge, hB_lt⟩
+      obtain ⟨k, hk⟩ := exists_blockAt_of_mem hBmem
+      have hBheight : B.height = k := hc.1 hk
+      have hk_gt : h < k := by
+        by_contra hle
+        have : k ≤ h := by omega
+        rcases Nat.eq_or_lt_of_le this with rfl | hlt
+        · rw [hD] at hk
+          have : B = D := (Option.some.inj hk).symm
+          subst this
+          omega
+        · have hlt_slot := strictSlots_lt hS hk hD hlt
+          omega
+      have hk1 : 1 ≤ k := by omega
+      obtain ⟨hklen, -⟩ := List.getElem?_eq_some_iff.mp hk
+      have hNotLate : ¬ LateIndex k := by
+        intro hLate
+        exact hLateInW ⟨k, hLate, B, hk, Finset.mem_Ico.mpr hBwin⟩
+      obtain ⟨-, rB, -, hrBmem⟩ := block_signed hGprev hPL hAvail hk1 hk
+      have hBsig : ∃ r, B ∈ log r := ⟨rB, hrBmem⟩
+      have hNotLt : ¬ B.slot < Nat.find hBsig := by
+        intro hlt
+        exact hNotLate ⟨hk1, hklen, B, hk, hBsig, hlt⟩
+      have hLe := slot_le_sigTime hn hexec hBudget hc hHead hAvail k hk1 hk hBsig
+      have hEqSig : Nat.find hBsig = B.slot := by omega
+      have hOntime : FirstSigned log B B.slot := by
+        rw [← hEqSig]
+        exact (firstSigned_iff_find hBsig).mpr rfl
+      rw [Finset.mem_filter]
+      exact ⟨Finset.mem_Ico.mpr hBwin, B, hBmem, rfl, hOntime, by omega⟩
+    have hM_len : h + 1 + n < c.length := hLen
+    have hM : blockAt? c (h + 1 + n) = some (getElem c (h + 1 + n) hM_len) := by
+      unfold blockAt?; exact List.getElem?_eq_getElem hM_len
+    have hSlotGap := slot_ge_of_height_gap hS hD hM (by omega)
+    have hMat : u + n ≤ (getElem c (h + 1 + n) hM_len).slot + 1 := by
+      have : D.slot + ((h + 1 + n) - h) ≤ (getElem c (h + 1 + n) hM_len).slot := hSlotGap
+      omega
+    have hq := hc.2.2.2 hM u hMat
+    have hcard_eq := chainSlotsIn_card hS u n
+    have hq_le : quorum n ≤ S.card := by
+      calc quorum n ≤ (chainSlotsIn c u n).card := by rwa [hcard_eq]
+        _ ≤ S.card := Finset.card_le_card hSub
+    refine ⟨S, hS_sub, ?_, hS_prop⟩
+    have : min (n + 1 - maxByzantine n) (quorum n) ≤ quorum n := min_le_right _ _
+    omega
+
 theorem timed_tip_ancestor_agreement {n : Nat} (hn : 1 ≤ n)
     {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
@@ -601,6 +799,59 @@ theorem timed_tip_ancestor_agreement {n : Nat} (hn : 1 ≤ n)
     (hLen : c.length ≤ c'.length)
     (hLong : n < c.length) :
     blockAt? c' (c.length - 1 - n) = blockAt? c (c.length - 1 - n) := by
-  sorry
+  classical
+  set k := c.length - 1 - n
+  by_contra hDiff
+  have hk_lt : k < c.length := by omega
+  have hk_lt' : k < c'.length := by omega
+  have hBk : blockAt? c k = some (getElem c k hk_lt) := by
+    unfold blockAt?; exact List.getElem?_eq_getElem hk_lt
+  have hBk' : blockAt? c' k = some (getElem c' k hk_lt') := by
+    unfold blockAt?; exact List.getElem?_eq_getElem hk_lt'
+  have hNe : (getElem c k hk_lt) ≠ (getElem c' k hk_lt') := by
+    intro heq
+    rw [heq] at hBk
+    rw [hBk, hBk'] at hDiff
+    exact hDiff rfl
+  have hCommon0 : CommonPrefixUpTo c c' 0 := by
+    intro j hj
+    have hj0 : j = 0 := Nat.eq_zero_of_le_zero hj
+    subst hj0
+    exact ⟨G, hHead, hHead'⟩
+  obtain ⟨h, hlt_k, hLast⟩ :=
+    exists_lastCommonHeight_timed hexec hc hc' hAvail hAvail' hCommon0 hBk hBk' hNe
+  obtain ⟨D, hD, hD'⟩ := hLast.1 h le_rfl
+  have hLen_c : h + 1 + n < c.length := by omega
+  have hLen_c' : h + 1 + n < c'.length := by omega
+  obtain ⟨S, hS_sub, hS_card, hS_prop⟩ :=
+    exists_ontime_slots_in_window hn hexec hBudget hc hHead hAvail hTip hRecent hD hLen_c
+  obtain ⟨S', hS'_sub, hS'_card, hS'_prop⟩ :=
+    exists_ontime_slots_in_window hn hexec hBudget hc' hHead' hAvail' hTip' hRecent' hD' hLen_c'
+  have hUnion : (S ∪ S').card ≤ n := by
+    have hsub : S ∪ S' ⊆ Finset.Ico (D.slot + 1) (D.slot + 1 + n) :=
+      Finset.union_subset hS_sub hS'_sub
+    have hcard : (Finset.Ico (D.slot + 1) (D.slot + 1 + n)).card = n := by
+      rw [Nat.card_Ico]; omega
+    exact le_trans (Finset.card_le_card hsub) (le_of_eq hcard)
+  have hInter : (S ∩ S').card ≤ maxByzantine n := by
+    have hsub : S ∩ S' ⊆ badSlotsIn bad (D.slot + 1) n := by
+      intro s hs
+      rw [Finset.mem_inter] at hs
+      obtain ⟨B, hBmem, hSlotB, hOntime, hh⟩ := hS_prop s hs.1
+      obtain ⟨B', hB'mem, hSlotB', hOntime', hh'⟩ := hS'_prop s hs.2
+      have hSlotEq : B.slot = B'.slot := by rw [hSlotB, hSlotB']
+      have hOntimeB : FirstSigned log B B.slot := by rwa [hSlotB]
+      have hOntimeB' : FirstSigned log B' B'.slot := by rwa [hSlotB']
+      have hbad : bad B.slot :=
+        bad_of_same_slot_on_time hexec hc hc' hLast hBmem hB'mem hh hh' hOntimeB hOntimeB' hSlotEq
+      rw [badSlotsIn, Finset.mem_filter]
+      have hsBad : bad s := by rwa [hSlotB] at hbad
+      exact ⟨hS_sub hs.1, hsBad⟩
+    exact le_trans (Finset.card_le_card hsub) (hBudget (D.slot + 1))
+  have hSum : S.card + S'.card ≤ n + maxByzantine n := by
+    have := Finset.card_union_add_card_inter S S'
+    omega
+  have hBound := two_mul_min_gt n hn
+  omega
 
 end MoltPetit.Model

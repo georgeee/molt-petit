@@ -28,11 +28,12 @@ e r$ implies $bad\ r$
   - `div_zero_of_quorum_le`: arithmetic forcing $K = 0$ and $m \le f$ from $q \cdot K \le m \le f \cdot (K + 1)$ and $2f + 1 \le q$.
   - `late_tail_short`: for any chain meeting recency $R \le tip.slot + n$, tail from any late index $\ell \ge 1$ has length $c.length - \ell \le f$ and $tip.slot + 1 < L.slot + n$.
   - Proved by density ($q \cdot K \le m$ from $K$ consecutive matured windows) vs budget ($m \le f \cdot (K+1)$ from bad slot count via injection of late blocks into $Ico (L.slot + n) (R + 1)$).
-- [ ] **Step 4: Main argument** (Pass 7e)
+- [x] **Step 4: Main argument** (Pass 7e)
   - `same_block_same_parent_timed`: identical available blocks on valid chains share parents.
   - `same_block_same_prefix_timed`: identical available blocks force agreement down to genesis.
   - `same_block_same_height`: identical blocks on valid chains have equal heights.
   - `exists_lastCommonHeight_timed`: two chains disagreeing at height $k$ have a last common height $h < k$.
   - `disjoint_blocks_of_lastCommonHeight`: post-divergence blocks on the two chains are strictly distinct.
   - `bad_of_same_slot_on_time`: two on-time post-divergence blocks cannot share an honest slot.
-  - In progress: `exists_ontime_slots_in_window` and main theorem.
+  - `exists_ontime_slots_in_window`: in the post-divergence window $[D.slot + 1, D.slot + 1 + n)$, on-time blocks provide $\min(n + 1 - f, q)$ distinct slot witnesses.
+  - `timed_tip_ancestor_agreement`: light-client safety theorem in the timed model, proved by pigeonhole on the divergence window $[D.slot + 1, D.slot + 1 + n)$.

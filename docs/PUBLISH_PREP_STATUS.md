@@ -73,7 +73,7 @@ The passes below were set by the top-level reviewer. Pass 6's audit missed a cen
 is load-bearing for safety" is not machine-checked. George's decision: prove the timed theorem first. Do the passes in
 order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and record that you skipped it.
 
-- **Pass 7: timed light-client safety (Lean only).** Prove `MoltPetit.Model.timed_tip_ancestor_agreement` following
+- [x] **Pass 7: timed light-client safety (Lean only).** Prove `MoltPetit.Model.timed_tip_ancestor_agreement` following
   `docs/TIMED_SAFETY_SPEC.md`. (Subdivided into Passes 7a–7e per progress plan).
   - [x] **Pass 7a: Step 0 (Arithmetic & basics).**
     - Commit `3666849`: Moved `import Molt.AxiomsTimedSafety` before doc comments in `Molt.lean` so library root parses cleanly.
@@ -83,7 +83,7 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
     - Commit `66d0cda`: Proved `slot_le_sigTime` and `slot_le_firstSigned` in `MoltPetit/Model/TimedSafety.lean`.
   - [x] **Pass 7c: Step 2 (Late is forever).** Prove that any descendant of a late block is late.
   - [x] **Pass 7d: Step 3 (Late tail is short).** Prove late tail length $m \le f$ and $T.slot + 1 < L.slot + n$ on recent chains.
-  - [ ] **Pass 7e: Step 4 (Main argument).** Complete `timed_tip_ancestor_agreement` via post-divergence window analysis.
+  - [x] **Pass 7e: Step 4 (Main argument).** Complete `timed_tip_ancestor_agreement` via post-divergence window analysis.
 - [ ] **Pass 8: certified-history timed safety (Lean)** *(reviewer spec pending)*. The certificate form over attested
   histories; removes Theorem 1's "exposes that height" clause.
 - [ ] **Pass 9: Theorem 1 and recency rework (paper)** *(reviewer spec pending)*. The timed theorem becomes the headline
