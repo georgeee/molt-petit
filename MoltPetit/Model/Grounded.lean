@@ -262,25 +262,19 @@ theorem validChain_append_suffix {n : Nat} {sTipSlot : Nat}
       (fun x hx => hSlots x (List.mem_cons_of_mem _ hx))
 
 /--
-**Grounded prefix + validated suffix = full accepted chain.** The suffix
-hypotheses are exactly what `ts_validateSuffix_sound` extracts from a
-passing TypeScript `validateSuffix` run.
+Given a grounded history `c` and a validated suffix `s₁ :: srest`, the concatenated chain
+`c ++ s₁ :: srest` is validator-accepted.
 -/
-theorem grounded_suffix_history {n : Nat} (hn : 1 ≤ n)
-    {Signed : Block → Prop} {G : Block} {cl : CertClaim}
-    (hG : GroundedCert n Signed G cl)
+theorem grounded_suffix_history_of {n : Nat}
+    {Signed : Block → Prop} {G : Block} {cl : CertClaim} {c : Chain}
+    (hist : GroundedHistory n Signed G cl c)
     {s₁ : Block} {srest : Chain} {sTip : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
     (hLinks : linksOk (s₁ :: srest) = true)
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 →
       quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n) :
-    ∃ c : Chain,
-      validChain n (c ++ s₁ :: srest) = true ∧
-      blockAt? (c ++ s₁ :: srest) 0 = some G ∧
-      c.length = cl.tipHeight + 1 ∧
-      (∀ B ∈ c, B = G ∨ Signed B) := by
-  obtain ⟨c, hist⟩ := groundedCert_history hn hG
+    validChain n (c ++ s₁ :: srest) = true := by
   obtain ⟨t, hTipEq, htId, htSlot, htHeight⟩ := hist.tip
   have hMat := (validChain_sound hist.valid).2.2.2
   have hTipAt : blockAt? c (c.length - 1) = some t := blockAt_getLast hTipEq
@@ -306,23 +300,45 @@ theorem grounded_suffix_history {n : Nat} (hn : 1 ≤ n)
         rw [windowCount_append, windowCount_append, hist.tail_eq,
           windowCount_filter_low (by omega)]
       omega
-  refine ⟨c, ?_, ?_, hist.len_eq, hist.signed⟩
-  · -- the suffix links from the prefix tip
-    have hLinksT : linksOk (t :: s₁ :: srest) = true := by
-      rw [show linksOk (t :: s₁ :: srest) =
-        (childOk t s₁ && linksOk (s₁ :: srest)) from rfl, Bool.and_eq_true]
-      refine ⟨?_, hLinks⟩
-      rw [childOk, decide_eq_true_eq]
-      exact ⟨by omega, by omega, by rw [hLink.2.2, htId]⟩
-    exact validChain_append_suffix hFullDense (s₁ :: srest) c t rfl
-      hist.valid hTipEq hLinksT hSlotsLe
-  · have hcLen : 0 < c.length := by
-      have := hist.len_eq
-      omega
-    have hHead := hist.head
-    unfold blockAt? at hHead ⊢
+  -- the suffix links from the prefix tip
+  have hLinksT : linksOk (t :: s₁ :: srest) = true := by
+    rw [show linksOk (t :: s₁ :: srest) =
+      (childOk t s₁ && linksOk (s₁ :: srest)) from rfl, Bool.and_eq_true]
+    refine ⟨?_, hLinks⟩
+    rw [childOk, decide_eq_true_eq]
+    exact ⟨by omega, by omega, by rw [hLink.2.2, htId]⟩
+  exact validChain_append_suffix hFullDense (s₁ :: srest) c t rfl
+    hist.valid hTipEq hLinksT hSlotsLe
+
+/--
+**Grounded prefix + validated suffix = full accepted chain.** The suffix
+hypotheses are exactly what `ts_validateSuffix_sound` extracts from a
+passing TypeScript `validateSuffix` run.
+-/
+theorem grounded_suffix_history {n : Nat} (hn : 1 ≤ n)
+    {Signed : Block → Prop} {G : Block} {cl : CertClaim}
+    (hG : GroundedCert n Signed G cl)
+    {s₁ : Block} {srest : Chain} {sTip : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 →
+      quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n) :
+    ∃ c : Chain,
+      validChain n (c ++ s₁ :: srest) = true ∧
+      blockAt? (c ++ s₁ :: srest) 0 = some G ∧
+      c.length = cl.tipHeight + 1 ∧
+      (∀ B ∈ c, B = G ∨ Signed B) := by
+  obtain ⟨c, hist⟩ := groundedCert_history hn hG
+  have hcLen : 0 < c.length := by
+    have := hist.len_eq
+    omega
+  have hHead : blockAt? (c ++ s₁ :: srest) 0 = some G := by
+    unfold blockAt?
     rw [List.getElem?_append_left hcLen]
-    exact hHead
+    exact hist.head
+  exact ⟨c, grounded_suffix_history_of hist hTipS hLink hLinks hDense,
+    hHead, hist.len_eq, hist.signed⟩
 
 -- ---------------------------------------------------------------------------
 -- Cryptographic assumptions, signature level
