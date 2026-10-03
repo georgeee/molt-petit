@@ -611,18 +611,10 @@ be built on. \quad\textit{(Lean: \code{HonestBlocksCover}.)}
 \label{sec:results}
 
 The results come in a fixed order. First, light-client safety
-(Theorem~\ref{thm:lc}). It is proved about the protocol's structural
-core, and it covers the full validator because every chain the full
-validator accepts also passes those structural checks
-(\code{validChainK\_structural}). Its counterpart at the certificate
-presentation, under the full validator with its key discipline and pin,
-is each mode's certified theorem in Section~\ref{sec:rotation}
-(\code{keyrot\_recent\_certified\_suffix\_agreement} and its scheduled
-and lockstep twins). Next, the timed model, where forged chains take real time
-(Theorem~\ref{thm:forge}); this timed model is also where the recency
-scoping of Assumption~\ref{ass:sig} stops being an assumption and
-becomes a theorem (a separate derivation,
-\code{sigUnforgeableRecent\_of\_timed}). Then the rotation results per mode
+(Theorem~\ref{thm:lc}), proved directly in the timed model
+(\code{timed\_light\_client\_safety}). Next, the timed model, where forged
+chains take real time (Theorem~\ref{thm:forge}); this forged-time bound is
+the engine of Theorem~\ref{thm:lc}. Then the rotation results per mode
 (Section~\ref{sec:rotation}), and finally liveness.
 
 Two adversaries appear, and it matters which one a result faces. The
@@ -648,36 +640,47 @@ more than classical logic.
 \label{sec:lc}
 
 \begin{theorem}[Recent chains share their deep blocks; Lean
-\code{light\_client\_safety}]\label{thm:lc}
-Fix $n \ge 1$, a deployment genesis, and a verifier clock $\mathit{now}$.
-Suppose Assumptions~\ref{ass:budget}--\ref{ass:cert} hold with the
-$n$-slot recency rule. Take any two certified chains accepted by the
-validator of Section~\ref{sec:rules}, both with recent tips
-($\mathit{now} \le \mathit{tip.slot} + n$). Then any block of the first
-chain's suffix with at least $n$ blocks above it equals the second
-chain's block at the same height, whenever the second chain's suffix
-exposes that height with $n$ blocks above it too. In particular, all
-recent accepted chains agree on their common prefix up to $n$ blocks
-below the lower tip, at every height both presentations expose.
+\code{timed\_light\_client\_safety}]\label{thm:lc}
+Fix $n \ge 1$ and a deployment genesis $G$. Suppose:
+\begin{itemize}
+\item a timed execution (\code{TimedExecution}): signing happens at real slots;
+  at a bad real slot the producer's key signs arbitrarily many blocks with
+  any stamp in its residue class (\code{key\_match}); an honest real slot
+  signs only its own current block (\code{honest\_stamp}) and at most once
+  (\code{honest\_once}); a block is signed only once its parent is available
+  (\code{chain\_order}); and collision resistance holds over occurring blocks
+  (\code{id\_inj});
+\item the fault budget over real slots: $\code{ByzantineBounded}\ n\ \mathit{bad}$;
+\item the verifier is at real slot $R$, and every producer signature it accepts
+  was produced at some real slot no later than $R$ (\code{hbridge}: EUF-CMA
+  plus causality);
+\item there are two presentations, each consisting of a grounded certificate
+  claim (\code{GroundedCert}) and a suffix that passes the validator:
+  linkage to the claim (\code{hLink}), internal linkage (\code{hLinks}),
+  density of maturing windows (\code{hDense}), and verifying signatures
+  (\code{hSigned});
+\item both tips are recent in real time: $R \le \mathit{tip.slot} + n$.
+\end{itemize}
+Then, taking any histories the two groundings attest (\code{GroundedHistory}),
+the two full chains (attested history concatenated with suffix) agree at
+every height $h$ with $h + n$ below both full lengths. Equivalently, they
+agree on everything at least $n$ blocks below the lower tip.
 \end{theorem}
-
-The ``exposes that height'' hypothesis is a restriction of presentation,
-not of operation: a certificate-plus-$n$-block chain can always be
-re-presented as a certificate$'$-plus-$2n$-block chain (grounding attests
-a claim at every fold), so a holder can re-expose as many blocks as a
-comparison needs --- argued, not proved (the representability lemmas are
-production-side), which is why the hypothesis stays in the statement.
 
 Two remarks. First, the conclusion also covers a chain the node
 \emph{produced} rather than received, because production ships nothing
 that does not pass the same validator (Section~\ref{sec:rules}). Second,
-the proof \emph{derives} honest-slot uniqueness instead of assuming
-honest behaviour: every block of an accepted certified chain either
-carries a checked signature (suffix) or is vouched for by the
-certificate's grounding (prefix), and Assumption~\ref{ass:sig} pins each
-honest-slot block to its producer's single signing call. From there it is
-the classic count: $2\quorum > n + \fmax$ in the trailing matured window
-forces the two chains through a shared honest block.
+honest-slot uniqueness is derived, not assumed: in the timed model, honest
+slots sign only their current block at most once, and coerced signatures
+advance forks at only half speed. The proof idea is: availability by real
+slot $R$, plus the half-speed forging bound (Theorem~\ref{thm:forge}),
+plus the counting argument ($2\quorum > n + \fmax$) forcing the two chains
+through a shared honest block.
+
+A third remark on the untimed model: the earlier result
+\code{Molt.light\_client\_safety} reaches the same conclusion in an
+untimed model, but it assumes the residue \code{SigUnforgeableRecent}
+directly and keeps the exposure hypothesis. It is not the headline.
 
 \subsection{Forged chains take real time}
 \label{sec:timed}
@@ -733,24 +736,14 @@ $\quorum$ blocks per \emph{stamped} window while the budget supplies only
 $\fmax$ bad slots per \emph{real} window. The ratio
 $\quorum/\fmax \approx 2$ is the theorem.
 
-This is what makes the verifier's recency rule sound, with numbers: a
-fork meeting the $n$-slot recency bar carries at most
-${\approx}\,2\fmax \approx 2n/3$ coerced blocks --- short of the $n+1$
-needed to fake an $n$-deep ancestor (the faked block plus the $n$ above
-it that make it trusted). The breakeven --- the staleness at which
-half-speed forging has had time to mint $n+1$ blocks --- sits near
-$\tfrac{3}{2}n$ slots, which is the ${\approx}\,50\%$ margin quoted in
-Assumption~\ref{ass:clock}. A patient adversary \emph{can} grow a fork
-forever by harvesting coerced signatures window after window --- but only
+Theorem~\ref{thm:forge} is the engine of Theorem~\ref{thm:lc}. A fork
+meeting the real-time recency bar has had too little real time to forge an
+$n$-deep ancestor, and Theorem~\ref{thm:lc} is the machine-checked statement
+of exactly that at staleness $n$. A patient adversary \emph{can} grow a
+fork forever by harvesting coerced signatures window after window --- but only
 at half speed, so its tip falls ever further behind real time, and a
-stale tip is exactly what the recency check refuses. This is also why
-Assumption~\ref{ass:sig}(c) is derived rather than primitive: in the
-timed model it follows from plain EUF-CMA plus a \emph{no-back-dating}
-residue --- a signature bearing an honest slot's stamp was produced at
-that slot exactly, never stockpiled earlier and never minted later
-(\code{sigUnforgeableRecent\_of\_timed};
-Appendix~\ref{app:timed-uniq} gives the derivation, the residue's exact
-content, and its machine-checked independence).
+stale tip is exactly what the recency check refuses.
+Appendix~\ref{app:timed-uniq} discusses the untimed model's residue.
 
 \subsection{Key rotation}
 \label{sec:rotation}
@@ -799,7 +792,7 @@ declared-version signed blocks (\code{SignedDeclared}) for modes 2--3
 and the certified mode-1 form.
 
 \begin{assumption}[No back-dating, honest custody --- per mode]\label{ass:rotation-honest}
-Fix a rotation mode and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). Unlike Assumption~\ref{ass:sig}(c) (Section~\ref{sec:timed}), this is stated directly rather than derived: Appendix~\ref{app:timed-uniq}'s derivation needs only \emph{one} key's safety per real slot, while \code{KeyStealingEUFCMA}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's, and the timed-model route does not generalize here without weakening an already-assumed primitive (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}, \code{badKeyrot\_single\_key\_safe\_not\_enough}).
+Fix a rotation mode and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). Unlike the untimed residue \code{SigUnforgeableRecent} (Appendix~\ref{app:timed-uniq}), this is stated directly rather than derived: Appendix~\ref{app:timed-uniq}'s derivation needs only \emph{one} key's safety per real slot, while \code{KeyStealingEUFCMA}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's, and the timed-model route does not generalize here without weakening an already-assumed primitive (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}, \code{badKeyrot\_single\_key\_safe\_not\_enough}).
 \end{assumption}
 
 \emph{Mode 0, formally: loss is not theft.} A \emph{lost} key
