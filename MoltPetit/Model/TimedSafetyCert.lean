@@ -54,6 +54,79 @@ theorem timed_certified_agreement {n : Nat} (hn : 1 ≤ n)
     (hDeep  : h + n < (c ++ s₁ :: srest).length)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
-  sorry
+  classical
+  set full : Chain := c ++ s₁ :: srest with hfull
+  set full' : Chain := c' ++ s₁' :: srest' with hfull'
+  have hVS : ValidChain n full :=
+    validChain_sound (grounded_suffix_history_of hc hTipS hLink hLinks hDense)
+  have hVS' : ValidChain n full' :=
+    validChain_sound (grounded_suffix_history_of hc' hTipS' hLink' hLinks' hDense')
+  have hcLen : 0 < c.length := by
+    have := hc.len_eq
+    omega
+  have hcLen' : 0 < c'.length := by
+    have := hc'.len_eq
+    omega
+  have hHead : blockAt? full 0 = some G := by
+    unfold blockAt?
+    rw [hfull, List.getElem?_append_left hcLen]
+    exact hc.head
+  have hHead' : blockAt? full' 0 = some G := by
+    unfold blockAt?
+    rw [hfull', List.getElem?_append_left hcLen']
+    exact hc'.head
+  have hTip : full.getLast? = some sTip := by
+    rw [hfull, List.getLast?_append, hTipS]
+    rfl
+  have hTip' : full'.getLast? = some sTip' := by
+    rw [hfull', List.getLast?_append, hTipS']
+    rfl
+  have hAvail : ∀ B ∈ full, AvailableAt log G B R := by
+    intro B hB
+    rcases List.mem_append.mp (by exact hB) with hBc | hBs
+    · rcases hc.signed B hBc with rfl | hSig
+      · exact Or.inl rfl
+      · obtain ⟨r, hrR, hrLog⟩ := hbridge hSig
+        exact Or.inr ⟨r, hrR, hrLog⟩
+    · obtain ⟨r, hrR, hrLog⟩ := hbridge (hSigned B hBs)
+      exact Or.inr ⟨r, hrR, hrLog⟩
+  have hAvail' : ∀ B ∈ full', AvailableAt log G B R := by
+    intro B hB
+    rcases List.mem_append.mp (by exact hB) with hBc' | hBs'
+    · rcases hc'.signed B hBc' with rfl | hSig
+      · exact Or.inl rfl
+      · obtain ⟨r, hrR, hrLog⟩ := hbridge hSig
+        exact Or.inr ⟨r, hrR, hrLog⟩
+    · obtain ⟨r, hrR, hrLog⟩ := hbridge (hSigned' B hBs')
+      exact Or.inr ⟨r, hrR, hrLog⟩
+  rcases le_total full.length full'.length with hLen | hLen'
+  · have hLong : n < full.length := by omega
+    have hAgree := timed_tip_ancestor_agreement hn hexec hBudget hVS hVS'
+      hHead hHead' hAvail hAvail' hTip hTip' hRecent hRecent' hLen hLong
+    set m := full.length - 1 - n
+    have hmLt : m < full.length := by omega
+    have hBm : blockAt? full m = some (getElem full m hmLt) := by
+      unfold blockAt?
+      exact List.getElem?_eq_getElem hmLt
+    have hBm' : blockAt? full' m = some (getElem full m hmLt) := by
+      rw [hAgree, hBm]
+    have hmLe : h ≤ m := by omega
+    obtain ⟨P, hPat, hPat'⟩ :=
+      same_block_same_prefix_timed hexec hVS hVS' hAvail hAvail' hBm hBm' hmLe
+    rw [hPat, hPat']
+  · have hLong' : n < full'.length := by omega
+    have hAgree := timed_tip_ancestor_agreement hn hexec hBudget hVS' hVS
+      hHead' hHead hAvail' hAvail hTip' hTip hRecent' hRecent hLen' hLong'
+    set m := full'.length - 1 - n
+    have hmLt : m < full'.length := by omega
+    have hBm' : blockAt? full' m = some (getElem full' m hmLt) := by
+      unfold blockAt?
+      exact List.getElem?_eq_getElem hmLt
+    have hBm : blockAt? full m = some (getElem full' m hmLt) := by
+      rw [hAgree, hBm']
+    have hmLe : h ≤ m := by omega
+    obtain ⟨P, hPat', hPat⟩ :=
+      same_block_same_prefix_timed hexec hVS' hVS hAvail' hAvail hBm' hBm hmLe
+    rw [hPat, hPat']
 
 end MoltPetit.Model
