@@ -793,6 +793,10 @@ blocks (\code{KeyStealingSigned}) for mode 1's chain-level rule,
 declared-version signed blocks (\code{SignedDeclared}) for modes 2--3
 and the certified mode-1 form.
 
+\begin{assumption}[No back-dating, honest custody --- per mode]\label{ass:rotation-honest}
+Fix a rotation mode and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). Unlike Assumption~\ref{ass:sig}(c) (Section~\ref{sec:timed}), this is stated directly rather than derived: Appendix~\ref{app:timed-uniq}'s derivation needs only \emph{one} key's safety per real slot, while \code{KeyStealingEUFCMA}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's, and the timed-model route does not generalize here without weakening an already-assumed primitive (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}, \code{badKeyrot\_single\_key\_safe\_not\_enough}).
+\end{assumption}
+
 \emph{Mode 0, formally: loss is not theft.} A \emph{lost} key
 (destroyed, not exfiltrated) gives the adversary nothing; the loser
 rotates and the validator already supports it. With nothing stolen the
@@ -1237,16 +1241,23 @@ generation, at depth $2n$ --- and a recency-scoped signature surface;
 mode 0 is any of them at $T = 0$.
 
 \paragraph{Honest scope.} Three bounds on what this subsection claims.
-First, the budget counts a key as stolen in every window where it was in
-force, \emph{even if the theft only happens later} (within the trailing
-$5n$ slots, for mode 1); distinguishing thefts before a block's creation
-from thefts
-after it would need creation times inside the signature assumptions, and
-is future work. Second, mode 3's budget still counts thefts across all
-generations together, exactly as mode 2's does --- letting erasure cap
-each generation's count separately is designed but not yet formalized.
-Third, mode 3's theorems are about full chains; their certificate-level
-form is future work.
+First, while the timed theft layer (\code{theft\_exposure\_window}) confines
+exposure to $[r, r{+}d)$ under the asserted hypothesis \code{NoTheftBackdating}
+and frees $F$ from retroactive census growth
+(\code{paced\_tight\_census\_bound\_all\_F}), there is no execution-level
+separation between the timed and untimed budgets
+(\code{paced\_budget\_holds\_under\_timing}): the gain is in the operational
+assumptions a deployment must defend, and deriving no-theft-backdating from
+mint-timed signature primitives remains future work.
+Second, while mode~3 formalizes per-generation erasure credit at depth $2n$
+(Theorem~\ref{thm:lock-gen}), mode~2's certificate theorem
+(\code{sched\_recent\_certified\_suffix\_agreement}) is proved under a global
+fault budget; carrying horizon scoping to mode-2 certificates is future work.
+Third, the per-mode signature surfaces are not derived from the timed model:
+as witnessed by \code{badSched\_single\_key\_safe\_not\_enough} and
+\code{badKeyrot\_single\_key\_safe\_not\_enough}, single-key safety does not
+imply slot safety, so per-mode no-back-dating is stated directly as an
+operational assumption (Assumption~\ref{ass:rotation-honest}).
 
 \subsection{Liveness, and the slot time}
 \label{sec:liveness}
@@ -1466,7 +1477,10 @@ equivalence lemma \code{valid\_chain\_be\_validChain} is proved at the
 native u64 instantiation) --- everything not machine-checked is a named
 hypothesis standing next to the theorem that consumes it: the operational
 assumptions of Section~\ref{sec:assumptions}; the key-stealing signature
-surface (assumed, not derived from the timed model); version independence
+surface (assumed, not derived from the timed model, and, precisely, cannot
+be by the technique of Appendix~\ref{app:timed-uniq} without weakening the
+surface's per-key premise; Assumption~\ref{ass:rotation-honest} records the
+resulting operational content directly instead); version independence
 of keys under theft (instantiable with key-insulated
 signatures~\cite{keyinsulated}); the circuit path's out-of-circuit trust
 anchor (the roster commitment to the cold roots); and the recency check
@@ -1571,6 +1585,14 @@ scheme under a one-period-per-slot schedule, honestly updated, provides
 both halves --- provided a bad slot yields signatures but never the key
 itself, since an exfiltrated evolving key can be evolved forward and
 defeats the forward half.
+
+The per-mode key-stealing surfaces of Section~\ref{sec:rotation} are not
+instances of Theorem~\ref{thm:timed-uniq}: their EUF-CMA hypothesis is stated
+per key version, one level finer than this appendix's per-real-slot corruption
+predicate, and a real slot can be safe for one key while unsafe for another
+eligible one at the same slot --- see Assumption~\ref{ass:rotation-honest}
+(machine-checked: \code{badSched\_single\_key\_safe\_not\_enough},
+\code{badKeyrot\_single\_key\_safe\_not\_enough}).
 
 \begin{thebibliography}{99}
 
