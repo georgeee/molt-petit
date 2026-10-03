@@ -840,26 +840,38 @@ adopts would wedge the client against the real chain.) This is a
 weak-subjectivity assumption~\cite{weaksubj}, but a narrow one, and
 Theorem~\ref{thm:refresh} is its exact price tag.
 
-\begin{theorem}[The client sync rule; Lean \code{sync\_rule},
-\code{sync\_rule\_mem}]\label{thm:refresh}
-Let a light client re-verify a chain \emph{at least once every $n$
-slots}, each time taking as its anchor the block $n$ deep below the
-newly verified tip. Suppose the key-stealing surface and hash
-injectivity hold, and the $\rho$/$T$ budget --- read off the lower
-accepted chain's confirmed floors --- holds on every $n$-slot window
-starting in the trailing $5n$ slots, or later. Then any two
-accepted, recent chains longer than $n$ blocks that both contain the
-anchor agree: at equal tip heights, on the block $n$ below each tip; at
-unequal heights, the lower chain's $n$-deep block is a block of the
-taller chain, at least $n$ deep there.
+\begin{theorem}[The client sync rule; Lean \code{sync\_rule\_timed},
+\code{sync\_rule\_mem\_timed}]\label{thm:refresh}
+Fix $n \ge 1$ and a deployment genesis $G$. Suppose:
+\begin{itemize}
+\item the key-stealing signature surface (\code{hEUF}): \code{KeyStealingEUFCMA} with adversary keys $\mathit{Stolen} := \code{stolenOf}\ \mathit{stolenAt}$;
+\item hash injectivity (\code{hHash}): $\code{SignedHashInjective}\ (\code{KeyStealingSigned}\ n\ \mathit{ops}\ \mathit{registry})\ G$;
+\item cadence and anchor (\code{hVPrev} \dots\ \code{hCadence}, \code{hA}, \code{hA'}): the client re-verified a valid chain $\mathit{sc}_{\mathrm{prev}}$ longer than $n$ blocks at time $t$ when its tip was recent ($t \le \mathit{tipPrev.slot} + n$), took as anchor $A$ the block $n$ deep below $\mathit{tipPrev}$ (\code{hAnchor}), returns within $n$ slots of that sync ($\mathit{now} \le t + n$, \code{hCadence}), and both currently presented chains $\mathit{sc}, \mathit{sc}'$ contain $A$;
+\item rent rate (\code{hRent}): for every $n$-slot window $u$ starting in the trailing $5n$ slots or later ($\mathit{now} < u + 5n$), rented slots (\code{badSlotsIn}) total at most $\rho$;
+\item theft census (\code{hTheft}): for every $n$-slot window $u$ starting in the trailing $5n$ slots or later ($\mathit{now} < u + 5n$), producers hit by a theft within $d$ slots of $u$ (\code{recentTheftProducersK}) total at most $T$;
+\item the fault budget (\code{hRT}): $\rho + T \le \fmax$ on windows starting in the trailing $5n$ slots or later;
+\item the reaction delay $d$ (\code{hReacts}): within $d$ slots of a theft of seat $i$'s version $j$, the version in force for $i$ on the chain being validated is above $j$ (\code{Reacts});
+\item validity (\code{hVal}, \code{hVal'}): both $\mathit{sc}$ and $\mathit{sc}'$ pass the mode-1 validator (\code{validSignedChainK$'$});
+\item recency (\code{hRecent}, \code{hRecent'}): both tips are recent ($\mathit{now} \le \mathit{sTip.slot} + \Delta$);
+\item chain length (\code{hLong}): both chains are longer than $n$ blocks;
+\item tip height: the tips are at equal height for the equal-height form (\code{hTipHeight}: $\mathit{sTip.height} = \mathit{sTip'.height}$), or the lower tip height is at most the other's for the membership form (\code{hLe}: $\mathit{sTip.height} \le \mathit{sTip'.height}$).
+\end{itemize}
+Then any two accepted, recent chains longer than $n$ blocks that both contain the anchor agree: at equal tip heights, on the block $n$ below each tip ($B = B'$); at unequal heights, the lower chain's $n$-deep block is a block of the taller chain, at least $n$ deep there.
 \end{theorem}
+
+\code{sync\_rule}/\code{sync\_rule\_mem} are the same conclusion under
+the census budget read off the lower chain's floors; the timed form
+derives it (\code{budget\_of\_reaction}). This duty is read off the
+validated chain (its confirmed prefix), where rotations take force at
+$n$-deep where all accepted chains agree; a fully chain-independent
+form of the duty is open (Section~\ref{sec:limitations}).
 
 \noindent In one sentence: \textbf{sync at least every $n$ slots --- the
 same $n$ as the recency rule --- and no fabricated past can ever be
-accepted, at the price of one standing assumption: over the last $5n$
-slots --- about two minutes at the prototype's parameters --- rented
-slots plus producers with a stolen key not yet retired there --- their
-version in force, or any later one --- total at most $\fmax$ per window.}
+accepted, at the price of two standing assumptions: rent plus
+thefts-within-$d$ per window at most $\fmax$ over the trailing $5n$
+slots --- about two minutes at the prototype's parameters --- plus the
+reaction delay $d$ within which victims rotate on the validated chain.}
 
 The $5n$ is the reach of that assumption: how far back the anchor can
 sit, plus the one window the counting needs. Each summand is one fact. At sync
@@ -930,15 +942,11 @@ rules at this presentation are \code{cert\_sync\_rule} and
 \code{cert\_max\_sync\_period}). So the constant-size client, not
 only the full-chain one, gets the two-minute budget.
 
-That budget need not be assumed outright. A deployment able to name a
-\emph{reaction delay} $d$ --- within $d$ slots of any theft, the
-victim's confirmed floor has moved past the stolen version (Lean
-\code{Reacts}) --- may instead assume a rent rate per window and a
-per-window census of producers hit by a theft within $d$ slots of the
-window; the trailing budget then follows (\code{budget\_of\_reaction};
-composed into the client rules, \code{sync\_rule\_timed},
-\code{max\_sync\_period\_timed}). The reaction delay is asserted,
-like \emph{not-before} in mode 2, not derived.
+As reflected in Theorem~\ref{thm:refresh}, the trailing budget is
+derived from the reaction delay $d$ (\code{Reacts}) and the per-window
+theft census via \code{budget\_of\_reaction} (composed into the client
+rules: \code{sync\_rule\_timed}, \code{max\_sync\_period\_timed}). The
+reaction delay is asserted, like \emph{not-before} in mode~2, not derived.
 
 \emph{The maximum sync period, both directions formal.} Write $F$ for
 the client's sync period. \emph{Upward} (\code{max\_sync\_period}):
@@ -1031,7 +1039,7 @@ window and producers with a stolen key not yet retired there --- their
 version in force, or any later one --- total at most $T$, $\rho + T \le 2$} --- a catastrophic-compromise ceiling, not an
 operating point, and one a monitored deployment can attest because the
 stretch is two minutes, not a history. Conclusion, machine-checked
-(\code{sync\_rule}, \code{sync\_rule\_mem}): any two chains such a
+(\code{sync\_rule\_timed}, \code{sync\_rule\_mem\_timed}): any two chains such a
 client accepts at a sync --- both, by its rule, containing its anchor
 --- agree: at equal heights on the block $n$ below each tip, and the
 lower tip's $n$-deep block lies on every taller one --- hence, block by
@@ -1444,8 +1452,7 @@ rather than out of it.
 \label{sec:limitations}
 
 \paragraph{What the design gives up.} Four properties of the surveyed
-systems are deliberately traded away, and a deployment should know it is
-buying their absence:
+systems are deliberately traded away, and one model limitation is left open:
 \begin{itemize}
 \item \emph{Dynamic participation.} The roster is fixed and closed: no
   reconfiguration, no membership churn. Signing keys rotate
@@ -1465,6 +1472,10 @@ buying their absence:
   load-bearing for safety, not only liveness. What is never assumed is
   network synchrony --- delivery is fully adversarial in every safety
   theorem.
+\item \emph{Chain-independent reaction duty.} Mode~1's reaction duty
+  (\code{Reacts}) is read off the confirmed prefix of the chain being
+  validated, where rotations take force at $n$-deep where all accepted
+  chains agree; a fully chain-independent form of the duty is open.
 \end{itemize}
 The trade is plain: a closed, equally weighted set with no recovery is
 what lets finality be a validity predicate decided at depth $n$, rather
@@ -1491,7 +1502,7 @@ itself, which lives in the unverified node loop since the pure validators
 carry no clock --- threading $\mathit{now}$ through them is mechanical
 future work; and the per-mode operational assumptions of
 Section~\ref{sec:rotation} (not-before and cold-root custody; lockstep
-coordination and erasure).
+coordination and erasure; reaction delay on the validated chain).
 
 \paragraph{The long-range residual, and options against it.} A patient
 adversary can bank coerced signatures into an arbitrarily long fork ---
