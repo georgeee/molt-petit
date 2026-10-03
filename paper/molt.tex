@@ -1097,8 +1097,8 @@ a horizon $H$; the horizon side conditions $H + n \le \mathit{tip}.\mathit{slot}
 for both tips; recency $\mathit{now} \le \mathit{tip}.\mathit{slot} + \Delta$
 for both tips; sufficient chain length $n < \mathit{length}$ (\code{hLong},
 for both chains at equal heights; for the lower chain at unequal heights);
-and the tip height relation:
-two accepted chains agree: at equal tip heights, on the block $n$ below
+and the tip-height relation of each form (\code{hTipHeight}: equal
+heights; \code{hLe}: the first tip no higher). Then two accepted chains agree: at equal tip heights, on the block $n$ below
 each tip; at unequal tip heights, the lower chain's $n$-deep ancestor block
 is a block of the taller chain, at least $n$ deep there.
 There is no shared-genesis hypothesis: genesis agreement is a consequence
