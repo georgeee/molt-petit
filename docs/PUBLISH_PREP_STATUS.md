@@ -98,8 +98,9 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
 - [ ] **Pass 12: remaining audit findings.** Resolve every finding F-01..F-11 in `verify-out/findings.md` (if that
   directory is gone, regenerate it with the `lean-paper-verify` workflow). Each one is either fixed, or answered in this
   file with the reason it is not a defect.
-- [ ] **Pass 13: Mode 1 sync-rule budget**. Spec: `docs/PASS13_SYNC_RULE_SPEC.md`. The `sync_rule` budget is stated over a
+- [x] **Pass 13: Mode 1 sync-rule budget (paper)**. Spec: `docs/PASS13_SYNC_RULE_SPEC.md`. The `sync_rule` budget is stated over a
   chain-dependent fault predicate (`badKeyrot ... (stripSigs sc)`); a deployment cannot check it in advance.
+  - Reworked Theorem 3 (`thm:refresh`) in `paper/molt.tex` per `docs/PASS13_SYNC_RULE_SPEC.md`: headline statement now cites `sync_rule_timed` / `sync_rule_mem_timed` with timed hypotheses (`KeyStealingEUFCMA` with `stolenOf`, hash injectivity, cadence and anchor, rent rate `badSlotsIn`, theft census `recentTheftProducersK`, fault budget $\rho + T \le \fmax$, reaction delay $d$ with `Reacts`); stated reaction duty as confirmed prefix of validated chain and noted open chain-independent duty in §Limitations; preserved untimed census form as engine via `budget_of_reaction`; updated boxed summary and shortened downstream discussion; created `docs/PASS13_PROGRESS.md`.
 - [ ] **Pass 14: final consistency.** Re-run `lake build` (all targets) and `bash paper/build.sh`; refresh the table in §2
   so every row is accurate; then append the line `STATUS: READY FOR REVIEW`. Never write `STATUS: COMPLETE`:
   only the reviewer does, after an independent review.
