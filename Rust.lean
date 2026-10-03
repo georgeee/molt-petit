@@ -7,4 +7,6 @@ import Rust.Bridge
 import Rust.BridgeK
 import Rust.Equiv
 import Rust.Results_rust
+import Rust.TimedResults_rust
 import Rust.Axioms
+import Rust.AxiomsTimed

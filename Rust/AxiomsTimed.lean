@@ -1,0 +1,54 @@
+import Rust.TimedResults_rust
+
+/-!
+# Pinned statement and axiom audit for the Rust timed certified theorem
+
+Owned by the reviewer. Do not edit. The `example` fixes the exact type of
+`Rust.rust_timed_certified_agreement`; the guard fails the build if the proof
+is incomplete or uses any non-classical axiom.
+-/
+
+open Aeneas Std Result Rust in
+example
+    {n : Std.U64} (hn : 1 ≤ n.val)
+    {C} (I : molt_petit.Crypto C) (crypto crypto' : C)
+    {bad : MoltPetit.Model.ByzantineSlots} {log : MoltPetit.Model.TimedLog}
+    {G : MoltPetit.Model.Block} {R : Nat}
+    (hexec : MoltPetit.Model.TimedExecution n.val bad log G)
+    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, RustSigned I crypto n B → ∃ r ≤ R, B ∈ log r)
+    (hCryptoSig : ∀ b, RustSigned I crypto' n b → RustSigned I crypto n b)
+    (hUnf : ∀ cert : molt_petit.Hash, I.cert_verify crypto cert = ok true →
+      ∃ cl, I.cert_claim crypto cert = ok cl ∧
+        MoltPetit.Model.GroundedCert n.val (RustSigned I crypto n) G (toModelClaim cl))
+    (hUnf' : ∀ cert : molt_petit.Hash, I.cert_verify crypto' cert = ok true →
+      ∃ cl, I.cert_claim crypto' cert = ok cl ∧
+        MoltPetit.Model.GroundedCert n.val (RustSigned I crypto' n) G (toModelClaim cl))
+    {cert cert' : molt_petit.Hash} {suffix suffix' : molt_petit.SignedChain}
+    (hval  : molt_petit.validate_certified_chain I n crypto (.CC cert suffix) = ok true)
+    (hval' : molt_petit.validate_certified_chain I n crypto' (.CC cert' suffix') = ok true)
+    {sr1 sr1' : molt_petit.Block} {srtl srtl' : molt_petit.Chain}
+    (hstr  : molt_petit.strip_sigs suffix  = ok (.Cons sr1 srtl))
+    (hstr' : molt_petit.strip_sigs suffix' = ok (.Cons sr1' srtl'))
+    {sTip sTip' : MoltPetit.Model.Block}
+    (hTipS  : (toModelBlock sr1  :: toModelChain srtl).getLast?  = some sTip)
+    (hTipS' : (toModelBlock sr1' :: toModelChain srtl').getLast? = some sTip')
+    (hRecent  : R ≤ sTip.slot  + n.val)
+    (hRecent' : R ≤ sTip'.slot + n.val)
+    {cl cl' : molt_petit.CertClaim}
+    (hcl  : I.cert_claim crypto  cert  = ok cl)
+    (hcl' : I.cert_claim crypto' cert' = ok cl')
+    {c c' : MoltPetit.Model.Chain}
+    (hc  : MoltPetit.Model.GroundedHistory n.val (RustSigned I crypto n) G (toModelClaim cl) c)
+    (hc' : MoltPetit.Model.GroundedHistory n.val (RustSigned I crypto' n) G
+      (toModelClaim cl') c')
+    {h : Nat}
+    (hDeep  : h + n.val < (c  ++ toModelBlock sr1  :: toModelChain srtl).length)
+    (hDeep' : h + n.val < (c' ++ toModelBlock sr1' :: toModelChain srtl').length) :
+    MoltPetit.Model.blockAt? (c ++ toModelBlock sr1 :: toModelChain srtl) h =
+      MoltPetit.Model.blockAt? (c' ++ toModelBlock sr1' :: toModelChain srtl') h :=
+  rust_timed_certified_agreement hn I crypto crypto' hexec hBudget hbridge hCryptoSig hUnf hUnf' hval hval' hstr hstr' hTipS hTipS' hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
+
+/-- info: 'Rust.rust_timed_certified_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Rust.rust_timed_certified_agreement
