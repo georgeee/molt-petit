@@ -9,6 +9,7 @@ import MoltPetit.Model.Grounded
 import MoltPetit.Model.Timed
 import MoltPetit.Results.Results
 import MoltPetit.TS.Results
+import MoltPetit.TS.TimedResults
 import MoltPetit.Model.TimedSig
 import MoltPetit.Model.TimedSafety
 import MoltPetit.Model.TimedSafetyCert

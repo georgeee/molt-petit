@@ -23,6 +23,7 @@ import Molt.AxiomsLockstepGen
 import Molt.LockstepCertAxioms
 import Molt.AxiomsTimedSafety
 import Molt.AxiomsTimedSafetyCert
+import Molt.AxiomsTSTimed
 
 /-!
 # Molt — the paper-aligned codebase
