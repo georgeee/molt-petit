@@ -161,6 +161,120 @@ theorem slot_le_firstSigned {n : Nat} (hn : 1 ≤ n)
   have := slot_le_sigTime hn hexec hBudget hc hHead hAvail k hk hB hBsig
   rwa [heq] at this
 
+/-- Step 2 (Late is forever, single step): if block at index k is late,
+its child at index k + 1 is also late. -/
+theorem late_step {n : Nat} (hn : 1 ≤ n)
+    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    (hBudget : ByzantineBounded n bad)
+    {c : Chain} (hc : ValidChain n c)
+    (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {k : Nat} (hk : 1 ≤ k)
+    {P N : Block} (hP : blockAt? c k = some P) (hN : blockAt? c (k + 1) = some N)
+    (hPsig : ∃ r, P ∈ log r) (hNsig : ∃ r, N ∈ log r)
+    (hLateP : P.slot < Nat.find hPsig) :
+    N.slot < Nat.find hNsig := by
+  have hGprev : G.prev = none := hc.2.2.1 hHead
+  have hS : StrictSlots c := hc.2.1
+  have hPL : ParentLinked c := hc.2.2.1
+  have hMat : MaturedWindowsDense n c := hc.2.2.2
+  obtain ⟨P', hP'at, hprev'⟩ := parentLinked_at_succ hPL hN
+  have hP'eq : P' = P := Option.some.inj (hP'at.symm.trans hP)
+  have hprev : N.prev = some P.id := hP'eq ▸ hprev'
+  obtain ⟨hPne, -⟩ := block_signed hGprev hPL hAvail hk hP
+  have hmono := sigTime_mono_step hexec hPne hprev hPsig hNsig
+  by_contra hnot
+  push Not at hnot
+  have hleN := slot_le_sigTime hn hexec hBudget hc hHead hAvail (k + 1) (by omega) hN hNsig
+  have hNeq : Nat.find hNsig = N.slot := by omega
+  have hPr : P ∈ log (Nat.find hPsig) := Nat.find_spec hPsig
+  have hbadP : bad (Nat.find hPsig) := bad_of_signed_ne_slot hexec hPr (ne_of_lt hLateP)
+  have hmodP : P.slot % n = (Nat.find hPsig) % n := hexec.key_match hPr
+  have hPn : P.slot + n ≤ Nat.find hPsig := add_le_of_mod_eq_of_lt hmodP hLateP
+  have hPNslot : P.slot + n ≤ N.slot := by omega
+  have hFpos : 1 ≤ maxByzantine n := maxByzantine_pos_of_bad hn hBudget hbadP
+  have h3q : 3 ≤ quorum n := three_le_quorum_of_maxByzantine_pos hFpos
+  have hUle : (P.slot + 1) + n ≤ N.slot + 1 := by omega
+  have hqDense := hMat hN (P.slot + 1) hUle
+  set W := c.filter (blockInWindow (P.slot + 1) n) with hWdef
+  have hWlen : 3 ≤ W.length := by
+    have he : windowCount c (P.slot + 1) n = W.length := rfl
+    omega
+  have hWpair : W.Pairwise (fun a b => a.slot < b.slot) :=
+    hS.sublist List.filter_sublist
+  have hySame : ∀ y ∈ W, ∃ j, blockAt? c j = some y ∧ j = k + 1 := by
+    intro y hyW
+    have hyc : y ∈ c := List.mem_of_mem_filter hyW
+    have hywin : blockInWindow (P.slot + 1) n y = true := List.of_mem_filter hyW
+    simp only [blockInWindow, decide_eq_true_eq] at hywin
+    obtain ⟨j, hjlen, hjy⟩ := List.mem_iff_getElem.mp hyc
+    have hjAt : blockAt? c j = some y := by
+      unfold blockAt?
+      rw [List.getElem?_eq_getElem hjlen, hjy]
+    rcases Nat.lt_or_ge j (k + 1) with hjlt | hjge
+    · rcases Nat.eq_or_lt_of_le (show j ≤ k by omega) with rfl | hjltk
+      · have hPy : P = y := Option.some.inj (hP.symm.trans hjAt)
+        subst hPy
+        omega
+      · have := strictSlots_lt hS hjAt hP hjltk
+        omega
+    · rcases Nat.eq_or_lt_of_le hjge with rfl | hjgt
+      · exact ⟨k + 1, hjAt, rfl⟩
+      · have := strictSlots_lt hS hN hjAt hjgt
+        omega
+  have h0 : 0 < W.length := by omega
+  have h1 : 1 < W.length := by omega
+  obtain ⟨j0, hj0At, hj0Eq⟩ := hySame (W[0]'h0) (List.getElem_mem h0)
+  obtain ⟨j1, hj1At, hj1Eq⟩ := hySame (W[1]'h1) (List.getElem_mem h1)
+  rw [hj0Eq] at hj0At
+  rw [hj1Eq] at hj1At
+  have hy01 : W[0]'h0 = W[1]'h1 := Option.some.inj (hj0At.symm.trans hj1At)
+  have hlt01 := List.pairwise_iff_getElem.mp hWpair 0 1 h0 h1 (by omega)
+  rw [hy01] at hlt01
+  exact (lt_irrefl _) hlt01
+
+/-- Step 2 (Late is forever, chain form): if block at index k is late,
+any descendant at index k + d is also late. -/
+theorem late_chain {n : Nat} (hn : 1 ≤ n)
+    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    (hBudget : ByzantineBounded n bad)
+    {c : Chain} (hc : ValidChain n c)
+    (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R) :
+    ∀ (d : Nat) {k : Nat}, 1 ≤ k →
+      ∀ {P B : Block}, blockAt? c k = some P → blockAt? c (k + d) = some B →
+      ∀ (hPsig : ∃ r, P ∈ log r) (hBsig : ∃ r, B ∈ log r),
+      P.slot < Nat.find hPsig →
+      B.slot < Nat.find hBsig := by
+  intro d
+  induction d with
+  | zero =>
+    intro k hk P B hP hB hPsig hBsig hLateP
+    rw [Nat.add_zero] at hB
+    have heq : B = P := Option.some.inj (hB.symm.trans hP)
+    subst heq
+    have hfind : Nat.find hPsig = Nat.find hBsig := by congr 1
+    rwa [hfind] at hLateP
+  | succ d ih =>
+    intro k hk P B hP hB hPsig hBsig hLateP
+    have hlt : k + d < c.length := by
+      unfold blockAt? at hB
+      obtain ⟨h, -⟩ := List.getElem?_eq_some_iff.mp hB
+      omega
+    obtain ⟨M, hMat⟩ : ∃ M, blockAt? c (k + d) = some M := by
+      unfold blockAt?
+      exact ⟨getElem c (k + d) hlt, List.getElem?_eq_getElem hlt⟩
+    have hkd : 1 ≤ k + d := by omega
+    obtain ⟨hMne, rM, _, hrMmem⟩ := block_signed (hc.2.2.1 hHead) hc.2.2.1 hAvail hkd hMat
+    have hMsig : ∃ r, M ∈ log r := ⟨rM, hrMmem⟩
+    have hLateM := ih hk hP hMat hPsig hMsig hLateP
+    have hBsucc : blockAt? c ((k + d) + 1) = some B := by
+      rw [show (k + d) + 1 = k + (d + 1) by omega]
+      exact hB
+    exact late_step hn hexec hBudget hc hHead hAvail hkd hMat hBsucc hMsig hBsig hLateM
+
 theorem timed_tip_ancestor_agreement {n : Nat} (hn : 1 ≤ n)
     {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
