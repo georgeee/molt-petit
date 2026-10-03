@@ -65,6 +65,38 @@ Every theorem statement in the paper is audited against its Lean counterpart to 
   - Verified axiom audit clean with zero `sorry`, zero `admit`, zero unapproved axioms; checked `#guard_msgs` across all headline theorems in `Molt.Axioms`.
   - Verified LaTeX build with zero errors, zero warnings, 19 pages (`molt.pdf`).
 
+### Reviewer-set passes (2026-10-03)
+
+The passes below were set by the top-level reviewer. Pass 6's audit missed a central gap: Theorem 1 assumes
+`SigUnforgeableRecent`, which the timed model yields only under `NoBackdate`. `NoBackdate` is independent of the model
+(`noBackdate_independent`) and excludes the very future-stamp harvesting the paper's adversary performs, so "recency
+is load-bearing for safety" is not machine-checked. George's decision: prove the timed theorem first. Do the passes in
+order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and record that you skipped it.
+
+- [ ] **Pass 7: timed light-client safety (Lean only).** Prove `MoltPetit.Model.timed_tip_ancestor_agreement` following
+  `docs/TIMED_SAFETY_SPEC.md`. The statement and `Molt/AxiomsTimedSafety.lean` are pinned by the reviewer: never edit
+  them. The guard in that file fails the build until the proof is complete. That failure is expected; it is the only
+  permitted build failure, and Pass 7 is done when it passes. Keep step notes in `docs/TIMED_SAFETY_PROGRESS.md`. If a
+  step of the plan is genuinely wrong, add `## PROOF GAP` to that file (failing step + counterexample), commit, and stop.
+- [ ] **Pass 8: certified-history timed safety (Lean)** *(reviewer spec pending)*. The certificate form over attested
+  histories; removes Theorem 1's "exposes that height" clause.
+- [ ] **Pass 9: Theorem 1 and recency rework (paper)** *(reviewer spec pending)*. The timed theorem becomes the headline
+  safety result; abstract, §6.1, Assumption 1 and Appendix A reframed; clock assumption stated as recency bar plus clock
+  error at most `n`.
+- [ ] **Pass 10: Mode 2 headline under the horizon budget (paper).** Make the horizon-scoped
+  `sched_recent_tip_ancestor_mem_horizon` the primary statement of Theorem 4 (thm:sched) and state the global-budget
+  `scheduled_client_safety` as the corollary, with the exact Lean hypotheses of each.
+- [ ] **Pass 11: thm:lock-gen hypotheses (paper).** State `hTipHeight` (equal tip heights) and `hLong` (`2n <
+  length`) explicitly in Theorem 5b, as in `Molt.lockstep_client_safety_gen` (audit findings F-07, F-09).
+- [ ] **Pass 12: remaining audit findings.** Resolve every finding F-01..F-11 in `verify-out/findings.md` (if that
+  directory is gone, regenerate it with the `lean-paper-verify` workflow). Each one is either fixed, or answered in this
+  file with the reason it is not a defect.
+- [ ] **Pass 13: Mode 1 sync-rule budget** *(reviewer spec pending)*. The `sync_rule` budget is stated over a
+  chain-dependent fault predicate (`badKeyrot ... (stripSigs sc)`); a deployment cannot check it in advance.
+- [ ] **Pass 14: final consistency.** Re-run `lake build` (all targets) and `bash paper/build.sh`; refresh the table in §2
+  so every row is accurate; then append the line `STATUS: READY FOR REVIEW`. Never write `STATUS: COMPLETE`:
+  only the reviewer does, after an independent review.
+
 ---
 
 ## 4. Open Questions & Design Decisions for George
@@ -77,5 +109,3 @@ Every theorem statement in the paper is audited against its Lean counterpart to 
 6. **Mode 3 Certificate Generation Attestation (§6.3):** The certificate attests the tip generation alongside the claim, but for $n \ge 2$ this generation is uniquely determined by the tail buffer (`groundedCertLock_gen_of_tail`, `groundedCertLock_gen_unique`), so only $n = 1$ carries an extra counter over the wire.
 7. **Mode 3 Safety Twins (§6.3):** Both the cumulative global form (Theorem 5, depth $n$) and the per-generation credited form (Theorem 5b, depth $2n$) are presented as options for deployments, with the modes table highlighting credited erasure under Theorem 5b.
 8. **W6 Obstruction & Per-Mode No-Backdating Assumption:** As established by `Molt.badSched_single_key_safe_not_enough` and `Molt.badKeyrot_single_key_safe_not_enough`, slot-level custody does not imply single-key safety when multiple key versions are eligible. The operational content is stated directly as Assumption~\ref{ass:rotation-honest} and cross-referenced in §8 Named Seams and Appendix~\ref{app:timed-uniq}. If a positive derivation is ever desired, it requires revising the definition of `KeyStealingEUFCMA` / `SchedCoreUnforgeable` to restrict the adversary's target to the declared version rather than an arbitrary version.
-
-STATUS: COMPLETE
