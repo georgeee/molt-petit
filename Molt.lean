@@ -21,6 +21,7 @@ import Molt.AxiomsMaxSyncSignatureTimed
 import Molt.AxiomsCertAnchored
 import Molt.AxiomsLockstepGen
 import Molt.LockstepCertAxioms
+import Molt.AxiomsTimedSafety
 
 /-!
 # Molt — the paper-aligned codebase
@@ -38,4 +39,3 @@ against the same core, and the axiom guards apply unchanged.
 Modules grow section by section with the paper; the imports above are the
 current frontier.
 -/
-import Molt.AxiomsTimedSafety
