@@ -28,13 +28,13 @@ theorem timed_certified_agreement {n : Nat} (hn : 1 ≤ n)
     {Signed : Block → Prop} {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r ≤ R, B ∈ log r)
     {cl cl' : CertClaim}
-    (hcl  : GroundedCert n Signed G cl)
+    (hcl : GroundedCert n Signed G cl)
     (hcl' : GroundedCert n Signed G cl')
     {s₁ s₁' : Block} {srest srest' : Chain}
     {sTip sTip' : Block}
-    (hTipS  : (s₁  :: srest).getLast?  = some sTip)
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
-    (hLink  : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
     (hLinks : linksOk (s₁ :: srest) = true)
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 →
         quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
@@ -43,15 +43,15 @@ theorem timed_certified_agreement {n : Nat} (hn : 1 ≤ n)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip'.slot + 1 →
         quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
-    (hSigned  : ∀ B ∈ s₁ :: srest,  Signed B)
+    (hSigned : ∀ B ∈ s₁ :: srest, Signed B)
     (hSigned' : ∀ B ∈ s₁' :: srest', Signed B)
-    (hRecent  : R ≤ sTip.slot  + n)
+    (hRecent : R ≤ sTip.slot + n)
     (hRecent' : R ≤ sTip'.slot + n)
     {c c' : Chain}
-    (hc  : GroundedHistory n Signed G cl c)
+    (hc : GroundedHistory n Signed G cl c)
     (hc' : GroundedHistory n Signed G cl' c')
     {h : Nat}
-    (hDeep  : h + n < (c ++ s₁ :: srest).length)
+    (hDeep : h + n < (c ++ s₁ :: srest).length)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
   classical

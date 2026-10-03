@@ -1,19 +1,43 @@
 import MoltPetit.Model.Timed
 import MoltPetit.Model.Safety
 
+/-!
+# Light-client safety in the timed model — no back-dating assumption
+
+`light_client_safety` assumes `SigUnforgeableRecent`, which the timed model only
+yields under `NoBackdate` (`sigUnforgeableRecent_of_timed`), and `NoBackdate` is
+not implied by the model (`noBackdate_independent`): a bad real slot may sign a
+block carrying one of its producer's honest stamps. This module proves
+light-client safety **directly from the timed model**: EUF-CMA (blocks are signed
+only through the timed log), collision resistance (`id_inj`), the per-window
+fault budget and the recency rule. It needs neither `NoBackdate` nor any
+exposure hypothesis, and it genuinely uses recency.
+
+`R` is the verifier's real slot. Both chains must exist by `R` and pass the
+recency rule `R ≤ tip.slot + n`. The proof plan is in `docs/TIMED_SAFETY_SPEC.md`.
+
+Main theorem: `timed_tip_ancestor_agreement`.
+
+THE STATEMENT OF `timed_tip_ancestor_agreement` IS FIXED. Its exact type is pinned
+by `Molt/AxiomsTimedSafety.lean`. Prove it; do not change it.
+-/
+
 namespace MoltPetit.Model
 
+/-- Arithmetic bound relating maximum Byzantine slots and quorum size: 2f + 1 ≤ quorum n. -/
 theorem two_mul_maxByzantine_add_one_le_quorum (n : Nat) (hn : 1 ≤ n) :
     2 * maxByzantine n + 1 ≤ quorum n := by
   unfold quorum maxByzantine
   omega
 
+/-- Strict bound 3f < n on the number of Byzantine slots in any window. -/
 theorem three_mul_maxByzantine_lt (n : Nat) (hn : 1 ≤ n) :
     3 * maxByzantine n < n := by
   unfold maxByzantine
   omega
 
 open Classical in
+/-- If there is a Byzantine slot under a valid budget, then maxByzantine n ≥ 1. -/
 theorem maxByzantine_pos_of_bad {n : Nat} {bad : ByzantineSlots}
     (hn : 1 ≤ n) (hBudget : ByzantineBounded n bad) {r : Nat} (hbad : bad r) :
     1 ≤ maxByzantine n := by
@@ -25,16 +49,19 @@ theorem maxByzantine_pos_of_bad {n : Nat} {bad : ByzantineSlots}
     Finset.card_pos.mpr ⟨r, hmem⟩
   exact le_trans hpos hcard
 
+/-- If maxByzantine n ≥ 1, then n ≥ 4. -/
 theorem four_le_of_maxByzantine_pos {n : Nat} (h : 1 ≤ maxByzantine n) : 4 ≤ n := by
   unfold maxByzantine at h
   omega
 
+/-- If maxByzantine n ≥ 1, then quorum n ≥ 3. -/
 theorem three_le_quorum_of_maxByzantine_pos {n : Nat} (h : 1 ≤ maxByzantine n) :
     3 ≤ quorum n := by
   unfold maxByzantine at h
   unfold quorum
   omega
 
+/-- Residue gap: congruence modulo n with a < b implies a + n ≤ b. -/
 theorem add_le_of_mod_eq_of_lt {n a b : Nat}
     (hmod : a % n = b % n) (hlt : a < b) : a + n ≤ b := by
   have hmodeq : Nat.ModEq n a b := hmod
@@ -43,6 +70,7 @@ theorem add_le_of_mod_eq_of_lt {n a b : Nat}
   have := Nat.le_of_dvd hpos hdvd
   omega
 
+/-- If a block signed at real slot r does not match r, then real slot r is Byzantine. -/
 theorem bad_of_signed_ne_slot {n : Nat} {bad : ByzantineSlots}
     {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
@@ -51,9 +79,11 @@ theorem bad_of_signed_ne_slot {n : Nat} {bad : ByzantineSlots}
   have := hexec.honest_stamp hnot hBr
   exact hne this
 
+/-- Predicate asserting that real slot `r` is the first slot where block `B` appears in the log. -/
 def FirstSigned (log : TimedLog) (B : Block) (r : Nat) : Prop :=
   B ∈ log r ∧ ∀ r' < r, B ∉ log r'
 
+/-- Equivalence of FirstSigned and Nat.find. -/
 theorem firstSigned_iff_find {log : TimedLog} {B : Block}
     (hBsig : ∃ r, B ∈ log r) {r : Nat} :
     FirstSigned log B r ↔ Nat.find hBsig = r := by
@@ -275,6 +305,7 @@ theorem late_chain {n : Nat} (hn : 1 ≤ n)
       exact hB
     exact late_step hn hexec hBudget hc hHead hAvail hkd hMat hBsucc hMsig hBsig hLateM
 
+/-- Monotonicity of belowCount with respect to the threshold. -/
 theorem belowCount_mono (c : Chain) {a b : Nat} (h : a ≤ b) :
     belowCount c a ≤ belowCount c b := by
   induction c with
@@ -289,6 +320,7 @@ theorem belowCount_mono (c : Chain) {a b : Nat} (h : a ≤ b) :
       · rfl
     omega
 
+/-- Arithmetic lemma on slot density pigeonholing: quorum bound implies K = 0 and m ≤ f. -/
 theorem div_zero_of_quorum_le {q f K m : Nat}
     (hq : 2 * f + 1 ≤ q) (hdens : q * K ≤ m) (hbud : m ≤ f * (K + 1)) :
     K = 0 ∧ m ≤ f := by
@@ -377,7 +409,8 @@ theorem late_tail_short {n : Nat} (hn : 1 ≤ n)
   have h4n : 4 ≤ n := four_le_of_maxByzantine_pos hFpos
   have h2n : 2 ≤ n := by omega
   have hsig : ∀ k, ∃ r, ℓ ≤ k → k < c.length →
-      (L.slot + n ≤ r ∧ r ≤ R ∧ bad r ∧ ∃ B, blockAt? c k = some B ∧ B ∈ log r ∧ ∀ r' < r, B ∉ log r') := by
+      (L.slot + n ≤ r ∧ r ≤ R ∧ bad r ∧
+        ∃ B, blockAt? c k = some B ∧ B ∈ log r ∧ ∀ r' < r, B ∉ log r') := by
     intro k
     by_cases hk : ℓ ≤ k ∧ k < c.length
     · obtain ⟨hk1, hk2⟩ := hk
@@ -385,21 +418,23 @@ theorem late_tail_short {n : Nat} (hn : 1 ≤ n)
         unfold blockAt?; exact List.getElem?_eq_getElem hk2
       obtain ⟨hBne, rB, hrBle, hrBmem⟩ := block_signed hGprev hPL hAvail (by omega) hB
       have hBsig : ∃ r, (getElem c k hk2) ∈ log r := ⟨rB, hrBmem⟩
+      have hAtEq : blockAt? c (ℓ + (k - ℓ)) = some (getElem c k hk2) := by
+        rw [show ℓ + (k - ℓ) = k by omega]; exact hB
       have hLateB := late_chain hn hexec hBudget hc hHead hAvail (k - ℓ) hℓ1 hL
-        (show blockAt? c (ℓ + (k - ℓ)) = some (getElem c k hk2) by rw [show ℓ + (k - ℓ) = k by omega]; exact hB)
-        hLsig hBsig hLateL
+        hAtEq hLsig hBsig hLateL
       have hmono := sigTime_mono_chain hexec hGprev hPL hAvail (k - ℓ) hℓ1 hL
-        (show blockAt? c (ℓ + (k - ℓ)) = some (getElem c k hk2) by rw [show ℓ + (k - ℓ) = k by omega]; exact hB)
-        hLsig hBsig
+        hAtEq hLsig hBsig
       have hBr : (getElem c k hk2) ∈ log (Nat.find hBsig) := Nat.find_spec hBsig
       have hbadB : bad (Nat.find hBsig) := bad_of_signed_ne_slot hexec hBr (ne_of_lt hLateB)
-      refine ⟨Nat.find hBsig, fun _ _ => ⟨?_, ?_, hbadB, getElem c k hk2, hB, hBr, fun r' hr' => Nat.find_min hBsig hr'⟩⟩
+      refine ⟨Nat.find hBsig, fun _ _ => ⟨?_, ?_, hbadB, getElem c k hk2, hB, hBr,
+        fun r' hr' => Nat.find_min hBsig hr'⟩⟩
       · exact le_trans hLn hmono
       · exact le_trans (Nat.find_min' hBsig hrBmem) hrBle
     · exact ⟨0, fun h1 h2 => absurd ⟨h1, h2⟩ hk⟩
   choose σ hσ using hsig
   have hcard : m ≤ ((Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s).card := by
-    have hmaps : ∀ a ∈ Finset.Ico ℓ c.length, σ a ∈ (Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s := by
+    have hmaps : ∀ a ∈ Finset.Ico ℓ c.length,
+        σ a ∈ (Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s := by
       intro a ha
       rw [Finset.mem_Ico] at ha
       obtain ⟨h0, h1, h2, -⟩ := hσ a ha.1 ha.2
@@ -413,12 +448,14 @@ theorem late_tail_short {n : Nat} (hn : 1 ≤ n)
       · obtain ⟨-, -, -, B, hBat, hBr, hBmin⟩ := hσ a ha.1 ha.2
         obtain ⟨-, -, -, B', hB'at, hB'r, hB'min⟩ := hσ b hb.1 hb.2
         rw [hab] at hBr hBmin
-        exact one_real_slot_one_block h2n hexec hGprev hc hAvail (by omega) h hBat hB'at hBr hBmin hB'r hB'min
+        exact one_real_slot_one_block h2n hexec hGprev hc hAvail (by omega)
+          h hBat hB'at hBr hBmin hB'r hB'min
       · have h' : b < a := by omega
         obtain ⟨-, -, -, B, hBat, hBr, hBmin⟩ := hσ a ha.1 ha.2
         obtain ⟨-, -, -, B', hB'at, hB'r, hB'min⟩ := hσ b hb.1 hb.2
         rw [hab] at hBr hBmin
-        exact one_real_slot_one_block h2n hexec hGprev hc hAvail (by omega) h' hB'at hBat hB'r hB'min hBr hBmin
+        exact one_real_slot_one_block h2n hexec hGprev hc hAvail (by omega)
+          h' hB'at hBat hB'r hB'min hBr hBmin
     have := Finset.card_le_card_of_injOn σ hmaps hinj
     rwa [Nat.card_Ico] at this
   have hbound : R + 1 ≤ (L.slot + n) + (K + 1) * n := by
@@ -430,7 +467,8 @@ theorem late_tail_short {n : Nat} (hn : 1 ≤ n)
       _ = (L.slot + s) + n := by omega
       _ = (L.slot + n) + s := by ring
       _ ≤ (L.slot + n) + (K + 1) * n := Nat.add_le_add_left hs_bound _
-  have hbad : ((Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s).card ≤ maxByzantine n * (K + 1) := by
+  have hbad : ((Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s).card ≤
+      maxByzantine n * (K + 1) := by
     calc ((Finset.Ico (L.slot + n) (R + 1)).filter fun s => bad s).card
         ≤ ((Finset.Ico (L.slot + n) ((L.slot + n) + (K + 1) * n)).filter fun s => bad s).card :=
           Finset.card_le_card (Finset.filter_subset_filter _ (Finset.Ico_subset_Ico le_rfl hbound))
@@ -445,6 +483,7 @@ theorem late_tail_short {n : Nat} (hn : 1 ≤ n)
     omega
   refine ⟨hm_le, by omega⟩
 
+/-- Injective block IDs imply identical parents in timed executions. -/
 theorem same_block_same_parent_timed
     {n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
@@ -471,11 +510,13 @@ theorem same_block_same_parent_timed
   subst hPeq
   exact ⟨P, hPat, hP'at⟩
 
+/-- Identical blocks at the same height imply identical prefixes in timed executions. -/
 theorem same_block_same_prefix_timed
     {n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
     {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
-    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R) (hAvail' : ∀ B ∈ c', AvailableAt log G B R) :
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (hAvail' : ∀ B ∈ c', AvailableAt log G B R) :
     ∀ {m : Nat} {B : Block},
       blockAt? c m = some B →
       blockAt? c' m = some B →
@@ -497,6 +538,7 @@ theorem same_block_same_prefix_timed
         same_block_same_parent_timed hexec hc hc' hAvail hAvail' hAt hAt'
       exact ih hPc hPc' hkLe
 
+/-- Two occurrences of the same block in valid chains have equal heights. -/
 theorem same_block_same_height
     {n : Nat} {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
     {i j : Nat} {B : Block}
@@ -506,6 +548,7 @@ theorem same_block_same_height
   have hj : B.height = j := hc'.1 hB'
   rw [← hi, ← hj]
 
+/-- Existence of the last common height before divergence in timed executions. -/
 theorem exists_lastCommonHeight_timed
     {n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
@@ -552,6 +595,7 @@ theorem exists_lastCommonHeight_timed
         hShared.1 hShared.2 (k := d) hdLeJ
     exact hdP.2 Y ⟨hY, hY'⟩
 
+/-- Blocks strictly above the divergence point are distinct. -/
 theorem disjoint_blocks_of_lastCommonHeight
     {n : Nat} {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
     {h : Nat} (hLast : LastCommonHeight c c' h)
@@ -569,6 +613,7 @@ theorem disjoint_blocks_of_lastCommonHeight
     omega
   exact hLast.2 i hih B ⟨hi, hj⟩
 
+/-- Two distinct on-time blocks in the same slot imply a Byzantine slot. -/
 theorem bad_of_same_slot_on_time
     {n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
@@ -586,6 +631,7 @@ theorem bad_of_same_slot_on_time
     exact hexec.honest_once hNotBad h1 h2
   exact disjoint_blocks_of_lastCommonHeight hc hc' hLast hB hB' hh hh' hEq
 
+/-- Height gap lower bound on slot progression along strict chains. -/
 theorem slot_ge_of_height_gap {c : Chain} (hS : StrictSlots c)
     {i : Nat} {Bi : Block} (hi : blockAt? c i = some Bi) :
     ∀ {j : Nat} {Bj : Block}, blockAt? c j = some Bj → i ≤ j →
@@ -606,6 +652,7 @@ theorem slot_ge_of_height_gap {c : Chain} (hS : StrictSlots c)
       have hStep : Bj'.slot < Bj.slot := strictSlots_lt hS hBj' hj (Nat.lt_succ_self j')
       omega
 
+/-- Pigeonhole inequality for on-time honest slots in a post-divergence window. -/
 theorem two_mul_min_gt (n : Nat) (hn : 1 ≤ n) :
     n + maxByzantine n < 2 * min (n + 1 - maxByzantine n) (quorum n) := by
   have h3 : 3 * maxByzantine n < n := by
@@ -624,6 +671,7 @@ theorem two_mul_min_gt (n : Nat) (hn : 1 ≤ n) :
     rw [h.1]
     exact h2q
 
+/-- Existence of honest on-time slots in the post-divergence window. -/
 theorem exists_ontime_slots_in_window
     {n : Nat} (hn : 1 ≤ n)
     {bad : ByzantineSlots} {log : TimedLog} {G : Block}
@@ -653,14 +701,16 @@ theorem exists_ontime_slots_in_window
     rw [Finset.mem_filter] at hs
     exact hs.2
   let LateIndex (k : Nat) : Prop :=
-    1 ≤ k ∧ k < c.length ∧ ∃ B, blockAt? c k = some B ∧ ∃ (hBsig : ∃ r, B ∈ log r), B.slot < Nat.find hBsig
+    1 ≤ k ∧ k < c.length ∧ ∃ B, blockAt? c k = some B ∧
+      ∃ (hBsig : ∃ r, B ∈ log r), B.slot < Nat.find hBsig
   by_cases hLateInW : ∃ k, LateIndex k ∧ ∃ B, blockAt? c k = some B ∧ B.slot ∈ Finset.Ico u (u + n)
   · obtain ⟨k, hkLate, B_k, hB_k, hB_k_in⟩ := hLateInW
     have hExists : ∃ j, LateIndex j := ⟨k, hkLate⟩
     set ℓ := Nat.find hExists
     have hPℓ : LateIndex ℓ := Nat.find_spec hExists
     obtain ⟨hℓ1, hℓlen, L, hL, hLsig, hLateL⟩ := hPℓ
-    obtain ⟨hm_le, -⟩ := late_tail_short hn hexec hBudget hc hHead hAvail hTip hRecent hℓ1 hℓlen hL hLsig hLateL
+    obtain ⟨hm_le, -⟩ := late_tail_short hn hexec hBudget hc hHead hAvail
+      hTip hRecent hℓ1 hℓlen hL hLsig hLateL
     have h3f : 3 * maxByzantine n < n := three_mul_maxByzantine_lt n hn
     have h_e_le_ℓ : h + 1 ≤ ℓ := by
       by_contra hlt
@@ -784,6 +834,9 @@ theorem exists_ontime_slots_in_window
     have : min (n + 1 - maxByzantine n) (quorum n) ≤ quorum n := min_le_right _ _
     omega
 
+/-- **Timed light-client safety (tip ancestor agreement).**
+Two valid chains verified at real slot R satisfying recency R ≤ tip.slot + n agree on their
+common prefix up to depth n below both tips. -/
 theorem timed_tip_ancestor_agreement {n : Nat} (hn : 1 ≤ n)
     {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)

@@ -663,13 +663,8 @@ def SignedHashInjective (Signed : Block → Prop) (G : Block) : Prop :=
 pinned to the signing log only for blocks of valid chains whose **tip is recent** — within `Δ`
 slots of the verifier's current slot `now`.
 
-This is the assumption the timed model justifies for the tight rule
-`Δ = n` (`Model/Timed.lean`): `forged_suffix_time_bound` proves that
-harvesting coerced signatures into a fork is rate-limited to
-`maxByzantine` blocks per `n` real slots, so a fork meeting the recency
-bar caps out around `2·maxByzantine ≈ 2n/3` harvested blocks — short of
-the `n + 1` needed to contradict an `n`-deep block (breakeven at
-`Δ ≈ 1.5n`, so `Δ = n` keeps ~50% margin). Over *unbounded* staleness
+The timed headline (`timed_tip_ancestor_agreement`) proves safety at staleness `n` directly;
+this residue is only the untimed model's assumption. Over *unbounded* staleness
 the patient harvesting attack defeats the unscoped assumption; this
 scoping says exactly what survives: stale chains promise nothing,
 recent ones pin honest slots.

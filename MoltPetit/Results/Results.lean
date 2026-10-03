@@ -45,10 +45,9 @@ over occurring blocks), and per-node certificate unforgeability
   form: a fully forged chain with tip stamp `T` needs `≈ 2T` of real
   time.
 
-These rate limits are what make the recency rule sound: a fork meeting
-the `Δ = n` bar carries at most `≈ 2·maxByzantine ≈ 2n/3` harvested
-blocks — short of the `n + 1` needed to fake an `n`-deep ancestor
-(breakeven at `Δ ≈ 1.5n`).
+These rate limits underwrite recency: the timed headline
+(`timed_tip_ancestor_agreement`) proves safety at staleness `n` directly,
+and this residue is only the untimed model's assumption.
 
 ## Liveness — the chain grows
 
