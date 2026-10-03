@@ -7,10 +7,10 @@ All safety theorems are machine-checked in Lean 4. In addition to classical coun
 ## Repository Layout
 
 - `paper/`: The paper source (`molt.tex`, `yak-wordmark.pdf`, `build.sh`).
-- `Molt/`, `Molt.lean`: The presentation layer re-exporting and packaging definitions and theorems under the paper's vocabulary; Lean citations in `paper/molt.tex` resolve here.
+- `Molt/`, `Molt.lean`: The presentation layer re-exporting and packaging definitions and theorems under the paper's vocabulary; Lean citations in `paper/molt.tex` resolve here, including the headline safety theorem `Molt.timed_light_client_safety`.
 - `MoltPetit/`, `MoltPetit.lean`: The formal protocol model, inductive state machine, and proof development.
 - Three-way correspondence:
-  - **Rust protocol**: `rust/src/lib.rs` (the standalone validator crate), `Rust/Extracted.lean` (extracted from `rust/src/lib.rs` via Charon + Aeneas), and the other files in `Rust/` (`Bridge.lean`, `BridgeK.lean`, `Equiv.lean`, `Properties.lean`, `Results_rust.lean`, `Axioms.lean`) containing the proofs relating them to the model.
+  - **Rust protocol**: `rust/src/lib.rs` (the standalone validator crate), `Rust/Extracted.lean` (extracted from `rust/src/lib.rs` via Charon + Aeneas), and the other files in `Rust/` (`Bridge.lean`, `BridgeK.lean`, `Equiv.lean`, `Properties.lean`, `Results_rust.lean`, `TimedResults_rust.lean`, `Axioms.lean`, `AxiomsTimed.lean`) containing the proofs relating them to the model, including headline theorem `Rust.rust_timed_certified_agreement`.
   - **TypeScript protocol**: `moltPetit.ts`, `tools/thales-reemission/`, `Thales/` (`TS/Runtime.lean`), `MoltPetit/TS/Emitted.lean` (emitted from `moltPetit.ts` via Thales (vendored with the deviations in `tools/thales-reemission/`)), and the other files in `MoltPetit/TS/` (`Bridge.lean`, `BridgeK.lean`, `Results.lean`) containing the proofs relating them to the model.
 - `nix/`, `flake.nix`, `flake.lock`, `NIX.md`: Hermetic toolchain pins for Charon, Aeneas, and Thales, and faithfulness checks.
 - `docs/review/`: Annotation and wording review records (`PAPER_WORDING_PROPOSED.md`, `ANNOTATION_REVIEW_REPORT.html`).
@@ -24,7 +24,7 @@ All commands run from the repository root unless noted otherwise.
 ```bash
 tools/check.sh
 ```
-The project's aggregate check: builds every Lean target (including the `#guard_msgs` axiom audits), fails on any `sorry` or `axiom` declaration in this repository's sources, and builds the paper.
+The project's aggregate check: builds every Lean target (including the `#guard_msgs` axiom audits, notably for `Molt.timed_light_client_safety` and `Rust.rust_timed_certified_agreement`), fails on any `sorry` or `axiom` declaration in this repository's sources, and builds the paper.
 
 ### Lean Proofs
 ```bash

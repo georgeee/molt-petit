@@ -249,6 +249,43 @@ chain's $2n$-deep block lies on the taller,
 shared-genesis hypothesis; the
 cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)
 
+\paragraph{The modes at a glance.}
+\begin{center}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}p{1.4cm}p{2.1cm}p{2.3cm}p{1.5cm}p{1.0cm}p{5.8cm}@{}}
+\toprule
+ & pin computed from & client holds & erasure & anchor & headline Lean theorem \\
+\midrule
+0 no theft & any of the three &
+  genesis + clock & no & no &
+  Thm.~\ref{thm:lc}: \code{timed\_light\_client\_safety}
+  (+~Rust: \code{rust\_timed\_certified\_agreement}) \\
+\addlinespace
+1 reactive & chain floor, $n$ slots deep &
+  genesis, clock, anchor, $n$-slot sync & no & yes &
+  Thm.~\ref{thm:refresh}: \code{sync\_rule\_timed} \\
+\addlinespace
+2 scheduled & slot arithmetic $\mathit{gen}(s)$ &
+  genesis + clock + $\mathit{gen}$ & no & no &
+  Thm.~\ref{thm:sched}: \code{sched\_recent\_tip\_ancestor\_agreement\_horizon},
+  \code{sched\_recent\_tip\_ancestor\_mem\_horizon} \\
+\addlinespace
+3 lockstep & roster counter, no-mixing &
+  genesis + clock & yes (credited, Thm.~\ref{thm:lock-gen}) & no &
+  Thm.~\ref{thm:lock}: \code{lockstep\_client\_safety};
+  Thm.~\ref{thm:lock-gen}: \code{lockstep\_client\_safety\_gen},
+  \code{lockstepGen\_recent\_tip\_ancestor\_mem} \\
+\bottomrule
+\end{tabular}
+\end{center}
+Read the trust downward: mode 1 trusts the client's own recency of state;
+mode 2 trusts slot arithmetic plus key-provisioning discipline; mode 3
+trusts roster coordination plus physical destruction. Modes 1--3 share
+the $\rho + T \le \fmax$ budget --- in mode 3 the $T$ may be read per
+generation, at depth $2n$ --- and a recency-scoped signature surface;
+mode 0 is any of them at $T = 0$.
+
 Everything that follows makes these paragraphs precise: the protocol and
 its validator (Sections~\ref{sec:protocol}--\ref{sec:rules}), what a
 deployment must assume (Section~\ref{sec:assumptions}), and the theorems
@@ -1260,31 +1297,8 @@ lower chain's confirmed block lying on the taller --- hence, through the
 parent-id chain (\code{same\_block\_same\_prefix}), on the lower chain's
 whole confirmed prefix --- with no schedule anywhere and no anchor.
 
-\paragraph{The modes at a glance.}
-\begin{center}
-\small
-\begin{tabular}{@{}lllll@{}}
-\toprule
- & pin computed from & client holds & erasure & anchor \\
-\midrule
-0 no theft & any of the three &
-  genesis + clock & no & no \\
-1 reactive & chain floor, $n$ slots deep &
-  genesis, clock, anchor, $n$-slot sync & no & yes
-  (Thm.~\ref{thm:refresh}) \\
-2 scheduled & slot arithmetic $\mathit{gen}(s)$ &
-  genesis + clock + $\mathit{gen}$ & no & no \\
-3 lockstep & roster counter, no-mixing &
-  genesis + clock & \shortstack[l]{yes (credited,\\ Thm.~\ref{thm:lock-gen})} & no \\
-\bottomrule
-\end{tabular}
-\end{center}
-Read the trust downward: mode 1 trusts the client's own recency of state;
-mode 2 trusts slot arithmetic plus key-provisioning discipline; mode 3
-trusts roster coordination plus physical destruction. Modes 1--3 share
-the $\rho + T \le \fmax$ budget --- in mode 3 the $T$ may be read per
-generation, at depth $2n$ --- and a recency-scoped signature surface;
-mode 0 is any of them at $T = 0$.
+The modes at a glance and their headline theorems are collected in
+Section~\ref{sec:opmodel}.
 
 \paragraph{Honest scope.} Three bounds on what this subsection claims.
 First, while the timed theft layer (\code{theft\_exposure\_window}) confines
