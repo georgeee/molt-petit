@@ -58,6 +58,19 @@ def NoTheftBackdating (n Δconf : Nat) (c₀ : Chain) (stolenAt : Nat → Nat �
     Prop :=
   ∀ i j r s, stolenAt i j r → inForce n Δconf c₀ i s ≤ j → r ≤ s
 
+/-- **`NoTheftBackdating` is degenerate.** At any positive confirmation depth
+nothing is confirmed at slot `0`, so the floor there is `0` and the hypothesis
+forces every theft to have happened at real slot `0`. It is retained only as a
+documented negative result; no paper-facing theorem should consume it.
+
+THE STATEMENT OF `noTheftBackdating_degenerate` IS FIXED (pinned by
+`Molt/AxiomsTSTimed.lean`). Prove it; do not change it. -/
+theorem noTheftBackdating_degenerate {n Δconf : Nat} (hΔ : 1 ≤ Δconf)
+    {c₀ : Chain} {stolenAt : Nat → Nat → Nat → Prop}
+    (h : NoTheftBackdating n Δconf c₀ stolenAt)
+    {i j r : Nat} (hst : stolenAt i j r) : r = 0 := by
+  sorry
+
 /-- The two-sided-bounded census: `recentTheftProducersK` with the extra
 conjunct `r < u + n`, pinning a qualifying theft's real time to the fixed
 interval `(u − d, u + n)` around the window — independent of the window's

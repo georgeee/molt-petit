@@ -31,6 +31,19 @@ Mechanical: copy the extraction from `ts_recent_tip_ancestor_agreement`
    hDense hLink' hLinks' hDense' hSigned hSigned' hRecent hRecent' hc hc' hDeep hDeep'`.
    (`Signed := TSSigned n sigOps`.)
 
+## Second item: the `NoTheftBackdating` degeneracy lemma
+
+`noTheftBackdating_degenerate` in `MoltPetit/Model/KeyStealingSignatureTimed.lean` is pinned
+(statement fixed by `Molt/AxiomsTSTimed.lean`). Prove it: specialise `h i j r 0 hst`. At
+`s = 0` and `1 ≤ Δconf`, `confirmedPrefix Δconf c₀ 0 = []` (no `b.slot + Δconf ≤ 0`), so
+`inForce n Δconf c₀ i 0 = keyFloor n [] i = 0 ≤ j`, and so `r ≤ 0`.
+
+Then update the docstrings of `NoTheftBackdating`, `theft_exposure_window` and every theorem
+that takes a `NoTheftBackdating` hypothesis (`grep -rn NoTheftBackdating MoltPetit Molt`).
+Add one sentence to each: "This hypothesis is degenerate: it forces every theft to real slot
+0 (`noTheftBackdating_degenerate`); the result is retained only as a documented negative
+result." Do not change any statement.
+
 ## Done when
 
 `bash tools/check.sh` prints `check: all green`. Record progress in
