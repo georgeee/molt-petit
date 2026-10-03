@@ -1,30 +1,68 @@
 import MoltPetit.Model.Timed
 import MoltPetit.Model.Safety
 
-/-!
-# Light-client safety in the timed model — no back-dating assumption
-
-`light_client_safety` assumes `SigUnforgeableRecent`, which the timed model only
-yields under `NoBackdate` (`sigUnforgeableRecent_of_timed`), and `NoBackdate` is
-not implied by the model (`noBackdate_independent`): a bad real slot may sign a
-block carrying one of its producer's honest stamps. This module proves
-light-client safety **directly from the timed model**: EUF-CMA (blocks are signed
-only through the timed log), collision resistance (`id_inj`), the per-window
-fault budget and the recency rule. It needs neither `NoBackdate` nor any
-exposure hypothesis, and it genuinely uses recency.
-
-`R` is the verifier's real slot. Both chains must exist by `R` and pass the
-recency rule `R ≤ tip.slot + n`. The proof plan is in `docs/TIMED_SAFETY_SPEC.md`.
-
-THE STATEMENT OF `timed_tip_ancestor_agreement` IS FIXED. Its exact type is pinned
-by `Molt/AxiomsTimedSafety.lean`. Prove it; do not change it.
--/
-
 namespace MoltPetit.Model
 
-/-- **Timed light-client safety.** Two valid chains from the same genesis, both
-available by real slot `R` and both recent at `R`, agree on the block `n` below
-the shorter chain's tip. -/
+theorem two_mul_maxByzantine_add_one_le_quorum (n : Nat) (hn : 1 ≤ n) :
+    2 * maxByzantine n + 1 ≤ quorum n := by
+  unfold quorum maxByzantine
+  omega
+
+theorem three_mul_maxByzantine_lt (n : Nat) (hn : 1 ≤ n) :
+    3 * maxByzantine n < n := by
+  unfold maxByzantine
+  omega
+
+open Classical in
+theorem maxByzantine_pos_of_bad {n : Nat} {bad : ByzantineSlots}
+    (hn : 1 ≤ n) (hBudget : ByzantineBounded n bad) {r : Nat} (hbad : bad r) :
+    1 ≤ maxByzantine n := by
+  have hcard := hBudget r
+  have hmem : r ∈ (Finset.Ico r (r + n)).filter (fun s => bad s) := by
+    rw [Finset.mem_filter, Finset.mem_Ico]
+    exact ⟨⟨le_rfl, by omega⟩, hbad⟩
+  have hpos : 1 ≤ ((Finset.Ico r (r + n)).filter (fun s => bad s)).card :=
+    Finset.card_pos.mpr ⟨r, hmem⟩
+  exact le_trans hpos hcard
+
+theorem four_le_of_maxByzantine_pos {n : Nat} (h : 1 ≤ maxByzantine n) : 4 ≤ n := by
+  unfold maxByzantine at h
+  omega
+
+theorem three_le_quorum_of_maxByzantine_pos {n : Nat} (h : 1 ≤ maxByzantine n) :
+    3 ≤ quorum n := by
+  unfold maxByzantine at h
+  unfold quorum
+  omega
+
+theorem add_le_of_mod_eq_of_lt {n a b : Nat}
+    (hmod : a % n = b % n) (hlt : a < b) : a + n ≤ b := by
+  have hmodeq : Nat.ModEq n a b := hmod
+  have hdvd : n ∣ b - a := (Nat.modEq_iff_dvd' (le_of_lt hlt)).mp hmodeq
+  have hpos : 0 < b - a := by omega
+  have := Nat.le_of_dvd hpos hdvd
+  omega
+
+theorem bad_of_signed_ne_slot {n : Nat} {bad : ByzantineSlots}
+    {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    {r : Nat} {B : Block} (hBr : B ∈ log r) (hne : B.slot ≠ r) : bad r := by
+  by_contra hnot
+  have := hexec.honest_stamp hnot hBr
+  exact hne this
+
+def FirstSigned (log : TimedLog) (B : Block) (r : Nat) : Prop :=
+  B ∈ log r ∧ ∀ r' < r, B ∉ log r'
+
+theorem firstSigned_iff_find {log : TimedLog} {B : Block}
+    (hBsig : ∃ r, B ∈ log r) {r : Nat} :
+    FirstSigned log B r ↔ Nat.find hBsig = r := by
+  constructor
+  · rintro ⟨hBr, hmin⟩
+    exact (Nat.find_eq_iff hBsig).mpr ⟨hBr, hmin⟩
+  · rintro rfl
+    exact ⟨Nat.find_spec hBsig, fun r' hr' => Nat.find_min hBsig hr'⟩
+
 theorem timed_tip_ancestor_agreement {n : Nat} (hn : 1 ≤ n)
     {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
