@@ -63,11 +63,12 @@ are machine-checked in Lean~4 --- the core claims about the imported
 Rust validator source itself, proved sound against the model and re-used
 as the recursive-proof circuit, and today's key-rotation results at
 model level. Beyond the classical counting argument, we prove that forged
-chains advance at half real-time speed --- which makes the verifier's
-recency check a load-bearing safety ingredient --- and we develop key
-rotation inside consensus against an adversary who steals keys and keeps
-them forever: three rotation modes with exactly stated operator and
-client duties. Measured with post-quantum signatures on commodity
+chains advance at half real-time speed, and light-client safety is
+proved directly in a timed model, against an adversary that harvests
+coerced signatures stamped for any slot, so the recency check is a
+machine-checked safety ingredient --- and we develop key rotation inside
+consensus against an adversary who steals keys and keeps them forever:
+three rotation modes with exactly stated operator and client duties. Measured with post-quantum signatures on commodity
 hardware, the verified consensus rule adds under $2\%$ to any
 certificate's proving cost.
 \end{abstract}
@@ -151,8 +152,8 @@ participants produces blocks in public round-robin slots; every block
 declares the signing-key version it was signed under; a node holds a
 constant-size certificate plus a short suffix of recent signed blocks;
 and a verifier accepts a chain only if it validates and its tip is
-recent --- at most $n$ slots old on the verifier's own clock --- then
-trusts everything $n$ blocks deep. Key rotation is part of the protocol
+recent --- at most $b$ slots old on the verifier's own clock, where
+$b + \delta \le n$ --- then trusts everything $n$ blocks deep. Key rotation is part of the protocol
 from the start: a deployment completes the validator by fixing one of
 three rotation \emph{pins}. A pin bounds the key version a block may
 declare --- a floor in modes 1--2, exact per window of a fixed grid in
@@ -270,13 +271,13 @@ Table~\ref{tab:notation} collects the paper's symbols.
 \toprule
 symbol & meaning & where \\
 \midrule
-$n$ & roster size; also the density window (slots), the recency bar
-  (slots), and the trust depth (blocks) & \S\ref{sec:protocol} \\
+$n$ & roster size; also the density window (slots) and trust depth
+  (blocks) & \S\ref{sec:protocol} \\
 $\quorum = \lceil 2n/3 \rceil$ & window quorum & \S\ref{sec:protocol} \\
 $\fmax = \lfloor (n{-}1)/3 \rfloor$ & per-window fault budget & Asm.~\ref{ass:budget} \\
 $\tau$ & slot duration (seconds) & \S\ref{sec:impl} \\
 $\mathit{now}$ & verifier's clock; recency test
-  $\mathit{now} \le \mathit{tip.slot} + n$ & \S\ref{sec:protocol} \\
+  $\mathit{now} \le \mathit{tip.slot} + b$ with $b + \delta \le n$ & \S\ref{sec:protocol} \\
 $H(\cdot)$ & the block-id hash & \S\ref{sec:protocol} \\
 $\mathit{keyFor}(i,j)$, \code{keyIndex} & seat $i$'s public key at
   version $j$; the version a block declares & \S\ref{sec:protocol} \\
@@ -287,9 +288,10 @@ $R$, $\mathit{gen}(s) = \lfloor s/R \rfloor$ & rotation-schedule period;
 \bottomrule
 \end{tabular}
 \caption{Notation. Every timing rule in the paper is set by $n$: the
-density window, the recency bar, the trust depth, the confirmation depth
-at which a mode-1 rotation takes force, and the mode-1 client's sync
-cadence (Section~\ref{sec:results}). There is no other timing constant.}
+density window, the recency bound ($b + \delta \le n$), the trust depth,
+the confirmation depth at which a mode-1 rotation takes force, and the
+mode-1 client's sync cadence (Section~\ref{sec:results}). There is no
+other timing constant.}
 \label{tab:notation}
 \end{table}
 
@@ -405,19 +407,22 @@ one rule. Accept a certified chain if and only if:
   --- certificate, signatures at declared versions, linkage, density,
   and the key-version discipline with the deployment's pin
   (\code{validCertifiedChain} plus the mode's key checks);
-\item it is \emph{recent}: $\mathit{now} \le \mathit{tip.slot} + n$ on the
-  verifier's own clock. (This clock comparison is the one line a
+\item it is \emph{recent}: $\mathit{now} \le \mathit{tip.slot} + b$ on the
+  verifier's own clock, where real time is at most $\delta$ slots ahead of
+  $\mathit{now}$ ($R \le \mathit{now} + \delta$) and $b + \delta \le n$.
+  (This clock comparison is the one line a
   deployment implements outside the verified validator ---
   Section~\ref{sec:limitations}.)
 \end{enumerate}
 It then trusts the blocks $n$ deep below the tip. Both halves are
 necessary: validity without recency admits carefully aged forgeries
 (Section~\ref{sec:results} quantifies exactly how old a forgery must be),
-and recency without validity means nothing. The same $n$ serves as density
-window, recency bar, and trust depth --- Section~\ref{sec:results} shows
-why one size fits all three roles. At the prototype's parameters ($n = 7$,
-$\tau \approx 4$\,s) the rule reads: accept only chains whose tip is at
-most ${\approx}28$\,s old, then trust everything from about a minute back.
+and recency without validity means nothing. The parameter $n$ governs the
+density window, the trust depth, and the recency condition
+$b + \delta \le n$. For example, choosing $b = n/2$ leaves $n/2$ slots
+--- about $14$\,s at the prototype's parameters ($n = 7$, $\tau \approx 4$\,s)
+--- for clock skew and network propagation combined, then trust
+everything from $n$ blocks back.
 
 \section{The rules a node runs}
 \label{sec:rules}
