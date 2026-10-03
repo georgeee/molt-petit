@@ -117,10 +117,23 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
 1. **W7 (Multi-chain network model):** Retained as future work / limitation (§6.4 L1223). The rollout evaluation concluded that formalizing a full dynamic gossip network model with fork choice is out of scope for this consensus protocol paper and yields diminishing returns.
 2. **Mode 2 Certificate Horizon Scoping:** Proved under global all-window budget (`sched_recent_certified_suffix_agreement`). Horizon scoping for certificates remains future work (while Mode 1 and Mode 3 certificate forms are fully closed).
 3. **Mode-1 reaction delay (`Reacts`):** Mode-1 reaction delay `Reacts` is read off the validated chain (open, disclosed in Named seams).
-4. **W3b Separation Framing (§6.3):** The text explicitly avoids claiming that the timed budget saves executions that the untimed budget rejected (which `paced_budget_holds_under_timing` disproves); rather, `paced_separation_witnessed` proves a separation in the operational assumptions a deployment must defend (a constant per-window bound vs a stretch-wide retroactive accumulation).
+4. **W3b timed theft layer (§6.3), withdrawn:** `NoTheftBackdating` is degenerate: it forces every theft to real slot 0 (`noTheftBackdating_degenerate`, audit run 3 F-02). The paper no longer cites the tight census or `max_sync_period_tight`. A theft is charged through `Reacts` to every window `u` with `u < r + d`. Charging a theft only to later windows needs forward-secure signing, and is future work.
 5. **W4 Sync Induction Hypotheses (§6.3):** The paper now states `sync_induction_full_chain` is machine-checked conditional on `hRLe` (reference tip at least as tall at every sync), while the informal density argument justifying `hRLe` remains acknowledged as informal on paper.
 6. **Mode 3 Certificate Generation Attestation (§6.3):** The certificate attests the tip generation alongside the claim, but for $n \ge 2$ this generation is uniquely determined by the tail buffer (`groundedCertLock_gen_of_tail`, `groundedCertLock_gen_unique`), so only $n = 1$ carries an extra counter over the wire.
 7. **Mode 3 Safety Twins (§6.3):** Both the cumulative global form (Theorem 5, depth $n$) and the per-generation credited form (Theorem 5b, depth $2n$) are presented as options for deployments, with the modes table highlighting credited erasure under Theorem 5b.
 8. **W6 Obstruction & Per-Mode No-Backdating Assumption:** As established by `Molt.badSched_single_key_safe_not_enough` and `Molt.badKeyrot_single_key_safe_not_enough`, slot-level custody does not imply single-key safety when multiple key versions are eligible. The operational content is stated directly as Assumption~\ref{ass:rotation-honest} and cross-referenced in §8 Named Seams and Appendix~\ref{app:timed-uniq}. If a positive derivation is ever desired, it requires revising the definition of `KeyStealingEUFCMA` / `SchedCoreUnforgeable` to restrict the adversary's target to the declared version rather than an arbitrary version.
 
-STATUS: READY FOR REVIEW
+## 5. Reviewer sign-off (2026-10-03)
+
+- Gate: `bash tools/check.sh` prints `check: all green` at db3b292 (Lean build with all axiom guards, no `sorry`, no axiom declarations, paper builds).
+- Audit: `lean-paper-verify` run 4 (79b9b215) is READY. 119 claims are faithful, no findings, and all eight run-3 findings are resolved.
+- Headline theorems:
+  - Thm 1 is `Molt.timed_light_client_safety` in the timed model, with no `NoBackdate` or exposure clause.
+  - Thm 1 is carried to Rust (`Rust.rust_timed_certified_agreement`) and to TypeScript (`ts_timed_certified_agreement`).
+  - Thm 3 is `sync_rule_timed` / `sync_rule_mem_timed`.
+  - Thm 4 is the horizon pair.
+  - Thms 5/5b are lockstep.
+  - Every statement in the paper was checked against its Lean statement.
+- Disclosed open items (not carve-outs; each is stated in the paper as future work or a named seam): mode-1 `Reacts` is read off the validated chain; mode-2 certificate horizon scoping; per-generation credit for mode-3 certificates; forward-secure theft timing; the multi-chain network model; the recency check in the node loop.
+
+STATUS: COMPLETE
