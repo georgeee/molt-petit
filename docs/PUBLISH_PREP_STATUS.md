@@ -79,7 +79,8 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
     - Commit `3666849`: Moved `import Molt.AxiomsTimedSafety` before doc comments in `Molt.lean` so library root parses cleanly.
     - Commit `801b06e`: Added arithmetic bounds ($2f + 1 \le q$, $3f < n$, $bad \implies f \ge 1 \implies n \ge 4 \land q \ge 3$), residue gap ($a \equiv b \pmod n \land a < b \implies a + n \le b$), honest stamp contrapositive, and `FirstSigned` definition and `Nat.find` equivalence in `MoltPetit/Model/TimedSafety.lean`.
     - Created `docs/TIMED_SAFETY_PROGRESS.md`.
-  - [ ] **Pass 7b: Step 1 (No pre-signing).** Prove $B.slot \le \sigma(B)$ for all chain indices $k \ge 1$.
+  - [x] **Pass 7b: Step 1 (No pre-signing).** Prove $B.slot \le \sigma(B)$ for all chain indices $k \ge 1$.
+    - Commit `66d0cda`: Proved `slot_le_sigTime` and `slot_le_firstSigned` in `MoltPetit/Model/TimedSafety.lean`.
   - [ ] **Pass 7c: Step 2 (Late is forever).** Prove that any descendant of a late block is late.
   - [ ] **Pass 7d: Step 3 (Late tail is short).** Prove late tail length $m \le f$ and $T.slot + 1 < L.slot + n$ on recent chains.
   - [ ] **Pass 7e: Step 4 (Main argument).** Complete `timed_tip_ancestor_agreement` via post-divergence window analysis.

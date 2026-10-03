@@ -15,9 +15,10 @@ Tracking implementation of `MoltPetit.Model.timed_tip_ancestor_agreement` per `d
 e r$ implies $bad\ r$
   - `FirstSigned`: definition and equivalence with `Nat.find`
   - Monotonicity lemmas reused from `MoltPetit.Model.Timed`: `sigTime_mono_step`, `sigTime_mono_chain`, `one_real_slot_one_block`.
-- [ ] **Step 1: No pre-signing** (Pass 7b)
-  - Goal: For every index $k \ge 1$, $B.slot \le \sigma(B)$.
-  - Method: Induction on index $k$; contradiction via `MaturedWindowsDense` on $[B.slot - n, B.slot)$ having $\le 1$ block $< q$.
+- [x] **Step 1: No pre-signing** (Pass 7b)
+  - `slot_le_sigTime`: for every index $k \ge 1$, $B.slot \le \text{Nat.find } hBsig$.
+  - `slot_le_firstSigned`: for every index $k \ge 1$ and `FirstSigned log B r`, $B.slot \le r$.
+  - Proved by strong induction on $k$: if $r = \sigma(B) < B.slot$, then $r$ is bad, $r + n \le B.slot$, $q \ge 3$; by IH and monotonicity any ancestor before $P$ has slot $< P.slot \le \sigma(P) \le \sigma(B) \le B.slot - n$, so matured window $[B.slot - n, B.slot)$ contains at most $P$, giving windowCount $\le 1 < 3 \le q$, contradiction.
 - [ ] **Step 2: Late is forever** (Pass 7c)
   - Goal: If $P$ (index $\ge 1$) is late and $N$ is its child, then $N$ is late.
 - [ ] **Step 3: Late tail is short on a recent chain** (Pass 7d)
