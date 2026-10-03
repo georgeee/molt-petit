@@ -506,6 +506,86 @@ theorem same_block_same_height
   have hj : B.height = j := hc'.1 hB'
   rw [← hi, ← hj]
 
+theorem exists_lastCommonHeight_timed
+    {n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R) (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    (hCommon0 : CommonPrefixUpTo c c' 0)
+    {k : Nat} {B B' : Block}
+    (hAt : blockAt? c k = some B) (hAt' : blockAt? c' k = some B')
+    (hNe : B ≠ B') :
+    ∃ h, h < k ∧ LastCommonHeight c c' h := by
+  classical
+  let P : Nat → Prop := fun d =>
+    d ≤ k ∧ ∀ X : Block, ¬ (blockAt? c d = some X ∧ blockAt? c' d = some X)
+  have hPk : P k := by
+    refine ⟨le_rfl, ?_⟩
+    intro X hShared
+    have hBX : B = X := by
+      rw [hAt] at hShared
+      exact Option.some.inj hShared.1
+    have hB'X : B' = X := by
+      rw [hAt'] at hShared
+      exact Option.some.inj hShared.2
+    exact hNe (hBX.trans hB'X.symm)
+  have hExists : ∃ d, P d := ⟨k, hPk⟩
+  let d := Nat.find hExists
+  have hdP : P d := Nat.find_spec hExists
+  have hdLe : d ≤ k := hdP.1
+  have hdNeZero : d ≠ 0 := by
+    intro hdZero
+    rcases hCommon0 0 (by omega) with ⟨G0, hG0, hG0'⟩
+    exact hdP.2 G0 ⟨by simpa [d, hdZero] using hG0, by simpa [d, hdZero] using hG0'⟩
+  refine ⟨d - 1, by omega, ?_, ?_⟩
+  · intro j hj
+    by_cases hShared : ∃ X : Block, blockAt? c j = some X ∧ blockAt? c' j = some X
+    · simpa using hShared
+    · have hjLeK : j ≤ k := by omega
+      have hPj : P j := ⟨hjLeK, by simpa using hShared⟩
+      have hdLeJ : d ≤ j := Nat.find_min' hExists hPj
+      omega
+  · intro j hj X hShared
+    have hdLeJ : d ≤ j := by omega
+    obtain ⟨Y, hY, hY'⟩ :=
+      same_block_same_prefix_timed hexec hc hc' hAvail hAvail'
+        hShared.1 hShared.2 (k := d) hdLeJ
+    exact hdP.2 Y ⟨hY, hY'⟩
+
+theorem disjoint_blocks_of_lastCommonHeight
+    {n : Nat} {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {h : Nat} (hLast : LastCommonHeight c c' h)
+    {B B' : Block} (hB : B ∈ c) (hB' : B' ∈ c')
+    (hh : h < B.height) (hh' : h < B'.height) :
+    B ≠ B' := by
+  intro hEq
+  subst hEq
+  obtain ⟨i, hi⟩ := exists_blockAt_of_mem hB
+  obtain ⟨j, hj⟩ := exists_blockAt_of_mem hB'
+  have heq : i = j := same_block_same_height hc hc' hi hj
+  subst heq
+  have hih : h < i := by
+    have := hc.1 hi
+    omega
+  exact hLast.2 i hih B ⟨hi, hj⟩
+
+theorem bad_of_same_slot_on_time
+    {n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {h : Nat} (hLast : LastCommonHeight c c' h)
+    {B B' : Block} (hB : B ∈ c) (hB' : B' ∈ c')
+    (hh : h < B.height) (hh' : h < B'.height)
+    (hOntime : FirstSigned log B B.slot) (hOntime' : FirstSigned log B' B'.slot)
+    (hSlotEq : B.slot = B'.slot) :
+    bad B.slot := by
+  by_contra hNotBad
+  have hEq : B = B' := by
+    have h1 : B ∈ log B.slot := hOntime.1
+    have h2 : B' ∈ log B.slot := by rw [hSlotEq]; exact hOntime'.1
+    exact hexec.honest_once hNotBad h1 h2
+  exact disjoint_blocks_of_lastCommonHeight hc hc' hLast hB hB' hh hh' hEq
+
 theorem timed_tip_ancestor_agreement {n : Nat} (hn : 1 ≤ n)
     {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)

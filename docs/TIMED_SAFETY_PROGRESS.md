@@ -32,4 +32,7 @@ e r$ implies $bad\ r$
   - `same_block_same_parent_timed`: identical available blocks on valid chains share parents.
   - `same_block_same_prefix_timed`: identical available blocks force agreement down to genesis.
   - `same_block_same_height`: identical blocks on valid chains have equal heights.
-  - In progress: post-divergence window analysis and case split.
+  - `exists_lastCommonHeight_timed`: two chains disagreeing at height $k$ have a last common height $h < k$.
+  - `disjoint_blocks_of_lastCommonHeight`: post-divergence blocks on the two chains are strictly distinct.
+  - `bad_of_same_slot_on_time`: two on-time post-divergence blocks cannot share an honest slot.
+  - In progress: `exists_ontime_slots_in_window` and main theorem.
