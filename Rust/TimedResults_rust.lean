@@ -20,6 +20,17 @@ open Aeneas Std Result
 
 namespace Rust
 
+/-- `GroundedHistory` is monotone in its signature predicate. -/
+theorem groundedHistory_mono {n : Nat} {S₁ S₂ : MoltPetit.Model.Block → Prop}
+    {G : MoltPetit.Model.Block} (hmono : ∀ b, S₁ b → S₂ b)
+    {cl : MoltPetit.Model.CertClaim} {c : MoltPetit.Model.Chain}
+    (hc : MoltPetit.Model.GroundedHistory n S₁ G cl c) :
+    MoltPetit.Model.GroundedHistory n S₂ G cl c :=
+  ⟨hc.valid, hc.head, hc.tip, hc.tail_eq, hc.len_eq,
+   fun B hB => match hc.signed B hB with
+     | Or.inl hG => Or.inl hG
+     | Or.inr hS => Or.inr (hmono B hS)⟩
+
 /-- **Timed certified light-client safety, Rust validator.** -/
 theorem rust_timed_certified_agreement
     {n : Std.U64} (hn : 1 ≤ n.val)
@@ -59,6 +70,28 @@ theorem rust_timed_certified_agreement
     (hDeep' : h + n.val < (c' ++ toModelBlock sr1' :: toModelChain srtl').length) :
     MoltPetit.Model.blockAt? (c ++ toModelBlock sr1 :: toModelChain srtl) h =
       MoltPetit.Model.blockAt? (c' ++ toModelBlock sr1' :: toModelChain srtl') h := by
-  sorry
+  obtain ⟨cl0, stripped, hcl0, hstrip, hcv, hsg, hsfx⟩ :=
+    validate_certified_chain_sound hval
+  obtain ⟨cl0', stripped', hcl0', hstrip', hcv', hsg', hsfx'⟩ :=
+    validate_certified_chain_sound hval'
+  rw [hstr] at hstrip; injection hstrip with hstrip; subst hstrip
+  rw [hstr'] at hstrip'; injection hstrip' with hstrip'; subst hstrip'
+  rw [hcl] at hcl0; injection hcl0 with hcl0; subst hcl0
+  rw [hcl'] at hcl0'; injection hcl0' with hcl0'; subst hcl0'
+  obtain ⟨clm, hclEq, hG⟩ := hUnf cert hcv
+  obtain ⟨clm', hclEq', hG'0⟩ := hUnf' cert' hcv'
+  rw [hcl] at hclEq; injection hclEq with hclEq; subst hclEq
+  rw [hcl'] at hclEq'; injection hclEq' with hclEq'; subst hclEq'
+  have hG' := groundedCert_mono hCryptoSig hG'0
+  have hSigned := sigs_ok_signed suffix hsg hstr
+  have hSigned' := sigs_ok_signed suffix' hsg' hstr'
+  rw [toModelChain_cons] at hSigned hSigned'
+  replace hSigned' := fun b hb => hCryptoSig b (hSigned' b hb)
+  obtain ⟨hLink, hLinks, hDense⟩ := validate_suffix_sound hTipS hsfx
+  obtain ⟨hLink', hLinks', hDense'⟩ := validate_suffix_sound hTipS' hsfx'
+  have hc'' := groundedHistory_mono hCryptoSig hc'
+  exact MoltPetit.Model.timed_certified_agreement hn hexec hBudget hbridge hG hG'
+    hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense' hSigned hSigned'
+    hRecent hRecent' hc hc'' hDeep hDeep'
 
 end Rust
