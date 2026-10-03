@@ -86,6 +86,7 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
   - [x] **Pass 7e: Step 4 (Main argument).** Complete `timed_tip_ancestor_agreement` via post-divergence window analysis.
 - [x] **Pass 8: certified-history timed safety (Lean)**. Spec: `docs/TIMED_CERT_SPEC.md`; pinned `timed_certified_agreement`, guard `Molt/AxiomsTimedSafetyCert.lean`. The certificate form over attested
   histories; removes Theorem 1's "exposes that height" clause.
+- [x] **Pass 8b: timed certified safety for the shipped Rust validator (Lean)**. Spec: `docs/RUST_TIMED_SPEC.md`; pinned `Rust.rust_timed_certified_agreement`, guard `Rust/AxiomsTimed.lean`. Prove timed certified safety for the extracted Rust validator using `timed_certified_agreement` and the signature bridge.
 - [x] **Pass 9: Theorem 1 and recency rework (paper)**. Spec: `docs/PAPER_TIMED_REWORK_SPEC.md`. The timed theorem becomes the headline
   - Reworked `paper/molt.tex` per `docs/PAPER_TIMED_REWORK_SPEC.md`: `Molt.timed_light_client_safety` is Theorem 1 headline, clock stated as $b + \delta \le n$, untimed result demoted, dropped unproven $3/2n$ and 50% numbers, reframed Appendix A as untimed residue derived, created `docs/PAPER_TIMED_REWORK_PROGRESS.md`.
   safety result; abstract, §6.1, Assumption 1 and Appendix A reframed; clock assumption stated as recency bar plus clock
