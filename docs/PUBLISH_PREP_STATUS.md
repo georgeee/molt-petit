@@ -86,7 +86,7 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
   - [x] **Pass 7e: Step 4 (Main argument).** Complete `timed_tip_ancestor_agreement` via post-divergence window analysis.
 - [x] **Pass 8: certified-history timed safety (Lean)**. Spec: `docs/TIMED_CERT_SPEC.md`; pinned `timed_certified_agreement`, guard `Molt/AxiomsTimedSafetyCert.lean`. The certificate form over attested
   histories; removes Theorem 1's "exposes that height" clause.
-- [ ] **Pass 9: Theorem 1 and recency rework (paper)** *(reviewer spec pending)*. The timed theorem becomes the headline
+- [ ] **Pass 9: Theorem 1 and recency rework (paper)**. Spec: `docs/PAPER_TIMED_REWORK_SPEC.md`. The timed theorem becomes the headline
   safety result; abstract, §6.1, Assumption 1 and Appendix A reframed; clock assumption stated as recency bar plus clock
   error at most `n`.
 - [ ] **Pass 10: Mode 2 headline under the horizon budget (paper).** Make the horizon-scoped
