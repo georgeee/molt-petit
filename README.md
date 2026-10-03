@@ -20,6 +20,12 @@ All safety theorems are machine-checked in Lean 4. In addition to classical coun
 
 All commands run from the repository root unless noted otherwise.
 
+### Full Gate
+```bash
+tools/check.sh
+```
+The project's aggregate check: builds every Lean target (including the `#guard_msgs` axiom audits), fails on any `sorry` or `axiom` declaration in this repository's sources, and builds the paper.
+
 ### Lean Proofs
 ```bash
 lake build
