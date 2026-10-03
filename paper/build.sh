@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Build molt.pdf via TeX Live from nixpkgs — no system LaTeX needed.
-#   ./build.sh
-# Same minimal `texlive.combine` as georgeee/mini-consensus-lean: paper/build.sh (see the rationale there).
 set -e
 cd "$(dirname "$0")"
-nix-shell -p '(texlive.combine { inherit (texlive) scheme-small latexmk microtype xcolor booktabs geometry amsmath amscls hyperref pgf; })' \
-  --run "latexmk -pdf -interaction=nonstopmode -halt-on-error molt.tex"
+if command -v latexmk >/dev/null 2>&1; then
+  latexmk -pdf -interaction=nonstopmode -halt-on-error molt.tex
+elif [ -x /nix/store/xwg31kngm9c3p4cgqhjhyc0hzb8i24ji-texlive-2025-r78234-final-env/bin/latexmk ]; then
+  nix-run /nix/store/xwg31kngm9c3p4cgqhjhyc0hzb8i24ji-texlive-2025-r78234-final-env/bin/latexmk -pdf -interaction=nonstopmode -halt-on-error molt.tex
+else
+  nix-run nix shell github:NixOS/nixpkgs/c27cdad491a991b11ed731760aa2ef8db0cb0410#texliveMedium --command latexmk -pdf -interaction=nonstopmode -halt-on-error molt.tex
+fi

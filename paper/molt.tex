@@ -114,7 +114,7 @@ rotation modes with exactly stated operator and client duties --- down
 to a theorem that fixes, in the one mode built for actively syncing
 clients, the single rule such a client must obey (sync at least once
 every $n$ slots, Section~\ref{sec:rotation}); clients of the other two
-modes obey no rule at all.
+modes obey no cadence rule at all.
 
 The engineering claim is as important as the theorems. The validator is
 one Rust file; it is \emph{imported} into Lean~4 (via Charon + Aeneas)
@@ -659,7 +659,8 @@ The ``exposes that height'' hypothesis is a restriction of presentation,
 not of operation: a certificate-plus-$n$-block chain can always be
 re-presented as a certificate$'$-plus-$2n$-block chain (grounding attests
 a claim at every fold), so a holder can re-expose as many blocks as a
-comparison needs.
+comparison needs --- argued, not proved (the representability lemmas are
+production-side), which is why the hypothesis stays in the statement.
 
 Two remarks. First, the conclusion also covers a chain the node
 \emph{produced} rather than received, because production ships nothing
@@ -849,8 +850,8 @@ taller chain, at least $n$ deep there.
 same $n$ as the recency rule --- and no fabricated past can ever be
 accepted, at the price of one standing assumption: over the last $5n$
 slots --- about two minutes at the prototype's parameters --- rented
-slots plus producers suffering a theft of a then-live key total at most
-$\fmax$ per window.}
+slots plus producers with a stolen key not yet retired there --- their
+version in force, or any later one --- total at most $\fmax$ per window.}
 
 The $5n$ is the reach of that assumption: how far back the anchor can
 sit, plus the one window the counting needs. Each summand is one fact. At sync
@@ -885,8 +886,8 @@ a young one.
 
 Why the cadence cannot simply be enlarged: \emph{the budget's census is
 retroactive}. The model carries no theft times, so the census at a
-window counts every producer whose version in force there is ever
-stolen and not yet retired by then --- a theft is charged to the
+window counts every producer any of whose versions not yet retired
+there is ever stolen --- a theft is charged to the
 windows \emph{before} it as well, for as long as the same version was in
 force, and rotating afterwards never subtracts from them. The oldest
 windows of a stretch therefore carry the \emph{total} theft count of the
@@ -993,8 +994,8 @@ key-stealing surface and hash injectivity (the adversary paragraph's
 rescopings of Assumptions~\ref{ass:sig}--\ref{ass:hash}); the standing
 clock assumption (Assumption~\ref{ass:clock}); and \emph{over any
 ${\approx}\,2$-minute stretch, rented slots stay within $\rho$ per
-window and at most $T$ of the seven seats suffer a theft of a then-live
-key, $\rho + T \le 2$} --- a catastrophic-compromise ceiling, not an
+window and producers with a stolen key not yet retired there --- their
+version in force, or any later one --- total at most $T$, $\rho + T \le 2$} --- a catastrophic-compromise ceiling, not an
 operating point, and one a monitored deployment can attest because the
 stretch is two minutes, not a history. Conclusion, machine-checked
 (\code{sync\_rule}, \code{sync\_rule\_mem}): any two chains such a
