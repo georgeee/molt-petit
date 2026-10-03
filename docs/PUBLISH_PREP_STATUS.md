@@ -73,11 +73,16 @@ The passes below were set by the top-level reviewer. Pass 6's audit missed a cen
 is load-bearing for safety" is not machine-checked. George's decision: prove the timed theorem first. Do the passes in
 order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and record that you skipped it.
 
-- [ ] **Pass 7: timed light-client safety (Lean only).** Prove `MoltPetit.Model.timed_tip_ancestor_agreement` following
-  `docs/TIMED_SAFETY_SPEC.md`. The statement and `Molt/AxiomsTimedSafety.lean` are pinned by the reviewer: never edit
-  them. The guard in that file fails the build until the proof is complete. That failure is expected; it is the only
-  permitted build failure, and Pass 7 is done when it passes. Keep step notes in `docs/TIMED_SAFETY_PROGRESS.md`. If a
-  step of the plan is genuinely wrong, add `## PROOF GAP` to that file (failing step + counterexample), commit, and stop.
+- **Pass 7: timed light-client safety (Lean only).** Prove `MoltPetit.Model.timed_tip_ancestor_agreement` following
+  `docs/TIMED_SAFETY_SPEC.md`. (Subdivided into Passes 7a–7e per progress plan).
+  - [x] **Pass 7a: Step 0 (Arithmetic & basics).**
+    - Commit `3666849`: Moved `import Molt.AxiomsTimedSafety` before doc comments in `Molt.lean` so library root parses cleanly.
+    - Commit `801b06e`: Added arithmetic bounds ($2f + 1 \le q$, $3f < n$, $bad \implies f \ge 1 \implies n \ge 4 \land q \ge 3$), residue gap ($a \equiv b \pmod n \land a < b \implies a + n \le b$), honest stamp contrapositive, and `FirstSigned` definition and `Nat.find` equivalence in `MoltPetit/Model/TimedSafety.lean`.
+    - Created `docs/TIMED_SAFETY_PROGRESS.md`.
+  - [ ] **Pass 7b: Step 1 (No pre-signing).** Prove $B.slot \le \sigma(B)$ for all chain indices $k \ge 1$.
+  - [ ] **Pass 7c: Step 2 (Late is forever).** Prove that any descendant of a late block is late.
+  - [ ] **Pass 7d: Step 3 (Late tail is short).** Prove late tail length $m \le f$ and $T.slot + 1 < L.slot + n$ on recent chains.
+  - [ ] **Pass 7e: Step 4 (Main argument).** Complete `timed_tip_ancestor_agreement` via post-divergence window analysis.
 - [ ] **Pass 8: certified-history timed safety (Lean)** *(reviewer spec pending)*. The certificate form over attested
   histories; removes Theorem 1's "exposes that height" clause.
 - [ ] **Pass 9: Theorem 1 and recency rework (paper)** *(reviewer spec pending)*. The timed theorem becomes the headline
