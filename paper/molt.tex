@@ -507,48 +507,45 @@ The adversary, stated once: message delivery is entirely adversarial for
 every safety result (timeliness enters only for liveness,
 Assumption~\ref{ass:delivery}); corruption is dynamic and per-slot, within
 the budget below, with full control of a bad slot's producer, including
-the power to make it sign arbitrary messages; the verifier's clock may
-err by up to ${\approx}\,n/2$
-slots while the adversary's timing is unconstrained. What the adversary
-cannot do is exactly Assumptions~\ref{ass:sig}--\ref{ass:cert}: forge
-signatures of keys it does not control, find hash collisions among blocks
-that occur, or forge certificates.
+the power to make it sign arbitrary messages; the verifier's clock satisfies
+the real-time bound $R \le \mathit{now} + \delta$ with $b + \delta \le n$
+(Assumption~\ref{ass:clock}) while the adversary's timing is unconstrained.
+What the adversary cannot do is exactly Assumptions~\ref{ass:sig}--\ref{ass:cert}:
+forge signatures of keys it does not control, find hash collisions among
+blocks that occur, or forge certificates.
 
 \begin{assumption}[Fault budget]\label{ass:budget}
-In every window of $n$ consecutive slots, at most
-$\fmax = \lfloor (n-1)/3 \rfloor$ slots are \emph{bad}: during a bad slot
-the adversary fully controls that slot's producer, including feeding it
-arbitrary content to sign. Corruption is per \emph{slot}, not per
+In every window of $n$ consecutive real slots, at most
+$\fmax = \lfloor (n-1)/3 \rfloor$ slots are \emph{bad}: during a bad real
+slot the adversary fully controls that slot's producer, including feeding
+it arbitrary content to sign. Corruption is per \emph{real slot}, not per
 participant --- the same participant may be controlled in one of its slots
 and honest in the next.
-\quad\textit{(Lean: \code{FaultBounded}.)}
+\quad\textit{(Lean: \code{ByzantineBounded}.)}
 \end{assumption}
 
 \begin{assumption}[Signatures]\label{ass:sig}
-The model gives each participant a \emph{signing log}: at most one
-block per slot, the one its honest signing path signed (\code{SigningLog}).
-The assumption bundles: \emph{(a) custody} --- honest nodes sign only
-through that path, and their secret keys never leave them; \emph{(b)
+Signing happens at real slots (\code{TimedExecution}). The assumption
+bundles: \emph{(a) custody} --- honest nodes sign only through their
+honest signing path, and their secret keys never leave them; \emph{(b)
 unforgeability} --- no one can produce a valid signature on a message the
 key holder never signed, even after obtaining signatures on messages of
 their own choosing (the standard EUF-CMA notion); here the attacker gets
 exactly that power at every bad slot, whose producer can be made to sign
-anything; and \emph{(c)} the small leftover statement --- the formal
-\emph{residue} --- that the theorems actually use: for any block of a
-valid chain \emph{whose tip is
-recent}, produced in an honest slot and carrying a verifying signature,
-that block is the unique entry of its producer's signing log for that
-slot. \quad\textit{(Lean: \code{SigUnforgeableRecent}.)}
+anything; and \emph{(c) the timed signing discipline} --- at a bad real slot
+the producer's key signs arbitrarily many blocks with any stamp in its
+residue class (\code{key\_match}); an honest real slot signs only its own
+current block (\code{honest\_stamp}) and at most once (\code{honest\_once});
+and every producer signature accepted by the verifier at real slot $R$
+was produced at some real slot no later than $R$ (\code{hbridge},
+causality plus EUF-CMA).
+The id-formation contract of Section~\ref{sec:protocol} ensures that a block
+is signed only once its parent is available (\code{chain\_order}).
+\quad\textit{(Lean: \code{TimedExecution}, \code{hbridge}.)}
 \end{assumption}
 
-The recency scoping in (c) is essential, not a convenience: an adversary
-can walk away from a bad slot holding coerced signatures stamped for that
-producer's \emph{future} slots, so no real deployment could ever satisfy
-the unscoped statement. What makes the scoping sound is the forged-time bound
-(Section~\ref{sec:results}): a chain old enough to have been assembled
-from harvested signatures is precisely a chain the recency rule already
-refuses. Section~\ref{sec:timed} shows that (c) is derived, not
-primitive.
+The adversary may hold coerced signatures stamped for any future slot of
+the coerced producer, and the model gives it exactly that power.
 
 One forward note for key rotation: with versioned keys, custody and
 unforgeability must hold for every version a verifier can still be asked
@@ -560,8 +557,9 @@ forever and safety is recovered by validator rules.
 
 \begin{assumption}[Hash collision resistance, over blocks that
 occur]\label{ass:hash}
-Any two blocks that each either equal the genesis or carry a verifying
-producer signature, and that have equal ids, are equal. This is
+For the headline theorem, collision resistance holds over the blocks that
+occur: any two blocks occurring in the execution with equal ids are
+equal (\code{TimedExecution.id\_inj} over \code{SignedEver}). This is
 classical collision resistance in the form a proof can consume, not a
 weakening of it: plain injectivity of $H$ is false outright --- ids are
 shorter than blocks, so colliding values exist in the type --- while
@@ -577,7 +575,8 @@ sync-rule results (Theorem~\ref{thm:refresh}), blocks verifying under
 results it narrows to blocks verifying under their \emph{declared}
 version (\code{SignedDeclared}), a strictly weaker assumption ---
 Section~\ref{sec:protocol} explains why \code{keyIndex} is in the
-preimage. \quad\textit{(Lean: \code{SignedHashInjective}.)}
+preimage. \quad\textit{(Lean: \code{TimedExecution.id\_inj},
+\code{SignedHashInjective}.)}
 \end{assumption}
 
 \begin{assumption}[Certificate grounding]\label{ass:cert}
@@ -592,13 +591,14 @@ existence is a consequence, not a hypothesis.
 \end{assumption}
 
 \begin{assumption}[Clock]\label{ass:clock}
-The verifier's clock is synchronized to within ${\approx}\,n/2$ slots. A
-clock running $\delta$ slots behind accepts chains up to $n + \delta$
-slots stale; the forged-time bound keeps a fork harmless out to
-${\approx}\,\tfrac{3}{2}n$ slots, so the single $n$-slot recency rule
-absorbs up to ${\approx}\,n/2$ slots of clock skew and network propagation
-combined --- at the prototype's parameters, ${\approx}\,14$\,s for both
-together.
+The verifier reads local time $\mathit{now}$, and real time is at most
+$\delta$ slots ahead of it ($R \le \mathit{now} + \delta$). The verifier
+accepts a tip when $\mathit{now} \le \mathit{tip.slot} + b$. Theorem~1
+applies whenever $b + \delta \le n$, because
+$R \le \mathit{now} + \delta \le \mathit{tip.slot} + b + \delta \le \mathit{tip.slot} + n$.
+Here $\delta$ covers clock skew and propagation combined. For example,
+$b = n/2$ leaves $n/2$ slots --- about $14$\,s at the prototype's
+parameters --- for skew plus propagation.
 \end{assumption}
 
 \begin{assumption}[Honest delivery --- liveness only]\label{ass:delivery}
