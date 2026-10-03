@@ -40,4 +40,17 @@ Tracking edits to `paper/molt.tex` and findings resolution per `docs/PASS10_12_S
   - `bash tools/check.sh` prints `check: all green`.
 
 ## Pass 12: Remaining Audit Findings F-01..F-11
-- [ ] Pending.
+- [x] **Audit Findings Resolution (F-01..F-11)**:
+  - **F-01, F-03**: Qualified in the abstract and intro that circuit-backend faithfulness is a stated (audited) trust assumption rather than a Lean-verified equivalence, and that all safety claims hold under the named cryptographic and operational assumptions of §5.
+  - **F-02**: In intro "machine-checked theorem about the shipped validator code", cited `Rust.rust_timed_certified_agreement` under the assumptions of Section 5. Added it to §7 among theorems carried to the shipped code.
+  - **F-04**: Described `liveness_produce_blockK` in §2 as a local single-block production step taking continued density coverage as a hypothesis rather than proving dynamic protocol recovery.
+  - **F-05, F-08, F-11**: Clarified across §2, §4, §6.3, and §6.3 Honest Scope that Mode 2 and Mode 3 certificate presentation theorems are proved under cumulative/global budgets at depth $n$, and that lifting certificates to per-generation erasure credit at depth $2n$ (and Mode 2 to horizon budgets) remains future work.
+  - **F-06**: Verified that Pass 9 already addressed the untimed residue derivation `sigUnforgeableRecent_of_timed` in Appendix A with `NoBackdate` and slack recency.
+  - **F-07, F-09**: Addressed in Pass 11 (Theorem 5b hypotheses and §2 overview sentence).
+  - **F-10**: Clarified in §3.2 that the counting argument is the core combinatorial engine around which cryptographic, grounding, and rotation pin layers sit.
+- [x] **Documentation**:
+  - Created `docs/FINDINGS_RESOLUTION.md` documenting resolution of all findings F-01..F-11.
+  - Ticked Pass 12 in `docs/PUBLISH_PREP_STATUS.md`.
+- [x] **Verification**:
+  - `bash paper/build.sh` runs clean with zero errors.
+  - `bash tools/check.sh` prints `check: all green`.

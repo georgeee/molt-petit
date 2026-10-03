@@ -59,9 +59,11 @@ check that it verifies and that its tip is recent, and act on everything
 $n$ blocks deep. Validity is a \emph{density} rule --- every matured
 $n$-slot window must carry blocks from two thirds of the fixed roster ---
 with no votes and deterministic, fixed-depth finality. All safety claims
-are machine-checked in Lean~4 --- the core claims about the imported
-Rust validator source itself, proved sound against the model and re-used
-as the recursive-proof circuit, and today's key-rotation results at
+are machine-checked in Lean~4 under the cryptographic and operational
+assumptions of Section~\ref{sec:assumptions} --- the core claims about
+the imported Rust validator source itself, proved sound against the model
+and re-used as the recursive-proof circuit (with circuit-backend faithfulness
+a stated trust assumption), and today's key-rotation results at
 model level. Beyond the classical counting argument, we prove that forged
 chains advance at half real-time speed, and light-client safety is
 proved directly in a timed model, against an adversary that harvests
@@ -85,7 +87,9 @@ exactly three things: the deployment's genesis, a clock, and a
 constant-size \emph{certificate} it can fetch from anyone. If the
 certificate verifies and its tip is recent, the client may act on
 everything $n$ blocks deep --- and that guarantee is a machine-checked
-theorem about the shipped validator code, not a design argument.
+theorem about the shipped validator code
+(\code{Rust.rust\_timed\_certified\_agreement}) under the assumptions of
+Section~\ref{sec:assumptions}, not a design argument.
 
 The protocol is deliberately small. A fixed roster of $n$ participants
 produces blocks in public round-robin slots. There are no votes, no view
@@ -122,7 +126,8 @@ one Rust file; it is \emph{imported} into Lean~4 (via Charon + Aeneas)
 and proved sound against the model, so the core safety theorems are
 about the code that runs (the rotation pins are checked at model level
 today, Section~\ref{sec:impl}); the same source is re-used as the recursive-proof
-circuit, so the prover proves the predicate that was verified; and a
+circuit, so the prover proves the predicate that was verified (circuit-backend
+faithfulness being a stated trust assumption rather than a Lean-verified equivalence); and a
 separate TypeScript implementation is proved sound against that
 \emph{same} Lean model --- which is what keeps the model
 implementation-agnostic while it is developed by agentic coding. A
@@ -175,8 +180,9 @@ same client: \textbf{hold the genesis and a clock; sleep as long as you
 like}. Loss needs no special safety machinery. The loser recovers by
 its mode's own discipline --- an in-band rotation in mode 1, a later
 scheduled generation in mode 2, the next lockstep switch in mode 3 ---
-at the price of its missed slots (operational discipline; mode 1's half
-is also checked in the core, \code{liveness\_produce\_blockK}). And in
+at the price of its missed slots (operational discipline; mode 1's local
+single-block production step under continued density coverage is checked
+in the core, \code{liveness\_produce\_blockK}). And in
 every mode the corruption the theorems count shrinks back to the plain
 controlled-slot budget of Section~\ref{sec:assumptions} (Lean
 \code{badKeyrot\_lossOnly}, \code{badSched\_lossOnly},
@@ -230,7 +236,9 @@ physically destroyed at each switch (hardware modules or RAM-only keys
 holds the genesis and a clock --- even less than mode 2 --- and may
 sleep arbitrarily long. The price sits entirely with the operators:
 lockstep coordination, and erasure that is real. (Mode 3's guarantees hold at the certificate presentation as well as for
-full chains (\code{lockstep\_recent\_certified\_suffix\_agreement}).
+full chains under the cumulative budget at depth $n$
+(\code{lockstep\_recent\_certified\_suffix\_agreement}); lifting certificates
+to per-generation erasure credit at depth $2n$ remains future work.
 Erasure's per-generation credit against the budget is machine-checked:
 under a per-generation census --- for each generation $j$ separately, at
 most $T$ seats whose generation-$j$ key is stolen --- the same agreement
@@ -348,9 +356,11 @@ Density is the whole safety mechanism. If two chains diverge and both stay
 dense, each must collect $\quorum$ blocks in any window past the
 divergence; since $2\quorum > n + \fmax$, some slot in that window carries
 a block of \emph{both} chains and belongs to an honest producer --- and an
-honest producer extends one chain per slot, never two. Every safety
-theorem in Section~\ref{sec:results} is this counting argument made
-precise and machine-checked.
+honest producer extends one chain per slot, never two. This counting
+argument is the core combinatorial engine of every safety theorem in
+Section~\ref{sec:results}, around which cryptographic unforgeability,
+certificate grounding, and rotation pin mechanisms are layered and
+machine-checked.
 
 Chain validity has one more condition, riding on the \code{keyIndex}
 field: along the chain, a producer's declared key version never
@@ -455,7 +465,8 @@ chain only if all of the following hold:
   stated over the full-chain form of the validator
   (\code{validSignedChainK$'$}; the same validator under the mode 2--3
   pins); at certificate level they are proved for all three modes
-  (\code{keyrot\_recent\_certified\_suffix\_agreement},
+  (under global/cumulative budgets at depth $n$ for modes 2 and 3:
+  \code{keyrot\_recent\_certified\_suffix\_agreement},
   \code{sched\_recent\_certified\_suffix\_agreement},
   \code{lockstep\_recent\_certified\_suffix\_agreement}).
 \end{enumerate}
@@ -1238,11 +1249,12 @@ most $T$ seats whose generation-$j$ key is stolen while $j$ is live
 \code{lockstep\_client\_safety\_timed}).
 Conclusion, machine-checked (\code{lockstep\_client\_safety} and
 \code{lockstep\_recent\_tip\_ancestor\_mem}, via the pinning theorem
-\code{lockstep\_declares\_rosterGen}; and at the certificate presentation
+\code{lockstep\_declares\_rosterGen}; and at the certificate presentation under
+the cumulative budget at depth $n$,
 \code{lockstep\_recent\_certified\_suffix\_agreement}, with the
 certificate's own counter pinned to the roster's once its grid window
 matures, \code{lockstep\_cert\_gen\_pinned}): any two accepted chains agree ---
-at equal heights on the block $n$ below each tip (or $2n$ under
+at equal heights on the block $n$ below each tip (or $2n$ for full chains under
 Theorem~\ref{thm:lock-gen}), at unequal heights the
 lower chain's confirmed block lying on the taller --- hence, through the
 parent-id chain (\code{same\_block\_same\_prefix}), on the lower chain's
@@ -1284,9 +1296,12 @@ separation between the timed and untimed budgets
 assumptions a deployment must defend, and deriving no-theft-backdating from
 mint-timed signature primitives remains future work.
 Second, while mode~3 formalizes per-generation erasure credit at depth $2n$
-(Theorem~\ref{thm:lock-gen}), mode~2's certificate theorem
-(\code{sched\_recent\_certified\_suffix\_agreement}) is proved under a global
-fault budget; carrying horizon scoping to mode-2 certificates is future work.
+(Theorem~\ref{thm:lock-gen}), both mode~2's certificate theorem
+(\code{sched\_recent\_certified\_suffix\_agreement}) and mode~3's certificate
+theorem (\code{lockstep\_recent\_certified\_suffix\_agreement}) are proved under
+cumulative/global fault budgets at depth $n$; carrying horizon scoping to mode-2
+certificates and per-generation erasure credit to mode-3 certificates at depth $2n$
+remain future work.
 Third, the per-mode signature surfaces are not derived from the timed model:
 as witnessed by \code{badSched\_single\_key\_safe\_not\_enough} and
 \code{badKeyrot\_single\_key\_safe\_not\_enough}, single-key safety does not
@@ -1341,7 +1356,8 @@ it:
   Soundness is the only direction safety needs --- completeness is a
   liveness concern --- and it is what carries Theorems~\ref{thm:lc}
   and~\ref{thm:forge} to the shipped code
-  (\code{rust\_recent\_tip\_ancestor\_mem}). The bridges cover the
+  (\code{rust\_recent\_tip\_ancestor\_mem}, and under the timed model and
+  certificate bridge, \code{Rust.rust\_timed\_certified\_agreement}). The bridges cover the
   validator's structural core and its key-discipline conjunct
   (\code{rust\_valid\_chain\_sound}, \code{rust\_valid\_chain\_k\_sound});
   the three rotation \emph{pins} of Section~\ref{sec:rotation} are,
