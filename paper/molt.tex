@@ -1070,17 +1070,29 @@ nothing off any chain, a fork \emph{cannot disagree} with the real chain
 about which keys are retired --- the fake-past construction above is
 structurally impossible, and the anchor has nothing left to do.
 
-\begin{theorem}[Scheduled safety; Lean
-\code{scheduled\_client\_safety}]\label{thm:sched}
-Under the scheduled validator, the scheduled signature surface, hash
-injectivity (Assumption~\ref{ass:hash}, over declared-version
-signatures), and a \emph{chain-independent} $\rho$/$T$ budget: two
-accepted chains rooted in one genesis with recent tips agree: at equal
-heights, on the block $n$ below each tip; at unequal heights, the lower
-chain's $n$-deep block is a block of the taller, at least $n$ deep there
-(\code{sched\_recent\_tip\_ancestor\_mem}). No anchor, no sync rule, no
-confirmation wait: the client holds genesis, a clock, and the constant
-$\mathit{gen}$, and may stay offline arbitrarily long.
+\begin{theorem}[Scheduled safety under horizon budget; Lean
+\code{sched\_recent\_tip\_ancestor\_agreement\_horizon},\hfil\penalty0
+\code{sched\_recent\_tip\_ancestor\_mem\_horizon}]\label{thm:sched}
+Under the scheduled validator (\code{validSignedChainSched}) on both
+chains; the scheduled signature surface (\code{SchedUnforgeable},
+recency-scoped with $\mathit{now}$, $\Delta$); hash injectivity over
+declared-version signatures (Assumption~\ref{ass:hash}, \code{SignedHashInjective});
+the corruption budget \code{ByzantineBoundedFrom}~$H$~$n$~(\code{badSched} \dots)
+--- at most $\fmax$ bad slots in every $n$-slot window starting at or after
+a horizon $H$; the horizon side conditions $H + n \le \mathit{tip}.\mathit{slot} + 1$
+for both tips; recency $\mathit{now} \le \mathit{tip}.\mathit{slot} + \Delta$
+for both tips; sufficient chain length $n < \mathit{length}$ (\code{hLong},
+for both chains at equal heights; for the lower chain at unequal heights);
+and the tip height relation:
+two accepted chains agree: at equal tip heights, on the block $n$ below
+each tip; at unequal tip heights, the lower chain's $n$-deep ancestor block
+is a block of the taller chain, at least $n$ deep there.
+There is no shared-genesis hypothesis: genesis agreement is a consequence
+(\code{sched\_recent\_genesis\_agreement\_horizon}).
+The global-budget \code{scheduled\_client\_safety} is the corollary at
+any $H$ (\code{byzantineBoundedFrom\_of\_bounded}).
+No anchor, no sync rule, no confirmation wait: the client holds a clock
+and the constant $\mathit{gen}$, and may stay offline arbitrarily long.
 \end{theorem}
 
 \emph{Operator duties.} Keep one offline \emph{cold root} per seat and
@@ -1119,24 +1131,17 @@ $\mathit{gen}(s) = \lfloor s/R \rfloor$ with, say, $R$ = one week of
 slots. Weekly, each seat's cold root signs one delegation for the
 coming generation and goes back in the safe; the live signing key never
 predates its era by more than the provisioning margin. Clients are
-wallets holding genesis, a clock, and $\mathit{gen}$; they sleep for
-months and sync on wake. What must then be true of the world: the
-scheduled surface and hash injectivity (the adversary paragraph's
-rescopings); the standing clock assumption (Assumption~\ref{ass:clock});
-not-before and cold-root custody (the ceremony discipline above); and
-\emph{at most $T$ of the currently live generation keys stolen per
-window over the trailing ${\approx}\,2n$ slots, $\rho + T \le \fmax$}
---- the horizon-scoped budget, with no retroactive reading: no slot more
-than $2n - 1$ before the clock is ever budgeted, and genesis agreement
-becomes a consequence rather than a hypothesis
-(\code{sched\_recent\_tip\_ancestor\_agreement\_horizon}). The
-week-long exposure window per stolen live key is what $T$ is sized
-against. Conclusion, machine-checked: any two accepted chains agree at
-equal heights on the block $n$ below each tip --- hence, block by block
-through the parent-id chain (\code{same\_block\_same\_prefix}), on the
-whole shared prefix --- whatever happened while the wallet slept; at
-unequal heights the same holds horizon-scoped
-(\code{sched\_recent\_tip\_ancestor\_mem\_horizon}). Only the
+wallets holding a clock and $\mathit{gen}$; they sleep for months and
+sync on wake. What must then be true of the world: the scheduled surface
+and hash injectivity; the standing clock assumption
+(Assumption~\ref{ass:clock}); not-before and cold-root custody (the ceremony
+discipline above); and the horizon-scoped budget of Theorem~\ref{thm:sched}
+with no retroactive reading ($H$ chosen so no slot more than $2n - 1$
+before the clock is ever budgeted). The week-long exposure window per
+stolen live key is what $T$ is sized against. Through
+Theorem~\ref{thm:sched} and the parent-id chain
+(\code{same\_block\_same\_prefix}), any two accepted chains agree on the
+whole confirmed prefix whatever happened while the wallet slept. Only the
 certificate form is proved under the global all-window budget, with the
 strengthened grounding \code{GroundedCertSched}
 (\code{sched\_recent\_certified\_suffix\_agreement}); carrying the

@@ -91,9 +91,10 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
   - Reworked `paper/molt.tex` per `docs/PAPER_TIMED_REWORK_SPEC.md`: `Molt.timed_light_client_safety` is Theorem 1 headline, clock stated as $b + \delta \le n$, untimed result demoted, dropped unproven $3/2n$ and 50% numbers, reframed Appendix A as untimed residue derived, created `docs/PAPER_TIMED_REWORK_PROGRESS.md`.
   safety result; abstract, §6.1, Assumption 1 and Appendix A reframed; clock assumption stated as recency bar plus clock
   error at most `n`.
-- [ ] **Pass 10: Mode 2 headline under the horizon budget (paper).** Make the horizon-scoped
+- [x] **Pass 10: Mode 2 headline under the horizon budget (paper).** Make the horizon-scoped
   `sched_recent_tip_ancestor_mem_horizon` the primary statement of Theorem 4 (thm:sched) and state the global-budget
   `scheduled_client_safety` as the corollary, with the exact Lean hypotheses of each.
+  - Reworked Theorem 4 (`thm:sched`) to headline `sched_recent_tip_ancestor_agreement_horizon` and `sched_recent_tip_ancestor_mem_horizon` with full Lean hypotheses, stated genesis agreement consequence and `scheduled_client_safety` corollary, and shortened realistic mode-2 deployment paragraph.
 - [ ] **Pass 11: thm:lock-gen hypotheses (paper).** State `hTipHeight` (equal tip heights) and `hLong` (`2n <
   length`) explicitly in Theorem 5b, as in `Molt.lockstep_client_safety_gen` (audit findings F-07, F-09).
 - [ ] **Pass 12: remaining audit findings.** Resolve every finding F-01..F-11 in `verify-out/findings.md` (if that
