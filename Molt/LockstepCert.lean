@@ -40,4 +40,13 @@ presentation, under the lockstep package alone (paper §6.3). -/
 alias lockstep_recent_certified_suffix_agreement :=
   MoltPetit.Model.lockstep_recent_certified_suffix_agreement
 
+
+/-- For n ≥ 2 the tip generation of a certificate is determined by the tail buffer
+(paper §6.3). -/
+alias groundedCertLock_gen_of_tail := MoltPetit.Model.groundedCertLock_gen_of_tail
+
+/-- Uniqueness of the tip generation determined by the tail buffer for n ≥ 2
+(paper §6.3). -/
+alias groundedCertLock_gen_unique := MoltPetit.Model.groundedCertLock_gen_unique
+
 end Molt

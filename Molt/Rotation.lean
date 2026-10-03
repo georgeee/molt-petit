@@ -5,6 +5,7 @@ import MoltPetit.Model.KeyStealingHorizon
 import MoltPetit.Model.KeyStealingLockstep
 import MoltPetit.Model.KeyStealingCert
 import MoltPetit.Model.KeyStealingScheduleCert
+import MoltPetit.Model.KeyStealingScheduleTimed
 
 /-!
 # Key rotation (paper §6.3)
@@ -433,5 +434,13 @@ theorem lockstep_client_safety
   exact MoltPetit.Model.lockstep_recent_tip_ancestor_agreement hn hP
     hVal hVal' hHead hHead' hTipS hTipS' hRecent hRecent'
     hLong hLong' hTipHeight hB hB'
+
+
+/-- Core unforgeability surface for mode 2 and mode 3 (paper §6.3, Assumption 6). -/
+abbrev SchedCoreUnforgeable := @MoltPetit.Model.SchedCoreUnforgeable
+
+/-- Not-before: a generation's key cannot be stolen before it is derived
+(paper §6.3, mode 2). -/
+abbrev NoPrematureTheft := @MoltPetit.Model.NoPrematureTheft
 
 end Molt

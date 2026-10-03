@@ -1,5 +1,7 @@
 import Molt.Rotation
 import MoltPetit.Model.KeyStealingLockstepTimed
+import MoltPetit.Model.KeyStealingLockstepGen
+import MoltPetit.Model.KeyStealingWindowCore
 
 /-!
 # Molt — mode 3, per-generation census (D1′-full), paper-side re-presentation
@@ -95,5 +97,33 @@ theorem lockstep_client_safety_timed
   rw [validSignedChainLock_eq_core] at hVal hVal'
   exact MoltPetit.Model.lockstepTimed_recent_tip_ancestor_agreement hn hP
     hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
+
+
+/-- The temporal erasure hypothesis for mode 3: no generation is stolen after
+the roster moves past it (paper §6.3, mode 3). -/
+abbrev ErasureTimedLock := @MoltPetit.Model.ErasureTimedLock
+
+/-- Operator erasure turns while-live theft into timeless per-generation theft
+(paper §6.3, mode 3). -/
+alias genBound_of_preRetirementBound := MoltPetit.Model.genBound_of_preRetirementBound
+
+/-- Mode 3's per-generation agreement at unequal tip heights
+(paper Theorem 5b / Thm 5′). -/
+alias lockstepGen_recent_tip_ancestor_mem := MoltPetit.Model.lockstepGen_recent_tip_ancestor_mem
+
+/-- Mode 3's per-generation genesis agreement without assuming shared genesis
+(paper Theorem 5b / Thm 5′). -/
+alias lockstepGen_recent_genesis_agreement := MoltPetit.Model.lockstepGen_recent_genesis_agreement
+
+/-- Sharp depth bound for mode 3 per-generation agreement: exactly n + ((t+1) % n)
+positions below lower tip slot t (paper §6.3). -/
+alias lockstepGen_shared_prefix_sharp := MoltPetit.Model.lockstepGen_shared_prefix_sharp
+
+/-- Window-aligned prefix sharing engine (paper §6.3). -/
+alias window_shared_prefix := MoltPetit.Model.window_shared_prefix
+
+/-- Package conversion: cumulative package implies per-generation package when
+no generation is skipped (paper §6.3). -/
+alias LockstepPackage.toGen := MoltPetit.Model.LockstepPackage.toGen
 
 end Molt
