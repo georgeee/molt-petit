@@ -228,12 +228,14 @@ physically destroyed at each switch (hardware modules or RAM-only keys
 --- storage that does not truly erase does not qualify). The client
 holds the genesis and a clock --- even less than mode 2 --- and may
 sleep arbitrarily long. The price sits entirely with the operators:
-lockstep coordination, and erasure that is real. (Mode 3's guarantees are
-currently proved for full chains, and erasure's per-generation credit
-against the budget is designed but not yet formalized --- today's
-theorems count thefts across all generations within one budget, with or
-without erasure; both are future work,
-Section~\ref{sec:rotation}.)
+lockstep coordination, and erasure that is real. (Mode 3's guarantees hold at the certificate presentation as well as for
+full chains (\code{lockstep\_recent\_certified\_suffix\_agreement}).
+Erasure's per-generation credit against the budget is machine-checked:
+under a per-generation census --- for each generation $j$ separately, at
+most $T$ seats whose generation-$j$ key is stolen --- the same agreement
+holds at confirmation depth $2n$ instead of $n$, and with no
+shared-genesis hypothesis (\code{lockstep\_client\_safety\_gen}); the
+cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)
 
 Everything that follows makes these paragraphs precise: the protocol and
 its validator (Sections~\ref{sec:protocol}--\ref{sec:rules}), what a
@@ -444,11 +446,10 @@ chain only if all of the following hold:
   one mode-specific check, fixed at deployment. These two are
   stated over the full-chain form of the validator
   (\code{validSignedChainK$'$}; the same validator under the mode 2--3
-  pins); at certificate level they are proved for modes 1--2
+  pins); at certificate level they are proved for all three modes
   (\code{keyrot\_recent\_certified\_suffix\_agreement},
-  \code{sched\_recent\_certified\_suffix\_agreement}) and
-  future work for mode 3 (see the ``honest scope'' discussion in
-  Section~\ref{sec:rotation}).
+  \code{sched\_recent\_certified\_suffix\_agreement},
+  \code{lockstep\_recent\_certified\_suffix\_agreement}).
 \end{enumerate}
 The model replays the structural checks from genesis
 (\code{validChain}); a deployed
@@ -612,7 +613,7 @@ validator accepts also passes those structural checks
 presentation, under the full validator with its key discipline and pin,
 is each mode's certified theorem in Section~\ref{sec:rotation}
 (\code{keyrot\_recent\_certified\_suffix\_agreement} and its scheduled
-twin). Next, the timed model, where forged chains take real time
+and lockstep twins). Next, the timed model, where forged chains take real time
 (Theorem~\ref{thm:forge}); this timed model is also where the recency
 scoping of Assumption~\ref{ass:sig} stops being an assumption and
 becomes a theorem (a separate derivation,
