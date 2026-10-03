@@ -29,4 +29,7 @@ e r$ implies $bad\ r$
   - `late_tail_short`: for any chain meeting recency $R \le tip.slot + n$, tail from any late index $\ell \ge 1$ has length $c.length - \ell \le f$ and $tip.slot + 1 < L.slot + n$.
   - Proved by density ($q \cdot K \le m$ from $K$ consecutive matured windows) vs budget ($m \le f \cdot (K+1)$ from bad slot count via injection of late blocks into $Ico (L.slot + n) (R + 1)$).
 - [ ] **Step 4: Main argument** (Pass 7e)
-  - Goal: Prove `timed_tip_ancestor_agreement` using divergence index, matured window $W_1$, honest slot disjointness and cases.
+  - `same_block_same_parent_timed`: identical available blocks on valid chains share parents.
+  - `same_block_same_prefix_timed`: identical available blocks force agreement down to genesis.
+  - `same_block_same_height`: identical blocks on valid chains have equal heights.
+  - In progress: post-divergence window analysis and case split.

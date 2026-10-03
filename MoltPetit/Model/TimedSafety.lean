@@ -445,6 +445,67 @@ theorem late_tail_short {n : Nat} (hn : 1 ≤ n)
     omega
   refine ⟨hm_le, by omega⟩
 
+theorem same_block_same_parent_timed
+    {n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R) (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    {m : Nat} {B : Block}
+    (hAt : blockAt? c (m + 1) = some B) (hAt' : blockAt? c' (m + 1) = some B) :
+    ∃ P : Block, blockAt? c m = some P ∧ blockAt? c' m = some P := by
+  obtain ⟨P, hPat, hprev⟩ := parentLinked_at_succ hc.2.2.1 hAt
+  obtain ⟨P', hP'at, hprev'⟩ := parentLinked_at_succ hc'.2.2.1 hAt'
+  rw [hprev'] at hprev
+  have hid : P.id = P'.id := (Option.some.inj hprev).symm
+  have hPmem : P ∈ c := by unfold blockAt? at hPat; exact List.mem_of_getElem? hPat
+  have hP'mem : P' ∈ c' := by unfold blockAt? at hP'at; exact List.mem_of_getElem? hP'at
+  have hPsigned : SignedEver log G P := by
+    rcases hAvail P hPmem with rfl | ⟨r, _, hm⟩
+    · exact Or.inl rfl
+    · exact Or.inr ⟨r, hm⟩
+  have hP'signed : SignedEver log G P' := by
+    rcases hAvail' P' hP'mem with rfl | ⟨r, _, hm⟩
+    · exact Or.inl rfl
+    · exact Or.inr ⟨r, hm⟩
+  have hPeq : P = P' := hexec.id_inj hPsigned hP'signed hid
+  subst hPeq
+  exact ⟨P, hPat, hP'at⟩
+
+theorem same_block_same_prefix_timed
+    {n : Nat} {bad : ByzantineSlots} {log : TimedLog} {G : Block}
+    (hexec : TimedExecution n bad log G)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R) (hAvail' : ∀ B ∈ c', AvailableAt log G B R) :
+    ∀ {m : Nat} {B : Block},
+      blockAt? c m = some B →
+      blockAt? c' m = some B →
+      ∀ {k : Nat}, k ≤ m →
+      ∃ P : Block, blockAt? c k = some P ∧ blockAt? c' k = some P := by
+  intro m
+  induction m with
+  | zero =>
+    intro B hAt hAt' k hk
+    have hk0 : k = 0 := Nat.eq_zero_of_le_zero hk
+    subst hk0
+    exact ⟨B, hAt, hAt'⟩
+  | succ m ih =>
+    intro B hAt hAt' k hk
+    rcases Nat.eq_or_lt_of_le hk with rfl | hlt
+    · exact ⟨B, hAt, hAt'⟩
+    · have hkLe : k ≤ m := Nat.lt_succ_iff.mp hlt
+      obtain ⟨P, hPc, hPc'⟩ :=
+        same_block_same_parent_timed hexec hc hc' hAvail hAvail' hAt hAt'
+      exact ih hPc hPc' hkLe
+
+theorem same_block_same_height
+    {n : Nat} {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {i j : Nat} {B : Block}
+    (hB : blockAt? c i = some B) (hB' : blockAt? c' j = some B) :
+    i = j := by
+  have hi : B.height = i := hc.1 hB
+  have hj : B.height = j := hc'.1 hB'
+  rw [← hi, ← hj]
+
 theorem timed_tip_ancestor_agreement {n : Nat} (hn : 1 ≤ n)
     {bad : ByzantineSlots} {log : TimedLog} {G : Block}
     (hexec : TimedExecution n bad log G)
