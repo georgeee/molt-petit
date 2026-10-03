@@ -3,6 +3,13 @@ import Molt.Rotation
 import Molt.ClientRule
 import Molt.MaxSync
 import Molt.Liveness
+import Molt.LockstepGen
+import Molt.LockstepCert
+import Molt.CertClientRule
+import Molt.SyncRuleTimed
+import Molt.MaxSyncSignatureTimed
+import Molt.SyncInduction
+import Molt.KeyStealingTimedScope
 
 /-!
 # Axiom audit for the `Molt` headline theorems
@@ -160,3 +167,67 @@ this file with every new headline theorem.
 /-- info: 'Molt.global_liveness' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Molt.global_liveness
+
+-- Theorem 5b: lockstep safety, per-generation census (paper §6.3, mode 3).
+/-- info: 'Molt.lockstep_client_safety_gen' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.lockstep_client_safety_gen
+
+-- Lockstep safety, timed form with credited erasure (paper §6.3, mode 3).
+/-- info: 'Molt.lockstep_client_safety_timed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.lockstep_client_safety_timed
+
+-- Mode 3 certificate presentation & pinned counter (paper §6.3, mode 3).
+/-- info: 'Molt.lockstep_recent_certified_suffix_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.lockstep_recent_certified_suffix_agreement
+
+/-- info: 'Molt.lockstep_cert_gen_pinned' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.lockstep_cert_gen_pinned
+
+-- Mode 1 anchored certificate sync rule (paper §6.3, mode 1).
+/-- info: 'Molt.cert_sync_rule' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.cert_sync_rule
+
+/-- info: 'Molt.keyrot_certified_suffix_agreement_anchored' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.keyrot_certified_suffix_agreement_anchored
+
+-- Mode 1 timed theft client rule & max sync period (paper §6.3, mode 1).
+/-- info: 'Molt.sync_rule_timed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.sync_rule_timed
+
+/-- info: 'Molt.max_sync_period_timed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.max_sync_period_timed
+
+-- Mode 1 paced tight census & separation witness (paper §6.3, mode 1).
+/-- info: 'Molt.max_sync_period_tight' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.max_sync_period_tight
+
+/-- info: 'Molt.paced_tight_census_bound_all_F' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.paced_tight_census_bound_all_F
+
+/-- info: 'Molt.paced_separation_witnessed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.paced_separation_witnessed
+
+-- Mode 1 sync induction over full chain (paper §6.3, mode 1).
+/-- info: 'Molt.sync_induction_full_chain' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.sync_induction_full_chain
+
+-- Obstruction witnesses for timed signature surfaces (paper §6.3, §8, Appendix A).
+/-- info: 'Molt.badSched_single_key_safe_not_enough' does not depend on any axioms -/
+#guard_msgs in
+#print axioms Molt.badSched_single_key_safe_not_enough
+
+/-- info: 'Molt.badKeyrot_single_key_safe_not_enough' does not depend on any axioms -/
+#guard_msgs in
+#print axioms Molt.badKeyrot_single_key_safe_not_enough
