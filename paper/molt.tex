@@ -86,9 +86,11 @@ Molt Petit is a consensus protocol built so that this client can need
 exactly three things: the deployment's genesis, a clock, and a
 constant-size \emph{certificate} it can fetch from anyone. If the
 certificate verifies and its tip is recent, the client may act on
-everything $n$ blocks deep --- and that guarantee is a machine-checked
+everything $n$ blocks below it: any two such certificates agree at every
+height at least $n$ below both tips --- and that guarantee is a machine-checked
 theorem about the shipped validator code
-(\code{Rust.rust\_timed\_certified\_agreement}) under the assumptions of
+(\code{Rust.rust\_timed\_certified\_agreement}; for the TypeScript
+twin, \code{ts\_timed\_certified\_agreement}) under the assumptions of
 Section~\ref{sec:assumptions}, not a design argument.
 
 The protocol is deliberately small. A fixed roster of $n$ participants
@@ -207,7 +209,8 @@ behind --- quiet thefts accumulate until nothing satisfies it
 outside the formal development. The deployment stays safe for as long as
 rented slots (controlled for one slot, then lost) plus stolen
 producers stay within the fault budget on every window starting in the
-trailing $5n$ slots or later --- \emph{with thefts counted as totals for
+trailing $5n$ slots or later, and each victim rotates within a
+reaction delay $d$ of the theft --- \emph{with thefts counted as totals for
 the whole stretch: rotating a stolen key away caps the damage, it does
 not refund the budget} (Theorem~\ref{thm:refresh}).
 
@@ -458,7 +461,7 @@ one rule. Accept a certified chain if and only if:
   and the key-version discipline with the deployment's pin
   (\code{validCertifiedChain} plus the mode's key checks);
 \item it is \emph{recent}: $\mathit{now} \le \mathit{tip.slot} + b$ on the
-  verifier's own clock, where real time is at most $\delta$ slots ahead of
+  verifier's own clock, where the real time $R$ is at most $\delta$ slots ahead of
   $\mathit{now}$ ($R \le \mathit{now} + \delta$) and $b + \delta \le n$.
   (This clock comparison is the one line a
   deployment implements outside the verified validator ---
@@ -550,9 +553,10 @@ in the liveness theorem; the rotation results replace
 Assumptions~\ref{ass:budget}--\ref{ass:sig} with rescoped forms defined
 in Section~\ref{sec:rotation}'s adversary paragraph. Lean's axiom audit
 confirms that nothing further is assumed behind the scenes. The clock is the one
-exception by nature: the theorems take the verifier's reading
-$\mathit{now}$ as a parameter, and Assumption~\ref{ass:clock} says what
-that parameter must track in the real world.
+exception by nature: Theorem~\ref{thm:lc} is stated at the real slot $R$
+at which the verifier checks, the rotation theorems at the verifier's
+reading $\mathit{now}$, and Assumption~\ref{ass:clock} says how the two
+are related.
 
 The adversary, stated once: message delivery is entirely adversarial for
 every safety result (timeliness enters only for liveness,
@@ -677,10 +681,12 @@ Section~\ref{sec:rotation} additionally exports signing keys outright
 first; all of Section~\ref{sec:rotation} faces the second.
 
 Every result below is a Lean theorem, proved once against the model.
-The light-client and timed results (Theorems~\ref{thm:lc}
-and~\ref{thm:forge}) are carried to each implementation by that
-implementation's soundness bridge (Section~\ref{sec:impl}), which also
-covers the validator's key-discipline conjunct; the rotation-mode
+The light-client theorem (Theorem~\ref{thm:lc}) is carried to each
+implementation by that implementation's soundness bridge
+(Section~\ref{sec:impl}): \code{Rust.rust\_timed\_certified\_agreement}
+for the Rust validator and \code{ts\_timed\_certified\_agreement} for the
+TypeScript one. The Rust bridge also covers the validator's
+key-discipline conjunct. Theorem~\ref{thm:forge}, the rotation-mode
 results of Section~\ref{sec:rotation} and the liveness theorem are,
 today, proved at model level. A guarded \code{\#print axioms}
 per headline theorem is checked in (\code{Molt/Axioms.lean}), so the build
@@ -739,8 +745,7 @@ directly and keeps the exposure hypothesis. It is not the headline.
 \subsection{Forged chains take real time}
 \label{sec:timed}
 
-The recency scoping in Assumption~\ref{ass:sig} needs a model in which
-coercion has a price. The \emph{timed model}
+The recency rule needs a model in which coercion has a price. The \emph{timed model}
 (\code{TimedExecution}) adds a real-time axis: a log of what each real
 slot's producer signed --- at an honest real slot, at most its own
 current block; at a bad real slot, arbitrarily many blocks of the
@@ -895,7 +900,7 @@ Theorem~\ref{thm:refresh} is its exact price tag.
 \code{sync\_rule\_mem\_timed}]\label{thm:refresh}
 Fix $n \ge 1$ and a deployment genesis $G$. Suppose:
 \begin{itemize}
-\item the key-stealing signature surface (\code{hEUF}): \code{KeyStealingEUFCMA} with adversary keys $\mathit{Stolen} := \code{stolenOf}\ \mathit{stolenAt}$;
+\item the key-stealing signature surface (\code{hEUF}): \code{KeyStealingEUFCMA} with adversary keys $\mathit{Stolen} := \code{stolenOf}\ \mathit{stolenAt}$, recency-scoped with $\mathit{now}$ and the same $\Delta$ as the recency bullet below;
 \item hash injectivity (\code{hHash}): $\code{SignedHashInjective}\ (\code{KeyStealingSigned}\ n\ \mathit{ops}\ \mathit{registry})\ G$;
 \item cadence and anchor (\code{hVPrev} \dots\ \code{hCadence}, \code{hA}, \code{hA'}): the client re-verified a valid chain $\mathit{sc}_{\mathrm{prev}}$ longer than $n$ blocks at time $t$ when its tip was recent ($t \le \mathit{tipPrev.slot} + n$), took as anchor $A$ the block $n$ deep below $\mathit{tipPrev}$ (\code{hAnchor}), returns within $n$ slots of that sync ($\mathit{now} \le t + n$, \code{hCadence}), and both currently presented chains $\mathit{sc}, \mathit{sc}'$ contain $A$;
 \item rent rate (\code{hRent}): for every $n$-slot window $u$ starting in the trailing $5n$ slots or later ($\mathit{now} < u + 5n$), rented slots (\code{badSlotsIn}) total at most $\rho$;
@@ -956,11 +961,12 @@ state, not the chain's age, and an old chain is exactly as protected as
 a young one.
 
 Why the cadence cannot simply be enlarged: \emph{the budget's census is
-retroactive}. The model carries no theft times, so the census at a
-window counts every producer any of whose versions not yet retired
-there is ever stolen --- a theft is charged to the
-windows \emph{before} it as well, for as long as the same version was in
-force, and rotating afterwards never subtracts from them. The oldest
+retroactive}. In the untimed census (\code{sync\_rule}) a window counts
+every producer any of whose versions not yet retired there is ever
+stolen; in the timed one (\code{sync\_rule\_timed}) it counts every
+producer stolen at a real slot $r$ with $u < r + d$. Either way a theft is
+charged to the windows \emph{before} it as well, and rotating afterwards
+never subtracts from them. The oldest
 windows of a stretch therefore carry the \emph{total} theft count of the
 whole stretch, and the longer the stretch, the larger that total. A
 client syncing every $10n$ slots would therefore be assuming ``at most
@@ -1028,23 +1034,16 @@ victims whose retirements postdate the divergence (pre-divergence
 rotations are inherited through the anchor and stay dead); in the bare
 model, where nothing constrains which branch honest producers extend,
 the count falls toward $\fmax + 1$. Certifying one such execution
-end-to-end in Lean is future work. Theft times are now inside the
-development, as two named operational hypotheses: the reaction
-delay $d$ above (\code{Reacts}), and \emph{no stolen-key back-dating} ---
-a stolen version cannot be used to expose a slot that predates its
-theft (\code{NoTheftBackdating}). Together they confine what a theft
-at real slot $r$ can expose to the slots $[r, r{+}d)$
-(\code{theft\_exposure\_window}): a stolen key is charged from the
-moment it is stolen until the reaction fires, and to no earlier window.
-The census a deployment attests is then per window and does not grow
-with the stretch: for the paced adversary above it is $1$ at every
-window, for every sync period (\code{paced\_tight\_census\_bound\_all\_F};
-composed, \code{max\_sync\_period\_tight}). That is what ``a larger
-$F$'' means here --- the census no longer constrains $F$; rent still
-has to be bounded over the same stretch. Both hypotheses are asserted,
-like \emph{not-before}; deriving no-back-dating from a signature
-primitive aware of mint times is future work, and so is a model in
-which honest producers never extend adversarial branches. The sync rule is the $F = n$, $S = 5n$ instance.
+end-to-end in Lean is future work. Theft times enter the development through the reaction delay $d$
+(\code{Reacts}): a theft at real slot $r$ is charged to every window $u$
+with $u < r + d$ (\code{recentTheftProducersK}), and to no window starting
+$d$ or more slots after it. Charging a theft \emph{only} to the windows
+after it would need a no-back-dating guarantee for stolen keys --- a
+forward-security property~\cite{forwardsec} of the signature primitive,
+which this development does not assume. The naive hypothesis-level form
+of that guarantee is degenerate: it forces every theft to real slot $0$
+(\code{noTheftBackdating\_degenerate}). A non-degenerate form is future
+work, so the census, and with it $F$, stays bounded as above. The sync rule is the $F = n$, $S = 5n$ instance.
 (Engine: \code{client\_refresh\_rule}, parametric in
 the anchor's age; \code{stay\_recent\_client\_safe} derives the age
 bound.)
@@ -1138,12 +1137,16 @@ and the tip-height relation of each form (\code{hTipHeight}: equal
 heights; \code{hLe}: the first tip no higher). Then two accepted chains agree: at equal tip heights, on the block $n$ below
 each tip; at unequal tip heights, the lower chain's $n$-deep ancestor block
 is a block of the taller chain, at least $n$ deep there.
-There is no shared-genesis hypothesis: genesis agreement is a consequence
+There is no shared-genesis hypothesis: for two such chains both longer
+than $n$ blocks, genesis agreement is a consequence
 (\code{sched\_recent\_genesis\_agreement\_horizon}).
-The global-budget \code{scheduled\_client\_safety} is the corollary at
-any $H$ (\code{byzantineBoundedFrom\_of\_bounded}).
-No anchor, no sync rule, no confirmation wait: the client holds a clock
-and the constant $\mathit{gen}$, and may stay offline arbitrarily long.
+A global budget implies the horizon budget at every $H$
+(\code{byzantineBoundedFrom\_of\_bounded}); the earlier global-budget
+theorem \code{scheduled\_client\_safety}, which also assumes a shared
+genesis, is kept for reference.
+No anchor, no sync rule, no confirmation wait: a full-chain client holds a
+clock and the constant $\mathit{gen}$ (a certificate client also holds the
+genesis), and may stay offline arbitrarily long.
 \end{theorem}
 
 \emph{Operator duties.} Keep one offline \emph{cold root} per seat and
@@ -1182,7 +1185,7 @@ $\mathit{gen}(s) = \lfloor s/R \rfloor$ with, say, $R$ = one week of
 slots. Weekly, each seat's cold root signs one delegation for the
 coming generation and goes back in the safe; the live signing key never
 predates its era by more than the provisioning margin. Clients are
-wallets holding a clock and $\mathit{gen}$; they sleep for months and
+wallets holding the genesis, a clock and $\mathit{gen}$; they sleep for months and
 sync on wake. What must then be true of the world: the scheduled surface
 and hash injectivity; the standing clock assumption
 (Assumption~\ref{ass:clock}); not-before and cold-root custody (the ceremony
@@ -1244,8 +1247,9 @@ at equal tip heights (\code{hTipHeight}), on the block $2n$ below each tip
 (\code{lockstep\_client\_safety\_gen}); at unequal tip heights, the lower
 chain's $2n$-deep block is a block of the taller chain, at least $2n$ deep
 there (\code{lockstepGen\_recent\_tip\_ancestor\_mem}).
-Through the parent-id chain, they agree on their whole common prefix down
-to height $0$: no shared genesis is assumed
+Through the parent-id chain, two such chains both longer than $2n$ blocks
+agree on their whole common prefix down to height $0$: no shared genesis
+is assumed
 (\code{lockstepGen\_recent\_genesis\_agreement}).
 \end{theorem}
 
@@ -1301,14 +1305,12 @@ The modes at a glance and their headline theorems are collected in
 Section~\ref{sec:opmodel}.
 
 \paragraph{Honest scope.} Three bounds on what this subsection claims.
-First, while the timed theft layer (\code{theft\_exposure\_window}) confines
-exposure to $[r, r{+}d)$ under the asserted hypothesis \code{NoTheftBackdating}
-and frees $F$ from retroactive census growth
-(\code{paced\_tight\_census\_bound\_all\_F}), there is no execution-level
-separation between the timed and untimed budgets
-(\code{paced\_budget\_holds\_under\_timing}): the gain is in the operational
-assumptions a deployment must defend, and deriving no-theft-backdating from
-mint-timed signature primitives remains future work.
+First, the mode-1 census is retroactive within a stretch: a theft is
+charged to every earlier window of the client's stretch, which is what
+bounds the sync period $F$. Confining a theft's charge to the windows
+after it needs forward-secure signing; a hypothesis-level shortcut is
+degenerate (\code{noTheftBackdating\_degenerate}), and the
+non-degenerate form is future work.
 Second, while mode~3 formalizes per-generation erasure credit at depth $2n$
 (Theorem~\ref{thm:lock-gen}), both mode~2's certificate theorem
 (\code{sched\_recent\_certified\_suffix\_agreement}) and mode~3's certificate
@@ -1368,10 +1370,9 @@ it:
   against the model: if the extracted code accepts a chain, the semantic
   predicate holds (\code{rust\_valid\_chain\_sound} and companions).
   Soundness is the only direction safety needs --- completeness is a
-  liveness concern --- and it is what carries Theorems~\ref{thm:lc}
-  and~\ref{thm:forge} to the shipped code
-  (\code{rust\_recent\_tip\_ancestor\_mem}, and under the timed model and
-  certificate bridge, \code{Rust.rust\_timed\_certified\_agreement}). The bridges cover the
+  liveness concern --- and it is what carries Theorem~\ref{thm:lc} to the shipped code
+  (\code{Rust.rust\_timed\_certified\_agreement}; the untimed
+  \code{rust\_recent\_tip\_ancestor\_mem} is the earlier form). The bridges cover the
   validator's structural core and its key-discipline conjunct
   (\code{rust\_valid\_chain\_sound}, \code{rust\_valid\_chain\_k\_sound});
   the three rotation \emph{pins} of Section~\ref{sec:rotation} are,
@@ -1383,7 +1384,8 @@ it:
   the circuit backend is the one remaining trust assumption, stated
   rather than proved.
 \item \emph{A TypeScript twin} (\code{moltPetit.ts}) reaches Lean through
-  an independent compiler (Thales) with its own soundness bridge; the
+  an independent compiler (Thales) with its own soundness bridge, which
+  carries Theorem~\ref{thm:lc} to it (\code{ts\_timed\_certified\_agreement}); the
   vendored emission hand-corrects three recorded emitter bugs
   (\code{tools/thales-reemission/}), a hand-audited step in this
   pipeline's trusted base. It
