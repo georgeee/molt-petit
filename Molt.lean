@@ -38,3 +38,4 @@ against the same core, and the axiom guards apply unchanged.
 Modules grow section by section with the paper; the imports above are the
 current frontier.
 -/
+import Molt.AxiomsTimedSafety
