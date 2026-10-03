@@ -1516,21 +1516,24 @@ corrections.
 
 \appendix
 
-\section{The honest-slot uniqueness assumption, derived}
+\section{The untimed residue, derived}
 \label{app:timed-uniq}
 
-Assumption~\ref{ass:sig}(c) is the one hypothesis in this paper that can
-look arbitrary on first meeting: \emph{at an honest slot, a verifying
-block is the unique block its producer's honest signing path signed for
-that slot}. This appendix shows it is not arbitrary --- in the timed
-model it is a theorem, and the model that yields it is the intuitive
-one: a block's \emph{stamp} (the slot it claims) and the \emph{real
-time} it was signed are separate quantities, and everything turns on
-how far apart they can be.
+The headline Theorem~\ref{thm:lc} does not use this residue or
+\code{NoBackdate}. Rather, this appendix shows the route by which the
+untimed model's residue \code{SigUnforgeableRecent} (used in
+\code{light\_client\_safety}) follows from EUF-CMA plus no back-dating.
+In the untimed model, that residue is the hypothesis that at an honest
+slot, a verifying block is the unique block its producer's honest signing
+path signed for that slot. This appendix shows it is not arbitrary --- in
+the timed model it follows from the real-time axis, where a block's
+\emph{stamp} (the slot it claims) and the \emph{real time} it was signed
+are separate quantities, and everything turns on how far apart they can
+be.
 
 The timed model (Section~\ref{sec:timed}) records what each real slot's
 producer signed: at an honest real slot, at most its own current block;
-at a bad one, anything under that producer's key. Assumption (c) instead
+at a bad one, anything under that producer's key. The untimed residue instead
 speaks of a \emph{stamped} log --- per producer, per claimed slot. A
 projection connects them (\code{projectSigned}): a producer's entry for
 stamped slot $s$ is the block \emph{stamped} $s$ that it signed \emph{at
@@ -1546,11 +1549,11 @@ close the gap:
   stamp.
 \end{itemize}
 
-\begin{theorem}[Uniqueness, derived; Lean
+\begin{theorem}[Untimed residue, derived; Lean
 \code{sigUnforgeableRecent\_of\_timed}]\label{thm:timed-uniq}
 In any timed execution satisfying the EUF-CMA bridge and no back-dating,
-Assumption~\ref{ass:sig}(c) holds for the projected log --- at every
-recency window, the bar being a parameter the proof never uses.
+the untimed residue \code{SigUnforgeableRecent} holds for the projected log
+--- at every recency window, the bar being a parameter the proof never uses.
 \end{theorem}
 
 The proof is three steps: the verifying block was signed at some real
