@@ -9,8 +9,8 @@ chains the Rust `validate_certified_chain` accepts, checked by a verifier at
 real slot `R` within `n` real slots of both tips, agree at every height that
 is at least `n` below both tips, over every history the two certificates'
 groundings attest. No exposure hypothesis, no `SigUnforgeableRecent` residue:
-the signature assumption is the timed bridge `hbridge` (EUF-CMA plus
-causality) over the Rust signature predicate.
+the signature assumption is the unforgeability assumption `hbridge` over the
+Rust signature predicate.
 
 THE STATEMENT OF `rust_timed_certified_agreement` IS FIXED. Its exact type is
 pinned by `Rust/AxiomsTimed.lean`. Prove it; do not change it.

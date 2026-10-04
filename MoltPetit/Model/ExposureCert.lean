@@ -11,8 +11,9 @@ with the other presentation's at every height that is at least `n` below both
 tips. No block needs to be *exposed* in either suffix: the conclusion is about the
 attested histories themselves.
 
-The signature bridge `hbridge` is EUF-CMA plus causality: a signature the verifier
-holds at real slot `R` was produced (logged) at some real slot no later than `R`.
+The signature bridge `hbridge` is the unforgeability assumption (ideal signatures;
+EUF-CMA for a concrete scheme): a signature the verifier accepts at real slot `R`
+was produced (logged) at some real slot no later than `R`.
 
 THE STATEMENT OF `exposure_certified_agreement` IS FIXED. Its exact type is pinned by
 `Molt/AxiomsExposureCert.lean`. Prove it; do not change it.

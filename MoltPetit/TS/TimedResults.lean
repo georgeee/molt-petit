@@ -8,7 +8,7 @@ The TypeScript form of `exposure_certified_agreement`: two certified chains the 
 `validateCertifiedChain` accepts, checked by a verifier at real slot `R` within
 `n` real slots of both tips, agree at every height at least `n` below both tips,
 over every history the two certificates' groundings attest. The signature
-assumption is the timed bridge `hbridge` (EUF-CMA plus causality) over `TSSigned`.
+assumption is the unforgeability assumption `hbridge` over `TSSigned`.
 
 THE STATEMENT OF `ts_timed_certified_agreement` IS FIXED. Its exact type is
 pinned by `Molt/AxiomsTSTimed.lean`. Prove it; do not change it.
