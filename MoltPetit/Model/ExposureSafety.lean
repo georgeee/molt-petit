@@ -304,6 +304,73 @@ theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     have hq_add2 := quorum_ge_maxByzantine_add_two n hn2
     omega
 
+theorem common_prefix_step {n : Nat} {exposed : Exposure}
+    {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {R : Nat}
+    (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    {k : Nat} {B : Block}
+    (hB : blockAt? c (k + 1) = some B) (hB' : blockAt? c' (k + 1) = some B) :
+    blockAt? c k = blockAt? c' k := by
+  have hPL : ParentLinked c := hc.2.2.1
+  have hPL' : ParentLinked c' := hc'.2.2.1
+  obtain ⟨P, hP, hprev⟩ := hPL hB
+  obtain ⟨P', hP', hprev'⟩ := hPL' hB'
+  have hid : P.id = P'.id := by
+    have : some P.id = some P'.id := hprev.symm.trans hprev'
+    exact Option.some.inj this
+  have hPmem : P ∈ c := mem_of_blockAt hP
+  have hP'mem : P' ∈ c' := mem_of_blockAt hP'
+  have hPsigned : SignedEver log G P := signedEver_of_availableAt (hAvail P hPmem)
+  have hP'signed : SignedEver log G P' := signedEver_of_availableAt (hAvail' P' hP'mem)
+  have hEq : P = P' := hexec.id_inj hPsigned hP'signed hid
+  rw [hP, hP', hEq]
+
+theorem common_prefix_of_common_block {n : Nat} {exposed : Exposure}
+    {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {R : Nat}
+    (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    {j : Nat} {X : Block}
+    (hX : blockAt? c j = some X) (hX' : blockAt? c' j = some X) :
+    ∀ k ≤ j, blockAt? c k = blockAt? c' k := by
+  intro k hk
+  have hdiff : ∃ d, k + d = j := ⟨j - k, by omega⟩
+  obtain ⟨d, hd⟩ := hdiff
+  clear hk
+  induction d generalizing k with
+  | zero =>
+    have : k = j := by omega
+    subst this
+    rw [hX, hX']
+  | succ d ih =>
+    have hsucc_le : k + 1 ≤ j := by omega
+    have hsucc_eq : (k + 1) + d = j := by omega
+    have ih_applied := ih (k + 1) hsucc_eq
+    obtain ⟨B, hB⟩ := exists_blockAt_of_le hsucc_le hX
+    have hB' : blockAt? c' (k + 1) = some B := ih_applied ▸ hB
+    exact common_prefix_step hexec hc hc' hAvail hAvail' hB hB'
+
+theorem common_prefix_of_mem_both {n : Nat} {exposed : Exposure}
+    {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    {R : Nat}
+    (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    {j j' : Nat} {X : Block}
+    (hX : blockAt? c j = some X) (hX' : blockAt? c' j' = some X) :
+    j = j' ∧ ∀ k ≤ j, blockAt? c k = blockAt? c' k := by
+  have hj : X.height = j := hc.1 hX
+  have hj' : X.height = j' := hc'.1 hX'
+  have heq : j = j' := hj.symm.trans hj'
+  subst heq
+  exact ⟨rfl, common_prefix_of_common_block hexec hc hc' hAvail hAvail' hX hX'⟩
+
 theorem exposure_agreement {n ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
