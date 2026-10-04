@@ -1,4 +1,4 @@
-import MoltPetit.Model.Definitions
+import MoltPetit.Model.Model
 
 /-!
 # Light-client safety under arbitrary-time key exposure
@@ -36,16 +36,6 @@ theorem mem_of_blockAt {c : Chain} {k : Nat} {B : Block}
     (h : blockAt? c k = some B) : B ∈ c := by
   unfold blockAt? at h
   exact List.mem_of_getElem? h
-
-theorem strictSlots_lt {c : Chain} (hS : StrictSlots c)
-    {i j : Nat} {Bi Bj : Block}
-    (hi : blockAt? c i = some Bi) (hj : blockAt? c j = some Bj)
-    (hij : i < j) : Bi.slot < Bj.slot := by
-  unfold blockAt? at hi hj
-  rcases List.getElem?_eq_some_iff.mp hi with ⟨hiLen, hiEq⟩
-  rcases List.getElem?_eq_some_iff.mp hj with ⟨hjLen, hjEq⟩
-  have := (List.pairwise_iff_getElem.mp hS) i j hiLen hjLen hij
-  simpa [hiEq, hjEq] using this
 
 theorem index_zero_of_eq_head {c : Chain} (hS : StrictSlots c)
     {G : Block} (hHead : blockAt? c 0 = some G)
@@ -132,6 +122,18 @@ theorem ancestor_availableAt {n : Nat} {exposed : Exposure}
     (hA : blockAt? c k = some A) :
     AvailableAt log G A r :=
   step_A_ancestor_available hexec hc hHead hAvail (j - k) rfl hk hB hr hA
+
+theorem two_quorum_sub_n_ge (n : Nat) (hn : 1 ≤ n) :
+    maxByzantine n + 1 ≤ 2 * quorum n - n := by
+  have hmod : n % 3 = 0 ∨ n % 3 = 1 ∨ n % 3 = 2 := by omega
+  unfold maxByzantine quorum
+  rcases hmod with h0 | h1 | h2
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k := ⟨n / 3, by omega⟩
+    subst hk; omega
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k + 1 := ⟨n / 3, by omega⟩
+    subst hk; omega
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k + 2 := ⟨n / 3, by omega⟩
+    subst hk; omega
 
 theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
