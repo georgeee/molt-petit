@@ -376,6 +376,33 @@ theorem common_prefix_of_mem_both {n : Nat} {exposed : Exposure}
   subst heq
   exact ⟨rfl, common_prefix_of_common_block hexec hc hc' hAvail hAvail' hX hX'⟩
 
+theorem blockAt_getLast {ch : Chain} {tip : Block}
+    (hTip : ch.getLast? = some tip) :
+    blockAt? ch (ch.length - 1) = some tip := by
+  unfold blockAt?
+  rw [← List.getLast?_eq_getElem?]
+  exact hTip
+
+theorem slot_ge_of_height_gap {c : Chain} (hS : StrictSlots c)
+    {i : Nat} {Bi : Block} (hi : blockAt? c i = some Bi) :
+    ∀ {j : Nat} {Bj : Block}, blockAt? c j = some Bj → i ≤ j →
+      Bi.slot + (j - i) ≤ Bj.slot := by
+  intro j
+  induction j with
+  | zero =>
+    intro Bj hj hij
+    have hiz : i = 0 := Nat.eq_zero_of_le_zero hij
+    subst hiz; rw [hi] at hj; simp [Option.some.inj hj]
+  | succ j' ih =>
+    intro Bj hj hij
+    rcases Nat.eq_or_lt_of_le hij with rfl | hlt
+    · rw [hi] at hj; simp [Option.some.inj hj]
+    · have hij' : i ≤ j' := Nat.lt_succ_iff.mp hlt
+      obtain ⟨Bj', hBj'⟩ := exists_blockAt_of_le (Nat.le_succ j') hj
+      have hIH := ih hBj' hij'
+      have hStep : Bj'.slot < Bj.slot := strictSlots_lt hS hBj' hj (Nat.lt_succ_self j')
+      omega
+
 theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
