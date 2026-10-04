@@ -1,8 +1,9 @@
 # Pass 20 — consumers of the core v2 theorem
 
 Reviewer-owned. The core v2 (`docs/CORE_V2_SPEC.md`) replaces `TimedExecution` and
-`ByzantineBounded` with `SigningExecution exposed log G` and `ExposureBounded n ρ exposed`
-(freshness `ρ` in `hRecent` instead of `n`). This pass ports every consumer of the old
+`ByzantineBounded` with `SigningExecution exposed log G` and `HonestClock σ exposed log`, the windowed budget `ExposureBounded n ℓ φ exposed` and the
+lookback conditions `hL : n ≤ ℓ + 1`, `hL' : n + f + σ + 1 ≤ q + ℓ`
+(freshness `φ` in `hRecent` instead of `n`). This pass ports every consumer of the old
 `TimedSafety`/`TimedSafetyCert` theorems, which have been deleted.
 
 Statements are pinned. Do not change them or the guards:
@@ -22,7 +23,7 @@ Statements are pinned. Do not change them or the guards:
   (`git show a998b02:MoltPetit/Model/TimedSafetyCert.lean`), but simpler.
   - Build `full`/`full'`, `ValidChain` (via `grounded_suffix_history_of` + `validChain_sound`),
     the heads, the tips, and `hAvail` from `hbridge`/`hSigned`/`hc.signed`, exactly as before.
-  - Then a single `exact exposure_agreement hn hexec hBudget hVS hVS' hHead hHead' hAvail
+  - Then a single `exact exposure_agreement hn hexec hClock hBudget hL hL' hVS hVS' hHead hHead' hAvail
     hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'`. The new core theorem is already
     symmetric, so no `le_total` case split or `same_block_same_prefix` is needed.
 - **The three loss theorems.** Keep the `hVS`/`hVS'`/`hAvail`/`hAvail'` derivations from the

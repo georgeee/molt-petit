@@ -20,10 +20,12 @@ them; do not change them.
 namespace MoltPetit.Model
 
 /-- **Mode 2 against key loss: timed agreement for the scheduled validator.** -/
-theorem sched_loss_agreement {n ρ : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
+theorem sched_loss_agreement {n σ ℓ φ : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
-    (hBudget : ExposureBounded n ρ exposed)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, SignedDeclared n ops registry B → ∃ r ≤ R, B ∈ log r)
@@ -35,8 +37,8 @@ theorem sched_loss_agreement {n ρ : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n
     {tip tip' : Block}
     (hTip : (stripSigs sc).getLast? = some tip)
     (hTip' : (stripSigs sc').getLast? = some tip')
-    (hRecent : R ≤ tip.slot + ρ)
-    (hRecent' : R ≤ tip'.slot + ρ)
+    (hRecent : R ≤ tip.slot + φ)
+    (hRecent' : R ≤ tip'.slot + φ)
     {h : Nat}
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :
@@ -44,10 +46,12 @@ theorem sched_loss_agreement {n ρ : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n
   sorry
 
 /-- **Mode 3 against key loss: timed agreement for the lockstep validator.** -/
-theorem lockstep_loss_agreement {n ρ : Nat} (hn : 1 ≤ n)
+theorem lockstep_loss_agreement {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
-    (hBudget : ExposureBounded n ρ exposed)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, SignedDeclared n ops registry B → ∃ r ≤ R, B ∈ log r)
@@ -59,8 +63,8 @@ theorem lockstep_loss_agreement {n ρ : Nat} (hn : 1 ≤ n)
     {tip tip' : Block}
     (hTip : (stripSigs sc).getLast? = some tip)
     (hTip' : (stripSigs sc').getLast? = some tip')
-    (hRecent : R ≤ tip.slot + ρ)
-    (hRecent' : R ≤ tip'.slot + ρ)
+    (hRecent : R ≤ tip.slot + φ)
+    (hRecent' : R ≤ tip'.slot + φ)
     {h : Nat}
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :

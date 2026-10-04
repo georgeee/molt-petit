@@ -35,10 +35,12 @@ theorem signedDeclared_of_mem {σ sk pk : Type} {n Δconf : Nat}
   exact ⟨sb.sig, by rw [hsbeq] at hverify; exact hverify⟩
 
 /-- **Mode 1 against key loss: timed agreement for the mode-1 validator.** -/
-theorem keyrot_loss_agreement {n Δconf ρ : Nat} (hn : 1 ≤ n)
+theorem keyrot_loss_agreement {n Δconf σ ℓ φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
-    (hBudget : ExposureBounded n ρ exposed)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, SignedDeclared n ops registry B → ∃ r ≤ R, B ∈ log r)
@@ -50,8 +52,8 @@ theorem keyrot_loss_agreement {n Δconf ρ : Nat} (hn : 1 ≤ n)
     {tip tip' : Block}
     (hTip : (stripSigs sc).getLast? = some tip)
     (hTip' : (stripSigs sc').getLast? = some tip')
-    (hRecent : R ≤ tip.slot + ρ)
-    (hRecent' : R ≤ tip'.slot + ρ)
+    (hRecent : R ≤ tip.slot + φ)
+    (hRecent' : R ≤ tip'.slot + φ)
     {h : Nat}
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :

@@ -9,13 +9,15 @@ is incomplete or uses any non-classical axiom.
 -/
 
 open Aeneas Std Result Rust in
-example {ρ : Nat}
+example {σ ℓ φ : Nat}
     {n : Std.U64} (hn : 1 ≤ n.val)
     {C} (I : molt_petit.Crypto C) (crypto crypto' : C)
     {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
     {G : MoltPetit.Model.Block} {R : Nat}
     (hexec : MoltPetit.Model.SigningExecution exposed log G)
-    (hBudget : MoltPetit.Model.ExposureBounded n.val ρ exposed)
+    (hClock : MoltPetit.Model.HonestClock σ exposed log)
+    (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ exposed)
+    (hL : n.val ≤ ℓ + 1) (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
     (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, RustSigned I crypto n B → ∃ r ≤ R, B ∈ log r)
     (hCryptoSig : ∀ b, RustSigned I crypto' n b → RustSigned I crypto n b)
     (hUnf : ∀ cert : molt_petit.Hash, I.cert_verify crypto cert = ok true →
@@ -33,8 +35,8 @@ example {ρ : Nat}
     {sTip sTip' : MoltPetit.Model.Block}
     (hTipS  : (toModelBlock sr1  :: toModelChain srtl).getLast?  = some sTip)
     (hTipS' : (toModelBlock sr1' :: toModelChain srtl').getLast? = some sTip')
-    (hRecent  : R ≤ sTip.slot  + ρ)
-    (hRecent' : R ≤ sTip'.slot + ρ)
+    (hRecent  : R ≤ sTip.slot  + φ)
+    (hRecent' : R ≤ sTip'.slot + φ)
     {cl cl' : molt_petit.CertClaim}
     (hcl  : I.cert_claim crypto  cert  = ok cl)
     (hcl' : I.cert_claim crypto' cert' = ok cl')
@@ -47,7 +49,7 @@ example {ρ : Nat}
     (hDeep' : h + n.val < (c' ++ toModelBlock sr1' :: toModelChain srtl').length) :
     MoltPetit.Model.blockAt? (c ++ toModelBlock sr1 :: toModelChain srtl) h =
       MoltPetit.Model.blockAt? (c' ++ toModelBlock sr1' :: toModelChain srtl') h :=
-  rust_timed_certified_agreement hn I crypto crypto' hexec hBudget hbridge hCryptoSig hUnf hUnf' hval hval' hstr hstr' hTipS hTipS' hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
+  rust_timed_certified_agreement hn I crypto crypto' hexec hClock hBudget hL hL' hbridge hCryptoSig hUnf hUnf' hval hval' hstr hstr' hTipS hTipS' hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
 
 /-- info: 'Rust.rust_timed_certified_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in

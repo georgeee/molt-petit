@@ -21,10 +21,12 @@ THE STATEMENT OF `exposure_certified_agreement` IS FIXED. Its exact type is pinn
 namespace MoltPetit.Model
 
 /-- **Timed certified light-client safety.** -/
-theorem exposure_certified_agreement {n ρ : Nat} (hn : 1 ≤ n)
+theorem exposure_certified_agreement {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
-    (hBudget : ExposureBounded n ρ exposed)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
     {Signed : Block → Prop} {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r ≤ R, B ∈ log r)
     {cl cl' : CertClaim}
@@ -45,8 +47,8 @@ theorem exposure_certified_agreement {n ρ : Nat} (hn : 1 ≤ n)
         quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hSigned : ∀ B ∈ s₁ :: srest, Signed B)
     (hSigned' : ∀ B ∈ s₁' :: srest', Signed B)
-    (hRecent : R ≤ sTip.slot + ρ)
-    (hRecent' : R ≤ sTip'.slot + ρ)
+    (hRecent : R ≤ sTip.slot + φ)
+    (hRecent' : R ≤ sTip'.slot + φ)
     {c c' : Chain}
     (hc : GroundedHistory n Signed G cl c)
     (hc' : GroundedHistory n Signed G cl' c')

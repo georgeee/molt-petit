@@ -50,7 +50,7 @@ abbrev SigningExecution := MoltPetit.Model.SigningExecution
 /-- Honest clocks run at most `σ` slots ahead of real time. -/
 abbrev HonestClock := MoltPetit.Model.HonestClock
 
-/-- The exposure budget with freshness `ρ`. -/
+/-- The exposure budget with freshness `φ`. -/
 abbrev ExposureBounded := MoltPetit.Model.ExposureBounded
 
 /-- Semantic grounded history of a certificate claim. -/
@@ -122,10 +122,12 @@ tips. No block needs to be *exposed* in either suffix: the conclusion is about
 the attested histories themselves.
 
 Transported from `MoltPetit.Model.exposure_certified_agreement`. -/
-theorem timed_light_client_safety {n ρ : Nat} (hn : 1 ≤ n)
+theorem timed_light_client_safety {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
-    (hBudget : ExposureBounded n ρ exposed)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + faultBudget n + σ + 1 ≤ quorum n + ℓ)
     {Signed : Block → Prop} {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r ≤ R, B ∈ log r)
     {cl cl' : CertClaim}
@@ -146,8 +148,8 @@ theorem timed_light_client_safety {n ρ : Nat} (hn : 1 ≤ n)
         quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hSigned  : ∀ B ∈ s₁ :: srest,  Signed B)
     (hSigned' : ∀ B ∈ s₁' :: srest', Signed B)
-    (hRecent  : R ≤ sTip.slot  + ρ)
-    (hRecent' : R ≤ sTip'.slot + ρ)
+    (hRecent  : R ≤ sTip.slot  + φ)
+    (hRecent' : R ≤ sTip'.slot + φ)
     {c c' : Chain}
     (hc  : GroundedHistory n Signed G cl c)
     (hc' : GroundedHistory n Signed G cl' c')
@@ -156,7 +158,7 @@ theorem timed_light_client_safety {n ρ : Nat} (hn : 1 ≤ n)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
   rw [linksOk_eq_core] at hLinks hLinks'
-  exact MoltPetit.Model.exposure_certified_agreement hn hexec hBudget hbridge hcl hcl'
+  exact MoltPetit.Model.exposure_certified_agreement hn hexec hClock hBudget hL hL' hbridge hcl hcl'
     hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'
     hSigned hSigned' hRecent hRecent' hc hc' hDeep hDeep'
 

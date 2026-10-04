@@ -67,12 +67,14 @@ theorem toTSClaim_injective : Function.Injective toTSClaim := by
     rfl
 
 /-- **Timed certified light-client safety, TypeScript validator.** -/
-theorem ts_timed_certified_agreement {ρ : Nat}
+theorem ts_timed_certified_agreement {σ ℓ φ : Nat}
     {n : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
     {sigOps : MoltPetit.SigOps}
     (hexec : SigningExecution exposed log G)
-    (hBudget : ExposureBounded n ρ exposed)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
     (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → ∃ r ≤ R, B ∈ log r)
     {certOps certOps' : MoltPetit.CertOps}
     (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
@@ -92,8 +94,8 @@ theorem ts_timed_certified_agreement {ρ : Nat}
     {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
-    (hRecent : R ≤ sTip.slot + ρ)
-    (hRecent' : R ≤ sTip'.slot + ρ)
+    (hRecent : R ≤ sTip.slot + φ)
+    (hRecent' : R ≤ sTip'.slot + φ)
     {cl cl' : CertClaim}
     (hcl : certOps.claim h = toTSClaim cl)
     (hcl' : certOps'.claim h' = toTSClaim cl')
@@ -126,7 +128,7 @@ theorem ts_timed_certified_agreement {ρ : Nat}
     exact hs
   obtain ⟨hLink, hLinks, hDense⟩ := ts_validateSuffix_sound hTipS hsfx
   obtain ⟨hLink', hLinks', hDense'⟩ := ts_validateSuffix_sound hTipS' hsfx'
-  exact exposure_certified_agreement hn hexec hBudget hbridge hG hG'
+  exact exposure_certified_agreement hn hexec hClock hBudget hL hL' hbridge hG hG'
     hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense' hSigned hSigned'
     hRecent hRecent' hc hc' hDeep hDeep'
 
