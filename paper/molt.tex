@@ -178,8 +178,9 @@ differ only in what computes the pin; in what they guarantee, they
 differ only against key \emph{theft}. Producers rotate; clients never
 react to rotations --- each client duty below is a fixed rule in time,
 never a response to an event. (Names in \code{typewriter} are
-machine-checked Lean theorems; every one resolves in the companion
-library \code{Molt/}.)
+Lean theorems and definitions; every one resolves in the companion
+library \code{Molt/}, except the per-implementation bridge names of
+Section~\ref{sec:impl}.)
 
 \paragraph{Without theft, every mode is Theorem~1.}
 Every adversary in this paper can make a producer \emph{lose} its key

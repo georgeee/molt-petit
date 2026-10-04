@@ -51,6 +51,16 @@ abbrev ExposureBounded := MoltPetit.Model.ExposureBounded
 freshness deadline counts, however early. -/
 abbrev ExposureBoundedEver := MoltPetit.Model.ExposureBoundedEver
 
+/-- The signing execution restricted to blocks satisfying an admissibility
+predicate `Adm` (custody is claimed only for admissible blocks). -/
+abbrev SigningExecutionOn := MoltPetit.Model.SigningExecutionOn
+
+/-- Honest clocks, for admissible blocks only. -/
+abbrev HonestClockOn := MoltPetit.Model.HonestClockOn
+
+/-- `B` is the genesis or occurs in the log at some real slot. -/
+abbrev SignedEver := MoltPetit.Model.SignedEver
+
 /-- Semantic grounded history of a certificate claim. -/
 abbrev GroundedHistory := MoltPetit.Model.GroundedHistory
 
@@ -127,5 +137,18 @@ alias exposure_no_early_signing_ever := MoltPetit.Model.exposure_no_early_signin
 
 /-- Theorem 1 for the TypeScript validator (paper §7). -/
 alias ts_timed_certified_agreement := MoltPetit.Model.ts_timed_certified_agreement
+
+/-! ## Admissibility-restricted forms -/
+
+/-- Theorem 1's core with custody and clocks assumed only for admissible
+blocks. -/
+alias exposure_agreement_on := MoltPetit.Model.exposure_agreement_on
+
+/-- Theorem 2 with custody and clocks assumed only for admissible blocks. -/
+alias exposure_no_early_signing_on := MoltPetit.Model.exposure_no_early_signing_on
+
+/-- Theorem 1 (certificate form) with custody and clocks assumed only for
+blocks satisfying the signature predicate. -/
+alias exposure_certified_agreement_on := MoltPetit.Model.exposure_certified_agreement_on
 
 end Molt

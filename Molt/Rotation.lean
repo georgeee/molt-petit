@@ -395,6 +395,14 @@ alias same_block_same_prefix := MoltPetit.Model.same_block_same_prefix
 the scheduled pin. -/
 abbrev GroundedCertSched := @MoltPetit.Model.GroundedCertSched
 
+/-- What the scheduled grounding reconstructs: an accepted, schedule-pinned
+history matching the claim, every block signed. -/
+abbrev GroundedHistorySched := @MoltPetit.Model.GroundedHistorySched
+
+/-- The horizon budget: at most `f` bad slots in every `n`-slot window
+starting at or after `H` (untimed mode-2 form). -/
+abbrev ByzantineBoundedFrom := MoltPetit.Model.ByzantineBoundedFrom
+
 /-- A chain whose tip declares a generation whose era ended more than `Δ`
 ago fails the recency check — no budget consulted (paper §6.3, mode 2). -/
 alias sched_oldkey_fork_stale := MoltPetit.Model.sched_oldkey_fork_stale
