@@ -115,7 +115,7 @@ over a deployment's lifetime keys leak --- signers are compromised and
 later cleaned, keys are stolen --- and a fork signed with keys exposed long
 after its stamps is the classic long-range attack. The fault budget here
 counts, for each window of $n$ slots, only the keys exposed during a
-bounded stretch of real time around that window, from about $2n$ slots
+bounded stretch of real time around that window, from about $n$ slots
 before it to $\varphi$ slots after it. A client that refuses tips older
 than $\varphi$ is exactly the client for whom later exposure cannot
 matter, and no adversary can prepare a valid chain ahead of real time to
@@ -579,9 +579,10 @@ consecutive stamps $[v, v + n)$, at most $\fmax = \lfloor (n-1)/3
 \rfloor$ have their key exposed at some real slot in
 $[v - \ell,\ v + n + \varphi)$, where $\varphi$ is the freshness of
 Assumption~\ref{ass:clock} and the lookback $\ell$ satisfies
-$2n + \fmax + \sigma + 1 \le \quorum + \ell$ for the honest clock lead
-$\sigma$ of Assumption~\ref{ass:sig}. For $n = 3\fmax + 1$ that is
-$\ell \ge 2n - \fmax + \sigma$. Exposure outside that stretch of real
+$\ell \ge n - 1$ and $\ell \ge n + \fmax + \sigma + 2 - \quorum$ for the
+honest clock lead $\sigma$ of Assumption~\ref{ass:sig}. For
+$n = 3\fmax + 1 \ge 7$, $\ell = n - 1 + \sigma$ suffices: the stretch runs
+from $n - 1 + \sigma$ slots before the window to $\varphi$ slots after it. Exposure outside that stretch of real
 time --- control that ended before it, theft that happened after it ---
 does not count against the window.
 \quad\textit{(Lean: \code{ExposureBounded}.)}
@@ -707,8 +708,8 @@ more than classical logic.
 \begin{theorem}[Recent chains share their deep blocks; Lean
 \code{timed\_light\_client\_safety}]\label{thm:lc}
 Fix $n \ge 1$, a deployment genesis $G$, a freshness $\varphi$, an honest
-clock lead $\sigma$, and a lookback $\ell$ with
-$2n + \fmax + \sigma + 1 \le \quorum + \ell$. Suppose:
+clock lead $\sigma$, and a lookback $\ell$ with $\ell \ge n - 1$ and
+$\ell \ge n + \fmax + \sigma + 2 - \quorum$. Suppose:
 \begin{itemize}
 \item a signing execution (\code{SigningExecution}): signing happens at
   real slots; while the key that verifies a stamp is unexposed, at most one
