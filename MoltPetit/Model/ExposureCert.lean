@@ -141,6 +141,66 @@ theorem exposure_certified_agreement_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     (hDeep : h + n < (c ++ s₁ :: srest).length)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
-  sorry
+  classical
+  set full : Chain := c ++ s₁ :: srest with hfull
+  set full' : Chain := c' ++ s₁' :: srest' with hfull'
+  have hVS : ValidChain n full :=
+    validChain_sound (grounded_suffix_history_of hc hTipS hLink hLinks hDense)
+  have hVS' : ValidChain n full' :=
+    validChain_sound (grounded_suffix_history_of hc' hTipS' hLink' hLinks' hDense')
+  have hcLen : 0 < c.length := by
+    have := hc.len_eq
+    omega
+  have hcLen' : 0 < c'.length := by
+    have := hc'.len_eq
+    omega
+  have hHead : blockAt? full 0 = some G := by
+    unfold blockAt?
+    rw [hfull, List.getElem?_append_left hcLen]
+    exact hc.head
+  have hHead' : blockAt? full' 0 = some G := by
+    unfold blockAt?
+    rw [hfull', List.getElem?_append_left hcLen']
+    exact hc'.head
+  have hTip : full.getLast? = some sTip := by
+    rw [hfull, List.getLast?_append, hTipS]
+    rfl
+  have hTip' : full'.getLast? = some sTip' := by
+    rw [hfull', List.getLast?_append, hTipS']
+    rfl
+  have hAdm : ∀ B ∈ full, B ≠ G → Signed B := by
+    intro B hB hBG
+    rcases List.mem_append.mp hB with hBc | hBs
+    · rcases hc.signed B hBc with rfl | hSig
+      · contradiction
+      · exact hSig
+    · exact hSigned B hBs
+  have hAdm' : ∀ B ∈ full', B ≠ G → Signed B := by
+    intro B hB hBG
+    rcases List.mem_append.mp hB with hBc' | hBs'
+    · rcases hc'.signed B hBc' with rfl | hSig
+      · contradiction
+      · exact hSig
+    · exact hSigned' B hBs'
+  have hAvail : ∀ B ∈ full, AvailableAt log G B R := by
+    intro B hB
+    rcases List.mem_append.mp (by exact hB) with hBc | hBs
+    · rcases hc.signed B hBc with rfl | hSig
+      · exact Or.inl rfl
+      · obtain ⟨r, hrR, hrLog⟩ := hbridge hSig
+        exact Or.inr ⟨r, hrR, hrLog⟩
+    · obtain ⟨r, hrR, hrLog⟩ := hbridge (hSigned B hBs)
+      exact Or.inr ⟨r, hrR, hrLog⟩
+  have hAvail' : ∀ B ∈ full', AvailableAt log G B R := by
+    intro B hB
+    rcases List.mem_append.mp (by exact hB) with hBc' | hBs'
+    · rcases hc'.signed B hBc' with rfl | hSig
+      · exact Or.inl rfl
+      · obtain ⟨r, hrR, hrLog⟩ := hbridge hSig
+        exact Or.inr ⟨r, hrR, hrLog⟩
+    · obtain ⟨r, hrR, hrLog⟩ := hbridge (hSigned' B hBs')
+      exact Or.inr ⟨r, hrR, hrLog⟩
+  exact exposure_agreement_on hn hexec hClock hBudget hL hL' hVS hVS'
+    hHead hHead' hAdm hAdm' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 end MoltPetit.Model

@@ -46,6 +46,46 @@ def schedExposed (n : Nat) (schedule : Nat → Nat) (Controlled : Nat → Nat �
   fun s r => Controlled (producerForSlot n s) r ∨
     ∃ j, schedule s ≤ j ∧ Stolen (producerForSlot n s) j r
 
+theorem schedAdmissible_of_mem_sched {Sig sk pk : Type} {n : Nat} {schedule : Nat → Nat}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {sc : SignedChain Sig}
+    (h : validSignedChainSched n schedule ops registry sc = true)
+    {B : Block} (hB : B ∈ stripSigs sc) :
+    SchedAdmissible n schedule ops registry B := by
+  obtain ⟨sb, hsbmem, rfl⟩ := List.mem_map.mp hB
+  obtain ⟨hverify, hpin⟩ := rotated_key_dead_sched h hsbmem
+  exact ⟨⟨sb.sig, hverify⟩, hpin⟩
+
+theorem groundedCert_of_sched {n : Nat} {schedule : Nat → Nat}
+    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
+    {G : Block} {cl : CertClaim}
+    (h : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl) :
+    GroundedCert n (SchedAdmissible n schedule ops registry) G cl := by
+  induction h with
+  | genesis hG hSlot _ _ =>
+    exact GroundedCert.genesis hG hSlot
+  | extend cl b _ hH hS hP hSig hPin hD ih =>
+    exact GroundedCert.extend cl b ih hH hS hP ⟨hSig, hPin⟩ hD
+
+theorem groundedHistory_of_sched {n : Nat} {schedule : Nat → Nat}
+    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
+    {G : Block} {cl : CertClaim} {c : Chain}
+    (hc : GroundedHistorySched n schedule (SignedDeclared n ops registry) G cl c) :
+    GroundedHistory n (SchedAdmissible n schedule ops registry) G cl c where
+  valid   := hc.valid
+  head    := hc.head
+  tip     := hc.tip
+  tail_eq := hc.tail_eq
+  len_eq  := hc.len_eq
+  signed  := fun B hB => by
+    have hsig := hc.signed B hB
+    have hpin : schedule B.slot ≤ B.keyIndex := by
+      have hp := hc.pinned
+      rw [schedPinned, List.all_eq_true] at hp
+      have hB' := hp B hB
+      rw [decide_eq_true_eq] at hB'
+      exact hB'
+    exact Or.inr ⟨hsig, hpin⟩
+
 /-- **Mode 2 against theft: timed agreement for the mode-2 validator.** -/
 theorem sched_exposure_agreement {n σ ℓ φ : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
@@ -74,7 +114,22 @@ theorem sched_exposure_agreement {n σ ℓ φ : Nat} {schedule : Nat → Nat} (h
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :
     blockAt? (stripSigs sc) h = blockAt? (stripSigs sc') h := by
-  sorry
+  have hVS : ValidChain n (stripSigs sc) := validChain_of_validSignedChainSched hVal
+  have hVS' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSched hVal'
+  have hAdm : ∀ B ∈ stripSigs sc, B ≠ G → SchedAdmissible n schedule ops registry B :=
+    fun B hB _ => schedAdmissible_of_mem_sched hVal hB
+  have hAdm' : ∀ B ∈ stripSigs sc', B ≠ G → SchedAdmissible n schedule ops registry B :=
+    fun B hB _ => schedAdmissible_of_mem_sched hVal' hB
+  have hAvail : ∀ B ∈ stripSigs sc, AvailableAt log G B R := by
+    intro B hB
+    obtain ⟨r, hrR, hrLog⟩ := hbridge (schedAdmissible_of_mem_sched hVal hB)
+    exact Or.inr ⟨r, hrR, hrLog⟩
+  have hAvail' : ∀ B ∈ stripSigs sc', AvailableAt log G B R := by
+    intro B hB
+    obtain ⟨r, hrR, hrLog⟩ := hbridge (schedAdmissible_of_mem_sched hVal' hB)
+    exact Or.inr ⟨r, hrR, hrLog⟩
+  exact exposure_agreement_on hn hexec hClock hBudget hL hL' hVS hVS'
+    hHead hHead' hAdm hAdm' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 /-- **Mode 2 against theft: timed certified agreement.** The light client holds
 a scheduled certificate claim (`GroundedCertSched`, every grounded block
@@ -120,6 +175,13 @@ theorem sched_exposure_certified_agreement {n σ ℓ φ : Nat} {schedule : Nat �
     (hDeep : h + n < (c ++ s₁ :: srest).length)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
-  sorry
+  have hcl_adm := groundedCert_of_sched hcl
+  have hcl'_adm := groundedCert_of_sched hcl'
+  have hc_adm := groundedHistory_of_sched hc
+  have hc'_adm := groundedHistory_of_sched hc'
+  exact exposure_certified_agreement_on hn hexec hClock hBudget hL hL'
+    hbridge hcl_adm hcl'_adm hTipS hTipS' hLink hLinks hDense
+    hLink' hLinks' hDense' hSigned hSigned' hRecent hRecent'
+    hc_adm hc'_adm hDeep hDeep'
 
 end MoltPetit.Model
