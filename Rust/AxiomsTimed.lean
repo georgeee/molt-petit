@@ -14,18 +14,20 @@ example {σ ℓ φ : Nat}
     {C} (I : molt_petit.Crypto C) (crypto crypto' : C)
     {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
     {G : MoltPetit.Model.Block} {R : Nat}
-    (hexec : MoltPetit.Model.SigningExecution exposed log G)
-    (hClock : MoltPetit.Model.HonestClock σ exposed log)
+    {Formed : MoltPetit.Model.Block → Prop}
+    (hexec : MoltPetit.Model.SigningExecutionOn (fun B => RustSigned I crypto n B ∧ Formed B) exposed log G)
+    (hClock : MoltPetit.Model.HonestClockOn (fun B => RustSigned I crypto n B ∧ Formed B) σ exposed log)
     (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ exposed)
     (hL : n.val ≤ ℓ + 1) (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
-    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, RustSigned I crypto n B → ∃ r ≤ R, B ∈ log r)
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, RustSigned I crypto n B → Formed B → ∃ r ≤ R, B ∈ log r)
     (hCryptoSig : ∀ b, RustSigned I crypto' n b → RustSigned I crypto n b)
     (hUnf : ∀ cert : molt_petit.Hash, I.cert_verify crypto cert = ok true →
       ∃ cl, I.cert_claim crypto cert = ok cl ∧
-        MoltPetit.Model.GroundedCert n.val (RustSigned I crypto n) G (toModelClaim cl))
+        MoltPetit.Model.GroundedCert n.val (fun B => RustSigned I crypto n B ∧ Formed B) G (toModelClaim cl))
     (hUnf' : ∀ cert : molt_petit.Hash, I.cert_verify crypto' cert = ok true →
       ∃ cl, I.cert_claim crypto' cert = ok cl ∧
-        MoltPetit.Model.GroundedCert n.val (RustSigned I crypto' n) G (toModelClaim cl))
+        MoltPetit.Model.GroundedCert n.val
+          (fun B => RustSigned I crypto' n B ∧ Formed B) G (toModelClaim cl))
     {cert cert' : molt_petit.Hash} {suffix suffix' : molt_petit.SignedChain}
     (hval  : molt_petit.validate_certified_chain I n crypto (.CC cert suffix) = ok true)
     (hval' : molt_petit.validate_certified_chain I n crypto' (.CC cert' suffix') = ok true)
@@ -35,21 +37,24 @@ example {σ ℓ φ : Nat}
     {sTip sTip' : MoltPetit.Model.Block}
     (hTipS  : (toModelBlock sr1  :: toModelChain srtl).getLast?  = some sTip)
     (hTipS' : (toModelBlock sr1' :: toModelChain srtl').getLast? = some sTip')
+    (hFormedS  : ∀ B ∈ toModelBlock sr1  :: toModelChain srtl,  Formed B)
+    (hFormedS' : ∀ B ∈ toModelBlock sr1' :: toModelChain srtl', Formed B)
     (hRecent  : R ≤ sTip.slot  + φ)
     (hRecent' : R ≤ sTip'.slot + φ)
     {cl cl' : molt_petit.CertClaim}
     (hcl  : I.cert_claim crypto  cert  = ok cl)
     (hcl' : I.cert_claim crypto' cert' = ok cl')
     {c c' : MoltPetit.Model.Chain}
-    (hc  : MoltPetit.Model.GroundedHistory n.val (RustSigned I crypto n) G (toModelClaim cl) c)
-    (hc' : MoltPetit.Model.GroundedHistory n.val (RustSigned I crypto' n) G
+    (hc  : MoltPetit.Model.GroundedHistory n.val (fun B => RustSigned I crypto n B ∧ Formed B) G (toModelClaim cl) c)
+    (hc' : MoltPetit.Model.GroundedHistory n.val
+      (fun B => RustSigned I crypto' n B ∧ Formed B) G
       (toModelClaim cl') c')
     {h : Nat}
     (hDeep  : h + n.val < (c  ++ toModelBlock sr1  :: toModelChain srtl).length)
     (hDeep' : h + n.val < (c' ++ toModelBlock sr1' :: toModelChain srtl').length) :
     MoltPetit.Model.blockAt? (c ++ toModelBlock sr1 :: toModelChain srtl) h =
       MoltPetit.Model.blockAt? (c' ++ toModelBlock sr1' :: toModelChain srtl') h :=
-  rust_timed_certified_agreement hn I crypto crypto' hexec hClock hBudget hL hL' hbridge hCryptoSig hUnf hUnf' hval hval' hstr hstr' hTipS hTipS' hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
+  rust_timed_certified_agreement hn I crypto crypto' hexec hClock hBudget hL hL' hbridge hCryptoSig hUnf hUnf' hval hval' hstr hstr' hTipS hTipS' hFormedS hFormedS' hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
 
 /-- info: 'Rust.rust_timed_certified_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in

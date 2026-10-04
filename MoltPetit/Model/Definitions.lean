@@ -731,21 +731,32 @@ def HonestClock (σ : Nat) (exposed : Exposure) (log : TimedLog) : Prop :=
 
 /--
 The signing execution restricted to the blocks a validator admits. `Adm B`
-is a per-block admissibility check (for mode 2: the block verifies under its
-declared version and that version meets the schedule pin). Custody and the
-honest clock are then claimed only for admissible blocks: a block no
-validator would accept may be signed by anyone, at any time, under any key.
-`SigningExecution` is the case `Adm = fun _ => True`.
+is the per-block acceptance check a verifier runs: the block's signature
+verifies, its id is *formed* (the hash of its preimage taken over its
+parent's actual signature, which the verifier's hashing layer recomputes),
+and, for mode 2, its declared version meets the schedule. Every field is
+claimed only for admissible blocks (and the genesis): a block no verifier
+would accept --- an unformed id, a dangling or copied parent reference, a
+retired key --- may be signed by anyone, at any time, under any key, without
+falsifying the hypothesis.
+
+* `honest_once`: per stamp, at most one admissible block is signed while the
+  stamp is unexposed.
+* `chain_order`: an admissible block that names an occurring admissible block
+  (or the genesis) as its parent was signed only once that parent existed ---
+  its signature covers its id, whose preimage contains the parent's signature.
+* `id_inj`: collision resistance among admissible blocks and the genesis.
+
+`SigningExecution` implies the case `Adm = fun _ => True`.
 -/
 structure SigningExecutionOn (Adm : Block → Prop) (exposed : Exposure) (log : TimedLog)
     (G : Block) : Prop where
   honest_once : ∀ ⦃r r' : Nat⦄ ⦃B B' : Block⦄, B ∈ log r → B' ∈ log r' → Adm B → Adm B' →
     B.slot = B'.slot → ¬ exposed B.slot r → ¬ exposed B.slot r' → B = B'
-  chain_order : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r →
-    ∀ ⦃i : Nat⦄, B.prev = some i →
-      ∃ P : Block, P.id = i ∧ AvailableAt log G P r
+  chain_order : ∀ ⦃r : Nat⦄ ⦃B C : Block⦄, B ∈ log r → Adm B →
+    SignedEver log G C → (C = G ∨ Adm C) → B.prev = some C.id → AvailableAt log G C r
   id_inj : ∀ ⦃B B' : Block⦄, SignedEver log G B → SignedEver log G B' →
-    B.id = B'.id → B = B'
+    (B = G ∨ Adm B) → (B' = G ∨ Adm B') → B.id = B'.id → B = B'
 
 /-- Honest clocks, for admissible blocks only. -/
 def HonestClockOn (Adm : Block → Prop) (σ : Nat) (exposed : Exposure) (log : TimedLog) : Prop :=

@@ -99,21 +99,23 @@ open MoltPetit.Model in
 example {n σ ℓ φ : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {Controlled : Nat → Nat → Prop} {Stolen : Nat → Nat → Nat → Prop}
-    {log : TimedLog} {G : Block}
-    (hexec : SigningExecutionOn (SchedAdmissible n schedule ops registry)
+    {log : TimedLog} {G : Block} {Formed : Block → Prop}
+    (hexec : SigningExecutionOn (fun B => SchedAdmissible n schedule ops registry B ∧ Formed B)
       (schedExposed n schedule Controlled Stolen) log G)
-    (hClock : HonestClockOn (SchedAdmissible n schedule ops registry) σ
+    (hClock : HonestClockOn (fun B => SchedAdmissible n schedule ops registry B ∧ Formed B) σ
       (schedExposed n schedule Controlled Stolen) log)
     (hBudget : ExposureBounded n ℓ φ (schedExposed n schedule Controlled Stolen))
     (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
     {R : Nat}
-    (hbridge : ∀ ⦃B : Block⦄, SchedAdmissible n schedule ops registry B →
+    (hbridge : ∀ ⦃B : Block⦄, SchedAdmissible n schedule ops registry B → Formed B →
       ∃ r ≤ R, B ∈ log r)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainSched n schedule ops registry sc = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
     (hHead : blockAt? (stripSigs sc) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {tip tip' : Block}
     (hTip : (stripSigs sc).getLast? = some tip)
     (hTip' : (stripSigs sc').getLast? = some tip')
@@ -124,7 +126,7 @@ example {n σ ℓ φ : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
     (hDeep' : h + n < (stripSigs sc').length) :
     blockAt? (stripSigs sc) h = blockAt? (stripSigs sc') h :=
   sched_exposure_agreement hn hexec hClock hBudget hL hL'
-    hbridge hVal hVal' hHead hHead' hTip hTip' hRecent hRecent' hDeep hDeep'
+    hbridge hVal hVal' hHead hHead' hFormed hFormed' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 /-- info: 'MoltPetit.Model.sched_exposure_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
@@ -135,19 +137,19 @@ example {n σ ℓ φ : Nat} {schedule : Nat → Nat}
     (hn : 1 ≤ n)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {Controlled : Nat → Nat → Prop} {Stolen : Nat → Nat → Nat → Prop}
-    {log : TimedLog} {G : Block}
-    (hexec : SigningExecutionOn (SchedAdmissible n schedule ops registry)
+    {log : TimedLog} {G : Block} {Formed : Block → Prop}
+    (hexec : SigningExecutionOn (fun B => SchedAdmissible n schedule ops registry B ∧ Formed B)
       (schedExposed n schedule Controlled Stolen) log G)
-    (hClock : HonestClockOn (SchedAdmissible n schedule ops registry) σ
+    (hClock : HonestClockOn (fun B => SchedAdmissible n schedule ops registry B ∧ Formed B) σ
       (schedExposed n schedule Controlled Stolen) log)
     (hBudget : ExposureBounded n ℓ φ (schedExposed n schedule Controlled Stolen))
     (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
     {R : Nat}
-    (hbridge : ∀ ⦃B : Block⦄, SchedAdmissible n schedule ops registry B →
+    (hbridge : ∀ ⦃B : Block⦄, SchedAdmissible n schedule ops registry B → Formed B →
       ∃ r ≤ R, B ∈ log r)
     {cl cl' : CertClaim}
-    (hcl : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl)
-    (hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl')
+    (hcl : GroundedCertSched n schedule (fun B => SignedDeclared n ops registry B ∧ Formed B) G cl)
+    (hcl' : GroundedCertSched n schedule (fun B => SignedDeclared n ops registry B ∧ Formed B) G cl')
     {s₁ s₁' : Block} {srest srest' : Chain}
     {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
@@ -161,13 +163,13 @@ example {n σ ℓ φ : Nat} {schedule : Nat → Nat}
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip'.slot + 1 →
         quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
-    (hSigned : ∀ B ∈ s₁ :: srest, SchedAdmissible n schedule ops registry B)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SchedAdmissible n schedule ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SchedAdmissible n schedule ops registry B ∧ Formed B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SchedAdmissible n schedule ops registry B ∧ Formed B)
     (hRecent : R ≤ sTip.slot + φ)
     (hRecent' : R ≤ sTip'.slot + φ)
     {c c' : Chain}
-    (hc : GroundedHistorySched n schedule (SignedDeclared n ops registry) G cl c)
-    (hc' : GroundedHistorySched n schedule (SignedDeclared n ops registry) G cl' c')
+    (hc : GroundedHistorySched n schedule (fun B => SignedDeclared n ops registry B ∧ Formed B) G cl c)
+    (hc' : GroundedHistorySched n schedule (fun B => SignedDeclared n ops registry B ∧ Formed B) G cl' c')
     {h : Nat}
     (hDeep : h + n < (c ++ s₁ :: srest).length)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :

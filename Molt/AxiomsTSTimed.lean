@@ -12,19 +12,19 @@ open MoltPetit.Model in
 example {σ ℓ φ : Nat}
     {n : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
-    {sigOps : MoltPetit.SigOps}
-    (hexec : SigningExecution exposed log G)
-    (hClock : HonestClock σ exposed log)
+    {sigOps : MoltPetit.SigOps} {Formed : Block → Prop}
+    (hexec : SigningExecutionOn (fun B => TSSigned n sigOps B ∧ Formed B) exposed log G)
+    (hClock : HonestClockOn (fun B => TSSigned n sigOps B ∧ Formed B) σ exposed log)
     (hBudget : ExposureBounded n ℓ φ exposed)
     (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
-    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → ∃ r ≤ R, B ∈ log r)
+    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → Formed B → ∃ r ≤ R, B ∈ log r)
     {certOps certOps' : MoltPetit.CertOps}
     (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
       ∃ cl : CertClaim, certOps.claim hc = toTSClaim cl ∧
-        GroundedCert n (TSSigned n sigOps) G cl)
+        GroundedCert n (fun B => TSSigned n sigOps B ∧ Formed B) G cl)
     (hUnf' : ∀ hc : MoltPetit.RawCertificate, certOps'.verify hc = true →
       ∃ cl : CertClaim, certOps'.claim hc = toTSClaim cl ∧
-        GroundedCert n (TSSigned n sigOps) G cl)
+        GroundedCert n (fun B => TSSigned n sigOps B ∧ Formed B) G cl)
     {h h' : MoltPetit.RawCertificate} {sc sc' : SignedChain MoltPetit.RawSignature}
     (hval : MoltPetit.validateCertifiedChain n sigOps certOps
               (.cc h (toTSSigned sc)) = true)
@@ -36,19 +36,21 @@ example {σ ℓ φ : Nat}
     {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hFormedS : ∀ B ∈ s₁ :: srest, Formed B)
+    (hFormedS' : ∀ B ∈ s₁' :: srest', Formed B)
     (hRecent : R ≤ sTip.slot + φ)
     (hRecent' : R ≤ sTip'.slot + φ)
     {cl cl' : CertClaim}
     (hcl : certOps.claim h = toTSClaim cl)
     (hcl' : certOps'.claim h' = toTSClaim cl')
     {c c' : Chain}
-    (hc : GroundedHistory n (TSSigned n sigOps) G cl c)
-    (hc' : GroundedHistory n (TSSigned n sigOps) G cl' c')
+    (hc : GroundedHistory n (fun B => TSSigned n sigOps B ∧ Formed B) G cl c)
+    (hc' : GroundedHistory n (fun B => TSSigned n sigOps B ∧ Formed B) G cl' c')
     {k : Nat}
     (hDeep : k + n < (c ++ s₁ :: srest).length)
     (hDeep' : k + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) k = blockAt? (c' ++ s₁' :: srest') k :=
-  ts_timed_certified_agreement hn hexec hClock hBudget hL hL' hbridge hUnf hUnf' hval hval' hsc hsc' hTipS hTipS' hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
+  ts_timed_certified_agreement hn hexec hClock hBudget hL hL' hbridge hUnf hUnf' hval hval' hsc hsc' hTipS hTipS' hFormedS hFormedS' hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
 
 /-- info: 'MoltPetit.Model.ts_timed_certified_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
