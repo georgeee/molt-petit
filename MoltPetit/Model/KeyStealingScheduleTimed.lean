@@ -1,5 +1,6 @@
 import MoltPetit.Model.KeyStealingScheduleHorizon
 import MoltPetit.Model.KeyStealingScheduleBudget
+import Spec.Model
 
 /-!
 # MoltPetit — the timed theft layer (§10.4, the temporal seam)
@@ -89,12 +90,6 @@ open Classical
 -- ===========================================================================
 -- Timed theft and the timeless projection
 -- ===========================================================================
-
-/-- The timeless theft predicate the whole scheduled development consumes,
-as the projection of a time-stamped theft relation `stolenAt i j r`
-("producer `i`'s generation-`j` key is exfiltrated at real slot `r`"). -/
-def stolenOf (stolenAt : Nat → Nat → Nat → Prop) (i j : Nat) : Prop :=
-  ∃ r, stolenAt i j r
 
 /-- **A3, timed (no premature exposure).** A generation-`j` key can be stolen
 only from its provisioning time on: under just-in-time per-generation

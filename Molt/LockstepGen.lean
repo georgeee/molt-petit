@@ -2,6 +2,7 @@ import Molt.Rotation
 import MoltPetit.Model.KeyStealingLockstepTimed
 import MoltPetit.Model.KeyStealingLockstepGen
 import MoltPetit.Model.KeyStealingWindowCore
+import Spec.Reference
 
 /-!
 # Molt — mode 3, per-generation census (D1′-full), paper-side re-presentation
@@ -16,15 +17,6 @@ uses) rather than an `alias`, since the headline theorems here range over
 -/
 
 namespace Molt
-
-/-- The D1′-full lockstep package: per-generation budget, no `mono`/
-`genesis_gen` (unconsumed by the non-inductive, genesis-free pinning route). -/
-abbrev LockstepPackageGen := @MoltPetit.Model.LockstepPackageGen
-
-/-- Mode 3 with its temporal content formalized: theft is time-stamped,
-erasure (`notAfter`) is load-bearing here — the mirror of mode 2's
-`PackageBTimed`, where erasure is documentary. -/
-abbrev LockstepPackageTimed := @MoltPetit.Model.LockstepPackageTimed
 
 /-- The per-generation corruption predicate: a slot is bad if rented, or its
 producer's key of the generation the roster is at in that grid window is
@@ -97,11 +89,6 @@ theorem lockstep_client_safety_timed
   rw [validSignedChainLock_eq_core] at hVal hVal'
   exact MoltPetit.Model.lockstepTimed_recent_tip_ancestor_agreement hn hP
     hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
-
-
-/-- The temporal erasure hypothesis for mode 3: no generation is stolen after
-the roster moves past it (paper §6.3, mode 3). -/
-abbrev ErasureTimedLock := @MoltPetit.Model.ErasureTimedLock
 
 /-- Operator erasure turns while-live theft into timeless per-generation theft
 (paper §6.3, mode 3). -/

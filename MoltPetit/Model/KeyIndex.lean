@@ -1,5 +1,6 @@
 import MoltPetit.Model.Safety
 import MoltPetit.Model.Soundness
+import Spec.Model
 
 /-!
 # MoltPetit — consensus-maintained key index (in-band key rotation)
@@ -45,37 +46,6 @@ namespace MoltPetit.Model
 -- ===========================================================================
 -- The in-band monotonicity rule and the derived floor
 -- ===========================================================================
-
-/-- The validator's **in-band key-rotation rule**: scanning the chain from
-genesis (lowest height first), no earlier block of a producer may carry a
-*higher* index than a later block of the same producer. Equivalently, each
-producer's indices are non-decreasing in height — a rotation only ever moves
-forward, and the move is ordered by consensus like any other block. -/
-def keyMonoOk (n : Nat) : Chain → Bool
-  | [] => true
-  | b :: rest =>
-      rest.all (fun b' =>
-        decide (producerForSlot n b.slot = producerForSlot n b'.slot →
-          b.keyIndex ≤ b'.keyIndex))
-      && keyMonoOk n rest
-
-/-- The semantic counterpart of `keyMonoOk`: for any two chain positions of
-the **same producer**, the earlier one's index is ≤ the later one's. -/
-def KeyIndexMonotone (n : Nat) (c : Chain) : Prop :=
-  ∀ ⦃i j : Nat⦄ ⦃B B' : Block⦄, blockAt? c i = some B → blockAt? c j = some B' →
-    i ≤ j → producerForSlot n B.slot = producerForSlot n B'.slot →
-    B.keyIndex ≤ B'.keyIndex
-
-/-- The full indexed validator: structural validity **and** the in-band
-monotone-index rule. -/
-def validChainK (n : Nat) (c : Chain) : Bool :=
-  validChain n c && keyMonoOk n c
-
-/-- The consensus-maintained **floor** for participant `i`: the highest
-delegate index participant `i` has used anywhere in the chain. It is a pure
-function of the (consensus-ordered) chain — the in-band counter. -/
-def keyFloor (n : Nat) (c : Chain) (i : Nat) : Nat :=
-  ((c.filter (fun b => decide (producerForSlot n b.slot = i))).map Block.keyIndex).foldl max 0
 
 -- ===========================================================================
 -- `foldl max` helpers

@@ -1,10 +1,10 @@
-import Rust.Extracted
+import Spec.Rust
 
 /-!
 # Proofs about the Rust-extracted Molt Petit core
 
 These theorems are about the **Aeneas-emitted** definitions in
-`Rust/Extracted.lean` (the Rust crate `rust/src/lib.rs` compiled to Lean by
+`Spec/Rust.lean` (the Rust crate `rust/src/lib.rs` compiled to Lean by
 Charon + Aeneas), exactly as the Thales-path theorems are about the
 Thales-emitted TS definitions. Functions are `Result`-monadic over machine
 integers, so specs are Hoare-style: `f x ⦃ r => P r ⦄` says the call

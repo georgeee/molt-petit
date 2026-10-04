@@ -1,4 +1,5 @@
 import MoltPetit.Model.KeyRotation
+import Spec.Model
 
 /-!
 # MoltPetit — the key-stealing adversary (Phase 2, increment I1)
@@ -18,26 +19,6 @@ namespace MoltPetit.Model
 -- ===========================================================================
 -- The induced corruption predicate
 -- ===========================================================================
-
-/-- The **key-stealing corruption** as seen through a fixed witness chain `c₀`:
-slot `s` is bad if its producer is rented, or if **any not-yet-rotated-out key**
-of the producer — any version at-or-above the index **in force** at `s` (read
-off `c₀`'s confirmed prefix) — is stolen. Chain-independent on the confirmed
-zone by `inForce_agreement`, so a genuine `ByzantineSlots` predicate.
-
-This is the predicate that expresses the **healing** story: stealing the
-producer's current key makes its slots bad, but only until the emergency
-rotation (a block declaring a higher index) becomes `Δconf`-deep — from then on
-the stolen version sits *below* the in-force index and no longer satisfies
-`inForce ≤ j`, so the slots heal. A stolen **rotated-out** key never counts.
-The `∃ j ≥ inForce` form (rather than `Stolen _ inForce` alone) is forced by
-the `≤`-pin: an accepted block may sign under any not-yet-rotated-out version
-(that is what makes announcing a rotation possible at all), so a slot is only
-honest if *none* of those versions is compromised. -/
-def badKeyrotOn (n Δconf : Nat) (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop)
-    (c₀ : Chain) (s : Nat) : Prop :=
-  rented s ∨ ∃ j, inForce n Δconf c₀ (producerForSlot n s) s ≤ j ∧
-    Stolen (producerForSlot n s) j
 
 /-- **The loss-only adversary: with nothing stolen, the corruption predicate is
 just rent — and is chain-independent.**

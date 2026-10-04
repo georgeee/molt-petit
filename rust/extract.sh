@@ -21,10 +21,10 @@ AENEAS=${AENEAS:-$TC/result-aeneas/bin/aeneas}
 mkdir -p lean-out
 "$AENEAS" molt_petit.llbc -backend lean -dest lean-out
 
-# Vendor into the Lean project with a header (see Rust/Extracted.lean).
+# Vendor into the Lean project with a header (see Spec/Rust.lean).
 {
-  sed -n '1,/^-\/$/p' ../Rust/Extracted.lean   # keep the existing vendor header
+  sed -n '1,/^-\/$/p' ../Spec/Rust.lean   # keep the existing vendor header
   cat lean-out/MoltPetit.lean
-} > ../Rust/Extracted.lean.new
-mv ../Rust/Extracted.lean.new ../Rust/Extracted.lean
-echo "Regenerated Rust/Extracted.lean"
+} > ../Spec/Rust.lean.new
+mv ../Spec/Rust.lean.new ../Spec/Rust.lean
+echo "Regenerated Spec/Rust.lean"

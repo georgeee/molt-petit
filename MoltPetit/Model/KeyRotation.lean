@@ -1,4 +1,5 @@
 import MoltPetit.Model.KeyIndex
+import Spec.Model
 
 /-!
 # MoltPetit — sound key rotation under a key-stealing adversary (Phase 1)
@@ -35,64 +36,9 @@ namespace MoltPetit.Model
 -- The confirmed prefix and the in-force index
 -- ===========================================================================
 
-/-- The **confirmed prefix** of `c` as seen from slot `s`: the blocks at least
-`Δconf` slots in the past. `Δconf ≥ n` makes these blocks finalized (buried under
-a matured, dense window), so all valid chains in one execution agree on them
-(`inForce_agreement`, Phase 1b). -/
-def confirmedPrefix (Δconf : Nat) (c : Chain) (s : Nat) : Chain :=
-  c.filter (fun b => decide (b.slot + Δconf ≤ s))
-
-/-- The **in-force delegate index** of participant `i` as seen from slot `s`:
-participant `i`'s key floor over the confirmed prefix. Because it reads only the
-confirmed (finalized) prefix, it is the *same* across all valid chains of one
-execution in the confirmed zone — the property that pins a rotated-out key dead. -/
-def inForce (n Δconf : Nat) (c : Chain) (i s : Nat) : Nat :=
-  keyFloor n (confirmedPrefix Δconf c s) i
-
 -- ===========================================================================
 -- The index-pinned validator
 -- ===========================================================================
-
-/-- The in-band **pin**: no block signs under a **rotated-out** index — every
-block's declared `keyIndex` is at least the index in force (by the schedule the
-chain itself records) at its slot.
-
-**Why `≤` and not `=`.** An equality pin (`keyIndex = inForce`) would make
-rotation *impossible*: the in-force floor only rises when a block carrying a
-higher index becomes `Δconf`-deep, and an equality pin forbids any block from
-ever carrying a higher index — by induction every producer would be frozen at
-its initial index forever, and "a rotated-out key is dead" would be vacuous
-(nothing is ever rotated out). The `≤` pin is the faithful rule: a producer
-**announces** a rotation by signing under the new, higher index (allowed —
-`inForce ≤ new`), the announcement confirms after `Δconf` slots, the floor
-rises, and from then on the **old** index is below the floor and every block
-declaring it is rejected. Theft of the in-force key is thus harmful only for
-the ≤ `Δconf` window until the emergency rotation confirms; the corruption
-budget (`badKeyrotOn`) accounts for exactly that window.
-
-On a full chain the `≤` pin is implied by the monotone rule (`keyMonoOk`) —
-an earlier same-producer block carries the floor's index and monotonicity
-lifts it to the current block. It is enforced separately because it is the
-**locally checkable** form: a certificate/suffix verifier that never sees the
-announcement block can still check a suffix block's index against a carried
-floor snapshot, where scanning for monotonicity would need the full history. -/
-def inForcePinned (n Δconf : Nat) (c : Chain) : Bool :=
-  c.all (fun b => decide (inForce n Δconf c (producerForSlot n b.slot) b.slot ≤ b.keyIndex))
-
-/-- The **index-pinned validator**: structural validity, the monotone-index rule,
-**and** the in-force pin (no rotated-out index). This is the "true" reduction —
-the pin is enforced, not assumed (cf. the assumed hypothesis of
-`indexed_reduces_to_static`).
-
-This is the *unsigned* (model-level) pin. The signature conjunct `sigsOk` — that
-each block actually verifies under `registry (producer, keyIndex)` — lives on the
-signed layer (`validSignedChain`) and is woven in at Phase 2/3. The pin + `sigsOk`
-give the *validator-side* half (`rotated_key_dead`: an accepted block verifies
-under its declared registry entry, which is never a rotated-out version); the
-rotated-out key is fully killed only once the Phase-2 *unforgeability* half (the
-adversary cannot forge under a non-stolen entry) is added. -/
-def validChainK' (n Δconf : Nat) (c : Chain) : Bool :=
-  validChainK n c && inForcePinned n Δconf c
 
 -- ===========================================================================
 -- (B) The pinned validator is sound for the original model
@@ -379,12 +325,6 @@ validator-side half of `georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §4
 half — an adversary holding only stolen keys, none of them at-or-above the
 in-force index, cannot produce a verifying signature under any acceptable entry,
 by unforgeability. -/
-
-/-- The index-pinned **signed** validator: versioned-registry signatures + the
-structural, monotone-index, in-force-pinned chain. -/
-def validSignedChainK' {σ sk pk : Type} (n Δconf : Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChainK' n Δconf (stripSigs sc)
 
 /-- **A rotated-out key is dead (validator side).** Every block of an accepted
 index-pinned signed chain verifies under its **declared** registry entry

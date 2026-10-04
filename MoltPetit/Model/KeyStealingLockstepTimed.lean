@@ -1,5 +1,6 @@
 import MoltPetit.Model.KeyStealingLockstepGen
 import MoltPetit.Model.KeyStealingScheduleTimed
+import Spec.Model
 
 /-!
 # MoltPetit — mode 3, the timed theft layer (D1′-full, real time)
@@ -24,24 +25,6 @@ open Classical
 -- ===========================================================================
 -- (1) The timed theft predicates, mode 3
 -- ===========================================================================
-
-/-- **A3, timed, mode 3 (no premature exposure).** A generation-`j` key can
-be stolen at real slot `r` only if the roster has already reached `j` in
-`r`'s grid window — the mode-3 twin of `NoPrematureTheft R stolenAt` with the
-roster's own switch times `rosterGen ∘ (·/n)` in place of `j * R`. Total even
-when `rosterGen` never reaches `j` (no `Nat.find`). -/
-def NoPrematureTheftLock (n : Nat) (rosterGen : Nat → Nat)
-    (stolenAt : Nat → Nat → Nat → Prop) : Prop :=
-  ∀ i j r, stolenAt i j r → j ≤ rosterGen (r / n)
-
-/-- **B2, timed, mode 3 (erasure).** At real slot `r`, nothing of a
-generation the roster has already moved past can be stolen — retired
-material was destroyed at the switch. The mode-3 twin of `ErasureTimed R
-stolenAt`. THIS field is consumed below by `genBound_of_preRetirementBound`
-— erasure is load-bearing here, the mirror image of mode 2. -/
-def ErasureTimedLock (n : Nat) (rosterGen : Nat → Nat)
-    (stolenAt : Nat → Nat → Nat → Prop) : Prop :=
-  ∀ i j r, stolenAt i j r → rosterGen (r / n) ≤ j
 
 /-- Under A3 + erasure, every theft is of the exact generation the roster is
 at in the theft's own grid window — "per-generation compromise freezes" in
@@ -102,15 +85,6 @@ theorem erasureTimedLock_iff_flagship {n : Nat} (hn : 0 < n)
 -- (3) The while-live census and the timed mode-3 I3
 -- ===========================================================================
 
-/-- The per-generation census a mode-3 deployment asserts: seats whose
-generation-`j` key is stolen at a real time at which `j` has not yet
-retired. Mirror of `recentTheftProducers` with the generation floor replaced
-by the retirement ceiling. Under `ErasureTimedLock` it coincides with the
-timeless `(Finset.range n).filter (fun i => stolenOf stolenAt i j)`. -/
-noncomputable def preRetirementTheftProducers (n : Nat) (rosterGen : Nat → Nat)
-    (stolenAt : Nat → Nat → Nat → Prop) (j : Nat) : Finset Nat :=
-  (Finset.range n).filter (fun i => ∃ r, stolenAt i j r ∧ rosterGen (r / n) ≤ j)
-
 /-- **The timed mode-3 I3 — erasure carries the weight.** Under
 `ErasureTimedLock` and a while-live rate `T`, the timeless per-generation
 census (the one `LockstepPackageGen.genBound` needs) is bounded by `T` too:
@@ -137,29 +111,6 @@ theorem genBound_of_preRetirementBound {n : Nat} {rosterGen : Nat → Nat}
 -- ===========================================================================
 -- (4) The timed package and end-to-end safety
 -- ===========================================================================
-
-/-- **Mode 3 with its temporal content formalized** (the twin of
-`PackageBTimed`): theft is time-stamped, A3 (`notBefore`) and B2
-(`notAfter`) are fields, and the rate is the while-live per-generation
-census. `notAfter` is CONSUMED (`toGen` via `genBound_of_preRetirementBound`);
-`notBefore` is documentary here (consumed only by `theft_in_era_lock`) —
-the exact mirror of mode 2, where `notAfter` is documentary and A3 is
-consumed. -/
-structure LockstepPackageTimed (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
-    (stolenAt : Nat → Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
-    (now Δ : Nat) (G : Block) (R T : Nat) : Prop where
-  unforgeable :
-    SchedCoreUnforgeable n (fun _ => 0) ops registry rented (stolenOf stolenAt)
-      honestSigned now Δ
-  declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B →
-    B.keyIndex = rosterGen (s / n)
-  hashInj : SignedHashInjective (SignedDeclared n ops registry) G
-  notBefore : NoPrematureTheftLock n rosterGen stolenAt
-  notAfter : ErasureTimedLock n rosterGen stolenAt
-  rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R
-  preRetirementTheftBound : ∀ j, (preRetirementTheftProducers n rosterGen stolenAt j).card ≤ T
-  budget_le : R + T ≤ maxByzantine n
 
 /-- The timed package delivers the per-generation package: `notAfter` +
 `preRetirementTheftBound` derive `genBound` via `genBound_of_preRetirementBound`. -/

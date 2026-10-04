@@ -6,7 +6,7 @@ import MoltPetit.Results.Results
 # Corollaries for the Rust implementation
 
 Guarantees specialized to the **Charon + Aeneas-extracted Rust** code
-(`molt_petit.*` in `Rust/Extracted.lean`), obtained from the Lean model by the
+(`molt_petit.*` in `Spec/Rust.lean`), obtained from the Lean model by the
 equivalence bridge (`Rust/Bridge.lean`). The Rust analogue of
 `MoltPetit/TS/Results.lean`.
 

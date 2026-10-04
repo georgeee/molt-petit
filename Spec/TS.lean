@@ -31,7 +31,11 @@ Deviations from the raw emitter output:
      carries the TS-faithful forms; the bridge lemmas in `TSBridge.lean` /
      `TSBridgeK.lean` (`ts_keyMonoOk`, `ts_validChainK_sound`,
      `ts_keyMonoFromTs`, `ts_validateSuffixK_sound`) pin them to the
-     model.
+     model;
+  5. the emitter's `import Thales.TS.Runtime` / `open Thales.TS` are
+     removed: the runtime is an empty namespace for this source (below),
+     and dropping it keeps `Spec/` free of imports outside `Spec/`,
+     Mathlib and Aeneas.
 
 KEY-INDEX EXTENSION: every block now carries a `keyIndex : Int`, the
 per-producer delegate-key version it signed under (custody-style in-band
@@ -40,9 +44,8 @@ two-argument — `keyFor producer keyIndex` — so the verifier selects the
 public key by the block's in-band index. See `MoltPetit/Model/KeyIndex.lean`
 for the soundness/agreement proofs and `georgeee/mini-consensus-lean: KEY_INDEX_DESIGN.md`.
 
-`Thales.TS.Runtime` resolves to the stub at `Thales/TS/Runtime.lean`:
-the protocol source avoids every construct that lowers to a runtime
-helper, so the stub is an empty namespace. Cryptographic material
+The thales runtime is not needed: the protocol source avoids every
+construct that lowers to a runtime helper (deviation 5). Cryptographic material
 (signatures, keys, certificates) is opaque `Int` handles behind the
 named aliases `RawSignature`/`RawPublicKey`/`RawSecretKey`/
 `RawCertificate`.
@@ -51,10 +54,6 @@ Do not edit by hand beyond the listed deviations; change
 `moltPetit.ts` and re-emit instead. The soundness bridge over these
 definitions lives in `MoltPetit/TS/Bridge.lean`.
 -/
-import Thales.TS.Runtime
-
-open Thales.TS
-
 set_option linter.unusedVariables false
 
 namespace MoltPetit

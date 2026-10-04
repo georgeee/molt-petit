@@ -1,5 +1,5 @@
 # Thales — the TypeScript-subset -> Lean 4 emitter that produced
-# `MoltPetit/TS/Emitted.lean`.
+# `Spec/TS.lean`.
 #
 # Pinned at 55b03fb3fbbcca615cb438b2492d6a1c115d0394 (a Lean 4 / Lake project;
 # it has NO flake.nix of its own, hence `flake = false` on the input) and built

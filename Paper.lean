@@ -1,2 +1,2 @@
-import Paper.Statements
+import Spec.Statements
 import Paper.Proofs

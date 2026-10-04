@@ -2,6 +2,7 @@ import MoltPetit.Model.ExposureCert
 import MoltPetit.Model.KeyStealingSchedule
 import MoltPetit.Model.KeyStealingScheduleCert
 import MoltPetit.Model.KeyRotationLossSchedLock
+import Spec.Model
 
 /-!
 # Mode 2 (scheduled rotation) against theft, from Theorem 1
@@ -29,22 +30,6 @@ THE STATEMENTS OF `sched_exposure_agreement` AND
 -/
 
 namespace MoltPetit.Model
-
-/-- What the mode-2 validator admits, per block: a signature verifying under
-the declared registry entry, and a declared version meeting the schedule. -/
-def SchedAdmissible {Sig sk pk : Type} (n : Nat) (schedule : Nat → Nat)
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (B : Block) : Prop :=
-  SignedDeclared n ops registry B ∧ schedule B.slot ≤ B.keyIndex
-
-/-- Mode-2 exposure. `Controlled p r`: seat `p` is run by the adversary at real
-slot `r`. `Stolen p j r`: version `j` of seat `p`'s key is held by someone
-other than its honest holder at real slot `r`. Stamp `s` is exposed at `r` iff
-its producer is controlled, or a version of its key that still meets `s`'s
-schedule floor is stolen. -/
-def schedExposed (n : Nat) (schedule : Nat → Nat) (Controlled : Nat → Nat → Prop)
-    (Stolen : Nat → Nat → Nat → Prop) : Exposure :=
-  fun s r => Controlled (producerForSlot n s) r ∨
-    ∃ j, schedule s ≤ j ∧ Stolen (producerForSlot n s) j r
 
 theorem schedAdmissible_of_mem_sched {Sig sk pk : Type} {n : Nat} {schedule : Nat → Nat}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {sc : SignedChain Sig}

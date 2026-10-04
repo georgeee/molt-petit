@@ -1,4 +1,5 @@
 import Rust.Bridge
+import Spec.RustBridge
 
 /-!
 # The backend-generic validator is proven at the `U64` instantiation
@@ -29,23 +30,6 @@ open molt_petit
 -- ---------------------------------------------------------------------------
 -- Project the concrete chain to the generic chain at `Num = U64`.
 -- ---------------------------------------------------------------------------
-
-def toHashG (h : Hash) : HashG U64 := ⟨h.a, h.b, h.c, h.d⟩
-
-def toBlockG (b : Block) : BlockG U64 :=
-  { slot := b.slot
-    height := b.height
-    has_prev := b.prev.isSome
-    prev := match b.prev with
-            | some p => toHashG p
-            | none => ⟨0#u64, 0#u64, 0#u64, 0#u64⟩
-    id := toHashG b.id }
-
-def toChainG : Chain → ChainG U64
-  | Chain.Nil => ChainG.NilG
-  | Chain.Cons b tl => ChainG.ConsG (toBlockG b) (toChainG tl)
-
-abbrev UB : Backend U64Backend U64 Bool := U64Backend.Insts.Molt_petitBackendU64Bool
 
 attribute [local simp]
   U64Backend.Insts.Molt_petitBackendU64Bool

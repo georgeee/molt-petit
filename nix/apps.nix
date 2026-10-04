@@ -132,9 +132,9 @@ in
   # committed/staged — hence the untracked-file refusal above.
   #
   # It OVERWRITES FOUR TRACKED FILES:
-  #   Rust/Extracted.lean                              header + fresh aeneas body
+  #   Spec/Rust.lean                              header + fresh aeneas body
   #   tools/thales-reemission/MoltPetit.emitted.lean   fresh thales emission
-  #   MoltPetit/TS/Emitted.lean                        header + (golden + deltas)
+  #   Spec/TS.lean                        header + (golden + deltas)
   #   nix/checks.nix                                   the goldenDigest constant
   # It refuses if any of them has uncommitted edits, so the regeneration is
   # always a reviewable diff against a known base.  Set
@@ -154,7 +154,7 @@ in
       ${atRepoRoot}
       ${noUntrackedSources}
 
-      targets="Rust/Extracted.lean MoltPetit/TS/Emitted.lean \
+      targets="Spec/Rust.lean Spec/TS.lean \
                tools/thales-reemission/MoltPetit.emitted.lean nix/checks.nix"
 
       # ---- preconditions, ALL of them, before anything is written ---------
@@ -162,7 +162,7 @@ in
       if [ ! -f "$dev" ]; then
         echo "error: $dev does not exist." >&2
         echo "  It is the only written-down record of the reviewed hand-edits to" >&2
-        echo "  MoltPetit/TS/Emitted.lean, and this app cannot regenerate that" >&2
+        echo "  Spec/TS.lean, and this app cannot regenerate that" >&2
         echo "  file without it.  Create it with:" >&2
         echo "      nix run .#update-deviations-patch && git add $dev" >&2
         exit 1
@@ -186,23 +186,23 @@ in
         fi
       fi
 
-      n=$(grep -c '^-/$' Rust/Extracted.lean || true)
+      n=$(grep -c '^-/$' Spec/Rust.lean || true)
       if [ "$n" != "1" ]; then
-        echo "error: Rust/Extracted.lean must contain exactly one bare '-/' line (found $n)" >&2
+        echo "error: Spec/Rust.lean must contain exactly one bare '-/' line (found $n)" >&2
         exit 1
       fi
-      m=$(grep -c '^-/$' MoltPetit/TS/Emitted.lean || true)
+      m=$(grep -c '^-/$' Spec/TS.lean || true)
       if [ "$m" != "1" ]; then
-        echo "error: MoltPetit/TS/Emitted.lean must contain exactly one bare '-/' line (found $m)" >&2
+        echo "error: Spec/TS.lean must contain exactly one bare '-/' line (found $m)" >&2
         exit 1
       fi
 
       # ---- Rust: keep the vendor header, replace the body -----------------
-      { sed -n '1,/^-\/$/p' Rust/Extracted.lean
+      { sed -n '1,/^-\/$/p' Spec/Rust.lean
         cat ${lean-from-rust}/MoltPetit.lean
-      } > Rust/Extracted.lean.new
-      mv Rust/Extracted.lean.new Rust/Extracted.lean
-      echo "regenerated Rust/Extracted.lean"
+      } > Spec/Rust.lean.new
+      mv Spec/Rust.lean.new Spec/Rust.lean
+      echo "regenerated Spec/Rust.lean"
 
       # ---- TS: the raw emission (the golden) ------------------------------
       cp ${lean-from-ts}/MoltPetit.lean tools/thales-reemission/MoltPetit.emitted.lean
@@ -229,11 +229,11 @@ in
       cp tools/thales-reemission/MoltPetit.emitted.lean "$work/MoltPetit.emitted.lean"
       chmod u+w "$work/MoltPetit.emitted.lean"
       ( cd "$work" && patch -p1 --fuzz=0 -i "$root/$dev" )
-      { sed -n '1,/^-\/$/p' MoltPetit/TS/Emitted.lean
+      { sed -n '1,/^-\/$/p' Spec/TS.lean
         cat "$work/MoltPetit.emitted.lean"
-      } > MoltPetit/TS/Emitted.lean.new
-      mv MoltPetit/TS/Emitted.lean.new MoltPetit/TS/Emitted.lean
-      echo "regenerated MoltPetit/TS/Emitted.lean"
+      } > Spec/TS.lean.new
+      mv Spec/TS.lean.new Spec/TS.lean
+      echo "regenerated Spec/TS.lean"
 
       echo ""
       echo "Now review the diff, then run 'nix flake check' AND 'nix run .#verify-lean':"
@@ -244,7 +244,7 @@ in
 
   ##########################################################################
   # update-deviations-patch — (re)generate the ledger of reviewed hand-edits
-  # to MoltPetit/TS/Emitted.lean.
+  # to Spec/TS.lean.
   #
   # The explicit -L labels are load-bearing: without them `diff -u` writes
   # mtimes into the patch header and the checked-in file churns on every
@@ -257,20 +257,20 @@ in
   ##########################################################################
   update-deviations-patch = writeShellApplication {
     name = "update-deviations-patch";
-    meta.description = "Regenerate the ledger of reviewed hand-edits to MoltPetit/TS/Emitted.lean";
+    meta.description = "Regenerate the ledger of reviewed hand-edits to Spec/TS.lean";
     runtimeInputs = [ coreutils gnused gnugrep diffutils ];
     text = ''
       ${atRepoRoot}
-      m=$(grep -c '^-/$' MoltPetit/TS/Emitted.lean || true)
+      m=$(grep -c '^-/$' Spec/TS.lean || true)
       if [ "$m" != "1" ]; then
-        echo "error: MoltPetit/TS/Emitted.lean must contain exactly one bare '-/' line (found $m)" >&2
+        echo "error: Spec/TS.lean must contain exactly one bare '-/' line (found $m)" >&2
         exit 1
       fi
       out=tools/thales-reemission/vendored-deviations.patch
       set +e
       diff -u -L a/MoltPetit.emitted.lean -L b/MoltPetit.emitted.lean \
         tools/thales-reemission/MoltPetit.emitted.lean \
-        <(sed '1,/^-\/$/d' MoltPetit/TS/Emitted.lean) > "$out"
+        <(sed '1,/^-\/$/d' Spec/TS.lean) > "$out"
       rc=$?
       set -e
       if [ "$rc" -gt 1 ]; then

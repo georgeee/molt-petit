@@ -6,7 +6,7 @@ from the Rust crate at `rust/` (crate `molt_petit`, `rust/src/lib.rs`):
     aeneas molt_petit.llbc -backend lean -dest …   # -> MoltPetit.lean
 
 Regenerate with `rust/extract.sh`. This is the Rust analogue of the
-Thales-emitted `MoltPetit/TS/Emitted.lean`: the protocol is written in the Rust
+Thales-emitted `Spec/TS.lean`: the protocol is written in the Rust
 fragment Charon+Aeneas translate to Lean, and the theorems in
 `Rust/Properties.lean` are about exactly these emitted definitions.
 

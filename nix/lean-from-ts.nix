@@ -3,7 +3,7 @@
 # Output: `$out/MoltPetit.lean`, the raw unedited emission.  The checked-in
 # copy of this is `tools/thales-reemission/MoltPetit.emitted.lean` (the
 # "golden"); the file the Lean build actually consumes,
-# `MoltPetit/TS/Emitted.lean`, is that golden plus a small reviewed delta —
+# `Spec/TS.lean`, is that golden plus a small reviewed delta —
 # see `checks.ts-vendored-deviations`.
 #
 # HERMETICITY: fully offline, fully pinned (thales rev + repo patch + the

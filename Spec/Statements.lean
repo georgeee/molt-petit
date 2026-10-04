@@ -1,5 +1,5 @@
-import Molt
-import Rust
+import Spec.Reference
+import Spec.RustBridge
 
 /-!
 # The paper's results, as statements
@@ -11,8 +11,8 @@ Every statement is the source text of the development's theorem, so the proof
 is the development's theorem itself, checked by Lean up to definitional
 unfolding of `thm_xxx`.
 
-`tools/paper-bundle.sh` copies this file, below the imports, into the
-self-contained `Paper/Bundle.lean`, after the definitions it needs.
+Like every file in `Spec/`, this one holds no proof and imports nothing
+but `Spec/`, Mathlib and Aeneas (checked by `tools/paper-check.sh`).
 -/
 
 set_option linter.unusedVariables false

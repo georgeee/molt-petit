@@ -2,6 +2,7 @@ import Molt.Assumptions
 import MoltPetit.Results.Results
 import MoltPetit.Model.ExposureCert
 import MoltPetit.TS.TimedResults
+import Spec.Reference
 
 /-!
 # What the theorems guarantee: safety and no early signing (paper §6.1–6.2)
@@ -21,21 +22,10 @@ namespace Molt
 
 /-! ## The timed model (paper §6.2) -/
 
-/-- What was signed at each **real** slot: `log r` is the set of blocks
-whose producer signature was created at real slot `r`. -/
-abbrev TimedLog := MoltPetit.Model.TimedLog
-
 /-- `B` exists by real slot `R`: it is the genesis or was signed at some
 real slot `≤ R`. -/
 def AvailableAt (log : TimedLog) (G : Block) (B : Block) (R : Nat) : Prop :=
   B = G ∨ ∃ r ≤ R, B ∈ log r
-
-/-- The adversary's slot budget (untimed model). -/
-abbrev ByzantineBounded := MoltPetit.Model.ByzantineBounded
-
-/-- Key exposure: `exposed s r` — at real slot `r` someone other than its
-honest holder can sign under the key that verifies stamp `s`. -/
-abbrev Exposure := MoltPetit.Model.Exposure
 
 /-- The signing execution: per-stamp honest uniqueness while unexposed,
 id formation (`chain_order`), collision resistance over occurring blocks. -/
@@ -43,29 +33,6 @@ abbrev SigningExecution := MoltPetit.Model.SigningExecution
 
 /-- Honest clocks run at most `σ` slots ahead of real time. -/
 abbrev HonestClock := MoltPetit.Model.HonestClock
-
-/-- The exposure budget with freshness `φ`. -/
-abbrev ExposureBounded := MoltPetit.Model.ExposureBounded
-
-/-- The cumulative exposure budget: every exposure before the window's
-freshness deadline counts, however early. -/
-abbrev ExposureBoundedEver := MoltPetit.Model.ExposureBoundedEver
-
-/-- The signing execution restricted to blocks satisfying an admissibility
-predicate `Adm` (custody is claimed only for admissible blocks). -/
-abbrev SigningExecutionOn := MoltPetit.Model.SigningExecutionOn
-
-/-- Honest clocks, for admissible blocks only. -/
-abbrev HonestClockOn := MoltPetit.Model.HonestClockOn
-
-/-- `B` is the genesis or occurs in the log at some real slot. -/
-abbrev SignedEver := MoltPetit.Model.SignedEver
-
-/-- Semantic grounded history of a certificate claim. -/
-abbrev GroundedHistory := MoltPetit.Model.GroundedHistory
-
-/-- The block at a given height (list indexing). -/
-def blockAt? (c : Chain) (h : Nat) : Option Block := getElem? c h
 
 theorem availableAt_eq_core : AvailableAt = MoltPetit.Model.AvailableAt := rfl
 theorem blockAt?_eq_core : blockAt? = MoltPetit.Model.blockAt? := rfl

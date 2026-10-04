@@ -1,5 +1,6 @@
 import MoltPetit.Model.KeyStealingLockstep
 import MoltPetit.Model.KeyStealingWindowCore
+import Spec.Model
 
 /-!
 # MoltPetit — mode 3, per-generation census (D1′-full)
@@ -233,29 +234,6 @@ theorem lockstep_aligned_budget
 -- ===========================================================================
 -- (3) The per-generation package
 -- ===========================================================================
-
-/-- **The D1′-full lockstep package.** `B1`-as-behaviour (`declared`), the
-constant-0 core EUF-CMA surface (unchanged), hash injectivity, and the
-budget in PER-GENERATION form — `genBound` is syntactically `PackageB.
-erasure_freeze`'s expression, so a `PackageB` field can be passed verbatim.
-NO `exposedBound` (no cumulative census, no `lagSched`), and NO `mono`/
-`genesis_gen`: neither is consumed by the new route — the pinning theorem
-below is non-inductive and genesis-free, so carrying them would be an
-unconsumed field. Incomparable with `LockstepPackage` in general;
-`LockstepPackage.toGen` gives thin ⇒ gen when `rosterGen` is surjective
-(skips no generation). -/
-structure LockstepPackageGen (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
-    (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
-    (now Δ : Nat) (G : Block) (R T : Nat) : Prop where
-  unforgeable :
-    SchedCoreUnforgeable n (fun _ => 0) ops registry rented Stolen honestSigned now Δ
-  declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B →
-    B.keyIndex = rosterGen (s / n)
-  hashInj : SignedHashInjective (SignedDeclared n ops registry) G
-  rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R
-  genBound : ∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T
-  budget_le : R + T ≤ maxByzantine n
 
 /-- The package's budget is `AlignedBounded` over `badLockAt`. -/
 theorem LockstepPackageGen.alignedBudget {n : Nat} {rosterGen : Nat → Nat}

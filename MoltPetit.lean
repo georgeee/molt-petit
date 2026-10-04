@@ -1,4 +1,4 @@
-import MoltPetit.TS.Emitted
+import Spec.TS
 import MoltPetit.Model.Definitions
 import MoltPetit.Model.Model
 import MoltPetit.Model.Safety

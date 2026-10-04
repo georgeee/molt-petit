@@ -4,7 +4,7 @@ import MoltPetit.Model.Grounded
 # MoltPetit — main results
 
 The protocol is defined in TypeScript (`moltPetit.ts`, compiled to
-the Lean sidecar `MoltPetit/TS/Emitted.lean` by thales); everything below is
+the Lean sidecar `Spec/TS.lean` by thales); everything below is
 about the artifacts a node actually runs: `produceBlockCert` (sign →
 compact against the certificate store → validate → ship) and
 `validateCertifiedChain` (certificate verification, per-block signature

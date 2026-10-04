@@ -10,6 +10,7 @@ import MoltPetit.Model.KeyRotationLoss
 import MoltPetit.Model.KeyRotationLossSchedLock
 import MoltPetit.Model.KeyStealingScheduleCertHorizon
 import MoltPetit.Model.SchedExposure
+import Spec.Reference
 
 /-!
 # Key rotation (paper §6.3)
@@ -31,24 +32,6 @@ namespace Molt
 
 /-! ## The in-band key index (all modes) -/
 
-/-- The in-band **monotone rule**: scanning from genesis, no earlier block
-of a producer carries a higher key version than a later block of the same
-producer — a rotation only ever moves forward, ordered by consensus like
-any other block. -/
-def keyMonoOk (n : Nat) : Chain → Bool
-  | [] => true
-  | b :: rest =>
-      rest.all (fun b' =>
-        decide (producer n b.slot = producer n b'.slot →
-          b.keyIndex ≤ b'.keyIndex))
-      && keyMonoOk n rest
-
-/-- The indexed validator: structural validity plus the monotone rule.
-This — with signatures and a per-mode pin — is the one protocol of the
-paper; there is no rotation-free variant. -/
-def validChainK (n : Nat) (c : Chain) : Bool :=
-  validChain n c && keyMonoOk n c
-
 /-- Every chain the protocol accepts passes the structural validator, so
 the static-key safety results (paper §6.1–6.2) hold for the full
 protocol a fortiori. -/
@@ -57,55 +40,7 @@ theorem validChainK_structural {n : Nat} {c : Chain}
   rw [validChainK, Bool.and_eq_true] at h
   exact h.1
 
-/-- Seat `i`'s **floor**: the highest key version it has used anywhere in
-the chain — the in-band counter. -/
-def keyFloor (n : Nat) (c : Chain) (i : Nat) : Nat :=
-  ((c.filter (fun b => decide (producer n b.slot = i))).map
-    MoltPetit.Model.Block.keyIndex).foldl max 0
-
 /-! ## Mode 1: reactive (in-band) rotation -/
-
-/-- The **confirmed prefix** of `c` seen from slot `s`: blocks at least
-`Δconf` slots in the past. With `n ≤ Δconf` these are finalized, so all
-valid chains of one execution agree on them. -/
-def confirmedPrefix (Δconf : Nat) (c : Chain) (s : Nat) : Chain :=
-  c.filter (fun b => decide (b.slot + Δconf ≤ s))
-
-/-- The version **in force** for seat `i` at slot `s`: its floor over the
-confirmed prefix. A rotation takes force exactly when its announcing block
-is `Δconf` deep. -/
-def inForce (n Δconf : Nat) (c : Chain) (i s : Nat) : Nat :=
-  keyFloor n (confirmedPrefix Δconf c s) i
-
-/-- The **pin**: no block declares a version below the one in force at its
-slot — i.e. no block signs under a rotated-out key. `≤`, not `=`: a
-producer announces a rotation by signing under a *higher* version; once
-the announcement is `Δconf` deep the floor rises and the old version is
-dead. -/
-def inForcePinned (n Δconf : Nat) (c : Chain) : Bool :=
-  c.all (fun b =>
-    decide (inForce n Δconf c (producer n b.slot) b.slot ≤ b.keyIndex))
-
-/-- Mode 1's full unsigned validator: indexed validity plus the pin. -/
-def validChainK' (n Δconf : Nat) (c : Chain) : Bool :=
-  validChainK n c && inForcePinned n Δconf c
-
-/-- Mode 1's signed validator. -/
-def validSignedChainK' {σ sk pk : Type} (n Δconf : Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk)
-    (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChainK' n Δconf (stripSigs sc)
-
-/-- The key-stealing corruption predicate, and the **healing** story in
-one definition: slot `s` is bad if it is rented, or if *some* version at
-or above the one in force for its producer is stolen. A stolen current key
-makes its producer's slots bad only until the emergency rotation is
-`Δconf` deep — then the stolen version drops below the floor and the slots
-heal. A stolen rotated-out key never counts. -/
-def badKeyrot (n Δconf : Nat) (rented : ByzantineSlots)
-    (Stolen : Nat → Nat → Prop) (c₀ : Chain) (s : Nat) : Prop :=
-  rented s ∨ ∃ j, inForce n Δconf c₀ (producer n s) s ≤ j ∧
-    Stolen (producer n s) j
 
 /-- The key-stealing unforgeability surface (mode 1): stolen keys of any
 version sign anything forever; only non-stolen, non-rented entries pin
@@ -118,55 +53,7 @@ abbrev KeyStealingSigned := @MoltPetit.Model.KeyStealingSigned
 
 /-! ## Mode 2: scheduled rotation -/
 
-/-- Mode 2's pin: no block declares a version below its slot's scheduled
-one, `gen(slot) ≤ keyIndex`. The schedule is a pure function of the slot —
-identical on every chain, pinned at the verifier, never peer-supplied. -/
-def schedPin (schedule : Nat → Nat) (c : Chain) : Bool :=
-  c.all (fun b => decide (schedule b.slot ≤ b.keyIndex))
-
-/-- Mode 2's signed validator: signatures + indexed validity + the
-scheduled pin. No confirmation depth, no floor. -/
-def validSignedChainSched {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk)
-    (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChainK n (stripSigs sc)
-    && schedPin schedule (stripSigs sc)
-
-/-- Mode 2's unforgeability surface. -/
-abbrev SchedUnforgeable := @MoltPetit.Model.SchedUnforgeable
-
-/-- Mode 2's chain-independent corruption predicate. -/
-abbrev badSched := @MoltPetit.Model.badSched
-
-/-- Hash-injectivity domain, scheduled form. -/
-abbrev SignedDeclared := @MoltPetit.Model.SignedDeclared
-
 /-! ## Mode 3: free-cadence lockstep -/
-
-/-- Mode 3's **no-mixing rule**: the declared version is constant within
-each `n`-slot window and non-decreasing across windows. Roster-wide —
-unlike `keyMonoOk` it compares all pairs, not only same-producer pairs. -/
-def noMixing (n : Nat) : Chain → Bool
-  | [] => true
-  | b :: rest =>
-      rest.all (fun b' =>
-        decide ((b.slot / n = b'.slot / n → b.keyIndex = b'.keyIndex) ∧
-          b.keyIndex ≤ b'.keyIndex))
-      && noMixing n rest
-
-/-- Mode 3's signed validator: signatures + indexed validity + no-mixing.
-No schedule parameter anywhere — the verifier never learns when the roster
-advanced. -/
-def validSignedChainLock {σ sk pk : Type} (n : Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk)
-    (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChainK n (stripSigs sc)
-    && noMixing n (stripSigs sc)
-
-/-- Mode 3's hypothesis package: the roster counter (behavioural, monotone,
-declared by honest signatures), the unforgeability surface, and the
-budget. -/
-abbrev LockstepPackage := @MoltPetit.Model.LockstepPackage
 
 /-! ## Bridge to the core development -/
 
@@ -351,14 +238,6 @@ alias keyrot_loss_agreement :=
 alias sched_loss_agreement :=
   MoltPetit.Model.sched_loss_agreement
 
-/-- What the mode-2 validator admits, per block: a signature verifying under
-the declared version, and a declared version meeting the schedule. -/
-abbrev SchedAdmissible := @MoltPetit.Model.SchedAdmissible
-
-/-- Mode-2 exposure: a stamp is exposed when its seat is controlled, or a
-version of its key at or above the stamp's scheduled floor is stolen. -/
-abbrev schedExposed := MoltPetit.Model.schedExposed
-
 /-- Mode 2 against key theft (paper Theorem `thm:sched`): Theorem 1 for the
 scheduled validator, with custody assumed only for admissible blocks and
 exposure read at the schedule. -/
@@ -390,18 +269,6 @@ alias lockstep_recent_tip_ancestor_mem :=
 /-- A shared block at one index drags the shared prefix down to every
 lower index — the parent-id chaining step the deployment cards cite. -/
 alias same_block_same_prefix := MoltPetit.Model.same_block_same_prefix
-
-/-- Mode 2's strengthened certificate grounding: each fold also checks
-the scheduled pin. -/
-abbrev GroundedCertSched := @MoltPetit.Model.GroundedCertSched
-
-/-- What the scheduled grounding reconstructs: an accepted, schedule-pinned
-history matching the claim, every block signed. -/
-abbrev GroundedHistorySched := @MoltPetit.Model.GroundedHistorySched
-
-/-- The horizon budget: at most `f` bad slots in every `n`-slot window
-starting at or after `H` (untimed mode-2 form). -/
-abbrev ByzantineBoundedFrom := MoltPetit.Model.ByzantineBoundedFrom
 
 /-- A chain whose tip declares a generation whose era ended more than `Δ`
 ago fails the recency check — no budget consulted (paper §6.3, mode 2). -/
@@ -485,10 +352,6 @@ theorem lockstep_client_safety
   exact MoltPetit.Model.lockstep_recent_tip_ancestor_agreement hn hP
     hVal hVal' hHead hHead' hTipS hTipS' hRecent hRecent'
     hLong hLong' hTipHeight hB hB'
-
-
-/-- Core unforgeability surface for mode 2 and mode 3 (paper §6.3, Assumption 6). -/
-abbrev SchedCoreUnforgeable := @MoltPetit.Model.SchedCoreUnforgeable
 
 /-- Not-before: a generation's key cannot be stolen before it is derived
 (paper §6.3, mode 2). -/

@@ -31,8 +31,8 @@
 , rustc
 , lean-from-rust
 , lean-from-ts          # null on systems where thales is not expressible
-, extractedLean         # path to Rust/Extracted.lean
-, emittedLean           # path to MoltPetit/TS/Emitted.lean
+, extractedLean         # path to Spec/Rust.lean
+, emittedLean           # path to Spec/TS.lean
 , goldenEmitted         # path to tools/thales-reemission/MoltPetit.emitted.lean
 , deviationsPatch       # path to tools/thales-reemission/vendored-deviations.patch, or null
 , thalesFixesPatch      # path to tools/thales-reemission/thales-fixes.patch
@@ -159,7 +159,7 @@ let
     END { flush(); close(dir "/.names") }
   '';
 
-  # The declarations that MoltPetit/TS/Emitted.lean is allowed to differ from
+  # The declarations that Spec/TS.lean is allowed to differ from
   # the raw emission at, one per line, sorted.  Anything else — a new site, or
   # a site that stops differing — fails `ts-deviation-sites`.
   #
@@ -177,6 +177,14 @@ let
   # The three binder/projection sites are the semantic ones; the rest are
   # `deriving` clauses and redundant parentheses.  This list is what makes the
   # ledger an enumeration rather than a 122-line diff nobody reads.
+  # Top-level forms of the golden that the vendored file removes (deviation
+  # 5: the import of the empty Thales runtime and its `open`), so that
+  # Spec/ imports nothing outside Spec/, Mathlib and Aeneas.
+  removedSites = writeText "ts-removed-sites.txt" ''
+    0toplevel@import_Thales.TS.Runtime
+    0toplevel@open_Thales.TS
+  '';
+
   deviationSites = writeText "ts-deviation-sites.txt" ''
     def@floorBump
     def@floorsShapeFrom
@@ -193,7 +201,7 @@ in
   ##########################################################################
   # rust-extraction — byte-exact.
   #
-  # PROVES: the body of Rust/Extracted.lean is exactly what the pinned charon
+  # PROVES: the body of Spec/Rust.lean is exactly what the pinned charon
   # (9dd7f23c…, 0.1.212) + aeneas (bf13c42e…) produce from the current
   # rust/src/lib.rs; no hand-edits; the theorems in Rust/Properties.lean,
   # Rust/Bridge.lean and Rust/Equiv.lean are about definitions that really
@@ -221,12 +229,12 @@ in
     tail -n +"$body_from" ${extractedLean} > vendored-body.lean
     if ! cmp vendored-body.lean ${lean-from-rust}/MoltPetit.lean; then
       echo "" >&2
-      echo "Rust/Extracted.lean is NOT what charon+aeneas emit from rust/src/lib.rs." >&2
+      echo "Spec/Rust.lean is NOT what charon+aeneas emit from rust/src/lib.rs." >&2
       echo "Diff (vendored vs freshly extracted):" >&2
       diff -u vendored-body.lean ${lean-from-rust}/MoltPetit.lean >&2 || true
       exit 1
     fi
-    echo "OK: Rust/Extracted.lean body == fresh charon+aeneas extraction"
+    echo "OK: Spec/Rust.lean body == fresh charon+aeneas extraction"
     touch "$out"
   '';
 
@@ -252,11 +260,11 @@ in
     norm vendored-body.lean > a.lean
     norm ${lean-from-rust}/MoltPetit.lean > b.lean
     if ! cmp a.lean b.lean; then
-      echo "Rust/Extracted.lean differs from a fresh extraction beyond source locations." >&2
+      echo "Spec/Rust.lean differs from a fresh extraction beyond source locations." >&2
       diff -u a.lean b.lean >&2 || true
       exit 1
     fi
-    echo "OK: Rust/Extracted.lean body == fresh extraction, modulo Source: line numbers"
+    echo "OK: Spec/Rust.lean body == fresh extraction, modulo Source: line numbers"
     touch "$out"
   '';
 
@@ -300,7 +308,7 @@ in
   # DOES NOT PROVE: that the emission is *correct* — the emitter has three
   # known semantic bugs (see tools/thales-reemission/README.md) and this check
   # would keep passing if a fourth appeared; nor that the golden is what the
-  # Lean build consumes (it is not: that is MoltPetit/TS/Emitted.lean).
+  # Lean build consumes (it is not: that is Spec/TS.lean).
   ##########################################################################
   ts-emission-golden = runCommand "check-ts-emission-golden" { } ''
     set -euo pipefail
@@ -316,7 +324,7 @@ in
   ##########################################################################
   # ts-vendored-deviations — vendored == golden + a reviewed, checked-in delta.
   #
-  # MoltPetit/TS/Emitted.lean is NOT the raw emission: it carries three
+  # Spec/TS.lean is NOT the raw emission: it carries three
   # semantic fixes for emitter bugs plus some derive-clause and ordering
   # changes.  This check turns that delta into a machine-enforced ledger:
   # any NEW hand-edit fails until it is written into the patch, i.e. until it
@@ -344,7 +352,7 @@ in
               (or exists but is not tracked by git — a flake only sees
               git-tracked files, so `git add` it as well as creating it).
 
-        This check compares MoltPetit/TS/Emitted.lean against
+        This check compares Spec/TS.lean against
         tools/thales-reemission/MoltPetit.emitted.lean + a reviewed delta, and
         that delta has to be checked in.  Generate it once with:
 
@@ -359,18 +367,18 @@ in
       runCommand "check-ts-vendored-deviations"
         { nativeBuildInputs = [ gnupatch ]; } ''
         set -euo pipefail
-        ${splitAssert emittedLean 53}
+        ${splitAssert emittedLean 57}
         cp ${goldenEmitted} MoltPetit.emitted.lean
         chmod +w MoltPetit.emitted.lean
         patch -p1 --fuzz=0 -i ${deviationsPatch}
         tail -n +"$body_from" ${emittedLean} > expected.lean
         if ! cmp MoltPetit.emitted.lean expected.lean; then
-          echo "MoltPetit/TS/Emitted.lean is not golden + vendored-deviations.patch." >&2
+          echo "Spec/TS.lean is not golden + vendored-deviations.patch." >&2
           echo "Undocumented hand-edits (patched-golden vs vendored):" >&2
           diff -u MoltPetit.emitted.lean expected.lean >&2 || true
           exit 1
         fi
-        echo "OK: MoltPetit/TS/Emitted.lean body == golden + vendored-deviations.patch"
+        echo "OK: Spec/TS.lean body == golden + vendored-deviations.patch"
         touch "$out"
       '';
 
@@ -398,13 +406,20 @@ in
   ts-deviation-sites = runCommand "check-ts-deviation-sites"
     { nativeBuildInputs = [ gawk ]; } ''
     set -euo pipefail
-    ${splitAssert emittedLean 53}
+    ${splitAssert emittedLean 57}
     mkdir -p golden vendored
     tail -n +"$body_from" ${emittedLean} > vendored-body.lean
     awk -v dir=golden -f ${declSplitAwk} ${goldenEmitted}
     awk -v dir=vendored -f ${declSplitAwk} vendored-body.lean
 
-    sort golden/.names > golden.names
+    sort ${removedSites} > removed.names
+    sort golden/.names > golden-all.names
+    if [ -n "$(comm -13 golden-all.names removed.names)" ]; then
+      echo "FAIL: a recorded removal is not in the golden:" >&2
+      comm -13 golden-all.names removed.names >&2
+      exit 1
+    fi
+    comm -23 golden-all.names removed.names > golden.names
     sort vendored/.names > vendored.names
     if ! cmp -s golden.names vendored.names; then
       echo "FAIL: golden and vendored declare different top-level names." >&2
@@ -423,13 +438,13 @@ in
 
     sort ${deviationSites} > want-sites.txt
     if ! cmp -s differing.txt want-sites.txt; then
-      echo "FAIL: MoltPetit/TS/Emitted.lean deviates from the golden at a" >&2
+      echo "FAIL: Spec/TS.lean deviates from the golden at a" >&2
       echo "      different set of declarations than nix/checks.nix records." >&2
       echo "      (- expected, + actual):" >&2
       diff -u want-sites.txt differing.txt >&2 || true
       echo "" >&2
       echo "A NEW site here is a new sanctioned deviation.  Do not just add the" >&2
-      echo "name: write it into the header of MoltPetit/TS/Emitted.lean, add it" >&2
+      echo "name: write it into the header of Spec/TS.lean, add it" >&2
       echo "to deviationSites in nix/checks.nix, and say why it is TS-faithful." >&2
       exit 1
     fi

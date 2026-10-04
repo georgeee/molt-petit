@@ -1,11 +1,13 @@
-import Paper.Statements
+import Spec.Statements
+import Molt
+import Rust
 
 /-!
 # The paper's results, proved
 
 Each result `xxx` that `paper/molt.tex` cites is the theorem
 `MoltPaper.xxx : MoltPaper.thm_xxx` below, proved by the development's own
-theorem. `tools/paper-bundle.sh` checks that every theorem the paper cites
+theorem. `tools/paper-check.sh` checks that every theorem the paper cites
 appears here and depends on no axiom beyond `propext`, `Classical.choice`
 and `Quot.sound`.
 -/

@@ -2,7 +2,7 @@
 #
 # This is exactly what `rust/extract.sh` does, minus the in-tree vendoring step
 # (see the `update-extracted` app for that).  Output: `$out/MoltPetit.lean`,
-# the 995-line Aeneas emission that `Rust/Extracted.lean` carries below its
+# the 995-line Aeneas emission that `Spec/Rust.lean` carries below its
 # 16-line vendor header.
 #
 # HERMETICITY: fully offline and fully pinned.  `charon` here is the *wrapped*

@@ -1,6 +1,6 @@
 # Thales re-emission record (2026-07-11)
 
-The vendored `MoltPetit/TS/Emitted.lean` (historically `MoltPetit/TS.lean`) header long carried the caveat that the
+The vendored `Spec/TS.lean` (historically `MoltPetit/TS.lean`) header long carried the caveat that the
 indexed-validator functions and the certificate-boundary floor machinery
 were *hand-mirrored* "pending re-emission through the Thales toolchain
 (unavailable in the development environment)". This directory records the
@@ -32,7 +32,7 @@ re-emission that discharged that caveat.
 
 ## Reconciliation verdict
 
-The emission agrees with the vendored `MoltPetit/TS/Emitted.lean` body on every
+The emission agrees with the vendored `Spec/TS.lean` body on every
 previously hand-mirrored function, up to the header's documented deviation
 classes (derive-clause fixes) and block ordering, and **differs at exactly
 three sites where the raw emitter output is itself wrong** — the vendored
@@ -62,7 +62,7 @@ The toolchain was rebuilt from scratch at the same pin (`55b03fb` +
 emission is **byte-identical** to `MoltPetit.emitted.lean`
 (sha256 `39f7326c6d9cfd6d5d84140057e12c3d2ef9503dff9fef0295f056f3f5b37b9f`).
 
-The comparison against the vendored `MoltPetit/TS/Emitted.lean` found, besides
+The comparison against the vendored `Spec/TS.lean` found, besides
 the deviations documented above, **four cosmetic, semantics-neutral sites** the
 prose list had not recorded: a `deriving Repr, BEq` on `FloorList` (same class
 as the `Chain` derive deviation, but at an unlisted site), and three

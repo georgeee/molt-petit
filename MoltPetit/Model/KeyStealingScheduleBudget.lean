@@ -1,5 +1,6 @@
 import MoltPetit.Model.KeyStealingScheduleCert
 import MoltPetit.Model.KeyStealingBudget
+import Spec.Model
 
 /-!
 # MoltPetit — the scheduled budget, decomposed, and the two operational packages
@@ -99,25 +100,10 @@ open Classical
 -- The scheduled I3: the chain-independent budget, decomposed
 -- ===========================================================================
 
-/-- The theft half of `badSched`: the slot's producer holds a stolen key of the
-scheduled-current-or-later generation. A pure function of the slot. -/
-def theftSched (n : Nat) (schedule : Nat → Nat) (Stolen : Nat → Nat → Prop)
-    (s : Nat) : Prop :=
-  ∃ j, schedule s ≤ j ∧ Stolen (producerForSlot n s) j
-
 theorem badSched_iff_or {n : Nat} {schedule : Nat → Nat} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} (s : Nat) :
     badSched n schedule rented Stolen s ↔ rented s ∨ theftSched n schedule Stolen s :=
   Iff.rfl
-
-/-- The **exposed producers** of a window, scheduled form: producers holding a
-stolen current-or-later-generation key at their (unique) slot in `[u, u+n)`.
-Unlike the default `exposedProducers`, this reads no chain — the generation
-floor is `schedule s`, a function of the slot. -/
-noncomputable def exposedProducersSched (n : Nat) (schedule : Nat → Nat)
-    (Stolen : Nat → Nat → Prop) (u : Nat) : Finset Nat :=
-  (Finset.Ico u (u + n)).filter (fun s => theftSched n schedule Stolen s) |>.image
-    (producerForSlot n)
 
 /-- Two slots of one `n`-window with the same producer are the same slot —
 the producer↔slot correspondence is injective per window. (Local copy of the

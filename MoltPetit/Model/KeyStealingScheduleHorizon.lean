@@ -1,4 +1,5 @@
 import MoltPetit.Model.KeyStealingScheduleCert
+import Spec.Model
 
 /-!
 # MoltPetit — the horizon-scoped budget (the top-window contraction)
@@ -63,12 +64,6 @@ namespace MoltPetit.Model
 -- ===========================================================================
 -- The horizon-scoped budget
 -- ===========================================================================
-
-/-- The Byzantine budget **from a horizon `H` on**: at most `⌊(n−1)/3⌋` bad
-slots per `n`-window, required only of windows starting at or after `H`.
-Corruption below the horizon is unconstrained. -/
-def ByzantineBoundedFrom (H n : Nat) (bad : ByzantineSlots) : Prop :=
-  ∀ u, H ≤ u → (badSlotsIn bad u n).card ≤ maxByzantine n
 
 /-- The global budget delivers every horizon budget — the horizon theorems
 strictly generalize the global-budget ones. -/

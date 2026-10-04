@@ -1,5 +1,6 @@
 import MoltPetit.Model.Grounded
 import MoltPetit.Results.KeyStealingResults
+import Spec.Model
 
 /-!
 # MoltPetit — grounded certificates for the index-pinned validator
@@ -226,15 +227,6 @@ theorem keyMonoOk_append_of_from {n : Nat} {c s : Chain}
 -- ---------------------------------------------------------------------------
 -- Blockwise signature coverage reconstructs a signed chain
 -- ---------------------------------------------------------------------------
-
-/-- "Carries a verifying signature under its **declared** registry version" —
-the per-block fact the certificate attests (`sigOk`'s content, blockwise).
-Strictly stronger than `KeyStealingSigned` (which existentially quantifies the
-version): `SignedDeclared → KeyStealingSigned`. -/
-def SignedDeclared {Sig sk pk : Type} (n : Nat) (ops : SigOps Sig sk pk)
-    (registry : KeyRegistry pk) (B : Block) : Prop :=
-  ∃ sig : Sig,
-    ops.verify (registry (producerForSlot n B.slot) B.keyIndex) B sig = true
 
 theorem keyStealingSigned_of_declared {Sig sk pk : Type} {n : Nat}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {B : Block}

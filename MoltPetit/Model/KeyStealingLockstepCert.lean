@@ -1,4 +1,5 @@
 import MoltPetit.Model.KeyStealingLockstep
+import Spec.Model
 
 /-!
 # MoltPetit — mode 3 (free-cadence lockstep) at the certificate presentation
@@ -78,19 +79,6 @@ theorem keyMonoOk_of_lockstepOk {n : Nat} {c : Chain} (h : lockstepOk n c = true
   rw [keyMonoOk_iff_pairwise]
   exact ((lockstepOk_iff_pairwise c).mp h).imp (fun hab _ => hab.2)
 
-/-- The suffix-side no-mixing check a certificate-syncing verifier runs: fold
-the boundary state (tip slot, tip generation) through the suffix. Each block
-must not decrease the generation, and must equal it when the block lies in
-the same grid window (`slot / n`) as the current state; the state then
-becomes `(b.slot, b.keyIndex)`. Analogue of `keyMonoFrom` with a single `Nat`
-instead of an `n`-vector, and of `schedPinned` run over a suffix in mode 2.
-Pure function of `(tipSlot, g, suffix)`. -/
-def lockstepFrom (n : Nat) : Nat → Nat → Chain → Bool
-  | _, _, [] => true
-  | ts, g, b :: rest =>
-      decide (g ≤ b.keyIndex ∧ (ts / n = b.slot / n → g = b.keyIndex))
-      && lockstepFrom n b.slot b.keyIndex rest
-
 /-- Sandwich: if `a ≤ t ≤ b` and `a` and `b` sit in the same `n`-window, so
 does `t`. The one genuinely new piece of arithmetic this item needs; `omega`
 alone cannot see through `Nat` division, so the window facts are established
@@ -157,36 +145,6 @@ theorem lockstepOk_append_of_from {n : Nat} {c s : Chain} {ts g : Nat}
 -- ===========================================================================
 -- (B) The certificate
 -- ===========================================================================
-
-/-- The lockstep certificate derivation: `GroundedCertSched`'s shape (same
-tail buffer, same Nat-form density premise, so `windowCount_append` /
-`windowCount_filter_low` transfer verbatim) with the pin premise replaced by
-the two-clause no-mixing check against the threaded tip generation `g`, and
-the state stepped to `b.keyIndex`. Every check is a pure function of
-`(claim, g, block)` — what a recursive certificate attests per fold. The
-genesis state is `G.keyIndex`, matching `LockstepPackage.genesis_gen`. -/
-inductive GroundedCertLock (n : Nat) (Signed : Block → Prop) (G : Block) :
-    CertClaim → Nat → Prop
-  | genesis :
-      genesisOk G = true →
-      G.slot = 0 →
-      Signed G →
-      GroundedCertLock n Signed G
-        { tipId := G.id, tipSlot := G.slot, tipHeight := G.height
-        , tail := [G].filter fun x => decide (G.slot + 2 - n ≤ x.slot) } G.keyIndex
-  | extend (cl : CertClaim) (g : Nat) (b : Block) :
-      GroundedCertLock n Signed G cl g →
-      b.height = cl.tipHeight + 1 →
-      cl.tipSlot < b.slot →
-      b.prev = some cl.tipId →
-      Signed b →
-      g ≤ b.keyIndex →
-      (cl.tipSlot / n = b.slot / n → g = b.keyIndex) →
-      (∀ u : Nat, cl.tipSlot + 2 ≤ u + n → u + n ≤ b.slot + 1 →
-        quorum n ≤ windowCount (cl.tail ++ [b]) u n) →
-      GroundedCertLock n Signed G
-        { tipId := b.id, tipSlot := b.slot, tipHeight := b.height
-        , tail := (cl.tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) } b.keyIndex
 
 /-- What a `GroundedCertLock` derivation reconstructs: a `validChain`-accepted,
 `lockstepOk`-passing prefix matching the claim, tip additionally carrying

@@ -190,8 +190,8 @@
         fileset = fs.unions [ ./moltPetit.ts ];
       };
 
-      extractedLean = ./Rust/Extracted.lean;
-      emittedLean = ./MoltPetit/TS/Emitted.lean;
+      extractedLean = ./Spec/Rust.lean;
+      emittedLean = ./Spec/TS.lean;
       goldenEmitted = ./tools/thales-reemission/MoltPetit.emitted.lean;
       thalesFixesPatch = ./tools/thales-reemission/thales-fixes.patch;
       upstreamPrPatches = ./tools/thales-reemission/upstream-prs/patches;
@@ -267,7 +267,7 @@
             aeneas = c.aeneasPkg;
 
             # Rust -> Lean.  `$out/MoltPetit.lean` is the aeneas emission,
-            # i.e. the body of Rust/Extracted.lean below its vendor header.
+            # i.e. the body of Spec/Rust.lean below its vendor header.
             lean-from-rust = c.lean-from-rust;
 
             # The same on every system, with or without thales.
@@ -324,7 +324,7 @@
             # The TS ledger checks.  NONE of these needs the Thales toolchain —
             # they only read checked-in files — so they run on every system.
             # Gating them on `thales` would have meant a green `nix flake
-            # check` with zero enforcement on MoltPetit/TS/Emitted.lean
+            # check` with zero enforcement on Spec/TS.lean
             # wherever the Lean release is not named.
             ts-vendored-deviations = all.ts-vendored-deviations;
             ts-deviation-sites = all.ts-deviation-sites;
@@ -380,7 +380,7 @@
             # Re-vendor the generated Lean sources from the pinned toolchains.
             # Overwrites tracked files; refuses on a dirty tree.
             update-extracted = app mk.update-extracted;
-            # Regenerate the ledger of reviewed hand-edits to Emitted.lean.
+            # Regenerate the ledger of reviewed hand-edits to Spec/TS.lean.
             update-deviations-patch = app mk.update-deviations-patch;
           })
         per;

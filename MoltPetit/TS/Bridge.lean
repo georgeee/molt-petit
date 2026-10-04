@@ -6,7 +6,7 @@ import MoltPetit.Model.KeyIndex
 # MoltPetit — soundness bridge for the TypeScript implementation
 
 `moltPetit.ts` is the protocol definition; thales compiles it to the
-Lean sidecar `MoltPetit/TS/Emitted.lean` (namespace `MoltPetit`). This
+Lean sidecar `Spec/TS.lean` (namespace `MoltPetit`). This
 module proves that the emitted validators are *sound* with respect to the
 verified model: a chain the TypeScript validator accepts satisfies the
 semantic `ValidChain` predicate consumed by the safety proof.

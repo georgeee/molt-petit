@@ -1,5 +1,6 @@
 import MoltPetit.Model.KeyStealingScheduleBudget
 import MoltPetit.Results.KeyStealingScheduleResults
+import Spec.Model
 
 /-!
 # MoltPetit — free-cadence lockstep rotation (mode 3, D1′-thin)
@@ -68,19 +69,6 @@ namespace MoltPetit.Model
 -- The lockstep validator
 -- ===========================================================================
 
-/-- The **no-mixing rule**: along the chain, the declared generation is
-constant within each `n`-slot window and non-decreasing across windows —
-equivalently, `keyIndex` is a monotone function of the window index
-`slot / n`. Roster-wide: unlike `keyMonoOk` this compares *all* pairs, not
-just same-producer pairs. -/
-def lockstepOk (n : Nat) : Chain → Bool
-  | [] => true
-  | b :: rest =>
-      rest.all (fun b' =>
-        decide ((b.slot / n = b'.slot / n → b.keyIndex = b'.keyIndex) ∧
-          b.keyIndex ≤ b'.keyIndex))
-      && lockstepOk n rest
-
 theorem lockstepOk_iff_pairwise {n : Nat} (c : Chain) :
     lockstepOk n c = true ↔
       c.Pairwise (fun a b => (a.slot / n = b.slot / n → a.keyIndex = b.keyIndex) ∧
@@ -96,21 +84,6 @@ theorem lockstepOk_iff_pairwise {n : Nat} (c : Chain) :
       rwa [decide_eq_true_eq] at this
     · rintro ⟨h1, h2⟩
       exact ⟨fun a ha => decide_eq_true_eq.mpr (h1 a ha), h2⟩
-
-/-- The **lockstep signed validator**: versioned-registry signatures,
-structural/monotone validity, and the no-mixing rule. No schedule parameter —
-nothing here references `rosterGen`. -/
-def validSignedChainLock {σ sk pk : Type} (n : Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChainK n (stripSigs sc)
-    && lockstepOk n (stripSigs sc)
-
-/-- The lagged schedule induced by a roster-generation function: a block at
-slot `s` is pinned at the *previous* window's generation. The lag is what
-absorbs the one unmatured tip window. (`Nat` subtraction makes window 0 lag
-to itself, which the genesis convention `genesis_gen` pins exactly.) -/
-def lagSched (n : Nat) (rosterGen : Nat → Nat) (s : Nat) : Nat :=
-  rosterGen (s / n - 1)
 
 -- ===========================================================================
 -- Small transports
@@ -234,35 +207,6 @@ private theorem window_producer_inj' {n u s s' : Nat}
 -- ===========================================================================
 -- The package
 -- ===========================================================================
-
-/-- **The free-cadence lockstep package** (mode 3, D1′-thin). Fields:
-
-* `mono` + `declared` + `genesis_gen` — **B1 as behaviour**: an
-  execution-level, per-window, monotone `rosterGen` that every honest
-  signature (and genesis) declares. Discovered, not fixed: no verifier is
-  given it and no validator checks against it.
-* `unforgeable` — the registry EUF-CMA surface at the **weakest** (constant-0)
-  core validator, so its scope covers lockstep-accepted chains.
-* `hashInj`, `rentBound`, `exposedBound` (at the lagged schedule — the
-  cumulative census, `PackageA`'s shape), `budget_le` — as in `PackageA`.
-
-Honest accounting: assumption-wise this is `PackageA` at `lagSched` plus the
-behavioural `rosterGen` fields; what is *bought* is that the validator the
-deployment runs is schedule-free. -/
-structure LockstepPackage (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
-    (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
-    (now Δ : Nat) (G : Block) (R T : Nat) : Prop where
-  mono : ∀ ⦃w w' : Nat⦄, w ≤ w' → rosterGen w ≤ rosterGen w'
-  unforgeable :
-    SchedCoreUnforgeable n (fun _ => 0) ops registry rented Stolen honestSigned now Δ
-  declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B →
-    B.keyIndex = rosterGen (s / n)
-  hashInj : SignedHashInjective (SignedDeclared n ops registry) G
-  genesis_gen : G.keyIndex = rosterGen (G.slot / n)
-  rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R
-  exposedBound : ∀ u, (exposedProducersSched n (lagSched n rosterGen) Stolen u).card ≤ T
-  budget_le : R + T ≤ maxByzantine n
 
 /-- A lockstep package is `PackageA` at the lagged schedule — the transport
 that hands the entire scheduled theorem set to lockstep chains. -/

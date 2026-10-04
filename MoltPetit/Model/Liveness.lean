@@ -1,4 +1,5 @@
 import MoltPetit.Model.Soundness
+import Spec.Model
 
 /-!
 # MoltPetit — liveness
@@ -283,15 +284,6 @@ window, i.e. honest producers act in at least `quorum n` slots per
 window) then makes every matured window dense, so the run validates; and
 it has one block per honest slot, so the height grows without bound.
 -/
-
-/-- Extend `tip` by one honest block at each schedule slot, each built on
-the previous block. -/
-def buildFrom (tip : Block) : List Nat → Chain
-  | [] => []
-  | s :: ss => nextBlock s s 0 0 tip :: buildFrom (nextBlock s s 0 0 tip) ss
-
-/-- A synchronous honest run from genesis `g` over honest schedule `ss`. -/
-def buildChain (g : Block) (ss : List Nat) : Chain := g :: buildFrom g ss
 
 theorem buildFrom_map_slot (tip : Block) (ss : List Nat) :
     (buildFrom tip ss).map Block.slot = ss := by

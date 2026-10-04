@@ -1,5 +1,6 @@
 import MoltPetit.TS.Bridge
 import MoltPetit.Model.Liveness
+import Spec.Model
 
 /-!
 # MoltPetit — grounded certificates and suffix-level safety
@@ -93,7 +94,6 @@ private theorem linksOk_slots_gt {b : Block} {rest : Chain}
   intro x hx
   exact (List.pairwise_cons.mp hS).1 x hx
 
-
 -- ---------------------------------------------------------------------------
 -- Grounded certificate claims
 -- ---------------------------------------------------------------------------
@@ -106,19 +106,6 @@ theorem groundedCert_facts {n : Nat} {Signed : Block → Prop} {G : Block}
   induction h with
   | genesis hG hS => exact ⟨hG, hS⟩
   | extend _ _ _ _ _ _ _ _ ih => exact ih
-
-/-- What the grounding derivation reconstructs: a validator-accepted prefix
-chain matching the claim exactly, every block of which is the genesis or
-carries a verifying producer signature. -/
-structure GroundedHistory (n : Nat) (Signed : Block → Prop) (G : Block)
-    (cl : CertClaim) (c : Chain) : Prop where
-  valid   : validChain n c = true
-  head    : blockAt? c 0 = some G
-  tip     : ∃ t : Block, c.getLast? = some t ∧
-              t.id = cl.tipId ∧ t.slot = cl.tipSlot ∧ t.height = cl.tipHeight
-  tail_eq : cl.tail = c.filter fun x => decide (cl.tipSlot + 2 - n ≤ x.slot)
-  len_eq  : c.length = cl.tipHeight + 1
-  signed  : ∀ B ∈ c, B = G ∨ Signed B
 
 /--
 **History reconstruction** (proved by induction on the derivation — this
@@ -343,8 +330,6 @@ theorem grounded_suffix_history {n : Nat} (hn : 1 ≤ n)
 -- ---------------------------------------------------------------------------
 -- Cryptographic assumptions, signature level
 -- ---------------------------------------------------------------------------
-
-
 
 -- ---------------------------------------------------------------------------
 -- Headline theorem: suffix-level deep agreement

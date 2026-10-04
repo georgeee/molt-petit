@@ -27,7 +27,7 @@ realized** — the environment it was written in cannot run builders at all. So:
 
 Two independent confirmations that the *recipes* are right, from a from-scratch
 non-nix bootstrap of the same pins: the Charon+Aeneas emission is byte-identical
-to the vendored body of `Rust/Extracted.lean`, and the Thales emission is
+to the vendored body of `Spec/Rust.lean`, and the Thales emission is
 byte-identical to `tools/thales-reemission/MoltPetit.emitted.lean`. The flake
 encodes those same two comparisons as `checks.rust-extraction` and
 `checks.ts-emission-golden`.
@@ -51,7 +51,7 @@ All commands run from the repo root. Substitute your own system for
 
 | Command | What it produces | Purity | Cost |
 |---|---|---|---|
-| `nix build .#lean-from-rust` (= `.#default`) | `result/MoltPetit.lean`: the Aeneas emission from `rust/src/lib.rs`, i.e. the body of `Rust/Extracted.lean` below its 16-line vendor header | **hermetic**, fully offline (`CARGO_NET_OFFLINE=1`; the crate has no dependencies) | the expensive one — see below |
+| `nix build .#lean-from-rust` (= `.#default`) | `result/MoltPetit.lean`: the Aeneas emission from `rust/src/lib.rs`, i.e. the body of `Spec/Rust.lean` below its 16-line vendor header | **hermetic**, fully offline (`CARGO_NET_OFFLINE=1`; the crate has no dependencies) | the expensive one — see below |
 | `nix build .#lean-from-ts` | `result/MoltPetit.lean`: the raw Thales emission from `moltPetit.ts` | **hermetic**, fully offline | Lean 4.29.0 release tarball, 537 MB, + a Lake build of Thales |
 | `nix build .#generated` | both of the above side by side (`result/rust/`, `result/ts/`); what `update-extracted` reads | hermetic | union of the two |
 | `nix build .#charon` / `.#aeneas` | the pinned extraction binaries, straight from upstream's own flakes | hermetic | as `lean-from-rust` |
@@ -83,7 +83,7 @@ nix build .#checks.x86_64-linux.tsc \
 
 All checks are **hermetic**. What each one pins:
 
-- `rust-extraction` — the body of `Rust/Extracted.lean` is byte-exactly what
+- `rust-extraction` — the body of `Spec/Rust.lean` is byte-exactly what
   pinned charon+aeneas emit from the current `rust/src/lib.rs`. No
   normalisation: every `Source: 'src/lib.rs', lines N:C-M:C` comment must match,
   so a *comment-only* edit to `lib.rs` that shifts line numbers fails this check
@@ -93,7 +93,7 @@ All checks are **hermetic**. What each one pins:
 - `ts-emission-golden` — `tools/thales-reemission/MoltPetit.emitted.lean` is
   byte-exactly what the pinned+patched Thales emits from `moltPetit.ts`. The
   only check that actually needs the emitter, hence x86_64-linux only.
-- `ts-vendored-deviations` — `MoltPetit/TS/Emitted.lean` is that golden plus
+- `ts-vendored-deviations` — `Spec/TS.lean` is that golden plus
   exactly the reviewed delta in `vendored-deviations.patch`, byte for byte.
 - `ts-deviation-sites` — *which* declarations deviate: exactly the nine named in
   `nix/checks.nix`. Order-insensitive, so a block move is not mistaken for an
@@ -140,7 +140,7 @@ order of magnitude is right.)
 | `nix run .#verify-lean` (= `.#default`) | `elan toolchain install` + `lake exe cache get` + `lake build MoltPetit Rust Thales Molt` — all four libraries, hence all four axiom-guard files | **impure, needs the network** |
 | `nix run .#verify-lean-offline` | `lake build --no-build` on the same four targets: exit 0 means every job is trace-current | impure (touches your `.lake`), but **no network** |
 | `nix run .#update-extracted` | re-vendors the generated Lean sources — see below | impure: writes into your working tree |
-| `nix run .#update-deviations-patch` | regenerates `vendored-deviations.patch` from the current `MoltPetit/TS/Emitted.lean` | impure: writes into your working tree |
+| `nix run .#update-deviations-patch` | regenerates `vendored-deviations.patch` from the current `Spec/TS.lean` | impure: writes into your working tree |
 
 `verify-lean` **cannot** be a derivation, for three reasons that are not fixable
 here: `lean-toolchain` pins `leanprover/lean4:v4.30.0-rc2` and nixpkgs' `lean4`
@@ -181,9 +181,9 @@ It **overwrites four tracked files**:
 
 | file | new content |
 |---|---|
-| `Rust/Extracted.lean` | existing vendor header + fresh Aeneas body |
+| `Spec/Rust.lean` | existing vendor header + fresh Aeneas body |
 | `tools/thales-reemission/MoltPetit.emitted.lean` | fresh Thales emission (the golden) |
-| `MoltPetit/TS/Emitted.lean` | existing header + (golden + the reviewed deltas from `vendored-deviations.patch`) |
+| `Spec/TS.lean` | existing header + (golden + the reviewed deltas from `vendored-deviations.patch`) |
 | `nix/checks.nix` | the `goldenDigest` constant, rewritten to match the new golden |
 
 It refuses to run if any of those has uncommitted edits (override with
@@ -200,7 +200,7 @@ so anything that shifts line counts shifts every one of its `Source:` comments (
 `rust-extraction`. Use `rust-extraction-modulo-loc` to confirm that line numbers
 are all that moved.
 
-If your hand-edits to `MoltPetit/TS/Emitted.lean` changed, regenerate the ledger
+If your hand-edits to `Spec/TS.lean` changed, regenerate the ledger
 first with `nix run .#update-deviations-patch`, review it, and `git add` it — an
 untracked ledger is invisible to the flake and leaves the check red.
 

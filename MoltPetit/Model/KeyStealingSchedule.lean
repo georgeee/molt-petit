@@ -1,4 +1,5 @@
 import MoltPetit.Model.KeyStealingCert
+import Spec.Model
 
 /-!
 # MoltPetit — the scheduled-rotation variant (the anchor-discharging device)
@@ -39,19 +40,6 @@ namespace MoltPetit.Model
 -- ===========================================================================
 -- The schedule-pinned validator
 -- ===========================================================================
-
-/-- The **scheduled pin**: no block signs under a version below the one the
-public rotation schedule fixes for its slot. Position-determined — a pure
-function of `b.slot` — hence identical across all chains. -/
-def schedPinned (schedule : Nat → Nat) (c : Chain) : Bool :=
-  c.all (fun b => decide (schedule b.slot ≤ b.keyIndex))
-
-/-- The scheduled index-pinned **signed** validator: versioned-registry
-signatures + structural/monotone validity + the scheduled pin. -/
-def validSignedChainSched {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChainK n (stripSigs sc)
-    && schedPinned schedule (stripSigs sc)
 
 theorem validChain_of_validSignedChainSched {σ sk pk : Type} {n : Nat}
     {schedule : Nat → Nat} {ops : SigOps σ sk pk} {registry : KeyRegistry pk}
@@ -97,33 +85,6 @@ theorem signedDeclared_of_mem_sched {σ sk pk : Type} {n : Nat} {schedule : Nat 
 -- ===========================================================================
 -- The EUF-CMA surface and the chain-independent corruption
 -- ===========================================================================
-
-/-- **Registry-level EUF-CMA over the scheduled validator** — the same
-transparent surface as `KeyStealingEUFCMA`, phrased over `validSignedChainSched`.
-A verifying signature under a non-stolen registered version, on a recent
-accepted scheduled chain, is the honest producer's unique slot block. -/
-structure SchedUnforgeable (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
-    (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
-    (now Δ : Nat) : Prop where
-  unforgeable :
-    ∀ {sc : SignedChain Sig} {sb : SignedBlock Sig} {j : Nat},
-      validSignedChainSched n schedule ops registry sc = true →
-      sb ∈ sc →
-      (∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ) →
-      ops.verify (registry (producerForSlot n sb.block.slot) j) sb.block sb.sig = true →
-      ¬ rented sb.block.slot →
-      ¬ Stolen (producerForSlot n sb.block.slot) j →
-      honestSigned (producerForSlot n sb.block.slot) sb.block.slot = some sb.block
-
-/-- The induced corruption under the schedule: a slot is bad if rented, or its
-producer holds any stolen not-yet-rotated-out key — where "not yet rotated out"
-is judged by the **public schedule** `schedule s`, not by any chain. **This is a
-pure function of the slot: chain-independent, identical for the real chain and
-any fork.** That is what discharges the anchor (§10.0). -/
-def badSched (n : Nat) (schedule : Nat → Nat) (rented : ByzantineSlots)
-    (Stolen : Nat → Nat → Prop) (s : Nat) : Prop :=
-  rented s ∨ ∃ j, schedule s ≤ j ∧ Stolen (producerForSlot n s) j
 
 -- ===========================================================================
 -- Honest-slot uniqueness — DIRECT (the contraction)

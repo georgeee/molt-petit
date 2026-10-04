@@ -1,4 +1,5 @@
 import MoltPetit.Model.KeyStealingScheduleHorizon
+import Spec.Model
 
 /-!
 # MoltPetit — the aligned-window contraction engine (validator-agnostic)
@@ -25,16 +26,6 @@ namespace MoltPetit.Model
 -- ===========================================================================
 -- (1) Honest-slot uniqueness on one window
 -- ===========================================================================
-
-/-- Honest-slot uniqueness, required only on the slots of one window
-`[u, u + len)`. `HonestSlotsUnique` is the everywhere form;
-`honestSlotsUniqueOn_of_unique` recovers this at any `u`, `len`. What this
-buys: a corruption predicate that is sound only on windows pinned to one
-value (mode 3's per-generation `badLockAt`) can still be consumed by the
-engine, since the engine never asks for uniqueness anywhere else. -/
-def HonestSlotsUniqueOn (u len : Nat) (bad : ByzantineSlots) (record : SlotRecord) : Prop :=
-  ∀ s, u ≤ s → s < u + len → ¬ bad s →
-    ∀ ⦃B B' : Block⦄, B ∈ record s → B' ∈ record s → B = B'
 
 theorem honestSlotsUniqueOn_of_unique {u len : Nat} {bad : ByzantineSlots}
     {record : SlotRecord} (h : HonestSlotsUnique bad record) :

@@ -1,4 +1,5 @@
 import MoltPetit.Results.KeyStealingScheduleResults
+import Spec.Model
 
 /-!
 # MoltPetit — the scheduled certificate (no floor snapshot)
@@ -101,16 +102,6 @@ namespace MoltPetit.Model
 -- The core scheduled validator
 -- ===========================================================================
 
-/-- The **core** scheduled signed validator: versioned-registry signatures +
-structural/density validity + the scheduled pin — without the in-band
-monotone-index bookkeeping (`keyMonoOk`), which is the one component whose
-certificate-boundary reconstruction would need a floor snapshot, and which is
-not load-bearing for scheduled safety (module doc). -/
-def validSignedChainSchedCore {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChain n (stripSigs sc)
-    && schedPinned schedule (stripSigs sc)
-
 /-- Full scheduled validity implies core validity (the core drops `keyMonoOk`). -/
 theorem schedCore_of_validSignedChainSched {σ sk pk : Type} {n : Nat}
     {schedule : Nat → Nat} {ops : SigOps σ sk pk} {registry : KeyRegistry pk}
@@ -190,26 +181,6 @@ theorem signedDeclared_of_mem_schedCore {σ sk pk : Type} {n : Nat}
 -- ===========================================================================
 -- The core EUF-CMA surface
 -- ===========================================================================
-
-/-- **Registry-level EUF-CMA over the core scheduled validator** — the same
-transparent surface as `SchedUnforgeable`, scoped to core acceptance. Because
-core validity accepts a superset of the fully-valid chains, this is a (mildly)
-stronger named assumption than `SchedUnforgeable` — see the module doc for why
-its plausibility argument is unchanged (the pin, which carries the argument, is
-in the core) — and `schedUnforgeable_of_core` for the formal relation. -/
-structure SchedCoreUnforgeable (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
-    (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
-    (now Δ : Nat) : Prop where
-  unforgeable :
-    ∀ {sc : SignedChain Sig} {sb : SignedBlock Sig} {j : Nat},
-      validSignedChainSchedCore n schedule ops registry sc = true →
-      sb ∈ sc →
-      (∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ) →
-      ops.verify (registry (producerForSlot n sb.block.slot) j) sb.block sb.sig = true →
-      ¬ rented sb.block.slot →
-      ¬ Stolen (producerForSlot n sb.block.slot) j →
-      honestSigned (producerForSlot n sb.block.slot) sb.block.slot = some sb.block
 
 /-- The core surface delivers the full-validator surface (full validity implies
 core validity, so the core assumption's scope covers every fully-valid chain). -/
@@ -355,54 +326,6 @@ theorem sched_deep_block_agreement_core_of_length
 -- ===========================================================================
 -- The scheduled certificate derivation — no threaded floor
 -- ===========================================================================
-
-/-- A certificate claim is **grounded-sched in genesis `G`** when it arose from
-the genesis claim by folding in one signed block at a time, each fold checking
-link + signature + density + **the scheduled pin** `schedule b.slot ≤
-b.keyIndex`. Every check is a pure function of `(claim, block)` — the fold
-threads **no floor**: the pin is computed from the block's own slot. The
-certificate state is exactly the plain (`GroundedCert`) state; contrast
-`GroundedCertK`, whose folds gate on (and step) a per-producer floor vector.
-
-Deployment note (as in `GroundedCertK`): the genesis constructor requires
-`Signed G` and the slot-0 pin `schedule G.slot ≤ G.keyIndex` — the deployment
-genesis must carry a verifying registry signature at its declared version
-(`sigsOk` has no genesis exemption). -/
-inductive GroundedCertSched (n : Nat) (schedule : Nat → Nat) (Signed : Block → Prop)
-    (G : Block) : CertClaim → Prop
-  | genesis :
-      genesisOk G = true →
-      G.slot = 0 →
-      Signed G →
-      schedule G.slot ≤ G.keyIndex →
-      GroundedCertSched n schedule Signed G
-        { tipId := G.id, tipSlot := G.slot, tipHeight := G.height
-        , tail := [G].filter fun x => decide (G.slot + 2 - n ≤ x.slot) }
-  | extend (cl : CertClaim) (b : Block) :
-      GroundedCertSched n schedule Signed G cl →
-      b.height = cl.tipHeight + 1 →
-      cl.tipSlot < b.slot →
-      b.prev = some cl.tipId →
-      Signed b →
-      schedule b.slot ≤ b.keyIndex →
-      (∀ u : Nat, cl.tipSlot + 2 ≤ u + n → u + n ≤ b.slot + 1 →
-        quorum n ≤ windowCount (cl.tail ++ [b]) u n) →
-      GroundedCertSched n schedule Signed G
-        { tipId := b.id, tipSlot := b.slot, tipHeight := b.height
-        , tail := (cl.tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) }
-
-/-- What the grounded-sched derivation reconstructs: a `validChain`-accepted,
-**schedule-pinned** prefix matching the claim, with every block signed. -/
-structure GroundedHistorySched (n : Nat) (schedule : Nat → Nat) (Signed : Block → Prop)
-    (G : Block) (cl : CertClaim) (c : Chain) : Prop where
-  valid   : validChain n c = true
-  pinned  : schedPinned schedule c = true
-  head    : blockAt? c 0 = some G
-  tip     : ∃ t : Block, c.getLast? = some t ∧
-              t.id = cl.tipId ∧ t.slot = cl.tipSlot ∧ t.height = cl.tipHeight
-  tail_eq : cl.tail = c.filter fun x => decide (cl.tipSlot + 2 - n ≤ x.slot)
-  len_eq  : c.length = cl.tipHeight + 1
-  signed  : ∀ B ∈ c, Signed B
 
 /-- **History reconstruction for the scheduled certificate** (mirrors
 `groundedCertK_history` minus every floor step, plus pin propagation). -/

@@ -52,31 +52,36 @@ Protocol with Recursive Certificates\par}
 \vspace{1em}
 
 \begin{abstract}
-Molt Petit is a slot-based Byzantine-fault-tolerant consensus protocol
-whose entire light-client contract fits in one sentence: hold the genesis
-and a clock, fetch a constant-size recursive certificate from anyone,
-check that it verifies and that its tip is recent, and act on everything
-$n$ blocks deep. Validity is a \emph{density} rule --- every matured
-$n$-slot window must carry blocks from two thirds of the fixed roster ---
-with no votes and deterministic, fixed-depth finality. All safety claims
-are machine-checked in Lean~4 under the cryptographic and operational
-assumptions of Section~\ref{sec:assumptions} --- the core claims about
-the imported Rust validator source itself, proved sound against the model
-and re-used as the recursive-proof circuit (with circuit-backend faithfulness
-a stated trust assumption), and today's key-rotation results at
-model level. Light-client safety is proved in a timed model against an
-adversary that obtains signing keys at arbitrary real times --- by theft
-or by transient compromise --- and signs whatever stamps they verify; the
-fault budget counts only key exposure around each window's own time, so
-the recency check is a machine-checked safety ingredient, and no valid
-chain can run more than the budget's lookback ahead of real time --- and we develop key rotation inside
-consensus: every mode recovers from lost keys, and against an adversary
-who steals keys and keeps them forever, two modes come with exactly
-stated operator duties and no client duty beyond the genesis and a clock;
-for a public rotation schedule, theft safety is the light-client theorem
-itself, with exposure read at the schedule. Measured with post-quantum signatures on commodity
-hardware, the verified consensus rule adds under $2\%$ to any
-certificate's proving cost.
+Molt Petit is a consensus protocol for a fixed set of $n$ validators
+that take turns producing blocks in time slots. A light client needs
+very little: it keeps the genesis block and a clock, downloads a small
+certificate from any source, checks that the certificate verifies and
+that its newest block is recent, and then trusts every block at least
+$n$ blocks deep. A chain is valid only if, in every past window of $n$
+slots, at least two thirds of the validators produced a block. There
+are no voting rounds, and finality is at a fixed depth.
+
+All safety claims are machine-checked in Lean~4, under the assumptions
+listed in Section~\ref{sec:assumptions}. The core claims cover the actual
+Rust validator code, which is also the code proved inside the recursive
+certificate (we trust the proof system to run it faithfully). The
+key-rotation results are proved for the protocol model.
+
+The attacker may obtain validators' signing keys at any time --- by
+theft or by a temporary break-in --- and sign anything with them. Safety
+holds as long as few enough keys are exposed around each window's own
+time. Checking that the certificate is recent is essential: it is what
+makes keys stolen long ago useless, and the proofs depend on it. No
+valid chain can claim to be far ahead of real time.
+
+Validators can rotate keys inside the protocol. Every rotation mode
+recovers from lost keys. Against an attacker who steals keys and keeps
+them forever, two modes stay safe given clearly stated duties for
+operators, and clients still need only the genesis and a clock. With a
+public rotation schedule, safety against theft follows directly from the
+main theorem. With post-quantum signatures on ordinary hardware, the
+verified consensus rule adds under $2\%$ to the cost of producing a
+certificate.
 \end{abstract}
 
 \section{Introduction}
@@ -301,8 +306,9 @@ each contract rests on (Section~\ref{sec:results}).
 Machine-checked claims cite their Lean names in \code{typewriter}. A
 cited theorem \code{xxx} is \code{MoltPaper.xxx} in
 \code{Paper/Proofs.lean}, and its statement is \code{thm\_xxx} in
-\code{Paper/Statements.lean}; every cited definition appears, as its
-source text, in the self-contained \code{Paper/Bundle.lean}.
+\code{Spec/Statements.lean}; every cited definition is declared in
+\code{Spec/}, a few files of definitions and statements only, which the
+rest of the development imports.
 
 \subsection{Setting}
 
@@ -739,10 +745,10 @@ TypeScript one. The Rust bridge also covers the validator's
 key-discipline conjunct. Theorem~\ref{thm:forge}, the rotation-mode
 results of Section~\ref{sec:rotation} and the liveness theorem are,
 today, proved at model level. Each result the paper cites as
-\code{xxx} is stated as \code{thm\_xxx} in \code{Paper/Statements.lean}
-and proved as \code{xxx} in \code{Paper/Proofs.lean};
-\code{Paper/Bundle.lean} is a generated, self-contained file of those
-statements and every definition they use. The build checks each proof's
+\code{xxx} is stated as \code{thm\_xxx} in \code{Spec/Statements.lean}
+and proved as \code{xxx} in \code{Paper/Proofs.lean}. The statements and
+every definition they use live in \code{Spec/}, which contains no proofs
+and is imported by the rest of the development. The build checks each proof's
 axioms, so it fails --- rather than a reviewer noticing --- if any proof
 ever assumes more than classical logic.
 
