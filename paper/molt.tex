@@ -467,10 +467,12 @@ $\mathcal{F}_{\mathrm{SIG}}$~\cite{canettisig} at the verifier's real slot: a
 signature verifies exactly when it has been produced by then --- by an
 honest signer, or by whoever holds an exposed key. A scheme realizes this
 reading precisely when it is EUF-CMA~\cite{canettisig}. The reading matters
-for one hypothesis: \code{hbridge} (``every admissible block was produced
-by real slot $R$'') is then plain causality, whereas against a concrete
-scheme's $\mathit{verify}$, which accepts signatures nobody has computed
-yet, it would be false.
+for one hypothesis, \code{hbridge}, the formal statement of
+unforgeability: ``every admissible block was signed by real slot $R$''.
+Read against $\mathcal{F}_{\mathrm{SIG}}$ it says only that the verifier
+accepts no signature before someone has produced it; read against a
+concrete scheme's $\mathit{verify}$ as a bare predicate, which also
+accepts signatures nobody has computed yet, it would be false.
 
 \subsection{The verifier rule}
 \label{sec:verifier-rule}
@@ -623,18 +625,19 @@ is the hash of the block's preimage taken over its parent's actual
 signature, as the deployment's hashing layer recomputes it
 (Section~\ref{sec:protocol}) (\code{SigningExecutionOn}). The assumption
 bundles: \emph{(a) custody} --- while a stamp's key is unexposed, only its
-honest holder signs under it; \emph{(b) unforgeability} --- no one can
-produce a valid signature on a message the key holder never signed, even
-after obtaining signatures on messages of their own choosing (the
-standard EUF-CMA notion); and \emph{(c) the honest signing discipline}
+honest holder signs under it; \emph{(b) unforgeability} --- a signature
+the verifier accepts at real slot $R$ was produced by real slot $R$, by
+the key's honest holder or by whoever holds the exposed key; no one can
+make the verifier accept a signature that was never produced. Formally, every
+admissible block was signed at some real slot no later than $R$
+(\code{hbridge}); this is the ideal-signature reading of $\mathit{verify}$
+in Section~\ref{sec:protocol}, which a scheme provides exactly when it is
+EUF-CMA; and \emph{(c) the honest signing discipline}
 --- an honest holder signs at most one block per stamp, ever, keeping a
 persisted signing record as the standard guard against equivocation
 after a restart (with (a): \code{honest\_once}); its clock leads real time
 by at most $\sigma$ slots, so it never signs a stamp more than $\sigma$
-slots ahead (\code{HonestClockOn}); and every admissible block accepted
-by the verifier at real slot $R$ was produced at some real slot no later
-than $R$ (\code{hbridge}, causality plus EUF-CMA, under the reading of
-$\mathit{verify}$ in Section~\ref{sec:protocol}).
+slots ahead (\code{HonestClockOn}).
 The id-formation contract of Section~\ref{sec:protocol} ensures that an
 admissible block is signed only once its parent is available
 (\code{chain\_order}): its signature covers its id, whose preimage
@@ -777,9 +780,9 @@ $\ell \ge n + \fmax + \sigma + 1 - \quorum$. Suppose:
 \item the exposure budget (\code{ExposureBounded}~$n$~$\ell$~$\varphi$): of
   any $n$ consecutive stamps $[v, v + n)$, at most $\fmax$ have their key
   exposed at some real slot in $[v - \ell,\ v + n + \varphi)$;
-\item the verifier is at real slot $R$, and every admissible block it accepts
-  was produced at some real slot no later than $R$ (\code{hbridge}: EUF-CMA
-  plus causality);
+\item signatures are unforgeable: the verifier is at real slot $R$, and
+  every admissible block was signed at some real slot no later than $R$
+  (\code{hbridge}; Assumption~\ref{ass:sig}(b));
 \item there are two presentations, each consisting of a grounded certificate
   claim (\code{GroundedCert}) and a suffix that passes the validator:
   linkage to the claim (\code{hLink}), internal linkage (\code{hLinks}),
@@ -967,8 +970,8 @@ honest clocks and exposure budget of Theorem~\ref{thm:lc}
 lookback condition included), where a block is admissible when it
 verifies under its declared key version (\code{SignedDeclared}) and its
 id is formed. The verifier is
-at real slot $R$, and every admissible block was produced at some real
-slot no later than $R$ (\code{hbridge}). Take two signed chains that both
+at real slot $R$, and every admissible block was signed at some real
+slot no later than $R$ (unforgeability, \code{hbridge}). Take two signed chains that both
 pass the mode-1 validator (\code{validSignedChainK$'$}, at any
 confirmation depth), with formed ids (\code{hFormed}), both start at $G$,
 and both have tips recent in real time
@@ -1030,8 +1033,8 @@ Assume the signing execution and honest clocks of Theorem~\ref{thm:lc}
 for admissible blocks, over the mode-2 exposure; the exposure budget of
 Theorem~\ref{thm:lc} (\code{ExposureBounded}~$n$~$\ell$~$\varphi$) over
 the same exposure, lookback condition included; and that the verifier is
-at real slot $R$ and every admissible block was produced at some real
-slot no later than $R$ (\code{hbridge}). Take two signed chains that both
+at real slot $R$ and every admissible block was signed at some real
+slot no later than $R$ (unforgeability, \code{hbridge}). Take two signed chains that both
 pass the mode-2 validator (\code{validSignedChainSched}), with formed ids
 (\code{hFormed}), both start at $G$, and both have tips recent in real time
 ($R \le \mathit{tip.slot} + \varphi$). Then they agree at every height $h$
