@@ -582,6 +582,203 @@ theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
     · exact ⟨r, by omega, hexp⟩
     · exact ⟨r', by omega, hexp⟩
 
+theorem quorum_le_n_add_maxByzantine (n : Nat) (hn : 1 ≤ n) :
+    quorum n ≤ n + maxByzantine n := by
+  have hmod : n % 3 = 0 ∨ n % 3 = 1 ∨ n % 3 = 2 := by omega
+  unfold maxByzantine quorum
+  rcases hmod with h0 | h1 | h2
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k := ⟨n / 3, by omega⟩
+    subst hk; omega
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k + 1 := ⟨n / 3, by omega⟩
+    subst hk; omega
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k + 2 := ⟨n / 3, by omega⟩
+    subst hk; omega
+
+theorem head_slot_min {c : Chain} (hS : StrictSlots c) {G : Block}
+    (hHead : blockAt? c 0 = some G) : ∀ B ∈ c, G.slot ≤ B.slot := by
+  intro B hB
+  obtain ⟨k, hk⟩ := exists_blockAt_of_mem hB
+  cases k with
+  | zero => rw [hHead] at hk; injection hk with hk; rw [hk]
+  | succ k => exact Nat.le_of_lt (strictSlots_lt hS hHead hk (Nat.succ_pos k))
+
+theorem genesis_slot_lt {n : Nat} (hn : 1 ≤ n)
+    {c : Chain} (hc : ValidChain n c) {G : Block} (hHead : blockAt? c 0 = some G)
+    {m : Nat} {B : Block} (hm : blockAt? c m = some B) (hslot : n - 1 ≤ B.slot) :
+    G.slot < n := by
+  have hv : 0 + n ≤ B.slot + 1 := by omega
+  have hDense := hc.2.2.2 hm 0 hv
+  have hcard_eq := chainSlotsIn_card hc.2.1 0 n
+  have hpos : 0 < (chainSlotsIn c 0 n).card := by
+    unfold quorum at hDense; omega
+  obtain ⟨s, hs⟩ := Finset.card_pos.mp hpos
+  obtain ⟨A, hAc, ⟨_, hlt⟩, rfl⟩ := mem_chainSlotsIn.mp hs
+  have hmin := head_slot_min hc.2.1 hHead A hAc
+  omega
+
+open Classical in
+theorem exposure_no_early_signing_at_index {n σ ℓ φ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
+    {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (m : Nat) :
+    ∀ {B : Block} (hm : blockAt? c m = some B) (hBG : B ≠ G)
+    {r : Nat} (hr : B ∈ log r),
+    B.slot ≤ r + ℓ := by
+  induction m using Nat.strongRecOn with
+  | ind m ih =>
+    intro B hm hBG r hr
+    by_contra hgt
+    have hgt' : r + ℓ < B.slot := Nat.lt_of_not_ge hgt
+    have hql := quorum_le_n_add_maxByzantine n hn
+    have hsigma_le : σ ≤ ℓ := by omega
+    have hexp_B : exposed B.slot r := by
+      by_contra hnot_exp
+      have hclock := hClock hr hnot_exp
+      omega
+    rcases Nat.eq_or_lt_of_le hn with rfl | hn2
+    · -- n = 1
+      have hl_ge : 1 ≤ ℓ := by
+        unfold maxByzantine quorum at hL'
+        omega
+      have hs_ge : 2 ≤ B.slot := by omega
+      let v' := B.slot - 1
+      have hv' : v' + 1 ≤ B.slot + 1 := by omega
+      have hDense := hc.2.2.2 hm v' hv'
+      have hcard_eq := chainSlotsIn_card hc.2.1 v' 1
+      have hpos : 0 < (chainSlotsIn c v' 1).card := by
+        unfold quorum at hDense; omega
+      obtain ⟨s_prev, hs_prev⟩ := Finset.card_pos.mp hpos
+      obtain ⟨A, hAc, ⟨hwin_lo, hwin_hi⟩, rfl⟩ := mem_chainSlotsIn.mp hs_prev
+      have hAslot : A.slot = B.slot - 1 := by omega
+      obtain ⟨k, hk⟩ := exists_blockAt_of_mem hAc
+      have hkm : k < m := by
+        have hle := blockAt_index_le_of_slot_le hc.2.1 hk hm (by omega)
+        have hne : k ≠ m := by
+          rintro rfl
+          rw [hk] at hm
+          have : A.slot = B.slot := congrArg Block.slot (Option.some.inj hm)
+          omega
+        omega
+      by_cases hAG : A = G
+      · subst hAG
+        have hG_lt := genesis_slot_lt (by omega) hc hHead hm (by omega)
+        omega
+      · have hAvailA := availableAt_of_slot_le hexec hc hHead hAvail hm hr hAc (by omega)
+        rcases hAvailA with rfl | ⟨rA, hrAle, hrAlog⟩
+        · contradiction
+        · by_cases hexpA : exposed A.slot rA
+          · have hAIH := ih k hkm hk hAG hrAlog
+            let F' := (Finset.Ico v' (v' + 1)).filter
+              (fun t => ∃ r', v' ≤ r' + ℓ ∧ r' < v' + 1 + φ ∧ exposed t r')
+            have hBudget' : F'.card ≤ maxByzantine 1 := hBudget v'
+            have hmemF' : A.slot ∈ F' := by
+              apply Finset.mem_filter.mpr
+              refine ⟨Finset.mem_Ico.mpr ⟨by omega, by omega⟩, ⟨rA, by omega, by omega, hexpA⟩⟩
+            have hposF' : 0 < F'.card := Finset.card_pos.mpr ⟨A.slot, hmemF'⟩
+            unfold maxByzantine at hBudget'
+            omega
+          · have hClockA := hClock hrAlog hexpA
+            unfold maxByzantine quorum at hL'
+            omega
+    · -- n ≥ 2
+      let s := B.slot
+      let v := s + 1 - n
+      have hsn : n ≤ s := by omega
+      have hv : v + n ≤ s + 1 := by omega
+      have hDense := hc.2.2.2 hm v hv
+      have hcard_eq := chainSlotsIn_card hc.2.1 v n
+      have hq_le : quorum n ≤ (chainSlotsIn c v n).card := by omega
+      let F := (Finset.Ico v (v + n)).filter (fun t => ∃ r', v ≤ r' + ℓ ∧ r' < v + n + φ ∧ exposed t r')
+      have hF_card : F.card ≤ maxByzantine n := hBudget v
+      let H := (Finset.Ico v (v + n)).filter (fun t => t ≤ r + σ)
+      have hH_card : H.card ≤ r + σ + 1 - v := honest_filter_card_le v n r σ
+      by_cases hv_le : v ≤ r + ℓ
+      · -- Case (i): v ≤ r + ℓ
+        have hsub : chainSlotsIn c v n ⊆ insert G.slot (F ∪ H) := by
+          intro t ht
+          obtain ⟨A, hAc, ⟨hwin_lo, hwin_hi⟩, rfl⟩ := mem_chainSlotsIn.mp ht
+          by_cases hAG : A = G
+          · subst hAG; exact Finset.mem_insert_self _ _
+          · apply Finset.mem_insert_of_mem
+            have hAvailA := availableAt_of_slot_le hexec hc hHead hAvail hm hr hAc (by omega)
+            rcases hAvailA with rfl | ⟨rA, hrAle, hrAlog⟩
+            · contradiction
+            · by_cases hexpA : exposed A.slot rA
+              · apply Finset.mem_union_left
+                apply Finset.mem_filter.mpr
+                refine ⟨Finset.mem_Ico.mpr ⟨hwin_lo, hwin_hi⟩, ?_⟩
+                by_cases hAB : A = B
+                · subst hAB
+                  refine ⟨r, hv_le, by omega, hexp_B⟩
+                · obtain ⟨k, hk⟩ := exists_blockAt_of_mem hAc
+                  have hkm : k < m := by
+                    have hle := blockAt_index_le_of_slot_le hc.2.1 hk hm (by omega)
+                    have hne : k ≠ m := by
+                      rintro rfl
+                      rw [hk] at hm
+                      have : A = B := Option.some.inj hm
+                      contradiction
+                    omega
+                  have hAIH := ih k hkm hk hAG hrAlog
+                  refine ⟨rA, by omega, by omega, hexpA⟩
+              · apply Finset.mem_union_right
+                apply Finset.mem_filter.mpr
+                have hClockA := hClock hrAlog hexpA
+                refine ⟨Finset.mem_Ico.mpr ⟨hwin_lo, hwin_hi⟩, by omega⟩
+        have hcard_le := calc
+          (chainSlotsIn c v n).card ≤ (insert G.slot (F ∪ H)).card := Finset.card_le_card hsub
+          _ ≤ (F ∪ H).card + 1 := Finset.card_insert_le _ _
+          _ ≤ F.card + H.card + 1 := by
+            have := Finset.card_union_le F H; omega
+        have hq_add2 := quorum_ge_maxByzantine_add_two n hn2
+        omega
+      · -- Case (ii): r + ℓ < v
+        push Not at hv_le
+        have hG_not_mem : G.slot ∉ chainSlotsIn c v n := by
+          intro hmem
+          obtain ⟨A, hAc, ⟨hwin_lo, _⟩, heq⟩ := mem_chainSlotsIn.mp hmem
+          have hG_lt := genesis_slot_lt (by omega) hc hHead hm (by omega)
+          omega
+        have hsub : chainSlotsIn c v n ⊆ insert B.slot F := by
+          intro t ht
+          obtain ⟨A, hAc, ⟨hwin_lo, hwin_hi⟩, rfl⟩ := mem_chainSlotsIn.mp ht
+          by_cases hAB : A = B
+          · subst hAB; exact Finset.mem_insert_self _ _
+          · apply Finset.mem_insert_of_mem
+            by_cases hAG : A = G
+            · subst hAG
+              have := genesis_slot_lt (by omega) hc hHead hm (by omega)
+              omega
+            · have hAvailA := availableAt_of_slot_le hexec hc hHead hAvail hm hr hAc (by omega)
+              rcases hAvailA with rfl | ⟨rA, hrAle, hrAlog⟩
+              · contradiction
+              · by_cases hexpA : exposed A.slot rA
+                · apply Finset.mem_filter.mpr
+                  refine ⟨Finset.mem_Ico.mpr ⟨hwin_lo, hwin_hi⟩, ?_⟩
+                  obtain ⟨k, hk⟩ := exists_blockAt_of_mem hAc
+                  have hkm : k < m := by
+                    have hle := blockAt_index_le_of_slot_le hc.2.1 hk hm (by omega)
+                    have hne : k ≠ m := by
+                      rintro rfl
+                      rw [hk] at hm
+                      have : A = B := Option.some.inj hm
+                      contradiction
+                    omega
+                  have hAIH := ih k hkm hk hAG hrAlog
+                  refine ⟨rA, by omega, by omega, hexpA⟩
+                · have hClockA := hClock hrAlog hexpA
+                  omega
+        have hcard_le := calc
+          (chainSlotsIn c v n).card ≤ (insert B.slot F).card := Finset.card_le_card hsub
+          _ ≤ F.card + 1 := Finset.card_insert_le _ _
+        have hq_add2 := quorum_ge_maxByzantine_add_two n hn2
+        omega
+
 open Classical in
 theorem exposure_no_early_signing {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
@@ -594,8 +791,11 @@ theorem exposure_no_early_signing {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     {B : Block} (hB : B ∈ c) (hBG : B ≠ G)
     {r : Nat} (hr : B ∈ log r) :
     B.slot ≤ r + ℓ := by
-  sorry
+  obtain ⟨m, hm⟩ := exists_blockAt_of_mem hB
+  exact exposure_no_early_signing_at_index hn hexec hClock hBudget hL hL' hc hHead hAvail
+    m hm hBG hr
 
+open Classical in
 theorem exposure_agreement {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
@@ -612,6 +812,77 @@ theorem exposure_agreement {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     (hRecent : R ≤ tip.slot + φ) (hRecent' : R ≤ tip'.slot + φ)
     {h : Nat} (hDeep : h + n < c.length) (hDeep' : h + n < c'.length) :
     blockAt? c h = blockAt? c' h := by
-  sorry
+  let m := min tip.slot tip'.slot
+  let v := m + 1 - n
+  let F := (Finset.Ico v (v + n)).filter (fun s => ∃ r', v ≤ r' + ℓ ∧ r' < v + n + φ ∧ exposed s r')
+  have hF_card : F.card ≤ maxByzantine n := hBudget v
+  apply exposure_agreement_of_filter hn hexec hc hc' hHead hHead' hAvail hAvail'
+    hTip hTip' hDeep hDeep' hF_card
+  intro s hs
+  by_cases hAgree : ∀ X ∈ c, ∀ X' ∈ c', X.slot = s → X'.slot = s → X = X'
+  · exact Or.inl hAgree
+  · right
+    have hsS : s ∈ chainSlotsIn c v n := (Finset.mem_inter.mp hs).1
+    have hIco : s ∈ Finset.Ico v (v + n) := chainSlotsIn_subset_Ico hsS
+    push Not at hAgree
+    obtain ⟨X, hXc, X', hX'c, hXslot, hX'slot, hNe⟩ := hAgree
+    have hX_ne_G : X ≠ G := by
+      intro hXG
+      have hG_in_c' : G ∈ c' := mem_of_blockAt hHead'
+      obtain ⟨k, hk⟩ := exists_blockAt_of_mem hX'c
+      rcases k with rfl | k
+      · have : X' = G := Option.some.inj (hk.symm.trans hHead')
+        have : X = X' := by rw [hXG, this]
+        exact hNe this
+      · have hlt := strictSlots_lt hc'.2.1 hHead' hk (by omega)
+        have : G.slot = X'.slot := by rw [← hXG, hXslot, hX'slot]
+        omega
+    have hX'_ne_G : X' ≠ G := by
+      intro hX'G
+      have hG_in_c : G ∈ c := mem_of_blockAt hHead
+      obtain ⟨k, hk⟩ := exists_blockAt_of_mem hXc
+      rcases k with rfl | k
+      · have : X = G := Option.some.inj (hk.symm.trans hHead)
+        have : X = X' := by rw [this, hX'G]
+        exact hNe this
+      · have hlt := strictSlots_lt hc.2.1 hHead hk (by omega)
+        have : G.slot = X.slot := by rw [← hX'G, hX'slot, hXslot]
+        omega
+    have hAvailX := hAvail X hXc
+    have hAvailX' := hAvail' X' hX'c
+    obtain ⟨r, hrle, hrlog⟩ : ∃ r ≤ R, X ∈ log r := by
+      rcases hAvailX with rfl | ⟨r, hrle, hrlog⟩
+      · contradiction
+      · exact ⟨r, hrle, hrlog⟩
+    obtain ⟨r', hr'le, hr'log⟩ : ∃ r' ≤ R, X' ∈ log r' := by
+      rcases hAvailX' with rfl | ⟨r', hr'le, hr'log⟩
+      · contradiction
+      · exact ⟨r', hr'le, hr'log⟩
+    have hExp : exposed s r ∨ exposed s r' := by
+      by_contra hNotExp
+      push Not at hNotExp
+      have hslotEq : X.slot = X'.slot := by rw [hXslot, hX'slot]
+      have hNot1 : ¬ exposed X.slot r := by rw [hXslot]; exact hNotExp.1
+      have hNot2 : ¬ exposed X.slot r' := by rw [hXslot]; exact hNotExp.2
+      have hEq := hexec.honest_once hrlog hr'log hslotEq hNot1 hNot2
+      exact hNe hEq
+    have hR_lt : R < v + n + φ := by
+      have htip_ge : n ≤ tip.slot := by
+        have hTipAt : blockAt? c (c.length - 1) = some tip := blockAt_getLast hTip
+        have hgap := slot_ge_of_height_gap hc.2.1 hHead hTipAt (by omega)
+        omega
+      have htip'_ge : n ≤ tip'.slot := by
+        have hTipAt' : blockAt? c' (c'.length - 1) = some tip' := blockAt_getLast hTip'
+        have hgap := slot_ge_of_height_gap hc'.2.1 hHead' hTipAt' (by omega)
+        omega
+      omega
+    have hX_early := exposure_no_early_signing hn hexec hClock hBudget hL hL' hc hHead hAvail hXc hX_ne_G hrlog
+    have hX'_early := exposure_no_early_signing hn hexec hClock hBudget hL hL' hc' hHead' hAvail' hX'c hX'_ne_G hr'log
+    have ⟨hs_lo, _⟩ := Finset.mem_Ico.mp hIco
+    apply Finset.mem_filter.mpr
+    refine ⟨hIco, ?_⟩
+    rcases hExp with hexp | hexp
+    · refine ⟨r, by omega, by omega, hexp⟩
+    · refine ⟨r', by omega, by omega, hexp⟩
 
 end MoltPetit.Model
