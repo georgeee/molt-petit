@@ -168,6 +168,18 @@ theorem blockAt_index_le_of_slot_le {c : Chain} (hS : StrictSlots c)
   have := strictSlots_lt hS hB hA hlt'
   omega
 
+theorem availableAt_of_slot_le {n : Nat} {exposed : Exposure}
+    {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {m : Nat} {B : Block} (hB : blockAt? c m = some B) {r : Nat} (hr : B ∈ log r)
+    {A : Block} (hA : A ∈ c) (hslot : A.slot ≤ B.slot) :
+    AvailableAt log G A r := by
+  obtain ⟨k, hk⟩ := exists_blockAt_of_mem hA
+  have hkm := blockAt_index_le_of_slot_le hc.2.1 hk hB hslot
+  exact ancestor_availableAt hexec hc hHead hAvail hkm hB hr hk
+
 theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
