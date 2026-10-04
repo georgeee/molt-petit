@@ -4,6 +4,6 @@
 - [x] Step 2: MoltPetit/Model/ExposureCert.lean
 - [x] Step 3: MoltPetit/Model/SchedExposure.lean
 - [x] Step 4: Loss theorems (KeyRotationLoss.lean, KeyRotationLossSchedLock.lean)
-- [ ] Step 5: MoltPetit/TS/TimedResults.lean
+- [x] Step 5: MoltPetit/TS/TimedResults.lean
 - [ ] Step 6: Rust/TimedResults_rust.lean
 - [ ] Step 7: Molt/Results.lean and other Molt aliases

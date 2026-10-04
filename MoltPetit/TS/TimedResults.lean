@@ -70,19 +70,19 @@ theorem toTSClaim_injective : Function.Injective toTSClaim := by
 theorem ts_timed_certified_agreement {σ ℓ φ : Nat}
     {n : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
-    {sigOps : MoltPetit.SigOps}
-    (hexec : SigningExecution exposed log G)
-    (hClock : HonestClock σ exposed log)
+    {sigOps : MoltPetit.SigOps} {Formed : Block → Prop}
+    (hexec : SigningExecutionOn (fun B => TSSigned n sigOps B ∧ Formed B) exposed log G)
+    (hClock : HonestClockOn (fun B => TSSigned n sigOps B ∧ Formed B) σ exposed log)
     (hBudget : ExposureBounded n ℓ φ exposed)
     (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
-    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → ∃ r ≤ R, B ∈ log r)
+    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → Formed B → ∃ r ≤ R, B ∈ log r)
     {certOps certOps' : MoltPetit.CertOps}
     (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
       ∃ cl : CertClaim, certOps.claim hc = toTSClaim cl ∧
-        GroundedCert n (TSSigned n sigOps) G cl)
+        GroundedCert n (fun B => TSSigned n sigOps B ∧ Formed B) G cl)
     (hUnf' : ∀ hc : MoltPetit.RawCertificate, certOps'.verify hc = true →
       ∃ cl : CertClaim, certOps'.claim hc = toTSClaim cl ∧
-        GroundedCert n (TSSigned n sigOps) G cl)
+        GroundedCert n (fun B => TSSigned n sigOps B ∧ Formed B) G cl)
     {h h' : MoltPetit.RawCertificate} {sc sc' : SignedChain MoltPetit.RawSignature}
     (hval : MoltPetit.validateCertifiedChain n sigOps certOps
               (.cc h (toTSSigned sc)) = true)
@@ -94,14 +94,16 @@ theorem ts_timed_certified_agreement {σ ℓ φ : Nat}
     {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hFormedS : ∀ B ∈ s₁ :: srest, Formed B)
+    (hFormedS' : ∀ B ∈ s₁' :: srest', Formed B)
     (hRecent : R ≤ sTip.slot + φ)
     (hRecent' : R ≤ sTip'.slot + φ)
     {cl cl' : CertClaim}
     (hcl : certOps.claim h = toTSClaim cl)
     (hcl' : certOps'.claim h' = toTSClaim cl')
     {c c' : Chain}
-    (hc : GroundedHistory n (TSSigned n sigOps) G cl c)
-    (hc' : GroundedHistory n (TSSigned n sigOps) G cl' c')
+    (hc : GroundedHistory n (fun B => TSSigned n sigOps B ∧ Formed B) G cl c)
+    (hc' : GroundedHistory n (fun B => TSSigned n sigOps B ∧ Formed B) G cl' c')
     {k : Nat}
     (hDeep : k + n < (c ++ s₁ :: srest).length)
     (hDeep' : k + n < (c' ++ s₁' :: srest').length) :
@@ -118,17 +120,20 @@ theorem ts_timed_certified_agreement {σ ℓ φ : Nat}
   subst hcl0'_eq
   rw [hcl] at hsfx
   rw [hcl'] at hsfx'
-  have hSigned : ∀ B ∈ s₁ :: srest, TSSigned n sigOps B := by
+  have hSigned : ∀ B ∈ s₁ :: srest, TSSigned n sigOps B ∧ Formed B := by
     have hs := ts_sigsOk_signed hsg
     rw [hsc] at hs
-    exact hs
-  have hSigned' : ∀ B ∈ s₁' :: srest', TSSigned n sigOps B := by
+    intro B hB
+    exact ⟨hs B hB, hFormedS B hB⟩
+  have hSigned' : ∀ B ∈ s₁' :: srest', TSSigned n sigOps B ∧ Formed B := by
     have hs := ts_sigsOk_signed hsg'
     rw [hsc'] at hs
-    exact hs
+    intro B hB
+    exact ⟨hs B hB, hFormedS' B hB⟩
   obtain ⟨hLink, hLinks, hDense⟩ := ts_validateSuffix_sound hTipS hsfx
   obtain ⟨hLink', hLinks', hDense'⟩ := ts_validateSuffix_sound hTipS' hsfx'
-  exact exposure_certified_agreement hn hexec hClock hBudget hL hL' hbridge hG hG'
+  exact exposure_certified_agreement_on hn hexec hClock hBudget hL hL'
+    (fun B ⟨h1, h2⟩ => hbridge h1 h2) hG hG'
     hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense' hSigned hSigned'
     hRecent hRecent' hc hc' hDeep hDeep'
 
