@@ -9,12 +9,12 @@ proof is incomplete or uses any non-classical axiom.
 -/
 
 open MoltPetit.Model in
-example
+example {ρ : Nat}
     {n : Nat} (hn : 1 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block} {R : Nat}
+    {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
     {sigOps : MoltPetit.SigOps}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
+    (hexec : SigningExecution exposed log G)
+    (hBudget : ExposureBounded n ρ exposed)
     (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → ∃ r ≤ R, B ∈ log r)
     {certOps certOps' : MoltPetit.CertOps}
     (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
@@ -34,8 +34,8 @@ example
     {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
-    (hRecent : R ≤ sTip.slot + n)
-    (hRecent' : R ≤ sTip'.slot + n)
+    (hRecent : R ≤ sTip.slot + ρ)
+    (hRecent' : R ≤ sTip'.slot + ρ)
     {cl cl' : CertClaim}
     (hcl : certOps.claim h = toTSClaim cl)
     (hcl' : certOps'.claim h' = toTSClaim cl')

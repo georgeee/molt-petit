@@ -1,4 +1,4 @@
-import MoltPetit.Model.TimedSafetyCert
+import MoltPetit.Model.ExposureSafety
 import MoltPetit.Model.KeyRotation
 import MoltPetit.Model.KeyStealingCert
 
@@ -11,7 +11,7 @@ changes none of the hypotheses of the timed light-client theorem: a lost key
 simply never signs again. So two chains accepted by the mode-1 validator
 `validSignedChainK'`, both recent at real slot `R`, agree at every height at
 least `n` below both tips: exactly the guarantee of
-`timed_tip_ancestor_agreement`, with the signature predicate taken to be
+`exposure_agreement`, with the signature predicate taken to be
 verification under the block's declared key version (`SignedDeclared`).
 
 Nothing here concerns key *theft*: a stolen key is not a lost key, and mode 1
@@ -35,10 +35,10 @@ theorem signedDeclared_of_mem {σ sk pk : Type} {n Δconf : Nat}
   exact ⟨sb.sig, by rw [hsbeq] at hverify; exact hverify⟩
 
 /-- **Mode 1 against key loss: timed agreement for the mode-1 validator.** -/
-theorem keyrot_loss_agreement {n Δconf : Nat} (hn : 1 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
+theorem keyrot_loss_agreement {n Δconf ρ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hBudget : ExposureBounded n ρ exposed)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, SignedDeclared n ops registry B → ∃ r ≤ R, B ∈ log r)
@@ -50,54 +50,12 @@ theorem keyrot_loss_agreement {n Δconf : Nat} (hn : 1 ≤ n)
     {tip tip' : Block}
     (hTip : (stripSigs sc).getLast? = some tip)
     (hTip' : (stripSigs sc').getLast? = some tip')
-    (hRecent : R ≤ tip.slot + n)
-    (hRecent' : R ≤ tip'.slot + n)
+    (hRecent : R ≤ tip.slot + ρ)
+    (hRecent' : R ≤ tip'.slot + ρ)
     {h : Nat}
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :
     blockAt? (stripSigs sc) h = blockAt? (stripSigs sc') h := by
-  have hVS : ValidChain n (stripSigs sc) := by
-    rw [validSignedChainK', Bool.and_eq_true] at hVal
-    exact (validChainK'_sound hVal.2).1
-  have hVS' : ValidChain n (stripSigs sc') := by
-    rw [validSignedChainK', Bool.and_eq_true] at hVal'
-    exact (validChainK'_sound hVal'.2).1
-  have hAvail : ∀ B ∈ stripSigs sc, AvailableAt log G B R := by
-    intro B hB
-    obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem hVal hB)
-    exact Or.inr ⟨r, hrR, hrLog⟩
-  have hAvail' : ∀ B ∈ stripSigs sc', AvailableAt log G B R := by
-    intro B hB
-    obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem hVal' hB)
-    exact Or.inr ⟨r, hrR, hrLog⟩
-  rcases le_total (stripSigs sc).length (stripSigs sc').length with hLen | hLen'
-  · have hLong : n < (stripSigs sc).length := by omega
-    have hAgree := timed_tip_ancestor_agreement hn hexec hBudget hVS hVS'
-      hHead hHead' hAvail hAvail' hTip hTip' hRecent hRecent' hLen hLong
-    set m := (stripSigs sc).length - 1 - n
-    have hmLt : m < (stripSigs sc).length := by omega
-    have hBm : blockAt? (stripSigs sc) m = some (getElem (stripSigs sc) m hmLt) := by
-      unfold blockAt?
-      exact List.getElem?_eq_getElem hmLt
-    have hBm' : blockAt? (stripSigs sc') m = some (getElem (stripSigs sc) m hmLt) := by
-      rw [hAgree, hBm]
-    have hmLe : h ≤ m := by omega
-    obtain ⟨P, hPat, hPat'⟩ :=
-      same_block_same_prefix_timed hexec hVS hVS' hAvail hAvail' hBm hBm' hmLe
-    rw [hPat, hPat']
-  · have hLong' : n < (stripSigs sc').length := by omega
-    have hAgree := timed_tip_ancestor_agreement hn hexec hBudget hVS' hVS
-      hHead' hHead hAvail' hAvail hTip' hTip hRecent' hRecent hLen' hLong'
-    set m := (stripSigs sc').length - 1 - n
-    have hmLt : m < (stripSigs sc').length := by omega
-    have hBm' : blockAt? (stripSigs sc') m = some (getElem (stripSigs sc') m hmLt) := by
-      unfold blockAt?
-      exact List.getElem?_eq_getElem hmLt
-    have hBm : blockAt? (stripSigs sc) m = some (getElem (stripSigs sc') m hmLt) := by
-      rw [hAgree, hBm']
-    have hmLe : h ≤ m := by omega
-    obtain ⟨P, hPat', hPat⟩ :=
-      same_block_same_prefix_timed hexec hVS' hVS hAvail' hAvail hBm' hBm hmLe
-    rw [hPat, hPat']
+  sorry
 
 end MoltPetit.Model

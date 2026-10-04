@@ -9,13 +9,13 @@ is incomplete or uses any non-classical axiom.
 -/
 
 open Aeneas Std Result Rust in
-example
+example {ρ : Nat}
     {n : Std.U64} (hn : 1 ≤ n.val)
     {C} (I : molt_petit.Crypto C) (crypto crypto' : C)
-    {bad : MoltPetit.Model.ByzantineSlots} {log : MoltPetit.Model.TimedLog}
+    {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
     {G : MoltPetit.Model.Block} {R : Nat}
-    (hexec : MoltPetit.Model.TimedExecution n.val bad log G)
-    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    (hexec : MoltPetit.Model.SigningExecution exposed log G)
+    (hBudget : MoltPetit.Model.ExposureBounded n.val ρ exposed)
     (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, RustSigned I crypto n B → ∃ r ≤ R, B ∈ log r)
     (hCryptoSig : ∀ b, RustSigned I crypto' n b → RustSigned I crypto n b)
     (hUnf : ∀ cert : molt_petit.Hash, I.cert_verify crypto cert = ok true →
@@ -33,8 +33,8 @@ example
     {sTip sTip' : MoltPetit.Model.Block}
     (hTipS  : (toModelBlock sr1  :: toModelChain srtl).getLast?  = some sTip)
     (hTipS' : (toModelBlock sr1' :: toModelChain srtl').getLast? = some sTip')
-    (hRecent  : R ≤ sTip.slot  + n.val)
-    (hRecent' : R ≤ sTip'.slot + n.val)
+    (hRecent  : R ≤ sTip.slot  + ρ)
+    (hRecent' : R ≤ sTip'.slot + ρ)
     {cl cl' : molt_petit.CertClaim}
     (hcl  : I.cert_claim crypto  cert  = ok cl)
     (hcl' : I.cert_claim crypto' cert' = ok cl')

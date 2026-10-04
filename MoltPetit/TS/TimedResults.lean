@@ -1,10 +1,10 @@
 import MoltPetit.TS.Results
-import MoltPetit.Model.TimedSafetyCert
+import MoltPetit.Model.ExposureCert
 
 /-!
 # Timed certified light-client safety for the TypeScript validator
 
-The TypeScript form of `timed_certified_agreement`: two certified chains the TS
+The TypeScript form of `exposure_certified_agreement`: two certified chains the TS
 `validateCertifiedChain` accepts, checked by a verifier at real slot `R` within
 `n` real slots of both tips, agree at every height at least `n` below both tips,
 over every history the two certificates' groundings attest. The signature
@@ -67,12 +67,12 @@ theorem toTSClaim_injective : Function.Injective toTSClaim := by
     rfl
 
 /-- **Timed certified light-client safety, TypeScript validator.** -/
-theorem ts_timed_certified_agreement
+theorem ts_timed_certified_agreement {ρ : Nat}
     {n : Nat} (hn : 1 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block} {R : Nat}
+    {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
     {sigOps : MoltPetit.SigOps}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
+    (hexec : SigningExecution exposed log G)
+    (hBudget : ExposureBounded n ρ exposed)
     (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → ∃ r ≤ R, B ∈ log r)
     {certOps certOps' : MoltPetit.CertOps}
     (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
@@ -92,8 +92,8 @@ theorem ts_timed_certified_agreement
     {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
-    (hRecent : R ≤ sTip.slot + n)
-    (hRecent' : R ≤ sTip'.slot + n)
+    (hRecent : R ≤ sTip.slot + ρ)
+    (hRecent' : R ≤ sTip'.slot + ρ)
     {cl cl' : CertClaim}
     (hcl : certOps.claim h = toTSClaim cl)
     (hcl' : certOps'.claim h' = toTSClaim cl')
@@ -126,7 +126,7 @@ theorem ts_timed_certified_agreement
     exact hs
   obtain ⟨hLink, hLinks, hDense⟩ := ts_validateSuffix_sound hTipS hsfx
   obtain ⟨hLink', hLinks', hDense'⟩ := ts_validateSuffix_sound hTipS' hsfx'
-  exact timed_certified_agreement hn hexec hBudget hbridge hG hG'
+  exact exposure_certified_agreement hn hexec hBudget hbridge hG hG'
     hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense' hSigned hSigned'
     hRecent hRecent' hc hc' hDeep hDeep'
 

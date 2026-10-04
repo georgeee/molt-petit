@@ -1,10 +1,10 @@
 import Rust.Results_rust
-import MoltPetit.Model.TimedSafetyCert
+import MoltPetit.Model.ExposureCert
 
 /-!
 # Timed certified light-client safety for the shipped Rust validator
 
-The Rust form of `MoltPetit.Model.timed_certified_agreement`: two certified
+The Rust form of `MoltPetit.Model.exposure_certified_agreement`: two certified
 chains the Rust `validate_certified_chain` accepts, checked by a verifier at
 real slot `R` within `n` real slots of both tips, agree at every height that
 is at least `n` below both tips, over every history the two certificates'
@@ -32,13 +32,13 @@ theorem groundedHistory_mono {n : Nat} {S₁ S₂ : MoltPetit.Model.Block → Pr
      | Or.inr hS => Or.inr (hmono B hS)⟩
 
 /-- **Timed certified light-client safety, Rust validator.** -/
-theorem rust_timed_certified_agreement
+theorem rust_timed_certified_agreement {ρ : Nat}
     {n : Std.U64} (hn : 1 ≤ n.val)
     {C} (I : molt_petit.Crypto C) (crypto crypto' : C)
-    {bad : MoltPetit.Model.ByzantineSlots} {log : MoltPetit.Model.TimedLog}
+    {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
     {G : MoltPetit.Model.Block} {R : Nat}
-    (hexec : MoltPetit.Model.TimedExecution n.val bad log G)
-    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    (hexec : MoltPetit.Model.SigningExecution exposed log G)
+    (hBudget : MoltPetit.Model.ExposureBounded n.val ρ exposed)
     (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, RustSigned I crypto n B → ∃ r ≤ R, B ∈ log r)
     (hCryptoSig : ∀ b, RustSigned I crypto' n b → RustSigned I crypto n b)
     (hUnf : ∀ cert : molt_petit.Hash, I.cert_verify crypto cert = ok true →
@@ -56,8 +56,8 @@ theorem rust_timed_certified_agreement
     {sTip sTip' : MoltPetit.Model.Block}
     (hTipS  : (toModelBlock sr1  :: toModelChain srtl).getLast?  = some sTip)
     (hTipS' : (toModelBlock sr1' :: toModelChain srtl').getLast? = some sTip')
-    (hRecent  : R ≤ sTip.slot  + n.val)
-    (hRecent' : R ≤ sTip'.slot + n.val)
+    (hRecent  : R ≤ sTip.slot  + ρ)
+    (hRecent' : R ≤ sTip'.slot + ρ)
     {cl cl' : molt_petit.CertClaim}
     (hcl  : I.cert_claim crypto  cert  = ok cl)
     (hcl' : I.cert_claim crypto' cert' = ok cl')
@@ -90,7 +90,7 @@ theorem rust_timed_certified_agreement
   obtain ⟨hLink, hLinks, hDense⟩ := validate_suffix_sound hTipS hsfx
   obtain ⟨hLink', hLinks', hDense'⟩ := validate_suffix_sound hTipS' hsfx'
   have hc'' := groundedHistory_mono hCryptoSig hc'
-  exact MoltPetit.Model.timed_certified_agreement hn hexec hBudget hbridge hG hG'
+  exact MoltPetit.Model.exposure_certified_agreement hn hexec hBudget hbridge hG hG'
     hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense' hSigned hSigned'
     hRecent hRecent' hc hc'' hDeep hDeep'
 

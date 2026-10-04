@@ -1,7 +1,7 @@
 import Molt.Assumptions
 import MoltPetit.Results.Results
 import MoltPetit.Model.TimedSig
-import MoltPetit.Model.TimedSafetyCert
+import MoltPetit.Model.ExposureCert
 
 /-!
 # What the theorems guarantee: safety and forged time (paper §6.1–6.2)
@@ -36,8 +36,22 @@ parent is available, because the parent's id preimage contains the
 parent's signature). -/
 abbrev TimedExecution := MoltPetit.Model.TimedExecution
 
-/-- The adversary's slot budget. -/
+/-- The adversary's slot budget (untimed model). -/
 abbrev ByzantineBounded := MoltPetit.Model.ByzantineBounded
+
+/-- Key exposure: `exposed s r` — at real slot `r` someone other than its
+honest holder can sign under the key that verifies stamp `s`. -/
+abbrev Exposure := MoltPetit.Model.Exposure
+
+/-- The signing execution: per-stamp honest uniqueness while unexposed,
+id formation (`chain_order`), collision resistance over occurring blocks. -/
+abbrev SigningExecution := MoltPetit.Model.SigningExecution
+
+/-- Honest clocks run at most `σ` slots ahead of real time. -/
+abbrev HonestClock := MoltPetit.Model.HonestClock
+
+/-- The exposure budget with freshness `ρ`. -/
+abbrev ExposureBounded := MoltPetit.Model.ExposureBounded
 
 /-- Semantic grounded history of a certificate claim. -/
 abbrev GroundedHistory := MoltPetit.Model.GroundedHistory
@@ -107,11 +121,11 @@ with the other presentation's at every height that is at least `n` below both
 tips. No block needs to be *exposed* in either suffix: the conclusion is about
 the attested histories themselves.
 
-Transported from `MoltPetit.Model.timed_certified_agreement`. -/
-theorem timed_light_client_safety {n : Nat} (hn : 1 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
+Transported from `MoltPetit.Model.exposure_certified_agreement`. -/
+theorem timed_light_client_safety {n ρ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hBudget : ExposureBounded n ρ exposed)
     {Signed : Block → Prop} {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r ≤ R, B ∈ log r)
     {cl cl' : CertClaim}
@@ -132,8 +146,8 @@ theorem timed_light_client_safety {n : Nat} (hn : 1 ≤ n)
         quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hSigned  : ∀ B ∈ s₁ :: srest,  Signed B)
     (hSigned' : ∀ B ∈ s₁' :: srest', Signed B)
-    (hRecent  : R ≤ sTip.slot  + n)
-    (hRecent' : R ≤ sTip'.slot + n)
+    (hRecent  : R ≤ sTip.slot  + ρ)
+    (hRecent' : R ≤ sTip'.slot + ρ)
     {c c' : Chain}
     (hc  : GroundedHistory n Signed G cl c)
     (hc' : GroundedHistory n Signed G cl' c')
@@ -142,11 +156,18 @@ theorem timed_light_client_safety {n : Nat} (hn : 1 ≤ n)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
   rw [linksOk_eq_core] at hLinks hLinks'
-  exact MoltPetit.Model.timed_certified_agreement hn hexec hBudget hbridge hcl hcl'
+  exact MoltPetit.Model.exposure_certified_agreement hn hexec hBudget hbridge hcl hcl'
     hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'
     hSigned hSigned' hRecent hRecent' hc hc' hDeep hDeep'
 
-/-! ## Theorem 2: forged chains take real time -/
+/-! ## Theorem 2: forged chains cannot run ahead of real time -/
+
+/-- **No early signing** (paper Theorem 2): no block of a valid chain past
+the first window is signed more than `n + faultBudget + σ + 1 - quorum`
+slots before its stamp.
+
+Transported from `MoltPetit.Model.exposure_no_early_signing`. -/
+alias no_early_signing := MoltPetit.Model.exposure_no_early_signing
 
 /-- **Forged suffixes take twice their span in real time** (paper
 Theorem 2). If every chain block above fork point `F` (first signed at

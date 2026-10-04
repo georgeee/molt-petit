@@ -27,7 +27,12 @@ this file with every new headline theorem.
 #guard_msgs in
 #print axioms Molt.timed_light_client_safety
 
--- Theorem 2: forged chains take real time (paper §6.2).
+-- Theorem 2: forged chains cannot run ahead of real time (paper §6.2).
+/-- info: 'Molt.no_early_signing' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.no_early_signing
+
+-- (superseded, removed in the next pass) the old forged-time bound.
 /-- info: 'Molt.forged_time_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Molt.forged_time_bound

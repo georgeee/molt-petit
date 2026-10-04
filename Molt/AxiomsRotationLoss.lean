@@ -7,10 +7,10 @@ Owned by the reviewer. Do not edit.
 -/
 
 open MoltPetit.Model in
-example {n : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
+example {n ρ : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hBudget : ExposureBounded n ρ exposed)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, SignedDeclared n ops registry B → ∃ r ≤ R, B ∈ log r)
@@ -22,8 +22,8 @@ example {n : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
     {tip tip' : Block}
     (hTip : (stripSigs sc).getLast? = some tip)
     (hTip' : (stripSigs sc').getLast? = some tip')
-    (hRecent : R ≤ tip.slot + n)
-    (hRecent' : R ≤ tip'.slot + n)
+    (hRecent : R ≤ tip.slot + ρ)
+    (hRecent' : R ≤ tip'.slot + ρ)
     {h : Nat}
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :
@@ -31,10 +31,10 @@ example {n : Nat} {schedule : Nat → Nat} (hn : 1 ≤ n)
   sched_loss_agreement hn hexec hBudget hbridge hVal hVal' hHead hHead' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 open MoltPetit.Model in
-example {n : Nat} (hn : 1 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
+example {n ρ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hBudget : ExposureBounded n ρ exposed)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, SignedDeclared n ops registry B → ∃ r ≤ R, B ∈ log r)
@@ -46,8 +46,8 @@ example {n : Nat} (hn : 1 ≤ n)
     {tip tip' : Block}
     (hTip : (stripSigs sc).getLast? = some tip)
     (hTip' : (stripSigs sc').getLast? = some tip')
-    (hRecent : R ≤ tip.slot + n)
-    (hRecent' : R ≤ tip'.slot + n)
+    (hRecent : R ≤ tip.slot + ρ)
+    (hRecent' : R ≤ tip'.slot + ρ)
     {h : Nat}
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :

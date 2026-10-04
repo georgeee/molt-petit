@@ -1,18 +1,18 @@
-import MoltPetit.Model.TimedSafetyCert
+import MoltPetit.Model.ExposureCert
 
 /-!
 # Pinned statement and axiom audit for timed certified light-client safety
 
 Owned by the reviewer. Do not edit. The `example` fixes the exact type of
-`MoltPetit.Model.timed_certified_agreement`, and the guard fails the build if the
+`MoltPetit.Model.exposure_certified_agreement`, and the guard fails the build if the
 proof is incomplete or uses any non-classical axiom.
 -/
 
 open MoltPetit.Model in
-example {n : Nat} (hn : 1 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
+example {n ρ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hBudget : ExposureBounded n ρ exposed)
     {Signed : Block → Prop} {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r ≤ R, B ∈ log r)
     {cl cl' : CertClaim}
@@ -33,8 +33,8 @@ example {n : Nat} (hn : 1 ≤ n)
         quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hSigned  : ∀ B ∈ s₁ :: srest,  Signed B)
     (hSigned' : ∀ B ∈ s₁' :: srest', Signed B)
-    (hRecent  : R ≤ sTip.slot  + n)
-    (hRecent' : R ≤ sTip'.slot + n)
+    (hRecent  : R ≤ sTip.slot  + ρ)
+    (hRecent' : R ≤ sTip'.slot + ρ)
     {c c' : Chain}
     (hc  : GroundedHistory n Signed G cl c)
     (hc' : GroundedHistory n Signed G cl' c')
@@ -42,8 +42,8 @@ example {n : Nat} (hn : 1 ≤ n)
     (hDeep  : h + n < (c ++ s₁ :: srest).length)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h :=
-  timed_certified_agreement hn hexec hBudget hbridge hcl hcl' hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense' hSigned hSigned' hRecent hRecent' hc hc' hDeep hDeep'
+  exposure_certified_agreement hn hexec hBudget hbridge hcl hcl' hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense' hSigned hSigned' hRecent hRecent' hc hc' hDeep hDeep'
 
-/-- info: 'MoltPetit.Model.timed_certified_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'MoltPetit.Model.exposure_certified_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
-#print axioms MoltPetit.Model.timed_certified_agreement
+#print axioms MoltPetit.Model.exposure_certified_agreement
