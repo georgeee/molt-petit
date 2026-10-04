@@ -176,31 +176,28 @@ never a response to an event. (Names in \code{typewriter} are
 machine-checked Lean theorems; every one resolves in the companion
 library \code{Molt/}.)
 
-\paragraph{Mode 0: any pin, when keys can be lost but not stolen.}
+\paragraph{Without theft, every mode is Theorem~1.}
 Every adversary in this paper can make a producer \emph{lose} its key
 --- destroy it, wedge its signer, force a rotation. Against an adversary
-with only that power, all three modes give the same guarantees to the
+with only that power, all three modes give the same guarantee to the
 same client: \textbf{hold the genesis and a clock; sleep as long as you
-like}. Loss needs no special safety machinery. The loser recovers by
-its mode's own discipline --- an in-band rotation in mode 1, a later
-scheduled generation in mode 2, the next lockstep switch in mode 3 ---
-at the price of its missed slots (operational discipline; mode 1's local
-single-block production step under continued density coverage is checked
-in the core, \code{liveness\_produce\_blockK}). And in
-every mode the corruption the theorems count shrinks back to the plain
-controlled-slot budget of Section~\ref{sec:assumptions} (Lean
-\code{badKeyrot\_lossOnly}, \code{badSched\_lossOnly},
-\code{exposedSched\_lossOnly}). A deployment
-that rules out theft by other means may run any mode and read no
-further than light-client safety and the forged-time bound
-(Sections~\ref{sec:lc}--\ref{sec:timed}).
+like}. Loss changes none of the hypotheses of Theorem~\ref{thm:lc}, and
+each mode's validator inherits it directly (\code{keyrot\_loss\_agreement},
+\code{sched\_loss\_agreement}, \code{lockstep\_loss\_agreement};
+Theorem~\ref{thm:keyloss}). The loser recovers by its mode's own
+discipline --- an in-band rotation in mode 1, a later scheduled
+generation in mode 2, the next lockstep switch in mode 3 --- at the
+price of its missed slots (mode 1's local single-block production step
+under continued density coverage is checked in the core,
+\code{liveness\_produce\_blockK}). The modes differ only against key
+\emph{theft}, which is what the rest of this section is about.
 
 \paragraph{Mode 1: reactive rotation --- recovery from key loss, not theft.}
 Producers rotate whenever they choose, routinely or after losing a key,
 and \emph{no one knows in advance when rotations will unfold} --- there
 is no schedule, public or private. The client holds the genesis and a
-clock, exactly as in mode 0, and gets mode 0's guarantee
-(Theorem~\ref{thm:keyloss}). Mode 1 is \textbf{not safe against key
+clock and gets exactly the no-theft guarantee above
+(Theorem~\ref{thm:keyloss}), and nothing more. Mode 1 is \textbf{not safe against key
 theft}: an adversary that steals the retired keys of a quorum of seats
 can forge a recent fork that branches before their rotations
 (Section~\ref{sec:rotation}). A deployment that must survive theft runs
@@ -253,15 +250,16 @@ cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)
 \toprule
  & pin computed from & client holds & erasure & anchor & headline Lean theorem \\
 \midrule
-0 no theft & any of the three &
+no theft, any mode & any of the three &
   genesis + clock & no & no &
   Thm.~\ref{thm:lc}: \code{timed\_light\_client\_safety}
-  (+~Rust: \code{rust\_timed\_certified\_agreement}) \\
+  (+~Rust: \code{rust\_timed\_certified\_agreement}); per validator
+  \code{keyrot\_loss\_agreement}, \code{sched\_loss\_agreement},
+  \code{lockstep\_loss\_agreement} \\
 \addlinespace
 1 reactive & chain floor, $n$ slots deep &
-  genesis + clock & no & no &
-  Thm.~\ref{thm:keyloss}: \code{keyrot\_loss\_agreement}
-  (key loss only; no theft guarantee) \\
+  --- & --- & --- &
+  none against theft (Section~\ref{sec:rotation}); loss: row above \\
 \addlinespace
 2 scheduled & slot arithmetic $\mathit{gen}(s)$ &
   clock + $\mathit{gen}$ (+ genesis for certificates) & no & no &
@@ -281,7 +279,7 @@ stolen; mode 2 trusts slot arithmetic plus key-provisioning discipline;
 mode 3 trusts roster coordination plus physical destruction. Modes 2 and
 3 share the $\rho + T \le \fmax$ budget --- in mode 3 the $T$ may be
 read per generation, at depth $2n$ --- and a recency-scoped signature
-surface; modes 0 and 1 are the case without theft.
+surface; every mode at $T = 0$ is the no-theft row.
 
 Everything that follows makes these paragraphs precise: the protocol and
 its validator (Sections~\ref{sec:protocol}--\ref{sec:rules}), what a
@@ -843,16 +841,17 @@ alongside, over declared-version signed blocks (\code{SignedDeclared}).
 Fix rotation mode 2 or 3 and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). Unlike the untimed residue \code{SigUnforgeableRecent} (Appendix~\ref{app:timed-uniq}), this is stated directly rather than derived: Appendix~\ref{app:timed-uniq}'s derivation needs only \emph{one} key's safety per real slot, while \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's, and the timed-model route does not generalize here without weakening an already-assumed primitive (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
 \end{assumption}
 
-\emph{Mode 0, formally: loss is not theft.} A \emph{lost} key
-(destroyed, not exfiltrated) gives the adversary nothing; the loser
-rotates and the validator already supports it. With nothing stolen the
-corruption the theorems count collapses to rent alone in every mode
+\emph{Without theft, formally.} A \emph{lost} key (destroyed, not
+exfiltrated) gives the adversary nothing; the loser rotates and the
+validator already supports it. With nothing stolen the corruption the
+theorems count collapses to rent alone in every mode
 (\code{badKeyrot\_lossOnly}, \code{badSched\_lossOnly}; mode 3 inherits
-mode 2's count) --- no anchor, no cadence, any pin. This is the
-operational mode 0 of Section~\ref{sec:opmodel}: whichever pin a
-deployment fixed, a genesis-and-clock client gets the core guarantees of
-Sections~\ref{sec:lc}--\ref{sec:timed} unchanged (for mode 1's
-validator, Theorem~\ref{thm:keyloss}).
+mode 2's count), and Theorem~\ref{thm:lc} applies to each mode's
+validator unchanged: \code{keyrot\_loss\_agreement} (mode 1,
+Theorem~\ref{thm:keyloss} below), \code{sched\_loss\_agreement}
+(mode 2), \code{lockstep\_loss\_agreement} (mode 3). No anchor, no
+cadence, any pin: a genesis-and-clock client gets the core guarantees of
+Sections~\ref{sec:lc}--\ref{sec:timed}.
 
 \paragraph{Mode 1: reactive rotation.} \emph{The rule.} A producer
 rotates whenever it chooses, by signing under a higher version. The pin

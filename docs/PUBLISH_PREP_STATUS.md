@@ -167,4 +167,13 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
   only the mode-1 floor); the per-mode signature surfaces are operational assumptions;
   there is no multi-chain network model.
 
-STATUS: COMPLETE
+STATUS: READY FOR REVIEW
+
+### Reopened (2026-10-04, later): Pass 18 and the Theorem 1 timing question
+- Pass 18: `sched_loss_agreement` and `lockstep_loss_agreement` (2bb45c6), guard
+  Molt/AxiomsRotationLoss.lean. The paper folds mode 0 into a single "without theft"
+  statement covering all three validators.
+- OPEN, with George: TimedExecution's `key_match` lets a compromised key sign only at
+  its seat's slots, and `honest_stamp` makes honest producers sign exactly in their real
+  slot. Neither is stated as a deployment assumption. Either state both or generalize
+  the model.

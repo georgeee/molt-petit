@@ -7,6 +7,7 @@ import MoltPetit.Model.KeyStealingCert
 import MoltPetit.Model.KeyStealingScheduleCert
 import MoltPetit.Model.KeyStealingScheduleTimed
 import MoltPetit.Model.KeyRotationLoss
+import MoltPetit.Model.KeyRotationLossSchedLock
 import MoltPetit.Model.KeyStealingScheduleCertHorizon
 
 /-!
@@ -344,6 +345,14 @@ alias sched_recent_certified_suffix_agreement_horizon :=
 `thm:keyloss`). No theft guarantee. -/
 alias keyrot_loss_agreement :=
   MoltPetit.Model.keyrot_loss_agreement
+
+/-- Mode 2 against key loss: Theorem 1 for the scheduled validator. -/
+alias sched_loss_agreement :=
+  MoltPetit.Model.sched_loss_agreement
+
+/-- Mode 3 against key loss: Theorem 1 for the lockstep validator. -/
+alias lockstep_loss_agreement :=
+  MoltPetit.Model.lockstep_loss_agreement
 
 /-- Mode 2's membership form (unequal tip heights), under the global
 budget. -/
