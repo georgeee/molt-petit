@@ -147,6 +147,18 @@ theorem quorum_ge_maxByzantine_add_two (n : Nat) (hn : 2 ≤ n) :
   · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k + 2 := ⟨n / 3, by omega⟩
     subst hk; omega
 
+theorem quorum_ge_maxByzantine_add_one (n : Nat) (hn : 1 ≤ n) :
+    maxByzantine n + 1 ≤ quorum n := by
+  have hmod : n % 3 = 0 ∨ n % 3 = 1 ∨ n % 3 = 2 := by omega
+  unfold maxByzantine quorum
+  rcases hmod with h0 | h1 | h2
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k := ⟨n / 3, by omega⟩
+    subst hk; omega
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k + 1 := ⟨n / 3, by omega⟩
+    subst hk; omega
+  · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k + 2 := ⟨n / 3, by omega⟩
+    subst hk; omega
+
 theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
