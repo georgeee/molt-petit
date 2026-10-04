@@ -159,6 +159,15 @@ theorem quorum_ge_maxByzantine_add_one (n : Nat) (hn : 1 ≤ n) :
   · obtain ⟨k, hk⟩ : ∃ k, n = 3 * k + 2 := ⟨n / 3, by omega⟩
     subst hk; omega
 
+theorem blockAt_index_le_of_slot_le {c : Chain} (hS : StrictSlots c)
+    {k m : Nat} {A B : Block}
+    (hA : blockAt? c k = some A) (hB : blockAt? c m = some B)
+    (hslot : A.slot ≤ B.slot) : k ≤ m := by
+  by_contra hlt
+  have hlt' : m < k := Nat.lt_of_not_ge hlt
+  have := strictSlots_lt hS hB hA hlt'
+  omega
+
 theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
