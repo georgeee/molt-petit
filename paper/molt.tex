@@ -69,7 +69,7 @@ adversary that obtains signing keys at arbitrary real times --- by theft
 or by transient compromise --- and signs whatever stamps they verify; the
 fault budget counts only key exposure around each window's own time, so
 the recency check is a machine-checked safety ingredient, and no valid
-chain can run ahead of real time --- and we develop key rotation inside
+chain can run more than that lookback ahead of real time --- and we develop key rotation inside
 consensus: every mode recovers from lost keys, and against an adversary
 who steals keys and keeps them forever, two modes come with exactly
 stated operator duties and no client duty beyond the genesis and a clock. Measured with post-quantum signatures on commodity
@@ -118,8 +118,8 @@ counts, for each window of $n$ slots, only the keys exposed during a
 bounded stretch of real time around that window, from about $n$ slots
 before it to $\varphi$ slots after it. A client that refuses tips older
 than $\varphi$ is exactly the client for whom later exposure cannot
-matter, and no adversary can prepare a valid chain ahead of real time to
-get around the check (Section~\ref{sec:timed}). Second, \emph{key rotation lives inside
+matter, and no adversary can prepare a valid chain further ahead of real
+time than the lookback to get around the check (Section~\ref{sec:timed}). Second, \emph{key rotation lives inside
 consensus}: every block declares its signing-key version, so rotation is
 ordered by the chain like any other event. Every mode recovers from a lost key with no extra client duty.
 Against an adversary who steals keys outright and keeps them forever,
