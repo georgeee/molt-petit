@@ -31,12 +31,9 @@ below each tip is **the same block**.
 
 The signature assumption is only the recency-scoped
 `SigUnforgeableRecent` — honest-slot uniqueness is promised *only for
-chains meeting the recency bar*, which is exactly what the timed model
-proves survives a coercing adversary (`Model/Timed.lean`,
-`forged_suffix_time_bound`: a fork forged above a block first signed at
-`r₀` cannot reach stamp `r₀ + s` before real slot `≈ r₀ + 2s`, so a
-recency-passing fork carries at most `≈ 2·maxByzantine < n + 1`
-harvested blocks — too few to fake an `n`-deep ancestor). Stale chains
+chains meeting the recency bar*. This is the untimed stand-in; the timed
+form, which derives the recency scope from the exposure model instead of
+assuming it, is `ts_timed_certified_agreement` (`TS/TimedResults.lean`). Stale chains
 get no promise; the rule "valid ∧ tip within `n` of now ∧ `n`-deep" is
 the trustworthy predicate.
 

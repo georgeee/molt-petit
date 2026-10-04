@@ -359,8 +359,8 @@ private theorem getD_getLast_cons {g tip : Block} {rest : Chain}
 (over the model→TS injection `toTSChain`) is semantically `ValidChain` in the
 model — the TypeScript analogue of the Rust bridge's `valid_chain_sound`
 composed to `ValidChain` (`Rust.rust_valid_chain_sound`). This is the hook that
-carries model-level guarantees *stated about* `ValidChain` (e.g. the forged-time
-bound `forged_chain_time_bound`) over to the function the TypeScript node runs. -/
+carries model-level guarantees *stated about* `ValidChain` (e.g. the exposure-model
+agreement `exposure_agreement`) over to the function the TypeScript node runs. -/
 theorem ts_validChain_sound {n : Nat} {c : Chain}
     (h : MoltPetit.validChain (n : Int) (toTSChain c) = true) :
     ValidChain n c := by
