@@ -236,3 +236,21 @@ STATUS: COMPLETE
   Gate green. Audit pending.
 
 STATUS: READY FOR REVIEW
+
+### Pass 23 (2026-10-04, reviewer): the execution hypothesis must survive an exposed key
+- Finding (reviewer): `SigningExecution.chain_order` / `id_inj` were claimed for every
+  logged block. An exposed key can sign a block with a dangling `prev` or a copied id, and
+  every `hbridge` forces signature-valid blocks into the log, so the hypothesis was
+  falsifiable by the adversary the paper says is unconstrained (theorems vacuous on such
+  executions).
+- Decision: restrict all three fields of `SigningExecutionOn` to admissible blocks (and the
+  genesis). Admissibility = the verifier's check: signature verifies ∧ id *formed* (hash of
+  the preimage over the parent's actual signature, recomputed by the hashing layer) [∧
+  mode-2 pin]. For formed blocks `chain_order` is EUF-CMA + causality and `id_inj` is
+  collision resistance — both cryptographic, neither a behavioural constraint on exposed
+  keys. `Formed` is an abstract predicate; bridges take `hFormedS`/`hFormed` on presented
+  blocks and ground certificates over `Check ∧ Formed`. The Rust validator does not recompute
+  ids, so the hashing layer joins the trusted base (stated in §impl).
+- Headline, `no_early_signing`, Rust/TS bridges, loss theorems (modes 1–3), mode-2
+  theft theorems all move to the `_on` form; new `exposure_*_ever_on`. Spec
+  docs/PASS23_SPEC.md; pins in Molt/AxiomsPass23.lean and the existing guard files.
