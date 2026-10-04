@@ -2,7 +2,6 @@ import MoltPetit.Results.Results
 import MoltPetit.TS.Results
 import MoltPetit.Model.Liveness
 import MoltPetit.Model.Safety
-import MoltPetit.Model.TimedSig
 import MoltPetit.Model.KeyIndex
 import MoltPetit.Model.KeyRotation
 import MoltPetit.Model.KeyStealing
@@ -56,25 +55,6 @@ axiom-hygiene claim. The Rust path is audited in `Rust/Axioms.lean`.
 #guard_msgs in
 #print axioms MoltPetit.Model.ts_recent_produced_tip_ancestor_agreement
 
--- T2 forged chains take real time — model + TypeScript corollary
-/-- info: 'MoltPetit.Model.forged_suffix_time_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.forged_suffix_time_bound
-/-- info: 'MoltPetit.Model.forged_suffix_lag' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.forged_suffix_lag
-/-- info: 'MoltPetit.Model.forged_chain_time_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.forged_chain_time_bound
-/-- info: 'MoltPetit.Model.forged_chain_lag' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.forged_chain_lag
-/-- info: 'MoltPetit.Model.ts_forged_chain_time_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.ts_forged_chain_time_bound
-/-- info: 'MoltPetit.Model.ts_forged_chain_lag' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.ts_forged_chain_lag
 
 -- T3 liveness — production succeeds
 /-- info: 'MoltPetit.Model.liveness_produce_block' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -90,12 +70,6 @@ axiom-hygiene claim. The Rust path is audited in `Rust/Axioms.lean`.
 #print axioms MoltPetit.Model.liveness_global
 
 -- Recency-scoped unforgeability is a theorem of the timed model + no-back-dating
-/-- info: 'MoltPetit.Model.sigUnforgeableRecent_of_timed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.sigUnforgeableRecent_of_timed
-/-- info: 'MoltPetit.Model.noBackdate_independent' depends on axioms: [propext, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.noBackdate_independent
 
 -- T5 recommended slot time
 /-- info: 'MoltPetit.Model.ProverTiming.recommended_slot_sufficient' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -175,15 +149,6 @@ axiom-hygiene claim. The Rust path is audited in `Rust/Axioms.lean`.
 /-- info: 'MoltPetit.Model.rotated_index_rejected' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.rotated_index_rejected
--- Phase 2 (I1): the key-stealing adversary. TimedExecution transports across a
--- pointwise-iff bad swap; with no key stolen the model collapses to TimedExecution
--- over the plain rent predicate (strict-superset witness, instruction 1).
-/-- info: 'MoltPetit.Model.timedExecution_of_bad_iff' depends on axioms: [propext, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.timedExecution_of_bad_iff
-/-- info: 'MoltPetit.Model.keyStealing_refines_timed' depends on axioms: [propext, Quot.sound] -/
-#guard_msgs in
-#print axioms MoltPetit.Model.keyStealing_refines_timed
 -- Phase 2 (I2a): the bounded safety core for opt-A. `no_deep_fork`/`deep_block_shared`
 -- weakened to require honest-slot uniqueness only up to the witness slot, plus
 -- `confirmed_mem_iff_le`: with Δconf ≥ 2n and both chains carrying a block at the

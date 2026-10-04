@@ -19,10 +19,6 @@ this file with every new headline theorem.
 -/
 
 -- Theorem 1: light-client safety (paper §6.1).
-/-- info: 'Molt.light_client_safety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.light_client_safety
-
 /-- info: 'Molt.timed_light_client_safety' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Molt.timed_light_client_safety
@@ -32,10 +28,6 @@ this file with every new headline theorem.
 #guard_msgs in
 #print axioms Molt.no_early_signing
 
--- (superseded, removed in the next pass) the old forged-time bound.
-/-- info: 'Molt.forged_time_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.forged_time_bound
 
 -- Loss-only collapse, mode-1 census (paper mode 0).
 /-- info: 'Molt.badKeyrot_lossOnly' depends on axioms: [propext, Quot.sound] -/
@@ -157,14 +149,7 @@ this file with every new headline theorem.
 #guard_msgs in
 #print axioms Molt.lockstep_client_safety
 
--- The appendix theorem and its independence witness.
-/-- info: 'Molt.sigUnforgeableRecent_of_timed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.sigUnforgeableRecent_of_timed
 
-/-- info: 'Molt.noBackdate_independent' depends on axioms: [propext, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.noBackdate_independent
 
 -- Theorem 6: liveness (paper §6.4).
 /-- info: 'Molt.production_liveness' depends on axioms: [propext, Classical.choice, Quot.sound] -/

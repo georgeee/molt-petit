@@ -26,13 +26,6 @@ Charon + Aeneas extraction is certified to introduce no axioms of its own.
 #guard_msgs in
 #print axioms Rust.rust_recent_produced_tip_ancestor_agreement
 
--- T2 forged chains take real time — Rust corollary
-/-- info: 'Rust.rust_forged_chain_time_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Rust.rust_forged_chain_time_bound
-/-- info: 'Rust.rust_forged_chain_lag' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Rust.rust_forged_chain_lag
 
 -- Verifier soundness (the hinge both safety paths transfer through)
 /-- info: 'Rust.rust_valid_chain_sound' depends on axioms: [propext, Classical.choice, Quot.sound] -/

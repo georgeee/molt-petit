@@ -6,11 +6,9 @@ import MoltPetit.Model.Soundness
 import MoltPetit.Model.Liveness
 import MoltPetit.TS.Bridge
 import MoltPetit.Model.Grounded
-import MoltPetit.Model.Timed
 import MoltPetit.Results.Results
 import MoltPetit.TS.Results
 import MoltPetit.TS.TimedResults
-import MoltPetit.Model.TimedSig
 import MoltPetit.Model.ExposureCert
 import MoltPetit.Model.ExposureSafety
 import MoltPetit.Model.KeyIndex

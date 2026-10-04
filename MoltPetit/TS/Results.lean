@@ -276,53 +276,5 @@ theorem ts_recent_tip_ancestor_mem
   exact ⟨i', by omega, hBX ▸ hX⟩
 
 
--- ---------------------------------------------------------------------------
--- The forged-time bound, for the TypeScript validator (transferred)
--- ---------------------------------------------------------------------------
-
-/--
-**Forged chains take real time, for TypeScript (transferred).** A chain the
-TypeScript `validChain` accepts, none of whose non-genesis blocks was ever
-honestly signed (every signing event happens at a *bad* real slot) and which
-exists by real slot `R`, satisfies
-`quorum·((T+1)/n) ≤ maxByzantine·(R/n + 1) + 1` on its projection — the
-TypeScript analogue of `Rust.rust_forged_chain_time_bound`. Plain-validator
-soundness (`ts_validChain_sound`) carries the model bound
-(`forged_chain_time_bound`) to the function the node runs: a chain its validator
-accepts cannot be a from-scratch forgery with a recent tip.
--/
-theorem ts_forged_chain_time_bound {n : Nat} (hn : 2 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
-    {c : Chain}
-    (hv : MoltPetit.validChain (n : Int) (toTSChain c) = true)
-    (hGprev : G.prev = none)
-    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
-    (hForged : ∀ B ∈ c, B ≠ G → ∀ r, B ∈ log r → bad r)
-    {tip : Block} (hTip : c.getLast? = some tip) :
-    quorum n * ((tip.slot + 1) / n) ≤ maxByzantine n * (R / n + 1) + 1 :=
-  forged_chain_time_bound hn hexec hBudget (ts_validChain_sound hv)
-    hGprev hAvail hForged hTip
-
-/-- **Forged chains lag by half, for TypeScript (transferred).** The readable
-corollary of `ts_forged_chain_time_bound`: with at least one Byzantine slot per
-window allowed, a fully forged TypeScript-validated chain's tip-window index is
-at most about half the real-window index, `2·((T+1)/n) ≤ R/n + 3`. -/
-theorem ts_forged_chain_lag {n : Nat} (hn : 2 ≤ n)
-    {bad : ByzantineSlots} {log : TimedLog} {G : Block}
-    (hexec : TimedExecution n bad log G)
-    (hBudget : ByzantineBounded n bad)
-    {c : Chain}
-    (hv : MoltPetit.validChain (n : Int) (toTSChain c) = true)
-    (hGprev : G.prev = none)
-    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
-    (hForged : ∀ B ∈ c, B ≠ G → ∀ r, B ∈ log r → bad r)
-    {tip : Block} (hTip : c.getLast? = some tip)
-    (hf : 1 ≤ maxByzantine n) :
-    2 * ((tip.slot + 1) / n) ≤ R / n + 3 :=
-  forged_chain_lag hn hexec hBudget (ts_validChain_sound hv)
-    hGprev hAvail hForged hTip hf
-
 
 end MoltPetit.Model

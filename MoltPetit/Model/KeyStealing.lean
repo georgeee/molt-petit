@@ -11,16 +11,6 @@ module lays the foundation (see `georgeee/mini-consensus-lean: PHASE2_DESIGN.md`
   keyed on the in-force index read off a **fixed** witness chain `c₀`'s finalized
   prefix: `rented s ∨ ∃ j ≥ inForce c₀ i s, Stolen i j` (any stolen
   not-yet-rotated-out key corrupts the slot; a stolen rotated-out key never does).
-* `timedExecution_of_bad_iff` — `TimedExecution` transports across a pointwise-iff
-  swap of its `bad` predicate (the structure mentions `bad` only negatively).
-* `KeyStealingExecution` — the timed core over the enriched `badKeyrotOn`, **plus**
-  the bridge that a stolen-key block consumes a bad real slot. The signed registry
-  lives on the `SignedChain` side; the timed (bare-`Block`) layer sees only the
-  abstract `StolenMint : Block → Prop` predicate, exactly as `TimedSig` bridges the
-  timed and signed worlds through an abstract `Signed`.
-* `keyStealing_refines_timed` — with no *in-force* key stolen the model refines to
-  the plain `TimedExecution n rented`, witnessing the strict-superset claim (instr.
-  1). A stolen rotated-out key is harmless (`H-IND`), so it need not be excluded.
 -/
 
 namespace MoltPetit.Model
@@ -68,67 +58,5 @@ theorem badKeyrotOn_lossOnly (n Δconf : Nat) (rented : ByzantineSlots) (c₀ : 
     badKeyrotOn n Δconf rented (fun _ _ => False) c₀ = rented := by
   funext s
   simp [badKeyrotOn]
-
--- ===========================================================================
--- TimedExecution transports across a pointwise-iff bad swap
--- ===========================================================================
-
-/-- `TimedExecution` depends on `bad` only through the negated guards of
-`honest_stamp`/`honest_once`, so it transports across any pointwise-equivalent
-`bad`. -/
-theorem timedExecution_of_bad_iff {n : Nat} {bad bad' : ByzantineSlots}
-    {log : TimedLog} {G : Block}
-    (hiff : ∀ s, bad s ↔ bad' s)
-    (h : TimedExecution n bad log G) :
-    TimedExecution n bad' log G := by
-  refine ⟨h.key_match, ?_, ?_, h.chain_order, h.id_inj⟩
-  · intro r hr B hB
-    exact h.honest_stamp (fun hb => hr ((hiff r).mp hb)) hB
-  · intro r hr B B' hB hB'
-    exact h.honest_once (fun hb => hr ((hiff r).mp hb)) hB hB'
-
--- ===========================================================================
--- The key-stealing execution
--- ===========================================================================
-
-/-- The **key-stealing execution**. The unsigned timed core holds over the enriched
-`badKeyrotOn` corruption, and every stolen-key block consumes a bad real slot
-(`steal_bad`). `StolenMint : Block → Prop` is the unsigned image of "verifies under
-a stolen registry version"; the actual `ops`/`registry`/`sig` content lives on the
-`SignedChain` side (where `VersionedUnforgeable` is stated) and is connected to this
-predicate by a separate bridge hypothesis in Phase 3 — keeping the timed and signed
-encodings disjoint but bridged (cf. `TimedSig`). -/
-structure KeyStealingExecution (n Δconf : Nat)
-    (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop) (StolenMint : Block → Prop)
-    (c₀ : Chain) (log : TimedLog) (G : Block) : Prop where
-  /-- The timed core, over the enriched key-stealing corruption. -/
-  toTimed : TimedExecution n (badKeyrotOn n Δconf rented Stolen c₀) log G
-  /-- A stolen-key block is logged only at a bad real slot (the theft consumes one). -/
-  steal_bad : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → StolenMint B →
-    badKeyrotOn n Δconf rented Stolen c₀ r
-
-/-- **The key-stealing adversary is a strict superset of the slot-based one.** When
-no **not-yet-rotated-out** key is stolen, the corruption is exactly `rented` and the
-model refines to the plain `TimedExecution n rented`. Witnesses instruction 1 (keep
-"rent a slot", add key theft). The hypothesis is the at-or-above-in-force pointwise
-form, not "no key ever stolen": a stolen *rotated-out* key (`Stolen i j` with
-`j < inForce c₀ i s`) does **not** inflate the corruption — the rotated-out key is
-harmless. So `Stolen = ∅` is the special case `hNoStealLive := fun _ _ _ => …`. -/
-theorem keyStealing_refines_timed {n Δconf : Nat}
-    {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop} {StolenMint : Block → Prop}
-    {c₀ : Chain} {log : TimedLog} {G : Block}
-    (hNoStealLive :
-      ∀ s j, inForce n Δconf c₀ (producerForSlot n s) s ≤ j →
-        ¬ Stolen (producerForSlot n s) j)
-    (h : KeyStealingExecution n Δconf rented Stolen StolenMint c₀ log G) :
-    TimedExecution n rented log G := by
-  refine timedExecution_of_bad_iff ?_ h.toTimed
-  intro s
-  unfold badKeyrotOn
-  constructor
-  · rintro (hr | ⟨j, hj, hst⟩)
-    · exact hr
-    · exact absurd hst (hNoStealLive s j hj)
-  · exact Or.inl
 
 end MoltPetit.Model

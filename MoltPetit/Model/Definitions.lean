@@ -26,8 +26,8 @@ Contents, in order:
 6. the inductive certificate model (`GroundedCert`) and the two
    cryptographic assumptions of the light-client theorems
    (`SignedHashInjective`, `SigUnforgeableRecent`);
-7. the real-time signing model (`TimedExecution`) behind the
-   forged-chain time bounds;
+7. the real-time signing model (`Exposure`, `SigningExecution`,
+   `HonestClock`, `ExposureBounded`) behind the light-client theorem;
 8. honest-block delivery (`HonestBlocksCover`) for liveness;
 9. the prover-throughput model (`ProverTiming`) behind the slot-duration
    recommendation.
@@ -682,10 +682,9 @@ structure SigUnforgeableRecent (n : Nat) (bad : ByzantineSlots)
 -- 7. The real-time signing model
 -- ===========================================================================
 
-/-- What was signed at each **real** slot. The blocks in `log r` carry
-signatures under the key of `r`'s designated producer — the only signing
-oracle reachable at real slot `r` (at an honest slot, by the node's own
-production; at a bad slot, by adversarial coercion). -/
+/-- What was signed at each **real** slot: `log r` is the set of blocks whose
+producer signature was created at real slot `r`. Who could sign under which
+key at that time is the business of `Exposure`/`SigningExecution` below. -/
 abbrev TimedLog := Nat → Finset Block
 
 /-- `B` carries a signature that exists somewhere in the execution (or is
@@ -697,39 +696,6 @@ def SignedEver (log : TimedLog) (G : Block) (B : Block) : Prop :=
 real slot `≤ R`. -/
 def AvailableAt (log : TimedLog) (G : Block) (B : Block) (R : Nat) : Prop :=
   B = G ∨ ∃ r ≤ R, B ∈ log r
-
-/--
-The timed execution model. Corruption is per real slot: at a bad real
-slot `r` the adversary may extract arbitrarily many signatures from
-`r`'s producer (blocks with any stamp in that producer's residue class);
-at an honest real slot the node signs at most its own current block.
-
-`chain_order` is the formal residue of the id-formation contract
-(`id = H(slot, height, prev, parentSig, contentsHash, keyIndex)`): producing a block's
-content — hence a signature over it — requires the parent's id preimage,
-which contains the parent's signature; so the parent must be available
-at signing time. Predicting an unavailable parent's id is predicting a
-signature, i.e. an EUF-CMA forgery.
--/
-structure TimedExecution (n : Nat) (bad : ByzantineSlots) (log : TimedLog)
-    (G : Block) : Prop where
-  /-- Signatures at real slot `r` are under `r`'s producer's key, and a
-  block only verifies under its stamp's producer's key: the stamp and
-  the signing slot agree modulo `n`. -/
-  key_match : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → B.slot % n = r % n
-  /-- An honest node signs only its current slot's block. -/
-  honest_stamp : ∀ ⦃r : Nat⦄, ¬ bad r → ∀ ⦃B : Block⦄, B ∈ log r → B.slot = r
-  /-- An honest node signs at most once per slot. -/
-  honest_once : ∀ ⦃r : Nat⦄, ¬ bad r →
-    ∀ ⦃B B' : Block⦄, B ∈ log r → B' ∈ log r → B = B'
-  /-- Id-formation: signing a block requires its parent's preimage, so
-  the parent (some block with the referenced id) is available then. -/
-  chain_order : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r →
-    ∀ ⦃i : Nat⦄, B.prev = some i →
-      ∃ P : Block, P.id = i ∧ AvailableAt log G P r
-  /-- Hash collision resistance over occurring blocks. -/
-  id_inj : ∀ ⦃B B' : Block⦄, SignedEver log G B → SignedEver log G B' →
-    B.id = B'.id → B = B'
 
 /-- Key exposure: `exposed s r` holds when, at real slot `r`, someone other
 than its honest holder can sign under the key that verifies stamp `s` — the
