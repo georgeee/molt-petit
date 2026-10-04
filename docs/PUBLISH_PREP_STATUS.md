@@ -187,3 +187,14 @@ STATUS: READY FOR REVIEW
 - Full verification pass green (`bash tools/check.sh`).
 
 STATUS: READY FOR REVIEW
+
+### Pass 20 (2026-10-04): Consumers of the core v2 exposure theorem
+- Closed all four `sorry`s in the core v2 consumer theorems:
+  - `exposure_certified_agreement` in `MoltPetit/Model/ExposureCert.lean` (guard `Molt/AxiomsExposureCert.lean`)
+  - `keyrot_loss_agreement` in `MoltPetit/Model/KeyRotationLoss.lean` (guard `Molt/AxiomsKeyRotationLoss.lean`)
+  - `sched_loss_agreement` and `lockstep_loss_agreement` in `MoltPetit/Model/KeyRotationLossSchedLock.lean` (guard `Molt/AxiomsRotationLoss.lean`)
+- All consumers now directly invoke `exposure_agreement` from `MoltPetit/Model/ExposureSafety.lean`.
+- Pinned headline statements and downstream targets (Molt, Rust, TS) compile cleanly with 0 axioms and no sorries.
+- Full verification pass green (`bash tools/check.sh` prints `check: all green`).
+
+STATUS: READY FOR REVIEW
