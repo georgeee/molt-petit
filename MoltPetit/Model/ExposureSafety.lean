@@ -180,6 +180,55 @@ theorem availableAt_of_slot_le {n : Nat} {exposed : Exposure}
   have hkm := blockAt_index_le_of_slot_le hc.2.1 hk hB hslot
   exact ancestor_availableAt hexec hc hHead hAvail hkm hB hr hk
 
+open Classical in
+theorem chainSlotsIn_subset_classification {n σ ρ : Nat}
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hClock : HonestClock σ exposed log)
+    {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {m : Nat} {B : Block} (hB : blockAt? c m = some B)
+    {r : Nat} (hr : B ∈ log r) (v : Nat) (hv : v + n ≤ B.slot + 1)
+    (hr_lt : r < v + n + ρ) :
+    chainSlotsIn c v n ⊆
+      insert G.slot
+        (((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')) ∪
+         ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ))) := by
+  intro s hs
+  obtain ⟨A, hA_in_c, ⟨hwin_lo, hwin_hi⟩, rfl⟩ := mem_chainSlotsIn.mp hs
+  by_cases hAG : A = G
+  · subst hAG
+    exact Finset.mem_insert_self _ _
+  · have hslotle : A.slot ≤ B.slot := by omega
+    have hAvailA := availableAt_of_slot_le hexec hc hHead hAvail hB hr hA_in_c hslotle
+    rcases hAvailA with rfl | ⟨rA, hrA, hrAlog⟩
+    · contradiction
+    · apply Finset.mem_insert_of_mem
+      have hIco : A.slot ∈ Finset.Ico v (v + n) := Finset.mem_Ico.mpr ⟨hwin_lo, hwin_hi⟩
+      by_cases hexp : exposed A.slot rA
+      · apply Finset.mem_union_left
+        apply Finset.mem_filter.mpr
+        refine ⟨hIco, ⟨rA, by omega, hexp⟩⟩
+      · apply Finset.mem_union_right
+        apply Finset.mem_filter.mpr
+        have hA_le := hClock hrAlog hexp
+        refine ⟨hIco, by omega⟩
+
+theorem genesis_slot_not_mem_chainSlotsIn_of_ne {c : Chain} (hS : StrictSlots c)
+    {G : Block} (hHead : blockAt? c 0 = some G)
+    {B : Block} (hB : B ∈ c) (hBG : B ≠ G) :
+    G.slot ∉ chainSlotsIn c B.slot 1 := by
+  intro hmem
+  obtain ⟨A, _, ⟨hlo, hhi⟩, hslot⟩ := mem_chainSlotsIn.mp hmem
+  obtain ⟨m, hm⟩ := exists_blockAt_of_mem hB
+  have hm0 : m ≠ 0 := by
+    rintro rfl
+    have : B = G := Option.some.inj (hm.symm.trans hHead)
+    exact hBG this
+  have hpos : 0 < m := Nat.pos_of_ne_zero hm0
+  have hGltB := strictSlots_lt hS hHead hm hpos
+  omega
+
 theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
