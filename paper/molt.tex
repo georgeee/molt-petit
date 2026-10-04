@@ -72,7 +72,9 @@ the recency check is a machine-checked safety ingredient, and no valid
 chain can run more than the budget's lookback ahead of real time --- and we develop key rotation inside
 consensus: every mode recovers from lost keys, and against an adversary
 who steals keys and keeps them forever, two modes come with exactly
-stated operator duties and no client duty beyond the genesis and a clock. Measured with post-quantum signatures on commodity
+stated operator duties and no client duty beyond the genesis and a clock;
+for a public rotation schedule, theft safety is the light-client theorem
+itself, with exposure read at the schedule. Measured with post-quantum signatures on commodity
 hardware, the verified consensus rule adds under $2\%$ to any
 certificate's proving cost.
 \end{abstract}
@@ -214,9 +216,9 @@ the validator refuses versions below it. Every mode signs under keys
 delegated from one offline master key (a \emph{cold root}) per seat
 (Section~\ref{sec:protocol}); what mode~2 adds is \emph{when}: the
 operator derives each period's signing key --- each \emph{generation}
---- just before its scheduled span (its \emph{era}) begins, the named
-operational assumptions \emph{not-before} and \emph{cold-root custody}
-(Section~\ref{sec:rotation}). The client holds the genesis, a clock,
+--- just before its scheduled span (its \emph{era}) begins, a
+discipline the theft theorem charges through its exposure budget rather
+than assuming (Section~\ref{sec:rotation}). The client holds the genesis, a clock,
 and the constant that defines the schedule; it may stay offline
 arbitrarily long and sync whenever it wakes. No anchor, no cadence, no erasure.
 
@@ -265,9 +267,9 @@ no theft, any mode & any of the three &
   none against theft (Section~\ref{sec:rotation}); loss: row above \\
 \addlinespace
 2 scheduled & slot arithmetic $\mathit{gen}(s)$ &
-  clock + $\mathit{gen}$ (+ genesis for certificates) & no & no &
-  Thm.~\ref{thm:sched}: \code{sched\_recent\_tip\_ancestor\_agreement\_horizon},
-  \code{sched\_recent\_tip\_ancestor\_mem\_horizon} \\
+  genesis + clock + $\mathit{gen}$ & no & no &
+  Thm.~\ref{thm:sched}: \code{sched\_exposure\_agreement},
+  \code{sched\_exposure\_certified\_agreement} \\
 \addlinespace
 3 lockstep & roster counter, no-mixing &
   genesis + clock & yes (credited, Thm.~\ref{thm:lock-gen}) & no &
@@ -278,11 +280,13 @@ no theft, any mode & any of the three &
 \end{tabular}
 \end{center}
 Read the trust downward: mode 1 trusts that keys are lost, never
-stolen; mode 2 trusts slot arithmetic plus key-provisioning discipline;
-mode 3 trusts roster coordination plus physical destruction. Modes 2 and
-3 share the $\rho + T \le \fmax$ budget --- in mode 3 the $T$ may be
+stolen; mode 2 trusts slot arithmetic, with key-provisioning discipline
+charged to its budget;
+mode 3 trusts roster coordination plus physical destruction. Mode 2
+runs on Theorem~\ref{thm:lc}'s own windowed budget, read at the
+schedule; mode 3 on the $\rho + T \le \fmax$ budget --- its $T$ may be
 read per generation, at depth $2n$ --- and a recency-scoped signature
-surface; every mode at $T = 0$ is the no-theft row.
+surface; every mode without theft is the no-theft row.
 
 Everything that follows makes these paragraphs precise: the protocol and
 its validator (Sections~\ref{sec:protocol}--\ref{sec:rules}), what a
@@ -330,8 +334,8 @@ $H(\cdot)$ & the block-id hash & \S\ref{sec:protocol} \\
 $\mathit{keyFor}(i,j)$, \code{keyIndex} & seat $i$'s public key at
   version $j$; the version a block declares & \S\ref{sec:protocol} \\
 $\rho$, $T$ & per-window rented slots and stolen-key producers,
-  $\rho + T \le \fmax$ & \S\ref{sec:results} \\
-$R$, $\mathit{gen}(s) = \lfloor s/R \rfloor$ & rotation-schedule period;
+  $\rho + T \le \fmax$ (mode 3) & \S\ref{sec:results} \\
+$E$, $\mathit{gen}(s) = \lfloor s/E \rfloor$ & rotation-schedule era length;
   scheduled key version (mode 2) & \S\ref{sec:results} \\
 \bottomrule
 \end{tabular}
@@ -505,7 +509,7 @@ chain only if all of the following hold:
   stated over the full-chain form of the validator
   (\code{validSignedChainK$'$}; the same validator under the mode 2--3
   pins); at certificate level they are proved for modes 2 and 3
-  (\code{sched\_recent\_certified\_suffix\_agreement\_horizon},
+  (\code{sched\_exposure\_certified\_agreement},
   \code{lockstepGen\_recent\_certified\_suffix\_agreement}).
 \end{enumerate}
 The model replays the structural checks from genesis
@@ -547,9 +551,11 @@ production, is outside the trusted base.
 Every assumption below except the clock appears literally as a
 hypothesis of the theorem that cites it --- Assumptions~\ref{ass:budget}--\ref{ass:cert}
 in Theorems~\ref{thm:lc}--\ref{thm:forge}, Assumption~\ref{ass:delivery}
-in the liveness theorem; the rotation results replace
-Assumptions~\ref{ass:budget}--\ref{ass:sig} with rescoped forms defined
-in Section~\ref{sec:rotation}'s adversary paragraph. Lean's axiom audit
+in the liveness theorem. Mode 2's theft theorem keeps them, reading
+exposure at the schedule's key versions and restricting
+Assumption~\ref{ass:sig} to the blocks its validator admits; mode 3
+replaces Assumptions~\ref{ass:budget}--\ref{ass:sig} with rescoped forms
+defined in Section~\ref{sec:rotation}'s adversary paragraph. Lean's axiom audit
 confirms that nothing further is assumed behind the scenes. The clock is the one
 exception by nature: Theorem~\ref{thm:lc} is stated at the real slot $R$
 at which the verifier checks, the rotation theorems at the verifier's
@@ -615,10 +621,11 @@ may run fast by up to $\sigma$; slow clocks cost only liveness.
 One forward note for key rotation: with versioned keys, a leaked
 \emph{retired} key is exposure of its seat --- as stated, it counts
 against every window it can still verify, which without a pin is every
-later one. Section~\ref{sec:results} rescopes the assumption for the
-rotation results --- the \emph{surface} defined there --- in which stolen
-keys of any version sign anything forever and safety is recovered by
-validator rules.
+later one. Section~\ref{sec:results} recovers safety by validator
+rules, with stolen keys of any version signing anything forever: mode 2
+restricts this assumption to the blocks its validator admits, so a key
+stops exposing a stamp once the schedule retires it; mode 3 rescopes it
+to a per-key \emph{surface} defined there.
 
 \begin{assumption}[Hash collision resistance, over blocks that
 occur]\label{ass:hash}
@@ -686,8 +693,9 @@ budget, and a seat counts as exposed whichever of its keys is. The
 \emph{key-stealing} adversary of Section~\ref{sec:rotation} is charged
 more finely: a stolen key counts only while its version is live, which is
 what rotation buys (defined there). Theorems~\ref{thm:lc}
-and~\ref{thm:forge} face the first; all of Section~\ref{sec:rotation}
-faces the second.
+and~\ref{thm:forge} face the first, and so does mode 2's theft theorem,
+with exposure read at the schedule (a key exposes only stamps it can still
+sign admissibly); mode 3 and the untimed mode-2 form face the second.
 
 Every result below is a Lean theorem, proved once against the model.
 The light-client theorem (Theorem~\ref{thm:lc}) is carried to each
@@ -835,7 +843,10 @@ client must do, and what theorem you get.
 \paragraph{The adversary.} Modes 2 and 3 face the
 key-stealing adversary: a stolen key of \emph{any} version signs
 anything, at any slot, forever --- no forward
-security~\cite{forwardsec} is assumed. Its \emph{signature surface} ---
+security~\cite{forwardsec} is assumed. Mode 2 meets it with the
+assumptions of Theorem~\ref{thm:lc} read at the schedule (below). Mode 3,
+whose pin depends on the chain, and the untimed mode-2 form meet it
+through a per-mode \emph{signature surface} ---
 the bundle of custody and unforgeability assumptions the theorems
 consume, the analogue of Assumption~\ref{ass:sig} --- is rescoped
 accordingly: the honest-slot uniqueness guarantee now holds only for
@@ -852,17 +863,17 @@ Together: $\rho + T \le \fmax$. The key-stealing corruption predicate
 (\code{badSched} in mode 2; mode 3 reads it at the roster's counter) counts a slot bad if it is rented \emph{or} some
 version at-or-above the one in force for its producer is stolen ---
 which builds \emph{healing} into the definition: a stolen key stops
-counting the moment its retirement takes force. Each of modes 2 and 3 consumes
+counting the moment its retirement takes force. Each consumes
 its own rescoping of this one surface --- the \emph{scheduled surface}
-(mode 2), the \emph{core surface} over the pin-free validator (mode 3)
---- and each rescoping includes
+(untimed mode 2), the \emph{core surface} over the pin-free validator
+(mode 3) --- and each rescoping includes
 \emph{version independence}: stealing version $j$ yields nothing about
 $j' > j$, which key-insulated signatures~\cite{keyinsulated} provide off
 the shelf. Hash injectivity (Assumption~\ref{ass:hash}) is consumed
 alongside, over declared-version signed blocks (\code{SignedDeclared}).
 
-\begin{assumption}[Honest custody --- per mode]\label{ass:rotation-honest}
-Fix rotation mode 2 or 3, a stamp $s$ whose seat is not rented, and a key version $j$ of its producer $i$ that has never been stolen. Every block stamped $s$ that verifies under version $j$ was signed by $i$'s own signing device, and that device signs at most one block per stamp, ever (a persisted signing record), declaring the version the mode's rule assigns to that stamp. The device's clock may lead real time by up to $\sigma$ slots, as in Assumption~\ref{ass:sig}; nothing here asks for an exact clock. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). It is stated directly, as an operational assumption, rather than derived from the signing execution of Theorem~\ref{thm:lc}: \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
+\begin{assumption}[Honest custody --- per-key surfaces]\label{ass:rotation-honest}
+For mode 3 and the untimed mode-2 form: fix the rotation mode, a stamp $s$ whose seat is not rented, and a key version $j$ of its producer $i$ that has never been stolen. Every block stamped $s$ that verifies under version $j$ was signed by $i$'s own signing device, and that device signs at most one block per stamp, ever (a persisted signing record), declaring the version the mode's rule assigns to that stamp. The device's clock may lead real time by up to $\sigma$ slots, as in Assumption~\ref{ass:sig}; nothing here asks for an exact clock. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). It is stated directly, as an operational assumption, rather than derived from the signing execution of Theorem~\ref{thm:lc}: \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
 \end{assumption}
 
 \emph{Without theft, formally.} A \emph{lost} key (destroyed, not
@@ -933,93 +944,139 @@ deployment that must survive key theft runs mode 2 or mode 3.
 \paragraph{Mode 2: scheduled rotation.} \emph{The rule.} The version in
 force at slot $s$ --- modes 2 and 3 call it the \emph{generation} --- is
 a protocol constant
-$\mathit{gen}(s) = \lfloor s/R \rfloor$: a pure function of the slot,
-identical on every chain, pinned at the verifier and never peer-supplied.
-The validator adds one check: $\mathit{gen}(\mathit{slot}) \le
-\mathit{keyIndex}$ (\code{validSignedChainSched}). Because the pin reads
-nothing off any chain, a fork \emph{cannot disagree} with the real chain
-about which keys are retired --- the fake-past construction that defeats mode 1 is
+$\mathit{gen}(s) = \lfloor s/E \rfloor$ for an era length $E$: a pure
+function of the slot, identical on every chain, pinned at the verifier
+and never peer-supplied. The validator adds one check:
+$\mathit{gen}(\mathit{slot}) \le \mathit{keyIndex}$
+(\code{validSignedChainSched}). Because the pin reads nothing off any
+chain, a fork \emph{cannot disagree} with the real chain about which keys
+are retired --- the fake-past construction that defeats mode 1 is
 structurally impossible.
 
-\begin{theorem}[Scheduled safety under horizon budget; Lean
-\code{sched\_recent\_tip\_ancestor\_agreement\_horizon},\hfil\penalty0
-\code{sched\_recent\_tip\_ancestor\_mem\_horizon}]\label{thm:sched}
-Under the scheduled validator (\code{validSignedChainSched}) on both
-chains; the scheduled signature surface (\code{SchedUnforgeable},
-recency-scoped with $\mathit{now}$, $\Delta$); hash injectivity over
-declared-version signatures (Assumption~\ref{ass:hash}, \code{SignedHashInjective});
-the corruption budget \code{ByzantineBoundedFrom}~$H$~$n$~(\code{badSched} \dots)
---- at most $\fmax$ bad slots in every $n$-slot window starting at or after
-a horizon $H$; the horizon side conditions $H + n \le \mathit{tip}.\mathit{slot} + 1$
-for both tips; recency $\mathit{now} \le \mathit{tip}.\mathit{slot} + \Delta$
-for both tips; sufficient chain length $n < \mathit{length}$ (\code{hLong},
-for both chains at equal heights; for the lower chain at unequal heights);
-and the tip-height relation of each form (\code{hTipHeight}: equal
-heights; \code{hLe}: the first tip no higher). Then two accepted chains agree: at equal tip heights, on the block $n$ below
-each tip; at unequal tip heights, the lower chain's $n$-deep ancestor block
-is a block of the taller chain, at least $n$ deep there.
-There is no shared-genesis hypothesis: for two such chains both longer
-than $n$ blocks, genesis agreement is a consequence
-(\code{sched\_recent\_genesis\_agreement\_horizon}).
-A global budget implies the horizon budget at every $H$
-(\code{byzantineBoundedFrom\_of\_bounded}); the earlier global-budget
-theorem \code{scheduled\_client\_safety}, which also assumes a shared
-genesis, is kept for reference.
-No anchor, no re-verification cadence, no confirmation wait: a full-chain client holds a
-clock and the constant $\mathit{gen}$ (a certificate client also holds the
-genesis), and may stay offline arbitrarily long.
+\emph{What it guarantees: theft safety, from Theorem~\ref{thm:lc}
+itself.} Mode 2 needs no assumption beyond those of
+Theorem~\ref{thm:lc}; it only reads them at the schedule. Write
+$\mathit{Controlled}(i, r)$ for ``seat $i$ is controlled by the adversary
+at real slot $r$'' and $\mathit{Stolen}(i, j, r)$ for ``someone other
+than seat $i$'s honest holder can sign under its version-$j$ key at real
+slot $r$''; both are arbitrary in time. Stamp $s$, with producer
+$i = s \bmod n$, is \emph{exposed} at $r$ when $\mathit{Controlled}(i, r)$
+holds or $\mathit{Stolen}(i, j, r)$ holds for some $j \ge \mathit{gen}(s)$
+(\code{schedExposed}). A block is \emph{admissible} when it verifies under
+its declared version and that version is at least $\mathit{gen}$ of its
+slot (\code{SchedAdmissible}) --- the per-block content of the mode-2
+validator. Assumption~\ref{ass:sig} is needed only for admissible blocks
+(\code{SigningExecutionOn}, \code{HonestClockOn}): a block signed under a
+key already retired at its stamp falls outside it, since no validator
+accepts that block.
+
+\begin{theorem}[Mode 2 under key theft; Lean
+\code{sched\_exposure\_agreement},\hfil\penalty0
+\code{sched\_exposure\_certified\_agreement}]\label{thm:sched}
+Fix $n \ge 1$, a deployment genesis $G$, a schedule $\mathit{gen}$, and any
+control and theft histories $\mathit{Controlled}$ and $\mathit{Stolen}$.
+Assume the signing execution and honest clocks of Theorem~\ref{thm:lc}
+for admissible blocks, over the mode-2 exposure; the exposure budget of
+Theorem~\ref{thm:lc} (\code{ExposureBounded}~$n$~$\ell$~$\varphi$) over
+the same exposure, lookback condition included; and that the verifier is
+at real slot $R$ and every admissible block was produced at some real
+slot no later than $R$ (\code{hbridge}). Take two signed chains that both
+pass the mode-2 validator (\code{validSignedChainSched}), both start at
+$G$, and both have tips recent in real time
+($R \le \mathit{tip.slot} + \varphi$). Then they agree at every height $h$
+with $h + n$ below both lengths. The same holds for two certificate
+presentations in the form of Theorem~\ref{thm:lc}, with claims grounded
+under the scheduled grounding (\code{GroundedCertSched}: each fold adds
+the pin check) and admissible suffix blocks: any histories the two
+groundings attest (\code{GroundedHistorySched}), each concatenated with its
+suffix, agree at every height $h$ with $h + n$ below both full lengths.
 \end{theorem}
 
-\emph{Operator duties.} Keep one offline \emph{cold root} per seat and
-delegate each generation's signing key just in time for its era; do not
-expose a generation's key before its era approaches. Two of these
-duties are \emph{named operational assumptions the cited theorems do
-not consume}: \emph{not-before} --- a generation's key cannot be stolen
-before it is derived; formalized separately as
-\code{NoPrematureTheft} in the timed theft layer --- and
-\emph{cold-root custody}, which stays informal. They matter
-because the census counts \emph{any} stolen not-yet-retired version,
-future generations included, against every window until that
-generation's era ends: a key derived early, or a stolen cold root,
-consumes the budget for every era it covers, and the $T$/$R$ sizing
-holds only under the just-in-time discipline. The era length $R$
-is a deployment dial: longer eras mean rarer cold-root ceremonies but a
-longer exposure window for a stolen current key. No erasure is
-required --- a retired key is harmless \emph{by rule}, not by secrecy: a
-chain whose tip declares a generation whose era ended more than $n$
-slots ago fails the recency check
-(\code{sched\_oldkey\_fork\_stale}). The statements carry to the
-certificate presentation with no floor snapshot in the claim --- the
-certificate state stays the plain one, each fold merely adding the pin
-check --- since the pin is computed from each block's own slot (the
-grounding \code{GroundedCertSched};
-\code{sched\_recent\_certified\_suffix\_agreement\_horizon}, under the same
-horizon budget and side conditions as Theorem~\ref{thm:sched}). \emph{What breaks first:} (i) a
-peer-supplied schedule --- the pin must be a verifier constant, or a
-zero schedule from the network readmits every retired key; (ii) theft
-of the \emph{current} generation, which signs freely until $n$ slots
-past its era's end --- size $T$ and the era length $R$ together;
-(iii) a stolen \emph{cold root} --- every future era at once.
+Both forms are instances of one strengthening of the core, proved once:
+Theorems~\ref{thm:lc} and~\ref{thm:forge} hold with
+Assumption~\ref{ass:sig} restricted to any per-block predicate that every
+non-genesis block of both chains satisfies
+(\code{exposure\_agreement\_on}, \code{exposure\_no\_early\_signing\_on},
+\code{exposure\_certified\_agreement\_on}); the unrestricted theorems are
+the case of the trivial predicate. The restriction is what the
+rotation pin pays for: the exposure is per stamp, over every version that
+can sign that stamp admissibly, so the gap between one key's safety and a
+slot's safety that the per-key surfaces below must work around does not
+arise.
+
+\emph{What the budget charges.} The budget is
+Assumption~\ref{ass:budget}'s, and the schedule makes it fine-grained. A
+stolen version $j$ exposes only stamps whose generation is at most $j$.
+Since theft persists, it is charged against every window whose stretch of
+real time reaches the theft, until the schedule passes $j$: from about
+the theft's real time to the end of era $j$, and never against a window
+whose stretch ended before the theft. Healing is a consequence of the
+exposure, not a definition. No erasure is required: a retired key, stolen
+or not, exposes nothing at any stamp it can no longer sign. A key stolen
+\emph{early} --- derived ahead of its era and taken --- is a stolen
+version at or above the floor of every stamp until its era ends, and is
+charged accordingly; a stolen \emph{cold root} is a theft of every later
+version of its seat at once, so that seat counts as exposed in every later
+window, like a Byzantine seat. Key-provisioning discipline is therefore
+not an extra assumption: it is how an operator stays within the budget the
+theorem consumes. One modelling rule remains: $\mathit{Stolen}$ must list
+every version the adversary can sign under. \emph{Version independence}
+--- stealing version $j$ yields nothing about $j' > j$, which
+key-insulated signatures~\cite{keyinsulated} provide off the shelf --- is
+what keeps that list as short as what was actually taken.
+
+\emph{Operator duties.} Keep one offline cold root per seat and delegate
+each generation's signing key just in time for its era; then a theft costs
+only the rest of the live era. The era length $E$ is a deployment dial:
+longer eras mean rarer cold-root ceremonies but a longer budget charge per
+stolen live key. A retired key is harmless \emph{by rule}, not by secrecy;
+separately, a chain whose tip declares a generation whose era ended more
+than $n$ slots ago fails the recency check
+(\code{sched\_oldkey\_fork\_stale}). \emph{What breaks first:} (i) a
+peer-supplied schedule --- the pin must be a verifier constant, or a zero
+schedule from the network readmits every retired key; (ii) theft of the
+\emph{current} generation, charged until its era ends --- size the budget
+and $E$ together; (iii) a stolen cold root, which costs its seat for
+good.
+
+\emph{Without a genesis.} An earlier, untimed form keeps the full-chain
+client genesis-free, deriving genesis agreement instead of assuming it
+(\code{sched\_recent\_tip\_ancestor\_agreement\_horizon},
+\code{sched\_recent\_tip\_ancestor\_mem\_horizon},
+\code{sched\_recent\_genesis\_agreement\_horizon}): at equal tip heights
+two accepted chains agree on the block $n$ below each tip, and at unequal
+heights the lower chain's $n$-deep ancestor is a block of the taller
+chain, at least $n$ deep there. It consumes the scheduled per-key
+signature surface (\code{SchedUnforgeable},
+Assumption~\ref{ass:rotation-honest}) and the untimed census budget of
+the adversary paragraph above, from a horizon $H$ on
+(\code{ByzantineBoundedFrom}~$H$~$n$~(\code{badSched}~\dots), with side
+conditions $H + n \le \mathit{tip.slot} + 1$), and its census counts a
+stolen not-yet-retired version from the start of time, so early theft and
+cold-root custody must be assumed rather than charged. Its certificate
+form is \code{sched\_recent\_certified\_suffix\_agreement\_horizon}. We
+keep it in the artifact for a client that cannot hold a genesis;
+Theorem~\ref{thm:sched} supersedes it otherwise.
 
 \paragraph{A realistic mode-2 deployment, end to end.} At the ceremony:
 each seat generates its cold root offline and the deployment publishes
-$\mathit{gen}(s) = \lfloor s/R \rfloor$ with, say, $R$ = one week of
+$\mathit{gen}(s) = \lfloor s/E \rfloor$ with, say, $E$ = one week of
 slots. Weekly, each seat's cold root signs one delegation for the
 coming generation and goes back in the safe; the live signing key never
 predates its era by more than the provisioning margin. Clients are
-wallets holding the genesis, a clock and $\mathit{gen}$; they sleep for months and
-sync on wake. What must then be true of the world: the scheduled surface
-and hash injectivity; the standing clock assumption
-(Assumption~\ref{ass:clock}); not-before and cold-root custody (the ceremony
-discipline above); and the horizon-scoped budget of Theorem~\ref{thm:sched}
-with no retroactive reading ($H$ chosen so no slot more than $2n - 1$
-before the clock is ever budgeted). The week-long exposure window per
-stolen live key is what $T$ is sized against. Through
+wallets holding the genesis, a clock and $\mathit{gen}$; they sleep for
+months and sync on wake. What must then be true of the world:
+Assumption~\ref{ass:sig} for admissible blocks, hash collision resistance
+(Assumption~\ref{ass:hash}), the standing clock assumption
+(Assumption~\ref{ass:clock}), and the windowed budget of
+Assumption~\ref{ass:budget} over the mode-2 exposure. A stolen live key
+is charged for at most the rest of its week plus the window's stretch,
+and that is what the budget is sized against. Through
 Theorem~\ref{thm:sched} and the parent-id chain
-(\code{same\_block\_same\_prefix}), any two accepted chains agree on the
-whole confirmed prefix whatever happened while the wallet slept. A
-certificate client gets the same guarantee under the same horizon budget
-(\code{sched\_recent\_certified\_suffix\_agreement\_horizon}).
+(\code{same\_block\_same\_prefix}), any two accepted recent chains agree
+on everything at least $n$ blocks below the lower tip, whatever happened
+while the wallet slept. A certificate client gets the same guarantee
+(\code{sched\_exposure\_certified\_agreement}).
 
 \paragraph{Mode 3: free-cadence lockstep.} \emph{The rule.} No schedule
 anywhere. The roster advances a single shared generation counter at
@@ -1038,9 +1095,10 @@ roster tracks one monotone counter; honest signatures declare their
 grid window's value; the genesis declares the counter's initial value; hash
 injectivity; the same $\rho$/$T$ budget, assessed at the
 one-grid-window-lagged counter over the pin-free core validator's signature
-surface): the same anchor-free agreement as Theorem~\ref{thm:sched}, in
-both forms (\code{lockstep\_recent\_tip\_ancestor\_mem} at unequal
-heights). The client holds even less than
+surface): the anchor-free agreement of the untimed mode-2 form ---
+at equal tip heights, on the block $n$ below each tip; at unequal
+heights (\code{lockstep\_recent\_tip\_ancestor\_mem}), the lower chain's
+$n$-deep ancestor is a block of the taller chain, at least $n$ deep there. The client holds even less than
 mode 2's --- genesis and a clock, with no schedule to store at all.
 \end{theorem}
 
@@ -1078,7 +1136,7 @@ The route is a second pinning theorem that needs neither induction nor genesis (
 \emph{Operator duties.} Two, and they are the mode's real price:
 \emph{lockstep coordination} --- all honest signers track the one counter
 (a split here is an operational failure the theorems do not cover) ---
-and \emph{real erasure} of retired key material at each switch. Its budget credit is now formal: with theft time-stamped, erasure is the hypothesis that no generation is stolen after the roster has moved past it (\code{ErasureTimedLock}), and it is \emph{consumed} --- it turns the census a deployment attests while a generation is live into the per-generation census Theorem~\ref{thm:lock-gen} needs (\code{genBound\_of\_preRetirementBound}; end to end, \code{lockstep\_client\_safety\_timed}). A deployment budgets $T$ seats lost \emph{per generation, while it is live}, not $T$ across all generations. In mode 2 the erasure field is documentary and \emph{not-before} carries the count; mode 3 is the mirror image. Erasure
+and \emph{real erasure} of retired key material at each switch. Its budget credit is now formal: with theft time-stamped, erasure is the hypothesis that no generation is stolen after the roster has moved past it (\code{ErasureTimedLock}), and it is \emph{consumed} --- it turns the census a deployment attests while a generation is live into the per-generation census Theorem~\ref{thm:lock-gen} needs (\code{genBound\_of\_preRetirementBound}; end to end, \code{lockstep\_client\_safety\_timed}). A deployment budgets $T$ seats lost \emph{per generation, while it is live}, not $T$ across all generations. In mode 2 neither erasure nor provisioning discipline is a hypothesis: the schedule makes a retired key harmless, and the timed budget charges early theft directly (Theorem~\ref{thm:sched}); mode 3, with no schedule, needs erasure instead. Erasure
 that is not real is silent to the protocol: keys held in an HSM or only
 ever in RAM are defensible; flash storage, which does not erase by
 overwriting, is not.
@@ -1101,8 +1159,8 @@ true of the world: the core surface over the pin-free validator and hash
 injectivity (the adversary paragraph's rescopings); the standing clock
 assumption (Assumption~\ref{ass:clock}); the coordination discipline above (a
 silent split among honest signers is an operational failure outside the
-theorems); and \emph{either} the same $\rho$/$T$ budget as mode 2's
-global form, assessed at the one-grid-window-lagged counter
+theorems); and \emph{either} the same $\rho$/$T$ budget as the untimed
+mode-2 form, read globally, assessed at the one-grid-window-lagged counter
 (Theorem~\ref{thm:lock}, depth $n$), \emph{or}, at confirmation depth
 $2n$, rent at most $\rho$ per window and, for every generation $j$, at
 most $T$ seats whose generation-$j$ key is stolen while $j$ is live
@@ -1131,11 +1189,14 @@ First, mode 1 carries no theft guarantee (see above).
 Second, the mode-2 and mode-3 results are model-level: the imported Rust
 validator carries the mode-1 floor check (bridged in \texttt{Rust/BridgeK.lean})
 but neither the schedule pin nor the lockstep rule.
-Third, the per-mode signature surfaces are not derived from the timed model:
-as witnessed by \code{badSched\_single\_key\_safe\_not\_enough} and
+Third, mode 3's signature surface, and that of the untimed mode-2 form,
+are not derived from the timed model: as witnessed by
+\code{badSched\_single\_key\_safe\_not\_enough} and
 \code{badKeyrot\_single\_key\_safe\_not\_enough}, single-key safety does not
-imply slot safety, so per-mode honest custody is stated directly as an
-operational assumption (Assumption~\ref{ass:rotation-honest}).
+imply slot safety, so their honest custody is stated directly as an
+operational assumption (Assumption~\ref{ass:rotation-honest}). Mode 2's
+theft theorem has no such surface: it consumes Assumption~\ref{ass:sig}
+itself, restricted to admissible blocks.
 
 \subsection{Liveness, and the slot time}
 \label{sec:liveness}
@@ -1355,8 +1416,8 @@ faithfulness of the circuit backend, stated rather than proved (the
 equivalence lemma \code{valid\_chain\_be\_validChain} is proved at the
 native u64 instantiation) --- everything not machine-checked is a named
 hypothesis standing next to the theorem that consumes it: the operational
-assumptions of Section~\ref{sec:assumptions}; the per-mode signature
-surfaces of modes 2 and 3 (assumed, not derived from the timed model;
+assumptions of Section~\ref{sec:assumptions}; the signature
+surfaces of mode 3 and of the untimed mode-2 form (assumed, not derived from the timed model;
 Assumption~\ref{ass:rotation-honest} records their operational content
 directly); version independence
 of keys under theft (instantiable with key-insulated
@@ -1365,8 +1426,9 @@ anchor (the roster commitment to the cold roots); and the recency check
 itself, which lives in the unverified node loop since the pure validators
 carry no clock --- threading $\mathit{now}$ through them is mechanical
 future work; and the per-mode operational assumptions of
-Section~\ref{sec:rotation} (not-before and cold-root custody; lockstep
-coordination and erasure).
+Section~\ref{sec:rotation} (lockstep coordination and erasure in mode 3;
+in mode 2, key-provisioning discipline is charged to the budget, not
+assumed).
 
 \paragraph{The long-range residual, and options against it.} Exposure
 after a window's stretch of real time does not count against it, so a
