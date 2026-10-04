@@ -151,3 +151,9 @@ STATUS: READY FOR REVIEW
 - Paper: mode 1 is stated as loss recovery only (Theorem thm:keyloss), with the
   fake-past attack showing it is not theft-safe; Thm 3, the anchor and the sync
   rule are removed (8f04221 and the abstract fix after it).
+
+### Pass 17 (2026-10-04): certificate forms under the deployment-real budgets
+- `sched_recent_certified_suffix_agreement_horizon` (mode 2, horizon budget; a07de0a)
+  and `lockstepGen_recent_certified_suffix_agreement` (mode 3, per-generation census
+  at depth 2n; 8e20bf9), guards Molt/AxiomsSchedCertHorizon.lean and
+  Molt/AxiomsLockstepCertGen.lean. Paper no longer lists them as future work.
