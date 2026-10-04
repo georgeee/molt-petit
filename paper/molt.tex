@@ -452,6 +452,18 @@ ceremony. The delegation certificate must bind the version: one delegate
 key answering for several versions is exactly the key reuse that
 Section~\ref{sec:results} has to exclude by assumption.
 
+How the theorems read $\mathit{verify}$. The model's signature predicates
+(``$B$ carries a verifying signature'') are existential over signatures,
+so they are read against the ideal signature functionality
+$\mathcal{F}_{\mathrm{SIG}}$~\cite{canettisig} at the verifier's real slot: a
+signature verifies exactly when it has been produced by then --- by an
+honest signer, or by whoever holds an exposed key. A scheme realizes this
+reading precisely when it is EUF-CMA~\cite{canettisig}. The reading matters
+for one hypothesis: \code{hbridge} (``every admissible block was produced
+by real slot $R$'') is then plain causality, whereas against a concrete
+scheme's $\mathit{verify}$, which accepts signatures nobody has computed
+yet, it would be false.
+
 \subsection{The verifier rule}
 \label{sec:verifier-rule}
 
@@ -613,7 +625,8 @@ after a restart (with (a): \code{honest\_once}); its clock leads real time
 by at most $\sigma$ slots, so it never signs a stamp more than $\sigma$
 slots ahead (\code{HonestClockOn}); and every admissible block accepted
 by the verifier at real slot $R$ was produced at some real slot no later
-than $R$ (\code{hbridge}, causality plus EUF-CMA).
+than $R$ (\code{hbridge}, causality plus EUF-CMA, under the reading of
+$\mathit{verify}$ in Section~\ref{sec:protocol}).
 The id-formation contract of Section~\ref{sec:protocol} ensures that an
 admissible block is signed only once its parent is available
 (\code{chain\_order}): its signature covers its id, whose preimage
@@ -1571,6 +1584,11 @@ E.~Buchman, J.~Kwon, Z.~Milosevic.
 \bibitem{hotstuff}
 M.~Yin, D.~Malkhi, M.~K.~Reiter, G.~Golan~Gueta, I.~Abraham.
 \emph{HotStuff: BFT Consensus in the Lens of Blockchain}. PODC 2019.
+
+\bibitem{canettisig}
+R.~Canetti.
+\emph{Universally Composable Signature, Certification, and
+Authentication}. CSFW 2004.
 
 \bibitem{forwardsec}
 M.~Bellare, S.~K.~Miner.
