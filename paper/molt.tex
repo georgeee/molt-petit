@@ -861,8 +861,8 @@ $j' > j$, which key-insulated signatures~\cite{keyinsulated} provide off
 the shelf. Hash injectivity (Assumption~\ref{ass:hash}) is consumed
 alongside, over declared-version signed blocks (\code{SignedDeclared}).
 
-\begin{assumption}[No back-dating, honest custody --- per mode]\label{ass:rotation-honest}
-Fix rotation mode 2 or 3 and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). It is stated directly, as an operational assumption, rather than derived from the signing execution of Theorem~\ref{thm:lc}: \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
+\begin{assumption}[Honest custody --- per mode]\label{ass:rotation-honest}
+Fix rotation mode 2 or 3, a stamp $s$ whose seat is not rented, and a key version $j$ of its producer $i$ that has never been stolen. Every block stamped $s$ that verifies under version $j$ was signed by $i$'s own signing device, and that device signs at most one block per stamp, ever (a persisted signing record), declaring the version the mode's rule assigns to that stamp. The device's clock may lead real time by up to $\sigma$ slots, as in Assumption~\ref{ass:sig}; nothing here asks for an exact clock. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). It is stated directly, as an operational assumption, rather than derived from the signing execution of Theorem~\ref{thm:lc}: \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
 \end{assumption}
 
 \emph{Without theft, formally.} A \emph{lost} key (destroyed, not
@@ -1134,7 +1134,7 @@ but neither the schedule pin nor the lockstep rule.
 Third, the per-mode signature surfaces are not derived from the timed model:
 as witnessed by \code{badSched\_single\_key\_safe\_not\_enough} and
 \code{badKeyrot\_single\_key\_safe\_not\_enough}, single-key safety does not
-imply slot safety, so per-mode no-back-dating is stated directly as an
+imply slot safety, so per-mode honest custody is stated directly as an
 operational assumption (Assumption~\ref{ass:rotation-honest}).
 
 \subsection{Liveness, and the slot time}
