@@ -43,6 +43,8 @@ example
     B = B' :=
   lockstepGen_recent_certified_suffix_agreement hn hP hcl hcl' hTipS hTipS' hLink hLinks hDense hLockS hSigned hLink' hLinks' hDense' hLockS' hSigned' hRecent hRecent' hB hB' hHeight hDeep hDeep'
 
-/-- info: 'MoltPetit.Model.lockstepGen_recent_certified_suffix_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'MoltPetit.Model.lockstepGen_recent_certified_suffix_agreement' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.lockstepGen_recent_certified_suffix_agreement

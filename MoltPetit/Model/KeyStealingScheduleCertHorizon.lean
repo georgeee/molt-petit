@@ -1,4 +1,5 @@
 import MoltPetit.Model.KeyStealingScheduleHorizon
+import MoltPetit.Model.KeyStealingScheduleCert
 
 /-!
 # Mode 2 certificates under the horizon-scoped budget
@@ -53,6 +54,69 @@ theorem sched_recent_certified_suffix_agreement_horizon
     (hDeep  : i  + n < (s₁  :: srest ).length)
     (hDeep' : i' + n < (s₁' :: srest').length) :
     B = B' := by
-  sorry
+  -- reconstruct the two full core-accepted chains
+  obtain ⟨c, hV, hPin, hHead, hLen, hCov⟩ :=
+    groundedCertSched_suffix_history hn hcl hTipS hLink hLinks hDense hPinS hSigned
+  obtain ⟨c', hV', hPin', hHead', hLen', hCov'⟩ :=
+    groundedCertSched_suffix_history hn hcl' hTipS' hLink' hLinks' hDense' hPinS' hSigned'
+  -- materialize the signed chains
+  obtain ⟨sc, hstrip, hsigs⟩ :=
+    exists_signedChain_of_covered (Sig := Sig) fun B hB => hCov B hB
+  obtain ⟨sc', hstrip', hsigs'⟩ :=
+    exists_signedChain_of_covered (Sig := Sig) fun B hB => hCov' B hB
+  have hVal : validSignedChainSchedCore n schedule ops registry sc = true := by
+    rw [validSignedChainSchedCore, Bool.and_eq_true, Bool.and_eq_true]
+    exact ⟨⟨hsigs, by rw [hstrip]; exact hV⟩, by rw [hstrip]; exact hPin⟩
+  have hVal' : validSignedChainSchedCore n schedule ops registry sc' = true := by
+    rw [validSignedChainSchedCore, Bool.and_eq_true, Bool.and_eq_true]
+    exact ⟨⟨hsigs', by rw [hstrip']; exact hV'⟩, by rw [hstrip']; exact hPin'⟩
+  -- recent tips of the full chains
+  have hfullTip : (stripSigs sc).getLast? = some sTip := by
+    rw [hstrip, List.getLast?_append, hTipS]
+    rfl
+  have hfullTip' : (stripSigs sc').getLast? = some sTip' := by
+    rw [hstrip', List.getLast?_append, hTipS']
+    rfl
+  -- locate the blocks at their global heights
+  have hBfull : blockAt? (stripSigs sc) (c.length + i) = some B := by
+    rw [hstrip]
+    unfold blockAt? at hB ⊢
+    rw [List.getElem?_append_right (by omega)]
+    simpa using hB
+  have hB'full : blockAt? (stripSigs sc') (c'.length + i') = some B' := by
+    rw [hstrip']
+    unfold blockAt? at hB' ⊢
+    rw [List.getElem?_append_right (by omega)]
+    simpa using hB'
+  have hkEq : c'.length + i' = c.length + i := by omega
+  rw [hkEq] at hB'full
+  have hVc  : ValidChain n (stripSigs sc)  := validChain_of_validSignedChainSchedCore hVal
+  have hVc' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSchedCore hVal'
+  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedDeclared n ops registry b :=
+    fun b hb => Or.inr (signedDeclared_of_mem_schedCore hVal  hb)
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
+    fun b hb => Or.inr (signedDeclared_of_mem_schedCore hVal' hb)
+  rcases Nat.le_total sTip.slot sTip'.slot with hle | hle
+  · have hId : IdInjective (chainUnionRecord sc sc') := idInjective_keyrot hHash hSig hSig'
+    have hUniq := honestSlotsUnique_schedCore hUnf hVal hVal'
+      ⟨sTip, hfullTip, hRecent⟩ ⟨sTip', hfullTip', hRecent'⟩
+    obtain ⟨P, hPc, hPc'⟩ := horizon_shared_prefix hn hUniq hId hVc hVc'
+      chainInRecord_left chainInRecord_right hfullTip hfullTip' hle
+      (hBudget _ (by omega)) (k := c.length + i)
+      (by rw [hstrip, List.length_append]; omega)
+    rw [hBfull] at hPc
+    rw [hB'full] at hPc'
+    rw [Option.some.inj hPc, Option.some.inj hPc']
+  · have hId : IdInjective (chainUnionRecord sc' sc) := idInjective_keyrot hHash hSig' hSig
+    have hUniq := honestSlotsUnique_schedCore hUnf hVal' hVal
+      ⟨sTip', hfullTip', hRecent'⟩ ⟨sTip, hfullTip, hRecent⟩
+    obtain ⟨P, hPc', hPc⟩ := horizon_shared_prefix hn hUniq hId hVc' hVc
+      chainInRecord_left chainInRecord_right hfullTip' hfullTip hle
+      (hBudget _ (by omega)) (k := c.length + i)
+      (by rw [hstrip', List.length_append]; omega)
+    rw [hBfull] at hPc
+    rw [hB'full] at hPc'
+    rw [Option.some.inj hPc, Option.some.inj hPc']
+
 
 end MoltPetit.Model

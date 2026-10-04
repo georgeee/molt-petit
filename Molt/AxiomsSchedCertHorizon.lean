@@ -49,6 +49,8 @@ example
     B = B' :=
   sched_recent_certified_suffix_agreement_horizon hn hUnf hHash hBudget hcl hcl' hTipS hTipS' hLink hLinks hDense hPinS hSigned hLink' hLinks' hDense' hPinS' hSigned' hRecent hRecent' hH hH' hB hB' hHeight hDeep hDeep' 
 
-/-- info: 'MoltPetit.Model.sched_recent_certified_suffix_agreement_horizon' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'MoltPetit.Model.sched_recent_certified_suffix_agreement_horizon' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.sched_recent_certified_suffix_agreement_horizon
