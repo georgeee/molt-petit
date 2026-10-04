@@ -94,7 +94,7 @@ everything $n$ blocks below it: any two such certificates agree at every
 height at least $n$ below both tips, so two clients acting this way never
 act on conflicting blocks --- and that guarantee is a machine-checked
 theorem about the shipped validator code
-(\code{Rust.rust\_timed\_certified\_agreement}; for the TypeScript
+(\code{rust\_timed\_certified\_agreement}; for the TypeScript
 twin, \code{ts\_timed\_certified\_agreement}) under the assumptions of
 Section~\ref{sec:assumptions}, not a design argument. (One input is
 checked outside that code: block ids are recomputed by the deployment's
@@ -181,9 +181,7 @@ differ only in what computes the pin; in what they guarantee, they
 differ only against key \emph{theft}. Producers rotate; clients never
 react to rotations --- each client duty below is a fixed rule in time,
 never a response to an event. (Names in \code{typewriter} are
-Lean theorems and definitions; every one resolves in the companion
-library \code{Molt/}, except the per-implementation bridge names of
-Section~\ref{sec:impl}.)
+Lean theorems and definitions; see Section~\ref{sec:protocol}.)
 
 \paragraph{Without theft, every mode is Theorem~1.}
 Every adversary in this paper can make a producer \emph{lose} its key
@@ -262,7 +260,7 @@ cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)
 no theft, any mode & any of the three &
   genesis + clock & no & no &
   Thm.~\ref{thm:lc}: \code{timed\_light\_client\_safety}
-  (+~Rust: \code{Rust.rust\_timed\_certified\_agreement}); per validator
+  (+~Rust: \code{rust\_timed\_certified\_agreement}); per validator
   \code{keyrot\_loss\_agreement}, \code{sched\_loss\_agreement},
   \code{lockstep\_loss\_agreement} \\
 \addlinespace
@@ -300,10 +298,11 @@ each contract rests on (Section~\ref{sec:results}).
 \section{The protocol}
 \label{sec:protocol}
 
-Machine-checked claims cite their Lean names in \code{typewriter}; every
-cited name resolves in the companion library \code{Molt/}, except the
-per-implementation bridge names of Section~\ref{sec:impl}, which live
-with their pipelines.
+Machine-checked claims cite their Lean names in \code{typewriter}. A
+cited theorem \code{xxx} is \code{MoltPaper.xxx} in
+\code{Paper/Proofs.lean}, and its statement is \code{thm\_xxx} in
+\code{Paper/Statements.lean}; every cited definition appears, as its
+source text, in the self-contained \code{Paper/Bundle.lean}.
 
 \subsection{Setting}
 
@@ -734,15 +733,18 @@ mode-2 form face it.
 Every result below is a Lean theorem, proved once against the model.
 The light-client theorem (Theorem~\ref{thm:lc}) is carried to each
 implementation by that implementation's soundness bridge
-(Section~\ref{sec:impl}): \code{Rust.rust\_timed\_certified\_agreement}
+(Section~\ref{sec:impl}): \code{rust\_timed\_certified\_agreement}
 for the Rust validator and \code{ts\_timed\_certified\_agreement} for the
 TypeScript one. The Rust bridge also covers the validator's
 key-discipline conjunct. Theorem~\ref{thm:forge}, the rotation-mode
 results of Section~\ref{sec:rotation} and the liveness theorem are,
-today, proved at model level. A guarded \code{\#print axioms}
-per headline theorem is checked in (\code{Molt/Axioms.lean}), so the build
-fails --- rather than a reviewer noticing --- if any proof ever assumes
-more than classical logic.
+today, proved at model level. Each result the paper cites as
+\code{xxx} is stated as \code{thm\_xxx} in \code{Paper/Statements.lean}
+and proved as \code{xxx} in \code{Paper/Proofs.lean};
+\code{Paper/Bundle.lean} is a generated, self-contained file of those
+statements and every definition they use. The build checks each proof's
+axioms, so it fails --- rather than a reviewer noticing --- if any proof
+ever assumes more than classical logic.
 
 \subsection{Light-client safety}
 \label{sec:lc}
@@ -1293,21 +1295,21 @@ it:
 \begin{itemize}
 \item \emph{The native validator} is imported into Lean and proved sound
   against the model: if the extracted code accepts a chain, the semantic
-  predicate holds (\code{Rust.rust\_valid\_chain\_sound} and companions).
+  predicate holds (\code{rust\_valid\_chain\_sound} and companions).
   Soundness is the only direction safety needs --- completeness is a
   liveness concern --- and it is what carries Theorem~\ref{thm:lc} to the shipped code
-  (\code{Rust.rust\_timed\_certified\_agreement}). Id formation is
+  (\code{rust\_timed\_certified\_agreement}). Id formation is
   checked by the hashing layer, not by the extracted validator, so that
   theorem and its TypeScript twin take it as a hypothesis on the presented
   blocks (\code{hFormedS}) and as part of each grounding fold. The bridges cover the
   validator's structural core and its key-discipline conjunct
-  (\code{Rust.rust\_valid\_chain\_sound}, \code{Rust.rust\_valid\_chain\_k\_sound});
+  (\code{rust\_valid\_chain\_sound}, \code{rust\_valid\_chain\_k\_sound});
   the three rotation \emph{pins} of Section~\ref{sec:rotation} are,
   today, stated and checked at model level.
 \item \emph{The circuit} instantiates the same source's backend-generic
   validator (\code{valid\_chain\_be}) over plonky2, so the recursive
   certificate proves exactly the predicate that was verified
-  (\code{Rust.valid\_chain\_be\_validChain}); the per-gadget faithfulness of
+  (\code{valid\_chain\_be\_validChain}); the per-gadget faithfulness of
   the circuit backend is the one remaining trust assumption, stated
   rather than proved.
 \item \emph{A TypeScript twin} (\code{moltPetit.ts}) reaches Lean through
@@ -1486,7 +1488,7 @@ Section~\ref{sec:impl} --- the Lean kernel; the pinned translation
 front-ends (Charon + Aeneas, Thales), including the hand-audited
 emitter-bug corrections in the vendored TS emission; and the per-gadget
 faithfulness of the circuit backend, stated rather than proved (the
-equivalence lemma \code{Rust.valid\_chain\_be\_validChain} is proved at the
+equivalence lemma \code{valid\_chain\_be\_validChain} is proved at the
 native u64 instantiation) --- everything not machine-checked is a named
 hypothesis standing next to the theorem that consumes it: the operational
 assumptions of Section~\ref{sec:assumptions}; id formation, which the

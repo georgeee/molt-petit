@@ -16,17 +16,20 @@ trap 'rm -f "$log"' EXIT
 "${LAKE[@]}" build 2>&1 | tee "$log"
 
 echo "== sorry check (Lean's own warnings, this repository's sources only)"
-if grep -E "^(warning|error): (\./)?(Molt|MoltPetit|Rust|Thales|Main)[^:]*\.lean:.*declaration uses .sorry." "$log"; then
+if grep -E "^(warning|error): (\./)?(Molt|MoltPetit|Rust|Thales|Paper|Main)[^:]*\.lean:.*declaration uses .sorry." "$log"; then
   echo "found sorry" >&2
   exit 1
 fi
 
 echo "== axiom declaration scan"
 if grep -rnE '^[[:space:]]*(private[[:space:]]+)?axiom[[:space:]]' --include='*.lean' \
-     Molt MoltPetit Rust Thales Molt.lean MoltPetit.lean Rust.lean Thales.lean Main.lean; then
+     Molt MoltPetit Rust Thales Paper Molt.lean MoltPetit.lean Rust.lean Thales.lean Paper.lean Main.lean; then
   echo "found axiom declaration" >&2
   exit 1
 fi
+
+echo "== paper bundle (statements, citations, axioms, standalone build)"
+bash tools/paper-bundle.sh --check
 
 echo "== paper"
 bash paper/build.sh >/dev/null

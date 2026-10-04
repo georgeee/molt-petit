@@ -1,7 +1,7 @@
 name = "MoltPetit"
 version = "0.1.0"
 keywords = ["math"]
-defaultTargets = ["MoltPetit", "Rust", "Thales", "Molt"]
+defaultTargets = ["MoltPetit", "Rust", "Thales", "Molt", "Paper"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
@@ -40,3 +40,8 @@ name = "Thales"
 # paper-ordered modules; theorems transported from the MoltPetit core.
 [[lean_lib]]
 name = "Molt"
+
+# The paper's results: one statement `thm_xxx` per cited result
+# (Paper/Statements.lean) and its proof `xxx` (Paper/Proofs.lean).
+[[lean_lib]]
+name = "Paper"
