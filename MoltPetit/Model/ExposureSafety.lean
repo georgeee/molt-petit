@@ -55,8 +55,12 @@ def SigningExecution.toOn {exposed : Exposure} {log : TimedLog} {G : Block}
     SigningExecutionOn Adm exposed log G where
   honest_once := fun _ _ _ _ hr hr' _ _ hslot hexp hexp' =>
     hexec.honest_once hr hr' hslot hexp hexp'
-  chain_order := hexec.chain_order
-  id_inj := hexec.id_inj
+  chain_order := fun r B C hr _hB hCsigned _hC hprev => by
+    obtain ⟨P, hPid, hPavail⟩ := hexec.chain_order hr hprev
+    have hPsigned : SignedEver log G P := signedEver_of_availableAt hPavail
+    have hPeqC : P = C := hexec.id_inj hPsigned hCsigned hPid
+    exact hPeqC ▸ hPavail
+  id_inj := fun B B' hB hB' _ _ hid => hexec.id_inj hB hB' hid
 
 def HonestClock.toOn {σ : Nat} {exposed : Exposure} {log : TimedLog}
     (hClock : HonestClock σ exposed log) (Adm : Block → Prop := fun _ => True) :
@@ -66,7 +70,8 @@ def HonestClock.toOn {σ : Nat} {exposed : Exposure} {log : TimedLog}
 theorem availableAt_parent_of_signed {n : Nat} {Adm : Block → Prop} {exposed : Exposure}
     {log : TimedLog} {G : Block}
     (hexec : SigningExecutionOn Adm exposed log G)
-    {c : Chain} (hc : ValidChain n c)
+    {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B)
     {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     {k : Nat} {P B : Block}
     (hP : blockAt? c k = some P) (hB : blockAt? c (k + 1) = some B)
@@ -79,17 +84,23 @@ theorem availableAt_parent_of_signed {n : Nat} {Adm : Block → Prop} {exposed :
   obtain ⟨P0, hP0at, hprev⟩ := hsucc
   have hP0eq : P0 = P := Option.some.inj (hP0at.symm.trans hP)
   have hprevP : B.prev = some P.id := hP0eq ▸ hprev
-  obtain ⟨P', hP'id, hP'avail⟩ := hexec.chain_order hr hprevP
-  have hP'signed : SignedEver log G P' := signedEver_of_availableAt hP'avail
-  have hPsigned : SignedEver log G P := signedEver_of_availableAt (hAvail P (mem_of_blockAt hP))
-  have hEq : P' = P := hexec.id_inj hP'signed hPsigned (by rw [hP'id])
-  exact hEq ▸ hP'avail
+  have hBmem : B ∈ c := mem_of_blockAt hB
+  have hBneG : B ≠ G := by
+    intro hBG
+    have hm0 : k + 1 = 0 := index_zero_of_eq_head hc.2.1 hHead (by rw [← hBG]; exact hB)
+    omega
+  have hAdmB : Adm B := hAdm B hBmem hBneG
+  have hPmem : P ∈ c := mem_of_blockAt hP
+  have hPsigned : SignedEver log G P := signedEver_of_availableAt (hAvail P hPmem)
+  have hAdmP : P = G ∨ Adm P := if h : P = G then Or.inl h else Or.inr (hAdm P hPmem h)
+  exact hexec.chain_order hr hAdmB hPsigned hAdmP hprevP
 
 theorem step_A_ancestor_available {n : Nat} {Adm : Block → Prop} {exposed : Exposure}
     {log : TimedLog} {G : Block}
     (hexec : SigningExecutionOn Adm exposed log G)
     {c : Chain} (hc : ValidChain n c)
     (hHead : blockAt? c 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B)
     {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R) :
     ∀ (d : Nat) {j k : Nat} (hdiff : j - k = d) (hk : k ≤ j)
       {B A : Block} {r : Nat} (hB : blockAt? c j = some B) (hr : B ∈ log r)
@@ -115,7 +126,7 @@ theorem step_A_ancestor_available {n : Nat} {Adm : Block → Prop} {exposed : Ex
     obtain ⟨P, hmAt⟩ : ∃ P, blockAt? c m = some P := by
       unfold blockAt?
       exact ⟨getElem c m hclen, List.getElem?_eq_getElem hclen⟩
-    have hPavail := availableAt_parent_of_signed hexec hc hAvail hmAt hB hr
+    have hPavail := availableAt_parent_of_signed hexec hc hHead hAdm hAvail hmAt hB hr
     rcases hPavail with hPG | ⟨rP, hrPle, hrPlog⟩
     · have hm0 : m = 0 := index_zero_of_eq_head hc.2.1 hHead (hPG ▸ hmAt)
       have hk0 : k = 0 := by omega
@@ -134,12 +145,13 @@ theorem ancestor_availableAt {n : Nat} {Adm : Block → Prop} {exposed : Exposur
     (hexec : SigningExecutionOn Adm exposed log G)
     {c : Chain} (hc : ValidChain n c)
     (hHead : blockAt? c 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B)
     {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     {j k : Nat} (hk : k ≤ j)
     {B A : Block} {r : Nat} (hB : blockAt? c j = some B) (hr : B ∈ log r)
     (hA : blockAt? c k = some A) :
     AvailableAt log G A r :=
-  step_A_ancestor_available hexec hc hHead hAvail (j - k) rfl hk hB hr hA
+  step_A_ancestor_available hexec hc hHead hAdm hAvail (j - k) rfl hk hB hr hA
 
 theorem two_quorum_sub_n_ge (n : Nat) (hn : 1 ≤ n) :
     maxByzantine n + 1 ≤ 2 * quorum n - n := by
@@ -190,20 +202,22 @@ theorem availableAt_of_slot_le {n : Nat} {Adm : Block → Prop} {exposed : Expos
     {log : TimedLog} {G : Block}
     (hexec : SigningExecutionOn Adm exposed log G)
     {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B)
     {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     {m : Nat} {B : Block} (hB : blockAt? c m = some B) {r : Nat} (hr : B ∈ log r)
     {A : Block} (hA : A ∈ c) (hslot : A.slot ≤ B.slot) :
     AvailableAt log G A r := by
   obtain ⟨k, hk⟩ := exists_blockAt_of_mem hA
   have hkm := blockAt_index_le_of_slot_le hc.2.1 hk hB hslot
-  exact ancestor_availableAt hexec hc hHead hAvail hkm hB hr hk
+  exact ancestor_availableAt hexec hc hHead hAdm hAvail hkm hB hr hk
 
 open Classical in
-theorem chainSlotsIn_subset_classification {n σ φ : Nat}
-    {exposed : Exposure} {log : TimedLog} {G : Block}
-    (hexec : SigningExecution exposed log G)
-    (hClock : HonestClock σ exposed log)
+theorem chainSlotsIn_subset_classification_on {n σ φ : Nat}
+    {Adm : Block → Prop} {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecutionOn Adm exposed log G)
+    (hClock : HonestClockOn Adm σ exposed log)
     {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B)
     {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     {m : Nat} {B : Block} (hB : blockAt? c m = some B)
     {r : Nat} (hr : B ∈ log r) (v : Nat) (hv : v + n ≤ B.slot + 1)
@@ -218,7 +232,7 @@ theorem chainSlotsIn_subset_classification {n σ φ : Nat}
   · subst hAG
     exact Finset.mem_insert_self _ _
   · have hslotle : A.slot ≤ B.slot := by omega
-    have hAvailA := availableAt_of_slot_le hexec.toOn hc hHead hAvail hB hr hA_in_c hslotle
+    have hAvailA := availableAt_of_slot_le hexec hc hHead hAdm hAvail hB hr hA_in_c hslotle
     rcases hAvailA with rfl | ⟨rA, hrA, hrAlog⟩
     · contradiction
     · apply Finset.mem_insert_of_mem
@@ -229,8 +243,25 @@ theorem chainSlotsIn_subset_classification {n σ φ : Nat}
         refine ⟨hIco, ⟨rA, by omega, hexp⟩⟩
       · apply Finset.mem_union_right
         apply Finset.mem_filter.mpr
-        have hA_le := hClock hrAlog hexp
+        have hA_le := hClock hrAlog (hAdm A hA_in_c hAG) hexp
         refine ⟨hIco, by omega⟩
+
+open Classical in
+theorem chainSlotsIn_subset_classification {n σ φ : Nat}
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hClock : HonestClock σ exposed log)
+    {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {m : Nat} {B : Block} (hB : blockAt? c m = some B)
+    {r : Nat} (hr : B ∈ log r) (v : Nat) (hv : v + n ≤ B.slot + 1)
+    (hr_lt : r < v + n + φ) :
+    chainSlotsIn c v n ⊆
+      insert G.slot
+        (((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + φ ∧ exposed s r')) ∪
+         ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ))) :=
+  chainSlotsIn_subset_classification_on hexec.toOn hClock.toOn hc hHead (fun _ _ _ => trivial)
+    hAvail hB hr v hv hr_lt
 
 theorem genesis_slot_not_mem_chainSlotsIn_of_ne {c : Chain} (hS : StrictSlots c)
     {G : Block} (hHead : blockAt? c 0 = some G)
@@ -259,12 +290,13 @@ theorem honest_filter_card_le (v n r σ : Nat) :
   exact hle
 
 open Classical in
-theorem exposure_no_early_signing_ever {n σ φ : Nat} (hn : 1 ≤ n)
-    {exposed : Exposure} {log : TimedLog} {G : Block}
-    (hexec : SigningExecution exposed log G)
-    (hClock : HonestClock σ exposed log)
+theorem exposure_no_early_signing_ever_on {n σ φ : Nat} (hn : 1 ≤ n)
+    {Adm : Block → Prop} {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecutionOn Adm exposed log G)
+    (hClock : HonestClockOn Adm σ exposed log)
     (hBudget : ExposureBoundedEver n φ exposed)
     {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B)
     {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     {B : Block} (hB : B ∈ c) (hBG : B ≠ G) (hSlot : n - 1 ≤ B.slot)
     {r : Nat} (hr : B ∈ log r) :
@@ -284,7 +316,7 @@ theorem exposure_no_early_signing_ever {n σ φ : Nat} (hn : 1 ≤ n)
     hBudget v
   have hH_card : ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)).card ≤ r + σ + 1 - v :=
     honest_filter_card_le v n r σ
-  have hsub := chainSlotsIn_subset_classification hexec hClock hc hHead hAvail hm hr v hv hr_lt
+  have hsub := chainSlotsIn_subset_classification_on hexec hClock hc hHead hAdm hAvail hm hr v hv hr_lt
   rcases Nat.eq_or_lt_of_le hn with rfl | hn2
   · have hnotmem := genesis_slot_not_mem_chainSlotsIn_of_ne hc.2.1 hHead hB hBG
     have hsub' : chainSlotsIn c v 1 ⊆
@@ -322,10 +354,25 @@ theorem exposure_no_early_signing_ever {n σ φ : Nat} (hn : 1 ≤ n)
     have hq_add2 := quorum_ge_maxByzantine_add_two n hn2
     omega
 
+open Classical in
+theorem exposure_no_early_signing_ever {n σ φ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBoundedEver n φ exposed)
+    {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {B : Block} (hB : B ∈ c) (hBG : B ≠ G) (hSlot : n - 1 ≤ B.slot)
+    {r : Nat} (hr : B ∈ log r) :
+    B.slot ≤ r + (n + maxByzantine n + σ + 1 - quorum n) :=
+  exposure_no_early_signing_ever_on hn hexec.toOn hClock.toOn hBudget hc hHead (fun _ _ _ => trivial)
+    hAvail hB hBG hSlot hr
+
 theorem common_prefix_step {n : Nat} {Adm : Block → Prop} {exposed : Exposure}
     {log : TimedLog} {G : Block}
     (hexec : SigningExecutionOn Adm exposed log G)
     {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B) (hAdm' : ∀ B ∈ c', B ≠ G → Adm B)
     {R : Nat}
     (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
@@ -343,13 +390,16 @@ theorem common_prefix_step {n : Nat} {Adm : Block → Prop} {exposed : Exposure}
   have hP'mem : P' ∈ c' := mem_of_blockAt hP'
   have hPsigned : SignedEver log G P := signedEver_of_availableAt (hAvail P hPmem)
   have hP'signed : SignedEver log G P' := signedEver_of_availableAt (hAvail' P' hP'mem)
-  have hEq : P = P' := hexec.id_inj hPsigned hP'signed hid
+  have hPAdm : P = G ∨ Adm P := if h : P = G then Or.inl h else Or.inr (hAdm P hPmem h)
+  have hP'Adm : P' = G ∨ Adm P' := if h : P' = G then Or.inl h else Or.inr (hAdm' P' hP'mem h)
+  have hEq : P = P' := hexec.id_inj hPsigned hP'signed hPAdm hP'Adm hid
   rw [hP, hP', hEq]
 
 theorem common_prefix_of_common_block {n : Nat} {Adm : Block → Prop} {exposed : Exposure}
     {log : TimedLog} {G : Block}
     (hexec : SigningExecutionOn Adm exposed log G)
     {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B) (hAdm' : ∀ B ∈ c', B ≠ G → Adm B)
     {R : Nat}
     (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
@@ -371,12 +421,13 @@ theorem common_prefix_of_common_block {n : Nat} {Adm : Block → Prop} {exposed 
     have ih_applied := ih (k + 1) hsucc_eq
     obtain ⟨B, hB⟩ := exists_blockAt_of_le hsucc_le hX
     have hB' : blockAt? c' (k + 1) = some B := ih_applied ▸ hB
-    exact common_prefix_step hexec hc hc' hAvail hAvail' hB hB'
+    exact common_prefix_step hexec hc hc' hAdm hAdm' hAvail hAvail' hB hB'
 
 theorem common_prefix_of_mem_both {n : Nat} {Adm : Block → Prop} {exposed : Exposure}
     {log : TimedLog} {G : Block}
     (hexec : SigningExecutionOn Adm exposed log G)
     {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B) (hAdm' : ∀ B ∈ c', B ≠ G → Adm B)
     {R : Nat}
     (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
@@ -387,7 +438,7 @@ theorem common_prefix_of_mem_both {n : Nat} {Adm : Block → Prop} {exposed : Ex
   have hj' : X.height = j' := hc'.1 hX'
   have heq : j = j' := hj.symm.trans hj'
   subst heq
-  exact ⟨rfl, common_prefix_of_common_block hexec hc hc' hAvail hAvail' hX hX'⟩
+  exact ⟨rfl, common_prefix_of_common_block hexec hc hc' hAdm hAdm' hAvail hAvail' hX hX'⟩
 
 theorem blockAt_getLast {ch : Chain} {tip : Block}
     (hTip : ch.getLast? = some tip) :
@@ -422,6 +473,7 @@ theorem exposure_agreement_of_filter {n : Nat} {Adm : Block → Prop} (hn : 1 �
     (hexec : SigningExecutionOn Adm exposed log G)
     {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
     (hHead : blockAt? c 0 = some G) (hHead' : blockAt? c' 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B) (hAdm' : ∀ B ∈ c', B ≠ G → Adm B)
     {R : Nat}
     (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
@@ -488,7 +540,7 @@ theorem exposure_agreement_of_filter {n : Nat} {Adm : Block → Prop} (hn : 1 �
   subst hXX'
   obtain ⟨j, hj⟩ := exists_blockAt_of_mem hXc
   obtain ⟨j', hj'⟩ := exists_blockAt_of_mem hX'c
-  have ⟨hjj', hPrefix⟩ := common_prefix_of_mem_both hexec hc hc' hAvail hAvail' hj hj'
+  have ⟨hjj', hPrefix⟩ := common_prefix_of_mem_both hexec hc hc' hAdm hAdm' hAvail hAvail' hj hj'
   subst hjj'
   rcases le_total tip.slot tip'.slot with hmin | hmin
   · have hmeq : m = tip.slot := min_eq_left hmin
@@ -511,12 +563,13 @@ theorem exposure_agreement_of_filter {n : Nat} {Adm : Block → Prop} (hn : 1 �
     exact hPrefix h hle_j
 
 open Classical in
-theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
-    {exposed : Exposure} {log : TimedLog} {G : Block}
-    (hexec : SigningExecution exposed log G)
+theorem exposure_agreement_ever_on {n φ : Nat} (hn : 1 ≤ n)
+    {Adm : Block → Prop} {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecutionOn Adm exposed log G)
     (hBudget : ExposureBoundedEver n φ exposed)
     {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
     (hHead : blockAt? c 0 = some G) (hHead' : blockAt? c' 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B) (hAdm' : ∀ B ∈ c', B ≠ G → Adm B)
     {R : Nat}
     (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
@@ -529,7 +582,7 @@ theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
   let v := m + 1 - n
   let F := (Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + φ ∧ exposed s r')
   have hF_card : F.card ≤ maxByzantine n := hBudget v
-  apply exposure_agreement_of_filter hn hexec.toOn hc hc' hHead hHead' hAvail hAvail'
+  apply exposure_agreement_of_filter hn hexec hc hc' hHead hHead' hAdm hAdm' hAvail hAvail'
     hTip hTip' hDeep hDeep' hF_card
   intro s hs
   by_cases hAgree : ∀ X ∈ c, ∀ X' ∈ c', X.slot = s → X'.slot = s → X = X'
@@ -577,7 +630,8 @@ theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
       have hslotEq : X.slot = X'.slot := by rw [hXslot, hX'slot]
       have hNot1 : ¬ exposed X.slot r := by rw [hXslot]; exact hNotExp.1
       have hNot2 : ¬ exposed X.slot r' := by rw [hXslot]; exact hNotExp.2
-      have hEq := hexec.honest_once hrlog hr'log hslotEq hNot1 hNot2
+      have hEq := hexec.honest_once hrlog hr'log (hAdm X hXc hX_ne_G) (hAdm' X' hX'c hX'_ne_G)
+        hslotEq hNot1 hNot2
       exact hNe hEq
     have hR_lt : R < v + n + φ := by
       have htip_ge : n ≤ tip.slot := by
@@ -594,6 +648,24 @@ theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
     rcases hExp with hexp | hexp
     · exact ⟨r, by omega, hexp⟩
     · exact ⟨r', by omega, hexp⟩
+
+open Classical in
+theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hBudget : ExposureBoundedEver n φ exposed)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    (hHead : blockAt? c 0 = some G) (hHead' : blockAt? c' 0 = some G)
+    {R : Nat}
+    (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    {tip tip' : Block}
+    (hTip : c.getLast? = some tip) (hTip' : c'.getLast? = some tip')
+    (hRecent : R ≤ tip.slot + φ) (hRecent' : R ≤ tip'.slot + φ)
+    {h : Nat} (hDeep : h + n < c.length) (hDeep' : h + n < c'.length) :
+    blockAt? c h = blockAt? c' h :=
+  exposure_agreement_ever_on hn hexec.toOn hBudget hc hc' hHead hHead' (fun _ _ _ => trivial)
+    (fun _ _ _ => trivial) hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 theorem quorum_le_n_add_maxByzantine (n : Nat) (hn : 1 ≤ n) :
     quorum n ≤ n + maxByzantine n := by
@@ -682,7 +754,7 @@ theorem exposure_no_early_signing_at_index_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
       · subst hAG
         have hG_lt := genesis_slot_lt (by omega) hc hHead hm (by omega)
         omega
-      · have hAvailA := availableAt_of_slot_le hexec hc hHead hAvail hm hr hAc (by omega)
+      · have hAvailA := availableAt_of_slot_le hexec hc hHead hAdm hAvail hm hr hAc (by omega)
         rcases hAvailA with rfl | ⟨rA, hrAle, hrAlog⟩
         · contradiction
         · by_cases hexpA : exposed A.slot rA
@@ -707,7 +779,8 @@ theorem exposure_no_early_signing_at_index_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
       have hDense := hc.2.2.2 hm v hv
       have hcard_eq := chainSlotsIn_card hc.2.1 v n
       have hq_le : quorum n ≤ (chainSlotsIn c v n).card := by omega
-      let F := (Finset.Ico v (v + n)).filter (fun t => ∃ r', v ≤ r' + ℓ ∧ r' < v + n + φ ∧ exposed t r')
+      let F := (Finset.Ico v (v + n)).filter
+        (fun t => ∃ r', v ≤ r' + ℓ ∧ r' < v + n + φ ∧ exposed t r')
       have hF_card : F.card ≤ maxByzantine n := hBudget v
       let H := (Finset.Ico v (v + n)).filter (fun t => t ≤ r + σ)
       have hH_card : H.card ≤ r + σ + 1 - v := honest_filter_card_le v n r σ
@@ -719,7 +792,7 @@ theorem exposure_no_early_signing_at_index_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
           by_cases hAG : A = G
           · subst hAG; exact Finset.mem_insert_self _ _
           · apply Finset.mem_insert_of_mem
-            have hAvailA := availableAt_of_slot_le hexec hc hHead hAvail hm hr hAc (by omega)
+            have hAvailA := availableAt_of_slot_le hexec hc hHead hAdm hAvail hm hr hAc (by omega)
             rcases hAvailA with rfl | ⟨rA, hrAle, hrAlog⟩
             · contradiction
             · by_cases hexpA : exposed A.slot rA
@@ -768,7 +841,7 @@ theorem exposure_no_early_signing_at_index_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
             · subst hAG
               have := genesis_slot_lt (by omega) hc hHead hm (by omega)
               omega
-            · have hAvailA := availableAt_of_slot_le hexec hc hHead hAvail hm hr hAc (by omega)
+            · have hAvailA := availableAt_of_slot_le hexec hc hHead hAdm hAvail hm hr hAc (by omega)
               rcases hAvailA with rfl | ⟨rA, hrAle, hrAlog⟩
               · contradiction
               · by_cases hexpA : exposed A.slot rA
@@ -847,7 +920,7 @@ theorem exposure_agreement_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
   let v := m + 1 - n
   let F := (Finset.Ico v (v + n)).filter (fun s => ∃ r', v ≤ r' + ℓ ∧ r' < v + n + φ ∧ exposed s r')
   have hF_card : F.card ≤ maxByzantine n := hBudget v
-  apply exposure_agreement_of_filter hn hexec hc hc' hHead hHead' hAvail hAvail'
+  apply exposure_agreement_of_filter hn hexec hc hc' hHead hHead' hAdm hAdm' hAvail hAvail'
     hTip hTip' hDeep hDeep' hF_card
   intro s hs
   by_cases hAgree : ∀ X ∈ c, ∀ X' ∈ c', X.slot = s → X'.slot = s → X = X'
