@@ -1102,7 +1102,9 @@ conditions $H + n \le \mathit{tip.slot} + 1$), and its census counts a
 stolen not-yet-retired version from the start of time, so early theft and
 cold-root custody must be assumed rather than charged. Its certificate
 form is \code{sched\_recent\_certified\_suffix\_agreement\_horizon}. We
-keep it in the artifact for a client that cannot hold a genesis;
+keep it in the artifact because its full-chain form serves a client that
+cannot hold a genesis (the certificate form, like every certificate
+grounding, still folds from the genesis);
 Theorem~\ref{thm:sched} supersedes it otherwise.
 
 \paragraph{A realistic mode-2 deployment, end to end.} At the ceremony:
@@ -1142,7 +1144,8 @@ roster tracks one monotone counter; honest signatures declare their
 grid window's value; the genesis declares the counter's initial value; hash
 injectivity; the same $\rho$/$T$ budget, assessed at the
 one-grid-window-lagged counter over the pin-free core validator's signature
-surface): the anchor-free agreement of the untimed mode-2 form ---
+surface): the agreement of the untimed mode-2 form, with no trusted
+recent checkpoint (the chains are grounded at the genesis) ---
 at equal tip heights, on the block $n$ below each tip; at unequal
 heights (\code{lockstep\_recent\_tip\_ancestor\_mem}), the lower chain's
 $n$-deep ancestor is a block of the taller chain, at least $n$ deep there. The client holds even less than

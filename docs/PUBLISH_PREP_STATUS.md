@@ -260,5 +260,17 @@ STATUS: READY FOR REVIEW
   `chain_order` from the old one via `id_inj`; headline is `exposure_certified_agreement_on`.
 - Paper: the `verify` predicates are read against F_SIG at the verifier's slot (Canetti 2004),
   which makes `hbridge` causality rather than a false statement about a concrete scheme.
+- Audit 091ceccb READY (98 faithful, 3 MINOR: intro hashing-layer note, mode-3 table cell,
+  `Rust.` prefixes) fixed in 61c0442; confirming audit 9772d98c READY (99 faithful, 2 MINOR
+  wording: horizon certificate form grounds at the genesis; "anchor-free" disambiguated as
+  checkpoint-free) fixed in the commit that carries this sign-off.
 
-STATUS: READY FOR REVIEW
+### Reviewer sign-off (2026-10-04, Pass 23)
+Every headline assumption now survives the adversary it is stated against: custody, causal
+order and collision resistance are claimed only for blocks a verifier admits (signature
+verifies, id formed), and `hbridge` is causality under the F_SIG reading of `verify`. Pins
+intact, gate green, two consecutive READY audits. Known, stated limitations unchanged: modes 2/3
+model-level only (Rust validator implements mode 1), mode 3's per-key operational surface, no
+multi-chain network model, circuit-backend faithfulness and id formation as named seams.
+
+STATUS: COMPLETE
