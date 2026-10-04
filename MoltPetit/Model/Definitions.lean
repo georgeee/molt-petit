@@ -764,12 +764,23 @@ def HonestClock (σ : Nat) (exposed : Exposure) (log : TimedLog) : Prop :=
   ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → ¬ exposed B.slot r → B.slot ≤ r + σ
 
 open Classical in
-/-- The exposure budget with freshness `ρ`: of any `n` consecutive stamps
-`[v, v + n)`, at most `maxByzantine n` have a key exposed at any real slot
-before `v + n + ρ` — that is, at any time up to `ρ` slots after the window
-ends. Exposure is never forgotten: a key stolen at any earlier time counts. -/
-def ExposureBounded (n ρ : Nat) (exposed : Exposure) : Prop :=
-  ∀ v, ((Finset.Ico v (v + n)).filter fun s => ∃ r, r < v + n + ρ ∧ exposed s r).card
+/-- The exposure budget with lookback `ℓ` and freshness `φ`: of any `n`
+consecutive stamps `[v, v + n)`, at most `maxByzantine n` have a key exposed
+at some real slot `r` with `v - ℓ ≤ r < v + n + φ` — from `ℓ` slots before
+the window starts to `φ` slots after it ends. Exposure outside that stretch
+is not charged to the window. -/
+def ExposureBounded (n ℓ φ : Nat) (exposed : Exposure) : Prop :=
+  ∀ v, ((Finset.Ico v (v + n)).filter fun s =>
+      ∃ r, v ≤ r + ℓ ∧ r < v + n + φ ∧ exposed s r).card
+    ≤ maxByzantine n
+
+open Classical in
+/-- The cumulative exposure budget with freshness `φ`: of any `n` consecutive
+stamps `[v, v + n)`, at most `maxByzantine n` have a key exposed at any real
+slot before `v + n + φ`, however long before the window. It implies
+`ExposureBounded n ℓ φ` for every `ℓ`, and needs no clock hypothesis. -/
+def ExposureBoundedEver (n φ : Nat) (exposed : Exposure) : Prop :=
+  ∀ v, ((Finset.Ico v (v + n)).filter fun s => ∃ r, r < v + n + φ ∧ exposed s r).card
     ≤ maxByzantine n
 
 -- ===========================================================================

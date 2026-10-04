@@ -4,18 +4,23 @@ import MoltPetit.Model.Model
 # Light-client safety under arbitrary-time key exposure
 
 The core of the timed model. Keys are exposed (Byzantine seats, stolen keys)
-at arbitrary real times and sign whatever stamps they verify. If, of any `n`
-consecutive stamps, at most `maxByzantine n` have a key exposed before the
-window is `ρ` slots old, two quorum-dense chains that are fresh (their tips
-within `ρ` slots of the real time `R` at which every one of their blocks
-exists) agree at every height at least `n` below both tips
-(`exposure_agreement`). And no block of a valid chain is signed more than
-`n + maxByzantine n + σ + 1 - quorum n` slots ahead of real time, when honest
-clocks run at most `σ` ahead (`exposure_no_early_signing`).
+at arbitrary real times and sign whatever stamps they verify.
 
-THE STATEMENTS OF `exposure_agreement` AND `exposure_no_early_signing` ARE
-FIXED. Their exact types are pinned by `Molt/AxiomsExposureSafety.lean`. Prove
-them; do not change them. See `docs/CORE_V2_SPEC.md` for the proof plan.
+* `exposure_agreement` (Theorem 1): if, of any `n` consecutive stamps, at
+  most `maxByzantine n` have a key exposed from `ℓ` slots before the window
+  to `φ` slots after it, honest clocks run at most `σ` ahead, and the
+  lookback `ℓ` is long enough, then two quorum-dense chains that are fresh
+  (their tips within `φ` slots of the real time `R` at which every one of
+  their blocks exists) agree at every height at least `n` below both tips.
+* `exposure_no_early_signing`: under the same hypotheses, no block of a
+  valid chain is signed more than `ℓ` slots before its stamp.
+* `exposure_agreement_ever` / `exposure_no_early_signing_ever`: the same
+  under the cumulative budget `ExposureBoundedEver` (every exposure before
+  the window's freshness deadline counts); agreement then needs no clock.
+
+THE STATEMENTS OF THESE FOUR THEOREMS ARE FIXED. Their exact types are pinned
+by `Molt/AxiomsExposureSafety.lean`. Prove them; do not change them. See
+`docs/CORE_V2_SPEC.md` for the proof plan.
 -/
 
 namespace MoltPetit.Model
@@ -181,7 +186,7 @@ theorem availableAt_of_slot_le {n : Nat} {exposed : Exposure}
   exact ancestor_availableAt hexec hc hHead hAvail hkm hB hr hk
 
 open Classical in
-theorem chainSlotsIn_subset_classification {n σ ρ : Nat}
+theorem chainSlotsIn_subset_classification {n σ φ : Nat}
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
     (hClock : HonestClock σ exposed log)
@@ -189,10 +194,10 @@ theorem chainSlotsIn_subset_classification {n σ ρ : Nat}
     {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     {m : Nat} {B : Block} (hB : blockAt? c m = some B)
     {r : Nat} (hr : B ∈ log r) (v : Nat) (hv : v + n ≤ B.slot + 1)
-    (hr_lt : r < v + n + ρ) :
+    (hr_lt : r < v + n + φ) :
     chainSlotsIn c v n ⊆
       insert G.slot
-        (((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')) ∪
+        (((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + φ ∧ exposed s r')) ∪
          ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ))) := by
   intro s hs
   obtain ⟨A, hA_in_c, ⟨hwin_lo, hwin_hi⟩, rfl⟩ := mem_chainSlotsIn.mp hs
@@ -241,11 +246,11 @@ theorem honest_filter_card_le (v n r σ : Nat) :
   exact hle
 
 open Classical in
-theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
+theorem exposure_no_early_signing_ever {n σ φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
     (hClock : HonestClock σ exposed log)
-    (hBudget : ExposureBounded n ρ exposed)
+    (hBudget : ExposureBoundedEver n φ exposed)
     {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
     {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
     {B : Block} (hB : B ∈ c) (hBG : B ≠ G) (hSlot : n - 1 ≤ B.slot)
@@ -255,13 +260,13 @@ theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
   have hgt' : r + (n + maxByzantine n + σ + 1 - quorum n) < B.slot := Nat.lt_of_not_ge hgt
   let v := B.slot + 1 - n
   have hv : v + n ≤ B.slot + 1 := by omega
-  have hr_lt : r < v + n + ρ := by omega
+  have hr_lt : r < v + n + φ := by omega
   obtain ⟨m, hm⟩ := exists_blockAt_of_mem hB
   have hDense := hc.2.2.2 hm v hv
   have hcard_eq := chainSlotsIn_card hc.2.1 v n
   have hq_le : quorum n ≤ (chainSlotsIn c v n).card := by omega
   have hE_card :
-      ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')).card ≤
+      ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + φ ∧ exposed s r')).card ≤
         maxByzantine n :=
     hBudget v
   have hH_card : ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)).card ≤ r + σ + 1 - v :=
@@ -270,7 +275,7 @@ theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
   rcases Nat.eq_or_lt_of_le hn with rfl | hn2
   · have hnotmem := genesis_slot_not_mem_chainSlotsIn_of_ne hc.2.1 hHead hB hBG
     have hsub' : chainSlotsIn c v 1 ⊆
-        ((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + ρ ∧ exposed s r')) ∪
+        ((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + φ ∧ exposed s r')) ∪
         ((Finset.Ico v (v + 1)).filter (fun s => s ≤ r + σ)) := by
       intro s hs
       have hmem := hsub hs
@@ -279,26 +284,26 @@ theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
       · exact hmem'
     have hcard_le := calc
       (chainSlotsIn c v 1).card ≤
-          (((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + ρ ∧ exposed s r')) ∪
+          (((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + φ ∧ exposed s r')) ∪
             ((Finset.Ico v (v + 1)).filter (fun s => s ≤ r + σ))).card :=
         Finset.card_le_card hsub'
-      _ ≤ ((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + ρ ∧ exposed s r')).card +
+      _ ≤ ((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + φ ∧ exposed s r')).card +
           ((Finset.Ico v (v + 1)).filter (fun s => s ≤ r + σ)).card := Finset.card_union_le _ _
     unfold maxByzantine quorum at *
     omega
   · have hcard_le := calc
       (chainSlotsIn c v n).card ≤
           (insert G.slot (((Finset.Ico v (v + n)).filter
-            (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')) ∪
+            (fun s => ∃ r', r' < v + n + φ ∧ exposed s r')) ∪
             ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)))).card :=
         Finset.card_le_card hsub
-      _ ≤ (((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')) ∪
+      _ ≤ (((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + φ ∧ exposed s r')) ∪
             ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ))).card + 1 :=
         Finset.card_insert_le _ _
-      _ ≤ ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')).card +
+      _ ≤ ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + φ ∧ exposed s r')).card +
           ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)).card + 1 := by
         have := Finset.card_union_le
-          ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r'))
+          ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + φ ∧ exposed s r'))
           ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ))
         omega
     have hq_add2 := quorum_ge_maxByzantine_add_two n hn2
@@ -371,10 +376,10 @@ theorem common_prefix_of_mem_both {n : Nat} {exposed : Exposure}
   subst heq
   exact ⟨rfl, common_prefix_of_common_block hexec hc hc' hAvail hAvail' hX hX'⟩
 
-theorem exposure_agreement {n ρ : Nat} (hn : 1 ≤ n)
+theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
-    (hBudget : ExposureBounded n ρ exposed)
+    (hBudget : ExposureBoundedEver n φ exposed)
     {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
     (hHead : blockAt? c 0 = some G) (hHead' : blockAt? c' 0 = some G)
     {R : Nat}
@@ -382,7 +387,39 @@ theorem exposure_agreement {n ρ : Nat} (hn : 1 ≤ n)
     (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
     {tip tip' : Block}
     (hTip : c.getLast? = some tip) (hTip' : c'.getLast? = some tip')
-    (hRecent : R ≤ tip.slot + ρ) (hRecent' : R ≤ tip'.slot + ρ)
+    (hRecent : R ≤ tip.slot + φ) (hRecent' : R ≤ tip'.slot + φ)
+    {h : Nat} (hDeep : h + n < c.length) (hDeep' : h + n < c'.length) :
+    blockAt? c h = blockAt? c' h := by
+  sorry
+
+open Classical in
+theorem exposure_no_early_signing {n σ ℓ φ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
+    {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {B : Block} (hB : B ∈ c) (hBG : B ≠ G)
+    {r : Nat} (hr : B ∈ log r) :
+    B.slot ≤ r + ℓ := by
+  sorry
+
+theorem exposure_agreement {n σ ℓ φ : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    (hClock : HonestClock σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    (hHead : blockAt? c 0 = some G) (hHead' : blockAt? c' 0 = some G)
+    {R : Nat}
+    (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    {tip tip' : Block}
+    (hTip : c.getLast? = some tip) (hTip' : c'.getLast? = some tip')
+    (hRecent : R ≤ tip.slot + φ) (hRecent' : R ≤ tip'.slot + φ)
     {h : Nat} (hDeep : h + n < c.length) (hDeep' : h + n < c'.length) :
     blockAt? c h = blockAt? c' h := by
   sorry
