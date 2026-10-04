@@ -596,7 +596,12 @@ does not count against the window.
 \end{assumption}
 
 \begin{assumption}[Signatures]\label{ass:sig}
-Signing happens at real slots (\code{SigningExecution}). The assumption
+Signing happens at real slots, and the assumption speaks only of
+\emph{admissible} blocks: those the verifier's per-block check accepts ---
+the producer signature verifies, and the id is \emph{formed}, that is, it
+is the hash of the block's preimage taken over its parent's actual
+signature, as the deployment's hashing layer recomputes it
+(Section~\ref{sec:protocol}) (\code{SigningExecutionOn}). The assumption
 bundles: \emph{(a) custody} --- while a stamp's key is unexposed, only its
 honest holder signs under it; \emph{(b) unforgeability} --- no one can
 produce a valid signature on a message the key holder never signed, even
@@ -606,17 +611,26 @@ standard EUF-CMA notion); and \emph{(c) the honest signing discipline}
 persisted signing record as the standard guard against equivocation
 after a restart (with (a): \code{honest\_once}); its clock leads real time
 by at most $\sigma$ slots, so it never signs a stamp more than $\sigma$
-slots ahead (\code{HonestClock}); and every producer signature accepted
+slots ahead (\code{HonestClockOn}); and every admissible block accepted
 by the verifier at real slot $R$ was produced at some real slot no later
 than $R$ (\code{hbridge}, causality plus EUF-CMA).
-The id-formation contract of Section~\ref{sec:protocol} ensures that a block
-is signed only once its parent is available (\code{chain\_order}).
-\quad\textit{(Lean: \code{SigningExecution}, \code{HonestClock}, \code{hbridge}.)}
+The id-formation contract of Section~\ref{sec:protocol} ensures that an
+admissible block is signed only once its parent is available
+(\code{chain\_order}): its signature covers its id, whose preimage
+contains the parent's signature.
+\quad\textit{(Lean: \code{SigningExecutionOn}, \code{HonestClockOn}, \code{hbridge}.)}
 \end{assumption}
 
 Nothing constrains an exposed key: it signs blocks stamped for past or
 future slots, at any real time, in any number; the only limit is how many
-keys are exposed, and when (Assumption~\ref{ass:budget}). Honest clocks
+keys are exposed, and when (Assumption~\ref{ass:budget}). A block it signs
+that no verifier accepts --- an id not formed from its preimage, a parent
+reference to nothing, an honest block's id copied onto other contents ---
+lies outside the assumption altogether, so it cannot falsify it. That is
+why the assumption is scoped to admissible blocks: claimed for every
+signed block, \code{chain\_order} and collision resistance would be false
+the moment an exposed key signed such junk, and every theorem below would
+hold vacuously. Honest clocks
 may run fast by up to $\sigma$; slow clocks cost only liveness.
 
 One forward note for key rotation: with versioned keys, a leaked
@@ -630,9 +644,10 @@ to a per-key \emph{surface} defined there.
 
 \begin{assumption}[Hash collision resistance, over blocks that
 occur]\label{ass:hash}
-For the headline theorem, collision resistance holds over the blocks that
-occur: any two blocks occurring in the execution with equal ids are
-equal (\code{SigningExecution.id\_inj} over \code{SignedEver}). This is
+For the headline theorem, collision resistance holds over the admissible
+blocks that occur: any two admissible blocks (or the genesis) occurring in
+the execution with equal ids are equal (\code{SigningExecutionOn.id\_inj}
+over \code{SignedEver}). This is
 classical collision resistance in the form a proof can consume, not a
 weakening of it: plain injectivity of $H$ is false outright --- ids are
 shorter than blocks, so colliding values exist in the type --- while
@@ -645,15 +660,15 @@ exactly this form; for mode 3 and the untimed mode-2 form the domain is
 blocks verifying under their \emph{declared} version
 (\code{SignedDeclared}) ---
 Section~\ref{sec:protocol} explains why \code{keyIndex} is in the
-preimage. \quad\textit{(Lean: \code{SigningExecution.id\_inj},
+preimage. \quad\textit{(Lean: \code{SigningExecutionOn.id\_inj},
 \code{SignedHashInjective}.)}
 \end{assumption}
 
 \begin{assumption}[Certificate grounding]\label{ass:cert}
 A certificate that verifies carries a claim built from the deployment
 genesis by folding in one block at a time, where each fold checks the link
-rules, the density of newly matured windows, and a verifying producer
-signature on the folded block. Deliberately minimal: it does \emph{not}
+rules, the density of newly matured windows, and the folded block's
+admission: a verifying producer signature and a formed id. Deliberately minimal: it does \emph{not}
 posit a valid chain behind the certificate --- a proved lemma
 reconstructs the prefix chain from the fold steps, so the chain's
 existence is a consequence, not a hypothesis.
@@ -722,25 +737,30 @@ Fix $n \ge 1$, a deployment genesis $G$, a freshness $\varphi$, an honest
 clock lead $\sigma$, and a lookback $\ell$ with $\ell \ge n - 1$ and
 $\ell \ge n + \fmax + \sigma + 1 - \quorum$. Suppose:
 \begin{itemize}
-\item a signing execution (\code{SigningExecution}): signing happens at
-  real slots; while the key that verifies a stamp is unexposed, at most one
-  block with that stamp is ever signed under it (\code{honest\_once}); a
-  block is signed only once its parent is available (\code{chain\_order});
-  and collision resistance holds over occurring blocks (\code{id\_inj}).
-  Exposed keys are unconstrained;
-\item honest clocks lead real time by at most $\sigma$ slots
-  (\code{HonestClock});
+\item a signing execution over the verifier's admissible blocks
+  (\code{SigningExecutionOn}~\code{Signed}, where \code{Signed} is the
+  per-block check: the signature verifies and the id is formed):
+  signing happens at real slots; while the key that verifies a stamp is
+  unexposed, at most one admissible block with that stamp is ever signed
+  under it (\code{honest\_once}); an admissible block is signed only once
+  its parent is available (\code{chain\_order}); and collision resistance
+  holds over admissible occurring blocks (\code{id\_inj}).
+  Exposed keys are unconstrained: the first field speaks only of
+  unexposed keys, the other two are cryptographic facts, and blocks the
+  verifier rejects are not mentioned at all;
+\item honest clocks lead real time by at most $\sigma$ slots, for
+  admissible blocks (\code{HonestClockOn});
 \item the exposure budget (\code{ExposureBounded}~$n$~$\ell$~$\varphi$): of
   any $n$ consecutive stamps $[v, v + n)$, at most $\fmax$ have their key
   exposed at some real slot in $[v - \ell,\ v + n + \varphi)$;
-\item the verifier is at real slot $R$, and every producer signature it accepts
+\item the verifier is at real slot $R$, and every admissible block it accepts
   was produced at some real slot no later than $R$ (\code{hbridge}: EUF-CMA
   plus causality);
 \item there are two presentations, each consisting of a grounded certificate
   claim (\code{GroundedCert}) and a suffix that passes the validator:
   linkage to the claim (\code{hLink}), internal linkage (\code{hLinks}),
-  density of maturing windows (\code{hDense}), and verifying signatures
-  (\code{hSigned});
+  density of maturing windows (\code{hDense}), and admissible blocks:
+  verifying signatures and formed ids (\code{hSigned});
 \item both tips are fresh in real time: $R \le \mathit{tip.slot} + \varphi$.
 \end{itemize}
 Then, taking any histories the two groundings attest (\code{GroundedHistory}),
@@ -767,14 +787,14 @@ it.
 
 A third remark, on the lookback. Counting every exposure up to
 $\varphi$ slots after a window --- however long before it --- removes the
-clock hypothesis: \code{exposure\_agreement\_ever} proves the full-chain
+clock hypothesis: \code{exposure\_agreement\_ever\_on} proves the full-chain
 form of Theorem~\ref{thm:lc} under that cumulative budget
-(\code{ExposureBoundedEver}) without \code{HonestClock}. The lookback is
+(\code{ExposureBoundedEver}) without \code{HonestClockOn}. The lookback is
 what lets a signer that was compromised and then cleaned up stop counting
 against later windows; the honest clock lead is its price. Under the
 cumulative budget the no-early-signing bound also holds, as
 $B.\mathit{slot} \le r + n + \fmax + \sigma + 1 - \quorum$ for
-$B.\mathit{slot} \ge n - 1$ (\code{exposure\_no\_early\_signing\_ever}).
+$B.\mathit{slot} \ge n - 1$ (\code{exposure\_no\_early\_signing\_ever\_on}).
 
 \subsection{No chain runs ahead of real time}
 \label{sec:timed}
@@ -793,7 +813,8 @@ key is the forgery the game forbids.)
 \code{no\_early\_signing}]\label{thm:forge}
 Under the signing execution, honest clocks and exposure budget of
 Theorem~\ref{thm:lc} (lookback condition included), let $c$ be a valid
-chain from genesis $G$ whose blocks all exist by some real slot, and let
+chain from genesis $G$ whose non-genesis blocks are admissible and all
+exist by some real slot, and let
 $B \neq G$ be one of its blocks. If $B$ was signed at real slot $r$, then
 \[
 B.\mathit{slot} \;\le\; r + \ell .
@@ -918,13 +939,15 @@ inherits it directly.
 \code{keyrot\_loss\_agreement}]\label{thm:keyloss}
 Fix $n \ge 1$, a deployment genesis $G$, and the signing execution,
 honest clocks and exposure budget of Theorem~\ref{thm:lc}
-(\code{SigningExecution}, \code{HonestClock}, \code{ExposureBounded},
-lookback condition included). The verifier is
-at real slot $R$, and every block that verifies under its declared key
-version (\code{SignedDeclared}) was produced at some real slot no later
-than $R$ (\code{hbridge}). Take two signed chains that both pass the
-mode-1 validator (\code{validSignedChainK$'$}, at any confirmation
-depth), both start at $G$, and both have tips recent in real time
+(\code{SigningExecutionOn}, \code{HonestClockOn}, \code{ExposureBounded},
+lookback condition included), where a block is admissible when it
+verifies under its declared key version (\code{SignedDeclared}) and its
+id is formed. The verifier is
+at real slot $R$, and every admissible block was produced at some real
+slot no later than $R$ (\code{hbridge}). Take two signed chains that both
+pass the mode-1 validator (\code{validSignedChainK$'$}, at any
+confirmation depth), with formed ids (\code{hFormed}), both start at $G$,
+and both have tips recent in real time
 ($R \le \mathit{tip.slot} + \varphi$). Then they agree at every height $h$
 with $h + n$ below both lengths.
 \end{theorem}
@@ -967,9 +990,9 @@ slot $r$''; both are arbitrary in time. Stamp $s$, with producer
 $i = s \bmod n$, is \emph{exposed} at $r$ when $\mathit{Controlled}(i, r)$
 holds or $\mathit{Stolen}(i, j, r)$ holds for some $j \ge \mathit{gen}(s)$
 (\code{schedExposed}). A block is \emph{admissible} when it verifies under
-its declared version and that version is at least $\mathit{gen}$ of its
-slot (\code{SchedAdmissible}) --- the per-block content of the mode-2
-validator. Assumption~\ref{ass:sig} is needed only for admissible blocks
+its declared version, that version is at least $\mathit{gen}$ of its
+slot (\code{SchedAdmissible}), and its id is formed --- the per-block
+content of the mode-2 validator and its hashing layer. Assumption~\ref{ass:sig} is needed only for admissible blocks
 (\code{SigningExecutionOn}, \code{HonestClockOn}): a block signed under a
 key already retired at its stamp falls outside it, since no validator
 accepts that block.
@@ -985,8 +1008,8 @@ Theorem~\ref{thm:lc} (\code{ExposureBounded}~$n$~$\ell$~$\varphi$) over
 the same exposure, lookback condition included; and that the verifier is
 at real slot $R$ and every admissible block was produced at some real
 slot no later than $R$ (\code{hbridge}). Take two signed chains that both
-pass the mode-2 validator (\code{validSignedChainSched}), both start at
-$G$, and both have tips recent in real time
+pass the mode-2 validator (\code{validSignedChainSched}), with formed ids
+(\code{hFormed}), both start at $G$, and both have tips recent in real time
 ($R \le \mathit{tip.slot} + \varphi$). Then they agree at every height $h$
 with $h + n$ below both lengths. The same holds for two certificate
 presentations in the form of Theorem~\ref{thm:lc}, with claims grounded
@@ -1002,7 +1025,10 @@ Assumption~\ref{ass:sig} restricted to any per-block predicate that every
 non-genesis block of both chains satisfies
 (\code{exposure\_agreement\_on}, \code{exposure\_no\_early\_signing\_on},
 \code{exposure\_certified\_agreement\_on}); the unrestricted theorems are
-the case of the trivial predicate. The restriction is what the
+implied by the case of the trivial predicate, but that case is not
+an assumption a deployment can make: claimed for every signed block,
+the execution fields fail as soon as an exposed key signs a block with a
+dangling parent reference. The restriction is what the
 rotation pin pays for: the exposure is per stamp, over every version that
 can sign that stamp admissibly, so the gap between one key's safety and a
 slot's safety that the per-key surfaces below must work around does not
@@ -1250,7 +1276,10 @@ it:
   predicate holds (\code{rust\_valid\_chain\_sound} and companions).
   Soundness is the only direction safety needs --- completeness is a
   liveness concern --- and it is what carries Theorem~\ref{thm:lc} to the shipped code
-  (\code{Rust.rust\_timed\_certified\_agreement}). The bridges cover the
+  (\code{Rust.rust\_timed\_certified\_agreement}). Id formation is
+  checked by the hashing layer, not by the extracted validator, so that
+  theorem and its TypeScript twin take it as a hypothesis on the presented
+  blocks (\code{hFormedS}) and as part of each grounding fold. The bridges cover the
   validator's structural core and its key-discipline conjunct
   (\code{rust\_valid\_chain\_sound}, \code{rust\_valid\_chain\_k\_sound});
   the three rotation \emph{pins} of Section~\ref{sec:rotation} are,
@@ -1273,7 +1302,8 @@ it:
 \end{itemize}
 The trusted base is exactly: the Lean kernel; the pinned translators
 (Charon + Aeneas, Thales together with the recorded hand-corrections to
-its emission, the circuit gadgets); and the faithfulness of the named
+its emission, the circuit gadgets); the hashing layer's id recomputation;
+and the faithfulness of the named
 assumptions to the deployed primitives. Crypto enters only as
 theorem hypotheses, and every handle (keys, signatures, certificates,
 payload commitments) is opaque to the protocol --- which is also why no
