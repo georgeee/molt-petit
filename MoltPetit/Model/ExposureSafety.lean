@@ -20,6 +20,23 @@ See `docs/CORE_V2_SPEC.md` for the proof plan.
 
 namespace MoltPetit.Model
 
+theorem signedEver_of_availableAt {log : TimedLog} {G B : Block} {R : Nat}
+    (h : AvailableAt log G B R) : SignedEver log G B := by
+  rcases h with rfl | ⟨r, _, hr⟩
+  · left; rfl
+  · right; exact ⟨r, hr⟩
+
+theorem availableAt_mono {log : TimedLog} {G B : Block} {r r' : Nat}
+    (hr : r ≤ r') (h : AvailableAt log G B r) : AvailableAt log G B r' := by
+  rcases h with rfl | ⟨r0, hr0, hr0log⟩
+  · left; rfl
+  · right; exact ⟨r0, le_trans hr0 hr, hr0log⟩
+
+theorem mem_of_blockAt {c : Chain} {k : Nat} {B : Block}
+    (h : blockAt? c k = some B) : B ∈ c := by
+  unfold blockAt? at h
+  exact List.mem_of_getElem? h
+
 theorem exposure_agreement {n σ ρ Λ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution n σ exposed log G)
