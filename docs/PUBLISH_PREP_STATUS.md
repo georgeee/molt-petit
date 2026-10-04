@@ -177,3 +177,13 @@ STATUS: READY FOR REVIEW
   its seat's slots, and `honest_stamp` makes honest producers sign exactly in their real
   slot. Neither is stated as a deployment assumption. Either state both or generalize
   the model.
+
+### Pass 19 / 19b (2026-10-04): Core v2 light-client safety under arbitrary-time key exposure
+- Closed all three remaining `sorry`s in `MoltPetit/Model/ExposureSafety.lean`:
+  - `exposure_agreement_ever` (Step D, cumulative exposure budget)
+  - `exposure_no_early_signing` (Step E, bounded early signing by strong induction on chain index)
+  - `exposure_agreement` (Step D', windowed exposure budget factored via shared `exposure_agreement_of_filter`)
+- Pinned headline statements guarded by `Molt/AxiomsExposureSafety.lean` pass with 0 axioms and no sorries.
+- Full verification pass green (`bash tools/check.sh`).
+
+STATUS: READY FOR REVIEW
