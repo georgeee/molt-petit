@@ -18,6 +18,7 @@ import Molt.AxiomsCertAnchored
 import Molt.AxiomsLockstepGen
 import Molt.LockstepCertAxioms
 import Molt.AxiomsTimedSafety
+import Molt.AxiomsExposureSafety
 import Molt.AxiomsTimedSafetyCert
 import Molt.AxiomsTSTimed
 import Molt.AxiomsKeyRotationLoss
