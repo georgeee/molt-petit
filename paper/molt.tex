@@ -1316,8 +1316,7 @@ it:
 \end{itemize}
 The trusted base is exactly: the Lean kernel; the pinned translators
 (Charon + Aeneas, Thales together with the recorded hand-corrections to
-its emission, the circuit gadgets); the hashing layer's id recomputation;
-and the faithfulness of the named
+its emission, the circuit gadgets); and the faithfulness of the named
 assumptions to the deployed primitives. Crypto enters only as
 theorem hypotheses, and every handle (keys, signatures, certificates,
 payload commitments) is opaque to the protocol --- which is also why no
@@ -1484,7 +1483,9 @@ faithfulness of the circuit backend, stated rather than proved (the
 equivalence lemma \code{Rust.valid\_chain\_be\_validChain} is proved at the
 native u64 instantiation) --- everything not machine-checked is a named
 hypothesis standing next to the theorem that consumes it: the operational
-assumptions of Section~\ref{sec:assumptions}; the signature
+assumptions of Section~\ref{sec:assumptions}; id formation, which the
+deployment's hashing layer checks outside the extracted validator
+(\code{hFormedS} on the implementation bridges); the signature
 surfaces of mode 3 and of the untimed mode-2 form (assumed, not derived from the timed model;
 Assumption~\ref{ass:rotation-honest} records their operational content
 directly); version independence
