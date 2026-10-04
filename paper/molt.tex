@@ -579,9 +579,9 @@ consecutive stamps $[v, v + n)$, at most $\fmax = \lfloor (n-1)/3
 \rfloor$ have their key exposed at some real slot in
 $[v - \ell,\ v + n + \varphi)$, where $\varphi$ is the freshness of
 Assumption~\ref{ass:clock} and the lookback $\ell$ satisfies
-$\ell \ge n - 1$ and $\ell \ge n + \fmax + \sigma + 2 - \quorum$ for the
+$\ell \ge n - 1$ and $\ell \ge n + \fmax + \sigma + 1 - \quorum$ for the
 honest clock lead $\sigma$ of Assumption~\ref{ass:sig}. For
-$n = 3\fmax + 1 \ge 7$, $\ell = n - 1 + \sigma$ suffices: the stretch runs
+$n = 3\fmax + 1 \ge 4$, $\ell = n - 1 + \sigma$ suffices: the stretch runs
 from $n - 1 + \sigma$ slots before the window to $\varphi$ slots after it. Exposure outside that stretch of real
 time --- control that ended before it, theft that happened after it ---
 does not count against the window.
@@ -709,7 +709,7 @@ more than classical logic.
 \code{timed\_light\_client\_safety}]\label{thm:lc}
 Fix $n \ge 1$, a deployment genesis $G$, a freshness $\varphi$, an honest
 clock lead $\sigma$, and a lookback $\ell$ with $\ell \ge n - 1$ and
-$\ell \ge n + \fmax + \sigma + 2 - \quorum$. Suppose:
+$\ell \ge n + \fmax + \sigma + 1 - \quorum$. Suppose:
 \begin{itemize}
 \item a signing execution (\code{SigningExecution}): signing happens at
   real slots; while the key that verifies a stamp is unexposed, at most one
@@ -760,7 +760,10 @@ clock hypothesis: \code{exposure\_agreement\_ever} proves the full-chain
 form of Theorem~\ref{thm:lc} under that cumulative budget
 (\code{ExposureBoundedEver}) without \code{HonestClock}. The lookback is
 what lets a signer that was compromised and then cleaned up stop counting
-against later windows; the honest clock lead is its price.
+against later windows; the honest clock lead is its price. Under the
+cumulative budget the no-early-signing bound also holds, as
+$B.\mathit{slot} \le r + n + \fmax + \sigma + 1 - \quorum$ for
+$B.\mathit{slot} \ge n - 1$ (\code{exposure\_no\_early\_signing\_ever}).
 
 \subsection{No chain runs ahead of real time}
 \label{sec:timed}
@@ -780,25 +783,29 @@ key is the forgery the game forbids.)
 Under the signing execution, honest clocks and exposure budget of
 Theorem~\ref{thm:lc} (lookback condition included), let $c$ be a valid
 chain from genesis $G$ whose blocks all exist by some real slot, and let
-$B \neq G$ be one of its blocks with $B.\mathit{slot} \ge n - 1$. If $B$
-was signed at real slot $r$, then
+$B \neq G$ be one of its blocks. If $B$ was signed at real slot $r$, then
 \[
-B.\mathit{slot} \;\le\; r + n + \fmax + \sigma + 1 - \quorum .
+B.\mathit{slot} \;\le\; r + \ell .
 \]
-For $n = 3\fmax + 1$ the lead is $2\fmax + 1 + \sigma$: no valid chain
-gets more than about $2n/3 + \sigma$ slots ahead of real time.
+With the least lookback the condition allows --- for $n = 3\fmax + 1 \ge 4$
+and $\sigma \le \fmax - 1$ that is $\ell = n - 1$ --- no valid chain gets
+more than $n - 1$ slots ahead of real time.
 \end{theorem}
 
-The proof is one count, by induction along the chain. The window of $n$
-stamps ending at $B$ is matured at $B$, so it holds at least $\quorum$
-blocks, all of them $B$ or its ancestors, and all signed no later than
-$r$ (\code{chain\_order}). An honest one is stamped at most $r + \sigma$.
-An exposed one costs the budget one stamp: by induction its signature is
-not early either, so it falls inside the window's budget stretch, and
-$B$'s own signature does too, since consecutive blocks of a valid chain
-are less than $n$ stamps apart. If $B$ were signed earlier than the
-bound, the honest stamps would cover too little of the window to reach
-$\quorum$.
+The proof is one count, by induction along the chain. Suppose $B$ was
+signed more than $\ell$ slots before its stamp. Its signer was then not
+honest, whose clock leads by at most $\sigma \le \ell$, so $B$'s key was
+exposed at $r$. The window of $n$ stamps ending at $B$ is matured at $B$,
+so it holds at least $\quorum$ blocks, all of them $B$ or its ancestors,
+all signed no later than $r$ (\code{chain\_order}). An honest one is
+stamped at most $r + \sigma$. An exposed ancestor is, by induction, not
+signed early either, so its exposure falls inside the window's budget
+stretch and costs the budget one stamp. If $B$'s own exposure falls
+inside that stretch too, the honest stamps cover too little of the window
+to reach $\quorum$. If it does not, $B$ was signed at least $n$ slots
+before the window starts, so the window holds no honest block and not the
+genesis block, and its budget leaves too few blocks for $\quorum$. (For
+$n = 1$ the same count runs on the window of $B$'s predecessor stamp.)
 
 What this rules out, and what it does not. A patient adversary can still
 bank signatures into a long fork, by exposing keys long after the stamps
