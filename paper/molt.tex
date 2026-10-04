@@ -230,9 +230,10 @@ physically destroyed at each switch (hardware modules or RAM-only keys
 holds the genesis and a clock --- even less than mode 2 --- and may
 sleep arbitrarily long. The price sits entirely with the operators:
 lockstep coordination, and erasure that is real. (Mode 3's guarantees hold at the certificate presentation as well as for
-full chains under the cumulative budget at depth $n$
-(\code{lockstep\_recent\_certified\_suffix\_agreement}); lifting certificates
-to per-generation erasure credit at depth $2n$ remains future work.
+full chains, under the cumulative budget at depth $n$
+(\code{lockstep\_recent\_certified\_suffix\_agreement}) and under the
+per-generation census at depth $2n$
+(\code{lockstepGen\_recent\_certified\_suffix\_agreement}).
 Erasure's per-generation credit against the budget is machine-checked:
 under a per-generation census --- for each generation $j$ separately, at
 most $T$ seats whose generation-$j$ key is stolen --- the same agreement
@@ -496,9 +497,8 @@ chain only if all of the following hold:
   stated over the full-chain form of the validator
   (\code{validSignedChainK$'$}; the same validator under the mode 2--3
   pins); at certificate level they are proved for modes 2 and 3
-  (under global/cumulative budgets at depth $n$:
-  \code{sched\_recent\_certified\_suffix\_agreement},
-  \code{lockstep\_recent\_certified\_suffix\_agreement}).
+  (\code{sched\_recent\_certified\_suffix\_agreement\_horizon},
+  \code{lockstepGen\_recent\_certified\_suffix\_agreement}).
 \end{enumerate}
 The model replays the structural checks from genesis
 (\code{validChain}); a deployed
@@ -968,7 +968,8 @@ certificate presentation with no floor snapshot in the claim --- the
 certificate state stays the plain one, each fold merely adding the pin
 check --- since the pin is computed from each block's own slot (the
 grounding \code{GroundedCertSched};
-\code{sched\_recent\_certified\_suffix\_agreement}). \emph{What breaks first:} (i) a
+\code{sched\_recent\_certified\_suffix\_agreement\_horizon}, under the same
+horizon budget and side conditions as Theorem~\ref{thm:sched}). \emph{What breaks first:} (i) a
 peer-supplied schedule --- the pin must be a verifier constant, or a
 zero schedule from the network readmits every retired key; (ii) theft
 of the \emph{current} generation, which signs freely until $n$ slots
@@ -991,11 +992,9 @@ before the clock is ever budgeted). The week-long exposure window per
 stolen live key is what $T$ is sized against. Through
 Theorem~\ref{thm:sched} and the parent-id chain
 (\code{same\_block\_same\_prefix}), any two accepted chains agree on the
-whole confirmed prefix whatever happened while the wallet slept. Only the
-certificate form is proved under the global all-window budget, with the
-strengthened grounding \code{GroundedCertSched}
-(\code{sched\_recent\_certified\_suffix\_agreement}); carrying the
-horizon scoping to certificates is future work.
+whole confirmed prefix whatever happened while the wallet slept. A
+certificate client gets the same guarantee under the same horizon budget
+(\code{sched\_recent\_certified\_suffix\_agreement\_horizon}).
 
 \paragraph{Mode 3: free-cadence lockstep.} \emph{The rule.} No schedule
 anywhere. The roster advances a single shared generation counter at
@@ -1088,11 +1087,13 @@ Conclusion, machine-checked (\code{lockstep\_client\_safety} and
 \code{lockstep\_recent\_tip\_ancestor\_mem}, via the pinning theorem
 \code{lockstep\_declares\_rosterGen}; and at the certificate presentation under
 the cumulative budget at depth $n$,
-\code{lockstep\_recent\_certified\_suffix\_agreement}, with the
+\code{lockstep\_recent\_certified\_suffix\_agreement}, and under the
+per-generation census at depth $2n$,
+\code{lockstepGen\_recent\_certified\_suffix\_agreement}, with the
 certificate's own counter pinned to the roster's once its grid window
 matures, \code{lockstep\_cert\_gen\_pinned}): any two accepted chains agree ---
-at equal heights on the block $n$ below each tip (or $2n$ for full chains under
-Theorem~\ref{thm:lock-gen}), at unequal heights the
+at equal heights on the block $n$ below each tip (or $2n$ under
+the per-generation census), at unequal heights the
 lower chain's confirmed block lying on the taller --- hence, through the
 parent-id chain (\code{same\_block\_same\_prefix}), on the lower chain's
 whole confirmed prefix --- with no schedule anywhere and no anchor.
@@ -1102,13 +1103,9 @@ Section~\ref{sec:opmodel}.
 
 \paragraph{Honest scope.} Three bounds on what this subsection claims.
 First, mode 1 carries no theft guarantee (see above).
-Second, while mode~3 formalizes per-generation erasure credit at depth $2n$
-(Theorem~\ref{thm:lock-gen}), both mode~2's certificate theorem
-(\code{sched\_recent\_certified\_suffix\_agreement}) and mode~3's certificate
-theorem (\code{lockstep\_recent\_certified\_suffix\_agreement}) are proved under
-cumulative/global fault budgets at depth $n$; carrying horizon scoping to mode-2
-certificates and per-generation erasure credit to mode-3 certificates at depth $2n$
-remain future work.
+Second, the mode-2 and mode-3 results are model-level: the imported Rust
+validator carries the mode-1 floor check (bridged in \code{Rust/BridgeK})
+but neither the schedule pin nor the lockstep rule.
 Third, the per-mode signature surfaces are not derived from the timed model:
 as witnessed by \code{badSched\_single\_key\_safe\_not\_enough} and
 \code{badKeyrot\_single\_key\_safe\_not\_enough}, single-key safety does not
