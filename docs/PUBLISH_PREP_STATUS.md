@@ -141,3 +141,13 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
 `Reacts` (the mode-1 reaction delay, a hypothesis of Thm 3 `sync_rule_timed`) quantifies over every slot `s ≥ r + d` on the finite presented chain. At large `s`, `inForce` is the floor of the whole chain, so `Reacts` implies that every stolen version is already rotated past on the presented chain. A live, not-yet-rotated theft (the attack the theorem is for) falsifies it. Decision pending with George.
 
 STATUS: READY FOR REVIEW
+
+### Pass 16 (2026-10-04): mode 1 = key-loss recovery
+- Deleted the `Reacts` layer (`sync_rule_timed`, `max_sync_period_timed`): its
+  ∀ s ≥ r+d hypothesis over the presented chain forces every stolen version to be
+  rotated past already, so no live theft satisfies it.
+- New `MoltPetit.Model.keyrot_loss_agreement` (guard Molt/AxiomsKeyRotationLoss.lean),
+  proved in 82d0549: Thm 1 corollary for the mode-1 validator.
+- Paper: mode 1 is stated as loss recovery only (Theorem thm:keyloss), with the
+  fake-past attack showing it is not theft-safe; Thm 3, the anchor and the sync
+  rule are removed (8f04221 and the abstract fix after it).
