@@ -63,8 +63,8 @@ them:
   **No forward security**: `Stolen i j`
   is not time-indexed (a stolen key forges forever). **Provenance:** this surface is
   *assumed* (a named primitive), **not** reduced to the timed model the way the
-  classical `SigUnforgeableRecent` is (`sigUnforgeableRecent_of_timed`) — because
-  the strong adversary refuses `NoBackdate`/forward security, that reduction is
+  classical `SigUnforgeableRecent` was in an earlier model revision — because
+  the strong adversary refuses no-back-dating/forward security, that reduction is
   unavailable by design. The index-pin half *is* proven (`rotated_key_dead`); only
   the bare recency-scoped registry EUF-CMA is assumed.
 * `hHash : SignedHashInjective (KeyStealingSigned n ops registry) G` — hash

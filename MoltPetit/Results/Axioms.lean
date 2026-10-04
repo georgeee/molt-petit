@@ -455,7 +455,7 @@ axiom-hygiene claim. The Rust path is audited in `Rust/Axioms.lean`.
 -- machine-checked consequences — backward theft-locality (a window is never charged
 -- for thefts more than one period before it), the horizon budget DERIVED from a
 -- recent-theft census (the timed I3), and bounded forward-stamping (the FORWARD
--- half of the static model's two-sided NoBackdate pin, DERIVED where the static
+-- half of the (since removed) static model's two-sided NoBackdate pin, DERIVED where the static
 -- model assumes the whole pin; the back-dating half is NOT derived —
 -- sched_backdate_consistent machine-checks it stays consistent, mirroring
 -- noBackdate_independent). PackageATimed delivers the horizon light-client

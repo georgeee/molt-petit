@@ -4,6 +4,12 @@ import MoltPetit.Model.KeyStealingScheduleBudget
 /-!
 # MoltPetit — the timed theft layer (§10.4, the temporal seam)
 
+*Superseded for mode 2* by `SchedExposure.lean` (`sched_exposure_agreement`),
+which charges early theft through the timed exposure budget directly instead
+of assuming no premature theft. `NoBackdate` below names an assumption of an
+earlier static model that has since been removed from the development; the
+comparisons with it are historical.
+
 `georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §10.4 leaves one seam open in the scheduled variant:
 the packages' temporal content — A3/B3's "no theft before provisioning", B2's
 "no theft after erasure" — lived in prose, and the budget hypothesis was

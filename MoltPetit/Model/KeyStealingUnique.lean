@@ -23,7 +23,8 @@ core of `KeyStealingSafety.lean`.
   `j` at-or-above the chain-local `inForce n Δconf (stripSigs sc) …`). That the
   *verifying* version is one of those — never a rotated-out one — is justified by
   `rotated_key_dead` (the validator-side `≤`-pin), through which this surface is
-  derived from the primitive. Strictly weaker than v2's `NoBackdate`; it does
+  derived from the primitive. Strictly weaker than the no-back-dating assumption of an earlier model
+  revision (since removed); it does
   **not** re-assume forward security.
 * `honestSlotsUnique_keyrot` — **P2-B**: cross-chain honest-slot uniqueness under
   the key-stealing adversary, with the corruption witness chain fixed to
@@ -98,8 +99,9 @@ way to obtain a verifying signature under a key you do not hold is to steal it
 the honest holder's oracle emits exactly one block per owned slot and no
 cross-stamped residue that could land at another slot. (2) is *not* free: the
 timed layer explicitly grants a rented node's oracle coerced, cross-stamped
-signatures, and `noBackdate_independent` machine-proves that discipline-style
-surfaces are **not** derivable from `TimedExecution` alone. Recency is what makes
+signatures, and that layer machine-proved (`noBackdate_independent`, removed
+with it) that discipline-style surfaces are **not** derivable from its timed
+execution alone. Recency is what makes
 the bundle *plausible* (only a `Δ`-fresh window must be clean), not what derives
 it. Two further instantiation obligations: the conclusion must hold for **every**
 version `j` the total registry `KeyRegistry pk = Nat → Nat → pk` reaches (an
@@ -121,11 +123,10 @@ in-force floor and dead. Recency-scoped (the tip within `Δ` of `now`) marks the
 weak-subjectivity boundary `H-ANCHOR`.
 
 **Provenance — the exact boundary of trust.** This surface is **assumed**, not
-reduced to the timed model. The classical-adversary analogue
-`SigUnforgeableRecent` is *derived* (`sigUnforgeableRecent_of_timed`) from a
-`TimedExecution` plus `NoBackdate`, with `noBackdate_independent` witnessing that
-the extra assumption has real content. The key-stealing adversary deliberately
-**refuses** `NoBackdate`/forward security (`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §1–2), so that
+reduced to the timed model. An earlier model revision (since removed)
+derived the classical-adversary analogue `SigUnforgeableRecent` from a timed
+execution plus a no-back-dating assumption with real content. The key-stealing
+adversary deliberately **refuses** no-back-dating/forward security (`georgeee/mini-consensus-lean: KEY_ROTATION_SOUND.md` §1–2), so that
 derivation is unavailable by design; `KeyStealingEUFCMA` is therefore taken as a
 named primitive. What the development **does** prove on top of it is the index-pin
 half: `versionedUnforgeable_of_keyStealingEUFCMA` discharges the "the verifying

@@ -6,11 +6,11 @@ import MoltPetit.Model.KeyStealing
 
 `docs/rollout/ROLLOUT_PLAN.md` item W6 assesses deriving per-mode honest-slot uniqueness
 (`KeyStealingEUFCMA`, mode 1; `SchedCoreUnforgeable`, modes 2-3) from a timed
-model, mirroring `sigUnforgeableRecent_of_timed` (`TimedSig.lean`). The
+model, mirroring an earlier timed-signature reduction (since removed). The
 finding, independent of the owner's separate, already-settled rejection of
 `NoBackdate`/forward security as a constraint on *stolen* keys
 (`georgeee/mini-consensus-lean: memory/key-rotation-mission.md`):
-a timed custody argument (`TimedExecution`'s `honest_once`/`honest_stamp`) only
+a timed custody argument (an `honest_once`-style per-stamp guarantee) only
 ever certifies "the whole real slot is safe", while the existing EUF-CMA
 surfaces are premised on a single key *version* being safe. One real slot can
 host one safe key and one stolen key simultaneously, so single-key safety does
