@@ -403,6 +403,101 @@ theorem slot_ge_of_height_gap {c : Chain} (hS : StrictSlots c)
       have hStep : Bj'.slot < Bj.slot := strictSlots_lt hS hBj' hj (Nat.lt_succ_self j')
       omega
 
+open Classical in
+theorem exposure_agreement_of_filter {n : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecution exposed log G)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    (hHead : blockAt? c 0 = some G) (hHead' : blockAt? c' 0 = some G)
+    {R : Nat}
+    (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    {tip tip' : Block}
+    (hTip : c.getLast? = some tip) (hTip' : c'.getLast? = some tip')
+    {h : Nat} (hDeep : h + n < c.length) (hDeep' : h + n < c'.length)
+    {F : Finset Nat} (hF_card : F.card ≤ maxByzantine n)
+    (hConflict : ∀ s ∈ chainSlotsIn c (min tip.slot tip'.slot + 1 - n) n ∩
+                          chainSlotsIn c' (min tip.slot tip'.slot + 1 - n) n,
+      (∀ X ∈ c, ∀ X' ∈ c', X.slot = s → X'.slot = s → X = X') ∨ s ∈ F) :
+    blockAt? c h = blockAt? c' h := by
+  let m := min tip.slot tip'.slot
+  let v := m + 1 - n
+  have hTipAt : blockAt? c (c.length - 1) = some tip := blockAt_getLast hTip
+  have hTipAt' : blockAt? c' (c'.length - 1) = some tip' := blockAt_getLast hTip'
+  have hclen : n ≤ c.length - 1 := by omega
+  have hclen' : n ≤ c'.length - 1 := by omega
+  have htip_ge : n ≤ tip.slot := by
+    have hgap := slot_ge_of_height_gap hc.2.1 hHead hTipAt (by omega)
+    omega
+  have htip'_ge : n ≤ tip'.slot := by
+    have hgap := slot_ge_of_height_gap hc'.2.1 hHead' hTipAt' (by omega)
+    omega
+  have hm_ge : n ≤ m := by omega
+  have hvn : v + n = m + 1 := by omega
+  have hv_le : v + n ≤ tip.slot + 1 := by omega
+  have hv_le' : v + n ≤ tip'.slot + 1 := by omega
+  have hDense := hc.2.2.2 hTipAt v hv_le
+  have hDense' := hc'.2.2.2 hTipAt' v hv_le'
+  have hcard_eq := chainSlotsIn_card hc.2.1 v n
+  have hcard_eq' := chainSlotsIn_card hc'.2.1 v n
+  have hS_card : quorum n ≤ (chainSlotsIn c v n).card := by omega
+  have hS'_card : quorum n ≤ (chainSlotsIn c' v n).card := by omega
+  set S := chainSlotsIn c v n
+  set S' := chainSlotsIn c' v n
+  have hUnionSub : S ∪ S' ⊆ Finset.Ico v (v + n) :=
+    Finset.union_subset chainSlotsIn_subset_Ico chainSlotsIn_subset_Ico
+  have hUnionCard : (S ∪ S').card ≤ n := by
+    have := Finset.card_le_card hUnionSub
+    rw [Nat.card_Ico] at this
+    omega
+  have hInterCard : maxByzantine n + 1 ≤ (S ∩ S').card := by
+    have := Finset.card_inter_add_card_union S S'
+    have h2q := two_quorum_sub_n_ge n hn
+    omega
+  have hCommon : ∃ s ∈ S ∩ S', ∀ X ∈ c, ∀ X' ∈ c', X.slot = s → X'.slot = s → X = X' := by
+    by_contra hNone
+    push Not at hNone
+    have hSubF : S ∩ S' ⊆ F := by
+      intro s hs
+      rcases hConflict s hs with hAgree | hsF
+      · obtain ⟨X, hXc, X', hX'c, hXslot, hX'slot, hNe⟩ := hNone s hs
+        have := hAgree X hXc X' hX'c hXslot hX'slot
+        contradiction
+      · exact hsF
+    have hle := Finset.card_le_card hSubF
+    omega
+  obtain ⟨s, hs, hAgree⟩ := hCommon
+  have hsS : s ∈ S := (Finset.mem_inter.mp hs).1
+  have hsS' : s ∈ S' := (Finset.mem_inter.mp hs).2
+  obtain ⟨X, hXc, ⟨_, _⟩, rfl⟩ := mem_chainSlotsIn.mp hsS
+  obtain ⟨X', hX'c, ⟨_, _⟩, hX's⟩ := mem_chainSlotsIn.mp hsS'
+  have hXX' : X = X' := hAgree X hXc X' hX'c rfl hX's
+  subst hXX'
+  obtain ⟨j, hj⟩ := exists_blockAt_of_mem hXc
+  obtain ⟨j', hj'⟩ := exists_blockAt_of_mem hX'c
+  have ⟨hjj', hPrefix⟩ := common_prefix_of_mem_both hexec hc hc' hAvail hAvail' hj hj'
+  subst hjj'
+  rcases le_total tip.slot tip'.slot with hmin | hmin
+  · have hmeq : m = tip.slot := min_eq_left hmin
+    have hj_le : j ≤ c.length - 1 := by
+      unfold blockAt? at hj
+      obtain ⟨hlen, _⟩ := List.getElem?_eq_some_iff.mp hj
+      omega
+    have hgap := slot_ge_of_height_gap hc.2.1 hj hTipAt hj_le
+    have hj_ge : c.length - n ≤ j := by omega
+    have hle_j : h ≤ j := by omega
+    exact hPrefix h hle_j
+  · have hmeq : m = tip'.slot := min_eq_right hmin
+    have hj'_le : j ≤ c'.length - 1 := by
+      unfold blockAt? at hj'
+      obtain ⟨hlen, _⟩ := List.getElem?_eq_some_iff.mp hj'
+      omega
+    have hgap := slot_ge_of_height_gap hc'.2.1 hj' hTipAt' hj'_le
+    have hj_ge : c'.length - n ≤ j := by omega
+    have hle_j : h ≤ j := by omega
+    exact hPrefix h hle_j
+
+open Classical in
 theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
@@ -417,7 +512,75 @@ theorem exposure_agreement_ever {n φ : Nat} (hn : 1 ≤ n)
     (hRecent : R ≤ tip.slot + φ) (hRecent' : R ≤ tip'.slot + φ)
     {h : Nat} (hDeep : h + n < c.length) (hDeep' : h + n < c'.length) :
     blockAt? c h = blockAt? c' h := by
-  sorry
+  let m := min tip.slot tip'.slot
+  let v := m + 1 - n
+  let F := (Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + φ ∧ exposed s r')
+  have hF_card : F.card ≤ maxByzantine n := hBudget v
+  apply exposure_agreement_of_filter hn hexec hc hc' hHead hHead' hAvail hAvail'
+    hTip hTip' hDeep hDeep' hF_card
+  intro s hs
+  by_cases hAgree : ∀ X ∈ c, ∀ X' ∈ c', X.slot = s → X'.slot = s → X = X'
+  · exact Or.inl hAgree
+  · right
+    have hsS : s ∈ chainSlotsIn c v n := (Finset.mem_inter.mp hs).1
+    have hIco : s ∈ Finset.Ico v (v + n) := chainSlotsIn_subset_Ico hsS
+    push Not at hAgree
+    obtain ⟨X, hXc, X', hX'c, hXslot, hX'slot, hNe⟩ := hAgree
+    have hX_ne_G : X ≠ G := by
+      intro hXG
+      have hG_in_c' : G ∈ c' := mem_of_blockAt hHead'
+      obtain ⟨k, hk⟩ := exists_blockAt_of_mem hX'c
+      rcases k with rfl | k
+      · have : X' = G := Option.some.inj (hk.symm.trans hHead')
+        have : X = X' := by rw [hXG, this]
+        exact hNe this
+      · have hlt := strictSlots_lt hc'.2.1 hHead' hk (by omega)
+        have : G.slot = X'.slot := by rw [← hXG, hXslot, hX'slot]
+        omega
+    have hX'_ne_G : X' ≠ G := by
+      intro hX'G
+      have hG_in_c : G ∈ c := mem_of_blockAt hHead
+      obtain ⟨k, hk⟩ := exists_blockAt_of_mem hXc
+      rcases k with rfl | k
+      · have : X = G := Option.some.inj (hk.symm.trans hHead)
+        have : X = X' := by rw [this, hX'G]
+        exact hNe this
+      · have hlt := strictSlots_lt hc.2.1 hHead hk (by omega)
+        have : G.slot = X.slot := by rw [← hX'G, hX'slot, hXslot]
+        omega
+    have hAvailX := hAvail X hXc
+    have hAvailX' := hAvail' X' hX'c
+    obtain ⟨r, hrle, hrlog⟩ : ∃ r ≤ R, X ∈ log r := by
+      rcases hAvailX with rfl | ⟨r, hrle, hrlog⟩
+      · contradiction
+      · exact ⟨r, hrle, hrlog⟩
+    obtain ⟨r', hr'le, hr'log⟩ : ∃ r' ≤ R, X' ∈ log r' := by
+      rcases hAvailX' with rfl | ⟨r', hr'le, hr'log⟩
+      · contradiction
+      · exact ⟨r', hr'le, hr'log⟩
+    have hExp : exposed s r ∨ exposed s r' := by
+      by_contra hNotExp
+      push Not at hNotExp
+      have hslotEq : X.slot = X'.slot := by rw [hXslot, hX'slot]
+      have hNot1 : ¬ exposed X.slot r := by rw [hXslot]; exact hNotExp.1
+      have hNot2 : ¬ exposed X.slot r' := by rw [hXslot]; exact hNotExp.2
+      have hEq := hexec.honest_once hrlog hr'log hslotEq hNot1 hNot2
+      exact hNe hEq
+    have hR_lt : R < v + n + φ := by
+      have htip_ge : n ≤ tip.slot := by
+        have hTipAt : blockAt? c (c.length - 1) = some tip := blockAt_getLast hTip
+        have hgap := slot_ge_of_height_gap hc.2.1 hHead hTipAt (by omega)
+        omega
+      have htip'_ge : n ≤ tip'.slot := by
+        have hTipAt' : blockAt? c' (c'.length - 1) = some tip' := blockAt_getLast hTip'
+        have hgap := slot_ge_of_height_gap hc'.2.1 hHead' hTipAt' (by omega)
+        omega
+      omega
+    apply Finset.mem_filter.mpr
+    refine ⟨hIco, ?_⟩
+    rcases hExp with hexp | hexp
+    · exact ⟨r, by omega, hexp⟩
+    · exact ⟨r', by omega, hexp⟩
 
 open Classical in
 theorem exposure_no_early_signing {n σ ℓ φ : Nat} (hn : 1 ≤ n)
