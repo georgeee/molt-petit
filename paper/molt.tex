@@ -115,13 +115,13 @@ signature, so forged suffixes provably advance at half real-time speed
 --- any fork old enough to be dangerous is too stale to be accepted
 (Section~\ref{sec:timed}). Second, \emph{key rotation lives inside
 consensus}: every block declares its signing-key version, so rotation is
-ordered by the chain like any other event. Against an adversary who
-steals keys outright and keeps them forever, the paper gives three
-rotation modes with exactly stated operator and client duties --- down
-to a theorem that fixes, in the one mode built for actively syncing
-clients, the single rule such a client must obey (sync at least once
-every $n$ slots, Section~\ref{sec:rotation}); clients of the other two
-modes obey no cadence rule at all.
+ordered by the chain like any other event. Every mode recovers from a lost key with no extra client duty.
+Against an adversary who steals keys outright and keeps them forever,
+two rotation modes --- a public schedule, and a lockstep counter with
+erasure --- come with exactly stated operator duties, and their clients
+may sleep arbitrarily long; the third, reactive rotation, recovers from
+loss only, and we show why theft defeats it
+(Section~\ref{sec:rotation}).
 
 The engineering claim is as important as the theorems. The validator is
 one Rust file; it is \emph{imported} into Lean~4 (via Charon + Aeneas)
@@ -193,26 +193,16 @@ that rules out theft by other means may run any mode and read no
 further than light-client safety and the forged-time bound
 (Sections~\ref{sec:lc}--\ref{sec:timed}).
 
-\paragraph{Mode 1: reactive rotation --- for clients that stay current.}
-Producers rotate whenever they choose, routinely or on suspicion, and
-\emph{no one knows in advance when or how rotations will unfold} ---
-there is no schedule, public or private. The client's whole duty:
-\textbf{re-verify a chain at least once every $n$ slots} --- the same
-$n$ as the recency rule --- keeping as its anchor the block $n$ deep
-below the last verified tip, and refusing chains that do not contain it.
-A client that misses its cadence must stop acting and re-join from a
-fresh trusted checkpoint, exactly as if it were new --- operational
-discipline the theorems force rather than state: past the cadence the
-theorems' fault-budget assumption becomes one no deployment can stand
-behind --- quiet thefts accumulate until nothing satisfies it
-(\code{no\_budget\_beyond}), and re-joining is a fresh trust event
-outside the formal development. The deployment stays safe for as long as
-rented slots (controlled for one slot, then lost) plus stolen
-producers stay within the fault budget on every window starting in the
-trailing $5n$ slots or later, and each victim rotates within a
-reaction delay $d$ of the theft --- \emph{with thefts counted as totals for
-the whole stretch: rotating a stolen key away caps the damage, it does
-not refund the budget} (Theorem~\ref{thm:refresh}).
+\paragraph{Mode 1: reactive rotation --- recovery from key loss, not theft.}
+Producers rotate whenever they choose, routinely or after losing a key,
+and \emph{no one knows in advance when rotations will unfold} --- there
+is no schedule, public or private. The client holds the genesis and a
+clock, exactly as in mode 0, and gets mode 0's guarantee
+(Theorem~\ref{thm:keyloss}). Mode 1 is \textbf{not safe against key
+theft}: an adversary that steals the retired keys of a quorum of seats
+can forge a recent fork that branches before their rotations
+(Section~\ref{sec:rotation}). A deployment that must survive theft runs
+mode 2 or mode 3.
 
 \paragraph{Mode 2: scheduled rotation --- for clients that sleep.} The
 key version in force at any slot is a \emph{public function of the
@@ -266,8 +256,9 @@ cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)
   (+~Rust: \code{rust\_timed\_certified\_agreement}) \\
 \addlinespace
 1 reactive & chain floor, $n$ slots deep &
-  genesis, clock, anchor, $n$-slot sync & no & yes &
-  Thm.~\ref{thm:refresh}: \code{sync\_rule\_timed} \\
+  genesis + clock & no & no &
+  Thm.~\ref{thm:keyloss}: \code{keyrot\_loss\_agreement}
+  (key loss only; no theft guarantee) \\
 \addlinespace
 2 scheduled & slot arithmetic $\mathit{gen}(s)$ &
   genesis + clock + $\mathit{gen}$ & no & no &
@@ -282,12 +273,12 @@ cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)
 \bottomrule
 \end{tabular}
 \end{center}
-Read the trust downward: mode 1 trusts the client's own recency of state;
-mode 2 trusts slot arithmetic plus key-provisioning discipline; mode 3
-trusts roster coordination plus physical destruction. Modes 1--3 share
-the $\rho + T \le \fmax$ budget --- in mode 3 the $T$ may be read per
-generation, at depth $2n$ --- and a recency-scoped signature surface;
-mode 0 is any of them at $T = 0$.
+Read the trust downward: mode 1 trusts that keys are lost, never
+stolen; mode 2 trusts slot arithmetic plus key-provisioning discipline;
+mode 3 trusts roster coordination plus physical destruction. Modes 2 and
+3 share the $\rho + T \le \fmax$ budget --- in mode 3 the $T$ may be
+read per generation, at depth $2n$ --- and a recency-scoped signature
+surface; modes 0 and 1 are the case without theft.
 
 Everything that follows makes these paragraphs precise: the protocol and
 its validator (Sections~\ref{sec:protocol}--\ref{sec:rules}), what a
@@ -340,9 +331,8 @@ $R$, $\mathit{gen}(s) = \lfloor s/R \rfloor$ & rotation-schedule period;
 \end{tabular}
 \caption{Notation. Every timing rule in the paper is set by $n$: the
 density window, the recency bound ($b + \delta \le n$), the trust depth,
-the confirmation depth at which a mode-1 rotation takes force, and the
-mode-1 client's sync cadence (Section~\ref{sec:results}). There is no
-other timing constant.}
+and the confirmation depth at which a mode-1 rotation takes force
+(Section~\ref{sec:results}). There is no other timing constant.}
 \label{tab:notation}
 \end{table}
 
@@ -504,9 +494,8 @@ chain only if all of the following hold:
   one mode-specific check, fixed at deployment. These two are
   stated over the full-chain form of the validator
   (\code{validSignedChainK$'$}; the same validator under the mode 2--3
-  pins); at certificate level they are proved for all three modes
-  (under global/cumulative budgets at depth $n$ for modes 2 and 3:
-  \code{keyrot\_recent\_certified\_suffix\_agreement},
+  pins); at certificate level they are proved for modes 2 and 3
+  (under global/cumulative budgets at depth $n$:
   \code{sched\_recent\_certified\_suffix\_agreement},
   \code{lockstep\_recent\_certified\_suffix\_agreement}).
 \end{enumerate}
@@ -622,13 +611,9 @@ collision resistance says only that no adversary ever \emph{exhibits}
 one. Scoping the domain to blocks that can actually occur is what turns
 the second statement into the first; every block of a validated
 certified chain is in that domain.
-We call this \emph{hash injectivity}; under rotation
-the domain is version-stamped signed blocks --- for the chain-level
-sync-rule results (Theorem~\ref{thm:refresh}), blocks verifying under
-\emph{some} registered version of their producer (Lean
-\code{KeyStealingSigned}); for the scheduled, lockstep, and certified
-results it narrows to blocks verifying under their \emph{declared}
-version (\code{SignedDeclared}), a strictly weaker assumption ---
+We call this \emph{hash injectivity}; for the theft-resistant rotation
+results (modes 2 and 3) the domain is blocks verifying under their
+\emph{declared} version (\code{SignedDeclared}) ---
 Section~\ref{sec:protocol} explains why \code{keyIndex} is in the
 preimage. \quad\textit{(Lean: \code{TimedExecution.id\_inj},
 \code{SignedHashInjective}.)}
@@ -823,7 +808,7 @@ arithmetic (mode 2), or a roster-wide counter read off the signatures
 so we state each mode as: the rule, what the operator must do, what the
 client must do, and what theorem you get.
 
-\paragraph{The adversary.} Everything in this subsection faces the
+\paragraph{The adversary.} Modes 2 and 3 face the
 key-stealing adversary: a stolen key of \emph{any} version signs
 anything, at any slot, forever --- no forward
 security~\cite{forwardsec} is assumed. Its \emph{signature surface} ---
@@ -834,26 +819,26 @@ non-stolen, non-rented entries. The budget (refining
 Assumption~\ref{ass:budget}) is two rates per $n$-slot window. The
 first: $\rho$ \emph{rented} slots --- slots the adversary fully controls
 for that one slot and then loses, exactly Assumption~\ref{ass:budget}'s
-bad slots. The second: $T$ producers with a \emph{then-live} key stolen
+bad slots. A rented slot yields signatures stamped for that slot only: a
+rented device made to sign blocks stamped for other slots has had that
+key version stolen, and is counted in $T$. This is the reading the
+per-mode signature surfaces encode. The second: $T$ producers with a \emph{then-live} key stolen
 --- a stolen version at-or-above the floor where it is counted.
 Together: $\rho + T \le \fmax$. The key-stealing corruption predicate
-(\code{badKeyrot}) counts a slot bad if it is rented \emph{or} some
+(\code{badSched} in mode 2; mode 3 reads it at the roster's counter) counts a slot bad if it is rented \emph{or} some
 version at-or-above the one in force for its producer is stolen ---
 which builds \emph{healing} into the definition: a stolen key stops
-counting the moment its retirement takes force. Each mode consumes its
-own rescoping of this one surface --- the \emph{key-stealing surface}
-(mode 1), the \emph{scheduled surface} (mode 2), the \emph{core surface}
-over the pin-free validator (mode 3) --- and every rescoping includes
+counting the moment its retirement takes force. Each of modes 2 and 3 consumes
+its own rescoping of this one surface --- the \emph{scheduled surface}
+(mode 2), the \emph{core surface} over the pin-free validator (mode 3)
+--- and each rescoping includes
 \emph{version independence}: stealing version $j$ yields nothing about
 $j' > j$, which key-insulated signatures~\cite{keyinsulated} provide off
 the shelf. Hash injectivity (Assumption~\ref{ass:hash}) is consumed
-alongside, its domain rescoped per mode: any-registered-version signed
-blocks (\code{KeyStealingSigned}) for mode 1's chain-level rule,
-declared-version signed blocks (\code{SignedDeclared}) for modes 2--3
-and the certified mode-1 form.
+alongside, over declared-version signed blocks (\code{SignedDeclared}).
 
 \begin{assumption}[No back-dating, honest custody --- per mode]\label{ass:rotation-honest}
-Fix a rotation mode and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). Unlike the untimed residue \code{SigUnforgeableRecent} (Appendix~\ref{app:timed-uniq}), this is stated directly rather than derived: Appendix~\ref{app:timed-uniq}'s derivation needs only \emph{one} key's safety per real slot, while \code{KeyStealingEUFCMA}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's, and the timed-model route does not generalize here without weakening an already-assumed primitive (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}, \code{badKeyrot\_single\_key\_safe\_not\_enough}).
+Fix rotation mode 2 or 3 and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). Unlike the untimed residue \code{SigUnforgeableRecent} (Appendix~\ref{app:timed-uniq}), this is stated directly rather than derived: Appendix~\ref{app:timed-uniq}'s derivation needs only \emph{one} key's safety per real slot, while \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's, and the timed-model route does not generalize here without weakening an already-assumed primitive (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
 \end{assumption}
 
 \emph{Mode 0, formally: loss is not theft.} A \emph{lost} key
@@ -864,7 +849,8 @@ corruption the theorems count collapses to rent alone in every mode
 mode 2's count) --- no anchor, no cadence, any pin. This is the
 operational mode 0 of Section~\ref{sec:opmodel}: whichever pin a
 deployment fixed, a genesis-and-clock client gets the core guarantees of
-Sections~\ref{sec:lc}--\ref{sec:timed} unchanged.
+Sections~\ref{sec:lc}--\ref{sec:timed} unchanged (for mode 1's
+validator, Theorem~\ref{thm:keyloss}).
 
 \paragraph{Mode 1: reactive rotation.} \emph{The rule.} A producer
 rotates whenever it chooses, by signing under a higher version. The pin
@@ -877,235 +863,46 @@ slots: a rotation must take effect at one agreed moment on every chain,
 the depth at which all accepted chains provably agree on the confirmed
 prefix (the Lean proof takes this depth as a parameter and requires
 only that it be at least $n$). At the prototype's parameters a rotation takes force in under
-half a minute. Taking force and the client's sync cadence below are
-separate clocks.
+half a minute. 
 
-\emph{Why an anchor is needed at all.} On any chain that contains a
-rotation, the retired key is dead by the pin. The residual threat lives
-elsewhere: a fork built from \emph{before} the rotation, on which the
-floor never rose and the old key is still current --- so a key stolen
-even years later is raw material for a self-consistent \emph{fake past}.
-No validator rule can reject such a fork from the inside; it can only be
-excluded by the client knowing one thing the fork cannot contain: a
-sufficiently recent block of the real chain. That is the \emph{anchor}
---- a block from the client's trusted region, i.e.\ at least $n$ deep
-below its last verified tip, or a checkpoint --- with chains not
-containing it refused. (Anchoring the literal tip would be a mistake:
-only $n$-deep blocks are guaranteed shared, and a tip the network never
-adopts would wedge the client against the real chain.) This is a
-weak-subjectivity assumption~\cite{weaksubj}, but a narrow one, and
-Theorem~\ref{thm:refresh} is its exact price tag.
+\emph{What it guarantees: recovery from key loss.} A seat that loses its
+delegate key --- destroyed, held by nobody --- signs its next block under
+a higher registered version, and production resumes
+(\code{liveness\_produce\_blockK}). The replacement version must
+already be in the deployment's key registry, for instance delegated from
+the seat's cold root; the verifier never learns a new key from the chain.
+Loss changes none of the hypotheses of Theorem~\ref{thm:lc}, so mode 1
+inherits it directly.
 
-\begin{theorem}[The client sync rule; Lean \code{sync\_rule\_timed},
-\code{sync\_rule\_mem\_timed}]\label{thm:refresh}
-Fix $n \ge 1$ and a deployment genesis $G$. Suppose:
-\begin{itemize}
-\item the key-stealing signature surface (\code{hEUF}): \code{KeyStealingEUFCMA} with adversary keys $\mathit{Stolen} := \code{stolenOf}\ \mathit{stolenAt}$, recency-scoped with $\mathit{now}$ and the same $\Delta$ as the recency bullet below;
-\item hash injectivity (\code{hHash}): $\code{SignedHashInjective}\ (\code{KeyStealingSigned}\ n\ \mathit{ops}\ \mathit{registry})\ G$;
-\item cadence and anchor (\code{hVPrev} \dots\ \code{hCadence}, \code{hA}, \code{hA'}): the client re-verified a valid chain $\mathit{sc}_{\mathrm{prev}}$ longer than $n$ blocks at time $t$ when its tip was recent ($t \le \mathit{tipPrev.slot} + n$), took as anchor $A$ the block $n$ deep below $\mathit{tipPrev}$ (\code{hAnchor}), returns within $n$ slots of that sync ($\mathit{now} \le t + n$, \code{hCadence}), and both currently presented chains $\mathit{sc}, \mathit{sc}'$ contain $A$;
-\item rent rate (\code{hRent}): for every $n$-slot window $u$ starting in the trailing $5n$ slots or later ($\mathit{now} < u + 5n$), rented slots (\code{badSlotsIn}) total at most $\rho$;
-\item theft census (\code{hTheft}): for every $n$-slot window $u$ starting in the trailing $5n$ slots or later ($\mathit{now} < u + 5n$), producers hit by a theft at any real slot $r$ with $u < r + d$ (\code{recentTheftProducersK}) total at most $T$;
-\item the fault budget (\code{hRT}): $\rho + T \le \fmax$ on windows starting in the trailing $5n$ slots or later;
-\item the reaction delay $d$ (\code{hReacts}): within $d$ slots of a theft of seat $i$'s version $j$, the version in force for $i$ on the chain being validated is above $j$ (\code{Reacts});
-\item validity (\code{hVal}, \code{hVal'}): both $\mathit{sc}$ and $\mathit{sc}'$ pass the mode-1 validator (\code{validSignedChainK$'$});
-\item recency (\code{hRecent}, \code{hRecent'}): both tips are recent ($\mathit{now} \le \mathit{sTip.slot} + \Delta$);
-\item chain length (\code{hLong}): both chains are longer than $n$ blocks;
-\item tip height: the tips are at equal height for the equal-height form (\code{hTipHeight}: $\mathit{sTip.height} = \mathit{sTip'.height}$), or the lower tip height is at most the other's for the membership form (\code{hLe}: $\mathit{sTip.height} \le \mathit{sTip'.height}$).
-\end{itemize}
-Then any two accepted, recent chains longer than $n$ blocks that both contain the anchor agree: at equal tip heights, on the block $n$ below each tip ($B = B'$); at unequal heights, the lower chain's $n$-deep block is a block of the taller chain, at least $n$ deep there.
+\begin{theorem}[Mode 1 under key loss; Lean
+\code{keyrot\_loss\_agreement}]\label{thm:keyloss}
+Fix $n \ge 1$, a deployment genesis $G$, a timed execution
+(\code{TimedExecution}) and the fault budget over real slots
+(\code{ByzantineBounded}), as in Theorem~\ref{thm:lc}. The verifier is
+at real slot $R$, and every block that verifies under its declared key
+version (\code{SignedDeclared}) was produced at some real slot no later
+than $R$ (\code{hbridge}). Take two signed chains that both pass the
+mode-1 validator (\code{validSignedChainK$'$}, at any confirmation
+depth), both start at $G$, and both have tips recent in real time
+($R \le \mathit{tip.slot} + n$). Then they agree at every height $h$
+with $h + n$ below both lengths.
 \end{theorem}
 
-\code{sync\_rule}/\code{sync\_rule\_mem} are the same conclusion under
-the census budget read off the lower chain's floors; the timed form
-derives it (\code{budget\_of\_reaction}). The reaction delay is read
-off the chain being validated --- the version in force there, set by its
-confirmed prefix; a form quantified only over the honest chain is open
-(Section~\ref{sec:limitations}).
-
-\noindent In one sentence: \textbf{sync at least every $n$ slots --- the
-same $n$ as the recency rule --- and no fabricated past can ever be
-accepted, at the price of two standing assumptions: rent plus
-thefts-within-$d$ per window at most $\fmax$ over the trailing $5n$
-slots --- about two minutes at the prototype's parameters --- plus the
-reaction delay $d$ within which victims rotate on the validated chain.}
-
-The $5n$ is the reach of that assumption: how far back the anchor can
-sit, plus the one window the counting needs. Each summand is one fact. At sync
-time the freshly verified tip passed the recency rule, so it is at most
-$n$ slots old. The anchor sits fewer than $2n$ \emph{slots} below that
-tip although it is $n$ \emph{blocks} deep --- density leaves no room for
-more (two full windows in the gap would demand $2\quorum > n$ blocks
-where only $n$ exist; Lean \code{deep\_block\_span}). And the client
-returns within $n$ slots of the sync. Total anchor age: under $4n$;
-plus the one window the budget's counting needs: $5n$. (The ``or
-later'' in the budget clause matters only against chains dated beyond
-the verifier's clock, which a real clock rejects; nothing at all is
-assumed about windows starting earlier.)
-
-Two readings of the budget clause are worth fixing in place. First, it
-asks for strictly less than the natural lifetime assumption: a
-deployment that keeps $\rho + T$ within $\fmax$ on every window from
-genesis onward satisfies the hypothesis outright, so
-Theorem~\ref{thm:refresh} covers it as an immediate special case ---
-and taking the
-anchor to be the genesis block recovers the lifetime-budget statement
-exactly (\code{client\_refresh\_rule} at $A :=$ genesis). The trailing
-scope exists because, under key theft, the lifetime form is the one a
-deployment cannot defend --- the next paragraph makes this precise: the
-census (the per-window count of stolen producers) is retroactive, so a
-lifetime budget quietly demands that retired keys stay secret forever,
-whereas the trailing form confines the demand to two minutes. Second, the trailing $5n$ slots are not a
-bootstrap condition: the window slides with the verifier's clock,
-re-anchored at every sync --- it measures the client's own recency of
-state, not the chain's age, and an old chain is exactly as protected as
-a young one.
-
-Why the cadence cannot simply be enlarged: \emph{the budget's census is
-retroactive}. In the untimed census (\code{sync\_rule}) a window counts
-every producer any of whose versions not yet retired there is ever
-stolen; in the timed one (\code{sync\_rule\_timed}) it counts every
-producer stolen at a real slot $r$ with $u < r + d$. Either way a theft is
-charged to the windows \emph{before} it as well, and rotating afterwards
-never subtracts from them. The oldest
-windows of a stretch therefore carry the \emph{total} theft count of the
-whole stretch, and the longer the stretch, the larger that total. A
-client syncing every $10n$ slots would therefore be assuming ``at most
-$T$ producers stolen across ${\approx}\,14n$ slots \emph{in total}'' ---
-and an adversary that quietly collects one key every couple of windows,
-each victim rotating promptly so that no more than one is ever
-compromised \emph{at a time}, breaks that budget --- and with it, every
-guarantee this development can state. Syncing every $n$ costs a $5n$ stretch ---
-one window above the design's hard floor of ${\approx}\,4n$, which only
-continuous re-verification approaches, since the anchor alone is up to
-${\approx}\,3n$ old even for an always-online client. The standing
-assumption is then: \emph{at most $T$ producers suffer a theft of a
-then-live key per ${\approx}\,5n$ slots --- a total per stretch, not a
-concurrency bound}. The operator's half of the rule reads the same way:
-keep rented slots plus thefts within $\fmax$ per window over the
-trailing $5n$ slots, remembering that a theft sits on the books of every
-earlier window of its stretch. The agreement itself also holds at the
-certificate presentation, with the floor --- the map sending each seat
-to its version in force --- carried as a snapshot in the
-claim --- the certificate must attest claim and floor \emph{together},
-an unauthenticated floor readmits stolen retired keys
-(\code{keyrot\_recent\_certified\_suffix\_agreement}, over the
-strengthened grounding \code{GroundedCertK}) --- and under the anchored,
-trailing form as well: two certificate-plus-suffix presentations that
-both contain the client's anchor agree $n$ deep, with the corruption
-budget consulted only on windows ending after the anchor, over every
-history the certificate could be attesting
-(\code{keyrot\_certified\_suffix\_agreement\_anchored}; the client
-rules at this presentation are \code{cert\_sync\_rule} and
-\code{cert\_max\_sync\_period}). So the constant-size client, not
-only the full-chain one, gets the two-minute budget.
-
-As reflected in Theorem~\ref{thm:refresh}, the trailing budget is
-derived from the reaction delay $d$ (\code{Reacts}) and the per-window
-theft census via \code{budget\_of\_reaction} (composed into the client
-rules: \code{sync\_rule\_timed}, \code{max\_sync\_period\_timed}). The
-reaction delay is asserted, like \emph{not-before} in mode~2, not derived.
-
-\emph{The maximum sync period, both directions formal.} Write $F$ for
-the client's sync period. \emph{Upward} (\code{max\_sync\_period}):
-safety holds whenever rented slots plus the theft census stay within
-$\fmax$ on every window starting in the trailing $F + 4n$ slots or
-later. So a deployment that can honestly cap $\rho$ plus ever-stolen,
-not-yet-retired-there producers at $\fmax$ per window over every such
-stretch of $S$ slots supports
-\[
-F_{\max} \;=\; S - 4n .
-\]
-\emph{Downward} (\code{census\_accumulates},
-\code{census\_accumulates\_later\_thefts}, \code{no\_budget\_beyond}):
-the census at a window is \emph{at least} the number of distinct
-producers with an ever-stolen version not yet retired there --- a theft
-at or after a window charges that window, because floors never fall
-(\code{inForce\_mono}), and healing never subtracts --- so one victim
-past $\fmax$ in a stretch leaves no budget any deployment could
-satisfy: beyond $F_{\max}$ the safety theorem's precondition is not
-merely weaker --- nothing can meet it, so the theorem promises nothing.
-``Exactly'' should be read at that level: past $F_{\max}$, slot for
-slot, the precondition can no longer be met. The smallest $F$ at which
-a full forged execution is \emph{known} to exist lies somewhat higher
---- by ${\approx}\,n$ slots of span, and in victims. Density binds
-every fork window, so if honest producers only ever extend the real
-chain, an accepted fork needs ${\approx}\,\quorum \approx 2\fmax$
-victims whose retirements postdate the divergence (pre-divergence
-rotations are inherited through the anchor and stay dead); in the bare
-model, where nothing constrains which branch honest producers extend,
-the count falls toward $\fmax + 1$. Certifying one such execution
-end-to-end in Lean is future work. Theft times enter the development through the reaction delay $d$
-(\code{Reacts}): a theft at real slot $r$ is charged to every window $u$
-with $u < r + d$ (\code{recentTheftProducersK}), and to no window starting
-$d$ or more slots after it. Charging a theft \emph{only} to the windows
-after it would need a no-back-dating guarantee for stolen keys --- a
-forward-security property~\cite{forwardsec} of the signature primitive,
-which this development does not assume; it is future work, so the
-census, and with it $F$, stays bounded as above. The sync rule is the $F = n$, $S = 5n$ instance.
-(Engine: \code{client\_refresh\_rule}, parametric in
-the anchor's age; \code{stay\_recent\_client\_safe} derives the age
-bound.)
-
-One consequence should be said plainly: mode 1's client is an
-\emph{active} client --- at the prototype's parameters, a sync every
-${\approx}\,28$\,s --- which is the natural fit for services, bridges,
-and validators acting on the chain continuously. A client that sleeps
-for hours or weeks does not tune a constant; it runs mode 2 or 3, which
-need no anchor at all.
-
-Three consequences fix interpretations that are easy to get wrong.
-\begin{itemize}
-\item \emph{Rotating away from a possibly-stolen key assumes nothing
-  about that key's secrecy}: an exposed then-live key is one of the $T$
-  thefts the budget already tolerates --- healed for later windows once
-  its rotation confirms, still on the books of the stretch's earlier
-  windows.
-\item \emph{Keys retired more than $5n$ slots ago need no secrecy at
-  all}: the budget starts at the trailing $5n$, so such a key can leak
-  or be published without harming any sync-rule client; within the
-  stretch, retired-key secrecy is not a separate duty but part of the
-  same $T$ budget.
-\item \emph{Rotation frequency and client duties are decoupled}: no
-  client re-anchors, re-syncs, or updates in response to a rotation; the
-  sync cadence is scoped by time, never by events.
-\end{itemize}
-
-\paragraph{A realistic mode-1 deployment, end to end.} Seven seats
-($n = 7$, $\tau \approx 4$\,s; $\fmax = 2$, $\quorum = 5$), each signing
-behind a hardware module with theft alarms; on suspicion a seat signs
-its next block under a higher version, in force $n$ slots after that
-block --- at most about a minute from the suspicion, counting the wait
-for the seat's own slot. Clients are services acting on the chain
-continuously: each joins from a deployment-published checkpoint (its
-first anchor), then re-verifies at least every $28$\,s, anchoring the
-$n$-deep block of each verified chain. What must then be true of the world: the
-key-stealing surface and hash injectivity (the adversary paragraph's
-rescopings of Assumptions~\ref{ass:sig}--\ref{ass:hash}); the standing
-clock assumption (Assumption~\ref{ass:clock}); and \emph{over any
-${\approx}\,2$-minute stretch, rented slots stay within $\rho$ per
-window and producers with a stolen key not yet retired there --- their
-version in force, or any later one --- total at most $T$, $\rho + T \le 2$} --- a catastrophic-compromise ceiling, not an
-operating point, and one a monitored deployment can attest because the
-stretch is two minutes, not a history. Conclusion, machine-checked
-(\code{sync\_rule\_timed}, \code{sync\_rule\_mem\_timed}): any two chains such a
-client accepts at a sync --- both, by its rule, containing its anchor
---- agree: at equal heights on the block $n$ below each tip, and the
-lower tip's $n$-deep block lies on every taller one --- hence, block by
-block through the parent-id chain (\code{same\_block\_same\_prefix}), on
-the lower chain's whole confirmed prefix. Agreement with the honest chain itself follows by an induction over
-syncs, machine-checked (\code{sync\_induction\_full\_chain}): each
-sync's agreement keeps the next anchor on a reference chain that
-grows over time, provided that chain's tip is at least as tall as the
-accepted one at every sync, and recent. The height comparison is a
-stated hypothesis of the theorem, not a conclusion --- it is what the
-density remark argues for informally (a recent taller fork's $n$-deep
-block sits below its divergence), and that remark is not itself
-machine-checked.
-The join checkpoint starts the induction as the op-model's fresh trust
-event: a checkpoint no older than ${\approx}\,4n$ slots satisfies the
-general Lean form \code{client\_refresh\_rule}. And the honest tip
-staying recent is a liveness-style side condition, outside the safety
-hypotheses. At the full-chain presentation this is the complete story.
+\emph{What it does not guarantee: key theft.} Mode 1 is not safe against
+key theft, and we claim nothing there. The pin keeps a retired key dead
+only on chains that contain its retirement; a fork that branches before
+the retirements is under no such constraint, and on it the old versions
+are still current. Producers stop guarding retired keys, so an adversary
+that later steals the retired keys of a quorum of seats can build a
+dense fork from a point before their rotations, stamp its blocks so that
+its tip is recent, and present it to a client holding the genesis and a
+clock. The fork passes the mode-1 validator and the recency check, and it
+disagrees with the real chain arbitrarily deep. No fault budget on the
+real chain excludes it, since the stolen keys were retired there.
+Excluding such a fork needs a client that holds a recent block of the
+real chain and keeps re-verifying, with a theft budget charged to every
+window a theft can reach; we do not state that rule as a result. A
+deployment that must survive key theft runs mode 2 or mode 3.
 
 \paragraph{Mode 2: scheduled rotation.} \emph{The rule.} The version in
 force at slot $s$ --- modes 2 and 3 call it the \emph{generation} --- is
@@ -1115,8 +912,8 @@ identical on every chain, pinned at the verifier and never peer-supplied.
 The validator adds one check: $\mathit{gen}(\mathit{slot}) \le
 \mathit{keyIndex}$ (\code{validSignedChainSched}). Because the pin reads
 nothing off any chain, a fork \emph{cannot disagree} with the real chain
-about which keys are retired --- the fake-past construction above is
-structurally impossible, and the anchor has nothing left to do.
+about which keys are retired --- the fake-past construction that defeats mode 1 is
+structurally impossible.
 
 \begin{theorem}[Scheduled safety under horizon budget; Lean
 \code{sched\_recent\_tip\_ancestor\_agreement\_horizon},\hfil\penalty0
@@ -1142,7 +939,7 @@ A global budget implies the horizon budget at every $H$
 (\code{byzantineBoundedFrom\_of\_bounded}); the earlier global-budget
 theorem \code{scheduled\_client\_safety}, which also assumes a shared
 genesis, is kept for reference.
-No anchor, no sync rule, no confirmation wait: a full-chain client holds a
+No anchor, no re-verification cadence, no confirmation wait: a full-chain client holds a
 clock and the constant $\mathit{gen}$ (a certificate client also holds the
 genesis), and may stay offline arbitrarily long.
 \end{theorem}
@@ -1274,7 +1071,7 @@ $n \ge 2$ the generation is determined by the claim's own tail
 so the certificate attests nothing beyond the plain claim, and only
 $n = 1$ needs the extra counter --- which must then be attested with
 the claim: an unauthenticated counter readmits a stolen retired-generation
-key exactly as an unauthenticated floor does in mode 1. What must then be
+key. What must then be
 true of the world: the core surface over the pin-free validator and hash
 injectivity (the adversary paragraph's rescopings); the standing clock
 assumption (Assumption~\ref{ass:clock}); the coordination discipline above (a
@@ -1303,10 +1100,7 @@ The modes at a glance and their headline theorems are collected in
 Section~\ref{sec:opmodel}.
 
 \paragraph{Honest scope.} Three bounds on what this subsection claims.
-First, the mode-1 census is retroactive within a stretch: a theft is
-charged to every earlier window of the client's stretch, which is what
-bounds the sync period $F$. Confining a theft's charge to the windows
-after it needs forward-secure signing, and is future work.
+First, mode 1 carries no theft guarantee (see above).
 Second, while mode~3 formalizes per-generation erasure credit at depth $2n$
 (Theorem~\ref{thm:lock-gen}), both mode~2's certificate theorem
 (\code{sched\_recent\_certified\_suffix\_agreement}) and mode~3's certificate
@@ -1538,8 +1332,8 @@ faithfulness of the circuit backend, stated rather than proved (the
 equivalence lemma \code{valid\_chain\_be\_validChain} is proved at the
 native u64 instantiation) --- everything not machine-checked is a named
 hypothesis standing next to the theorem that consumes it: the operational
-assumptions of Section~\ref{sec:assumptions}; the key-stealing signature
-surface (assumed, not derived from the timed model, and, precisely, cannot
+assumptions of Section~\ref{sec:assumptions}; the per-mode signature
+surfaces of modes 2 and 3 (assumed, not derived from the timed model, and, precisely, cannot
 be by the technique of Appendix~\ref{app:timed-uniq} without weakening the
 surface's per-key premise; Assumption~\ref{ass:rotation-honest} records the
 resulting operational content directly instead); version independence
@@ -1550,22 +1344,17 @@ itself, which lives in the unverified node loop since the pure validators
 carry no clock --- threading $\mathit{now}$ through them is mechanical
 future work; and the per-mode operational assumptions of
 Section~\ref{sec:rotation} (not-before and cold-root custody; lockstep
-coordination and erasure; the mode-1 reaction delay). One of these is
-not yet in its final form: mode~1's reaction delay (\code{Reacts}) is
-stated about the version in force \emph{on the chain being validated},
-so a deployment discharges it by rotating promptly but cannot check it
-ahead of time for chains it has not seen; a form quantified only over
-the honest chain is open.
+coordination and erasure).
 
 \paragraph{The long-range residual, and options against it.} A patient
 adversary can bank coerced signatures into an arbitrarily long fork ---
-forever stale, hence harmless to any client obeying the sync rule of
-Theorem~\ref{thm:refresh}, but never impossible. Three options
+forever stale, hence harmless to any client applying the recency rule of
+Theorem~\ref{thm:lc}, but never impossible. Three options
 would remove the residual rather than contain it, each at a price:
 forward-secure signatures~\cite{forwardsec} (a stateful signer);
 monotone, once-corrupt-always-corrupt accounting (simply a weaker
-adversary); or running rotation modes 2--3, which remove the anchor
-hypothesis outright at the price of a schedule or an erasure discipline.
+adversary); or, against stolen keys, running rotation modes 2--3, at
+the price of a schedule or an erasure discipline.
 Consensus-managed one-time keys (the XMSS variant of
 Section~\ref{sec:impl}) shift key state into the chain and are
 complementary. We keep the per-slot model as the most adversarial and
