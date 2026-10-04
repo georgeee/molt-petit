@@ -26,3 +26,18 @@ Do not edit the statement, the guard, or `paper/molt.tex`.
 
 No new lemma should be needed beyond small helpers. Gate: `bash tools/check.sh`
 prints `check: all green`.
+
+# Pass 17, part 2: mode-3 certificates under the per-generation census
+
+Prove `MoltPetit.Model.lockstepGen_recent_certified_suffix_agreement` in
+`MoltPetit/Model/KeyStealingLockstepCertGen.lean` (pinned by
+`Molt/AxiomsLockstepCertGen.lean`). Plan: as in
+`lockstep_recent_certified_suffix_agreement`, use `groundedCertLock_signedChain`
+twice to get `sc`, `sc'` with `validSignedChainLock`, the full tips, and the blocks
+at global index `k := c.length + i` (`hBfull`, `hB'full` after `hkEq`). Then
+split on `Nat.le_total sTip.slot sTip'.slot` and close with
+`lockstepGen_shared_prefix_deep hn hP hValL hValL' hfullTip hfullTip' hRecent
+hRecent' hle hBfull (k := k) (by …)` (needs `k + 2 * n < length` of the
+lower-slot chain, from `hDeep`/`hDeep'`), as in
+`lockstepGen_recent_tip_ancestor_agreement`. No pin conversion through
+`lagSched` is needed.
