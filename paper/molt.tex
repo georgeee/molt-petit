@@ -96,7 +96,10 @@ act on conflicting blocks --- and that guarantee is a machine-checked
 theorem about the shipped validator code
 (\code{Rust.rust\_timed\_certified\_agreement}; for the TypeScript
 twin, \code{ts\_timed\_certified\_agreement}) under the assumptions of
-Section~\ref{sec:assumptions}, not a design argument.
+Section~\ref{sec:assumptions}, not a design argument. (One input is
+checked outside that code: block ids are recomputed by the deployment's
+hashing layer, and the bridges take that as a named hypothesis,
+Section~\ref{sec:impl}.)
 
 The protocol is deliberately small. A fixed roster of $n$ participants
 produces blocks in public round-robin slots. There are no votes, no view
@@ -273,7 +276,7 @@ no theft, any mode & any of the three &
   \code{sched\_exposure\_certified\_agreement} \\
 \addlinespace
 3 lockstep & roster counter, no-mixing &
-  genesis + clock & yes (credited, Thm.~\ref{thm:lock-gen}) & no &
+  genesis + clock (clock only: Thm.~\ref{thm:lock-gen}) & yes (credited, Thm.~\ref{thm:lock-gen}) & no &
   Thm.~\ref{thm:lock}: \code{lockstep\_client\_safety};
   Thm.~\ref{thm:lock-gen}: \code{lockstep\_client\_safety\_gen},
   \code{lockstepGen\_recent\_tip\_ancestor\_mem} \\
@@ -1287,7 +1290,7 @@ it:
 \begin{itemize}
 \item \emph{The native validator} is imported into Lean and proved sound
   against the model: if the extracted code accepts a chain, the semantic
-  predicate holds (\code{rust\_valid\_chain\_sound} and companions).
+  predicate holds (\code{Rust.rust\_valid\_chain\_sound} and companions).
   Soundness is the only direction safety needs --- completeness is a
   liveness concern --- and it is what carries Theorem~\ref{thm:lc} to the shipped code
   (\code{Rust.rust\_timed\_certified\_agreement}). Id formation is
@@ -1295,7 +1298,7 @@ it:
   theorem and its TypeScript twin take it as a hypothesis on the presented
   blocks (\code{hFormedS}) and as part of each grounding fold. The bridges cover the
   validator's structural core and its key-discipline conjunct
-  (\code{rust\_valid\_chain\_sound}, \code{rust\_valid\_chain\_k\_sound});
+  (\code{Rust.rust\_valid\_chain\_sound}, \code{Rust.rust\_valid\_chain\_k\_sound});
   the three rotation \emph{pins} of Section~\ref{sec:rotation} are,
   today, stated and checked at model level.
 \item \emph{The circuit} instantiates the same source's backend-generic
