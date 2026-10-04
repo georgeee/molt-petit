@@ -229,6 +229,17 @@ theorem genesis_slot_not_mem_chainSlotsIn_of_ne {c : Chain} (hS : StrictSlots c)
   have hGltB := strictSlots_lt hS hHead hm hpos
   omega
 
+theorem honest_filter_card_le (v n r σ : Nat) :
+    (((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)).card) ≤ r + σ + 1 - v := by
+  have hsub : ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)) ⊆ Finset.Ico v (r + σ + 1) := by
+    intro s hs
+    have hs' := Finset.mem_filter.mp hs
+    have hIco := Finset.mem_Ico.mp hs'.1
+    exact Finset.mem_Ico.mpr ⟨hIco.1, by omega⟩
+  have hle := Finset.card_le_card hsub
+  rw [Nat.card_Ico] at hle
+  exact hle
+
 theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
