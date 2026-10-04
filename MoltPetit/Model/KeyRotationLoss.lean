@@ -58,6 +58,21 @@ theorem keyrot_loss_agreement {n Δconf σ ℓ φ : Nat} (hn : 1 ≤ n)
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :
     blockAt? (stripSigs sc) h = blockAt? (stripSigs sc') h := by
-  sorry
+  have hVS : ValidChain n (stripSigs sc) := by
+    rw [validSignedChainK', Bool.and_eq_true] at hVal
+    exact (validChainK'_sound hVal.2).1
+  have hVS' : ValidChain n (stripSigs sc') := by
+    rw [validSignedChainK', Bool.and_eq_true] at hVal'
+    exact (validChainK'_sound hVal'.2).1
+  have hAvail : ∀ B ∈ stripSigs sc, AvailableAt log G B R := by
+    intro B hB
+    obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem hVal hB)
+    exact Or.inr ⟨r, hrR, hrLog⟩
+  have hAvail' : ∀ B ∈ stripSigs sc', AvailableAt log G B R := by
+    intro B hB
+    obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem hVal' hB)
+    exact Or.inr ⟨r, hrR, hrLog⟩
+  exact exposure_agreement hn hexec hClock hBudget hL hL' hVS hVS'
+    hHead hHead' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 end MoltPetit.Model
