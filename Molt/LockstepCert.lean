@@ -1,5 +1,6 @@
 import Molt.Rotation
 import MoltPetit.Model.KeyStealingLockstepCert
+import MoltPetit.Model.KeyStealingLockstepCertGen
 
 /-!
 # Molt — mode 3 (free-cadence lockstep) at the certificate presentation
@@ -39,6 +40,11 @@ alias lockstep_cert_declares_rosterGen := MoltPetit.Model.lockstep_cert_declares
 presentation, under the lockstep package alone (paper §6.3). -/
 alias lockstep_recent_certified_suffix_agreement :=
   MoltPetit.Model.lockstep_recent_certified_suffix_agreement
+
+/-- Mode 3 at the certificate presentation under the per-generation census,
+at depth `2n`. -/
+alias lockstepGen_recent_certified_suffix_agreement :=
+  MoltPetit.Model.lockstepGen_recent_certified_suffix_agreement
 
 
 /-- For n ≥ 2 the tip generation of a certificate is determined by the tail buffer

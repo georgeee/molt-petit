@@ -88,7 +88,8 @@ exactly three things: the deployment's genesis, a clock, and a
 constant-size \emph{certificate} it can fetch from anyone. If the
 certificate verifies and its tip is recent, the client may act on
 everything $n$ blocks below it: any two such certificates agree at every
-height at least $n$ below both tips --- and that guarantee is a machine-checked
+height at least $n$ below both tips, so two clients acting this way never
+act on conflicting blocks --- and that guarantee is a machine-checked
 theorem about the shipped validator code
 (\code{Rust.rust\_timed\_certified\_agreement}; for the TypeScript
 twin, \code{ts\_timed\_certified\_agreement}) under the assumptions of

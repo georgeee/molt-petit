@@ -6,6 +6,8 @@ import MoltPetit.Model.KeyStealingLockstep
 import MoltPetit.Model.KeyStealingCert
 import MoltPetit.Model.KeyStealingScheduleCert
 import MoltPetit.Model.KeyStealingScheduleTimed
+import MoltPetit.Model.KeyRotationLoss
+import MoltPetit.Model.KeyStealingScheduleCertHorizon
 
 /-!
 # Key rotation (paper §6.3)
@@ -329,6 +331,19 @@ budgeted, and genesis agreement becomes a consequence rather than a
 hypothesis. The realistic sleeping-wallet form. -/
 alias sched_recent_tip_ancestor_agreement_horizon :=
   MoltPetit.Model.sched_recent_tip_ancestor_agreement_horizon
+
+/-- Mode 2's genesis agreement as a conclusion, under the horizon budget. -/
+alias sched_recent_genesis_agreement_horizon :=
+  MoltPetit.Model.sched_recent_genesis_agreement_horizon
+
+/-- Mode 2 at the certificate presentation, under the horizon budget. -/
+alias sched_recent_certified_suffix_agreement_horizon :=
+  MoltPetit.Model.sched_recent_certified_suffix_agreement_horizon
+
+/-- Mode 1 against key loss: Theorem 1 for the mode-1 validator (paper Theorem
+`thm:keyloss`). No theft guarantee. -/
+alias keyrot_loss_agreement :=
+  MoltPetit.Model.keyrot_loss_agreement
 
 /-- Mode 2's membership form (unequal tip heights), under the global
 budget. -/
