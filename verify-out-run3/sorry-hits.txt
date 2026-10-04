@@ -1,0 +1,4 @@
+./Molt/AxiomsTimedSafety.lean:8:the proof is `sorry` or uses any non-classical axiom.
+./MoltPetit/Model/KeyStealingSignatureTimed.lean:11:`F` forces `max_sync_period_timed`'s guard `now < u + F + 4n` to admit),
+./MoltPetit/Results/Axioms.lean:34:stray `native_decide` (`Lean.ofReduceBool`) or a `Float`/`sorry` leak (the
+./MoltPetit/Results/Axioms.lean:35:Aeneas runtime model carries `sorry`s in unrelated `Std` lemmas; the guards

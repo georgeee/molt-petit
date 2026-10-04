@@ -1,0 +1,2022 @@
+verify-out/test_all_syms.lean:7:7: error: Ambiguous term
+  @CertOps
+Possible interpretations:
+  MoltPetit.Model.CertOps : Type → Type
+  
+  Molt.CertOps : Type → Type
+@CertOps.verify : {α : Type} → MoltPetit.Model.CertOps α → α → Bool
+verify-out/test_all_syms.lean:9:7: error: Ambiguous term
+  @ErasureTimedLock
+Possible interpretations:
+  MoltPetit.Model.ErasureTimedLock : ℕ → (ℕ → ℕ) → (ℕ → ℕ → ℕ → Prop) → Prop
+  
+  Molt.ErasureTimedLock : ℕ → (ℕ → ℕ) → (ℕ → ℕ → ℕ → Prop) → Prop
+FaultBounded : ℕ → Molt.ByzantineSlots → Prop
+verify-out/test_all_syms.lean:11:7: error: Ambiguous term
+  @GroundedCert
+Possible interpretations:
+  MoltPetit.Model.GroundedCert : ℕ →
+    (MoltPetit.Model.Block → Prop) → MoltPetit.Model.Block → MoltPetit.Model.CertClaim → Prop
+  
+  Molt.GroundedCert : ℕ → (MoltPetit.Model.Block → Prop) → MoltPetit.Model.Block → MoltPetit.Model.CertClaim → Prop
+verify-out/test_all_syms.lean:12:7: error: Ambiguous term
+  @GroundedCertK
+Possible interpretations:
+  MoltPetit.Model.GroundedCertK : ℕ →
+    (MoltPetit.Model.Block → Prop) → MoltPetit.Model.Block → MoltPetit.Model.CertClaim → (ℕ → ℕ) → Prop
+  
+  Molt.GroundedCertK : ℕ →
+    (MoltPetit.Model.Block → Prop) → MoltPetit.Model.Block → MoltPetit.Model.CertClaim → (ℕ → ℕ) → Prop
+verify-out/test_all_syms.lean:13:7: error: Ambiguous term
+  @GroundedCertSched
+Possible interpretations:
+  MoltPetit.Model.GroundedCertSched : ℕ →
+    (ℕ → ℕ) → (MoltPetit.Model.Block → Prop) → MoltPetit.Model.Block → MoltPetit.Model.CertClaim → Prop
+  
+  Molt.GroundedCertSched : ℕ →
+    (ℕ → ℕ) → (MoltPetit.Model.Block → Prop) → MoltPetit.Model.Block → MoltPetit.Model.CertClaim → Prop
+verify-out/test_all_syms.lean:14:7: error: Ambiguous term
+  @HonestBlocksCover
+Possible interpretations:
+  MoltPetit.Model.HonestBlocksCover : MoltPetit.Model.ByzantineSlots →
+    MoltPetit.Model.SlotRecord → MoltPetit.Model.Chain → ℕ → ℕ → Prop
+  
+  Molt.HonestBlocksCover : Molt.ByzantineSlots → Molt.SlotRecord → Molt.Chain → ℕ → ℕ → Prop
+MoltPetit.Model.KeyRegistry : Type → Type
+verify-out/test_all_syms.lean:16:7: error: Ambiguous term
+  @KeyStealingEUFCMA
+Possible interpretations:
+  MoltPetit.Model.KeyStealingEUFCMA : ℕ →
+    ℕ →
+      {Sig sk pk : Type} →
+        MoltPetit.Model.SigOps Sig sk pk →
+          MoltPetit.Model.KeyRegistry pk →
+            MoltPetit.Model.ByzantineSlots → (ℕ → ℕ → Prop) → (ℕ → ℕ → Option MoltPetit.Model.Block) → ℕ → ℕ → Prop
+  
+  Molt.KeyStealingEUFCMA : ℕ →
+    ℕ →
+      {Sig sk pk : Type} →
+        MoltPetit.Model.SigOps Sig sk pk →
+          MoltPetit.Model.KeyRegistry pk →
+            MoltPetit.Model.ByzantineSlots → (ℕ → ℕ → Prop) → (ℕ → ℕ → Option MoltPetit.Model.Block) → ℕ → ℕ → Prop
+verify-out/test_all_syms.lean:17:7: error: Ambiguous term
+  @KeyStealingSigned
+Possible interpretations:
+  @MoltPetit.Model.KeyStealingSigned : {Sig sk pk : Type} →
+    ℕ → MoltPetit.Model.SigOps Sig sk pk → MoltPetit.Model.KeyRegistry pk → MoltPetit.Model.Block → Prop
+  
+  @Molt.KeyStealingSigned : {Sig sk pk : Type} →
+    ℕ → MoltPetit.Model.SigOps Sig sk pk → MoltPetit.Model.KeyRegistry pk → MoltPetit.Model.Block → Prop
+verify-out/test_all_syms.lean:18:7: error: Ambiguous term
+  @LockstepPackage.toGen
+Possible interpretations:
+  @MoltPetit.Model.LockstepPackage.toGen : ∀ {n : ℕ} {rosterGen : ℕ → ℕ} {Sig sk pk : Type}
+    {ops : MoltPetit.Model.SigOps Sig sk pk} {registry : MoltPetit.Model.KeyRegistry pk}
+    {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+    {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+    0 < n →
+      MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+        (∀ (j : ℕ), ∃ W, rosterGen W = j) →
+          MoltPetit.Model.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T
+  
+  @Molt.LockstepPackage.toGen : ∀ {n : ℕ} {rosterGen : ℕ → ℕ} {Sig sk pk : Type}
+    {ops : MoltPetit.Model.SigOps Sig sk pk} {registry : MoltPetit.Model.KeyRegistry pk}
+    {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+    {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+    0 < n →
+      MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+        (∀ (j : ℕ), ∃ W, rosterGen W = j) →
+          MoltPetit.Model.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T
+verify-out/test_all_syms.lean:19:7: error: Ambiguous term
+  @NoBackdate
+Possible interpretations:
+  MoltPetit.Model.NoBackdate : MoltPetit.Model.ByzantineSlots → MoltPetit.Model.TimedLog → Prop
+  
+  Molt.NoBackdate : MoltPetit.Model.ByzantineSlots → MoltPetit.Model.TimedLog → Prop
+verify-out/test_all_syms.lean:20:7: error: Ambiguous term
+  @NoPrematureTheft
+Possible interpretations:
+  MoltPetit.Model.NoPrematureTheft : ℕ → (ℕ → ℕ → ℕ → Prop) → Prop
+  
+  Molt.NoPrematureTheft : ℕ → (ℕ → ℕ → ℕ → Prop) → Prop
+verify-out/test_all_syms.lean:21:7: error: Ambiguous term
+  @NoTheftBackdating
+Possible interpretations:
+  MoltPetit.Model.NoTheftBackdating : ℕ → ℕ → MoltPetit.Model.Chain → (ℕ → ℕ → ℕ → Prop) → Prop
+  
+  Molt.NoTheftBackdating : ℕ → ℕ → MoltPetit.Model.Chain → (ℕ → ℕ → ℕ → Prop) → Prop
+verify-out/test_all_syms.lean:22:7: error: Ambiguous term
+  @Reacts
+Possible interpretations:
+  MoltPetit.Model.Reacts : ℕ → ℕ → ℕ → MoltPetit.Model.Chain → (ℕ → ℕ → ℕ → Prop) → Prop
+  
+  Molt.Reacts : ℕ → ℕ → ℕ → MoltPetit.Model.Chain → (ℕ → ℕ → ℕ → Prop) → Prop
+verify-out/test_all_syms.lean:23:7: error: Ambiguous term
+  @SchedCoreUnforgeable
+Possible interpretations:
+  MoltPetit.Model.SchedCoreUnforgeable : ℕ →
+    (ℕ → ℕ) →
+      {Sig sk pk : Type} →
+        MoltPetit.Model.SigOps Sig sk pk →
+          MoltPetit.Model.KeyRegistry pk →
+            MoltPetit.Model.ByzantineSlots → (ℕ → ℕ → Prop) → (ℕ → ℕ → Option MoltPetit.Model.Block) → ℕ → ℕ → Prop
+  
+  Molt.SchedCoreUnforgeable : ℕ →
+    (ℕ → ℕ) →
+      {Sig sk pk : Type} →
+        MoltPetit.Model.SigOps Sig sk pk →
+          MoltPetit.Model.KeyRegistry pk →
+            MoltPetit.Model.ByzantineSlots → (ℕ → ℕ → Prop) → (ℕ → ℕ → Option MoltPetit.Model.Block) → ℕ → ℕ → Prop
+verify-out/test_all_syms.lean:24:7: error: Ambiguous term
+  @SigOps
+Possible interpretations:
+  MoltPetit.Model.SigOps : Type → Type → Type → Type
+  
+  Molt.SigOps : Type → Type → Type → Type
+verify-out/test_all_syms.lean:25:7: error: Ambiguous term
+  @SigUnforgeableRecent
+Possible interpretations:
+  MoltPetit.Model.SigUnforgeableRecent : ℕ →
+    MoltPetit.Model.ByzantineSlots → (MoltPetit.Model.Block → Prop) → MoltPetit.Model.SigningLog → ℕ → ℕ → Prop
+  
+  Molt.SigUnforgeableRecent : ℕ →
+    MoltPetit.Model.ByzantineSlots → (MoltPetit.Model.Block → Prop) → MoltPetit.Model.SigningLog → ℕ → ℕ → Prop
+verify-out/test_all_syms.lean:26:7: error: Ambiguous term
+  @SignedDeclared
+Possible interpretations:
+  @MoltPetit.Model.SignedDeclared : {Sig sk pk : Type} →
+    ℕ → MoltPetit.Model.SigOps Sig sk pk → MoltPetit.Model.KeyRegistry pk → MoltPetit.Model.Block → Prop
+  
+  @Molt.SignedDeclared : {Sig sk pk : Type} →
+    ℕ → MoltPetit.Model.SigOps Sig sk pk → MoltPetit.Model.KeyRegistry pk → MoltPetit.Model.Block → Prop
+verify-out/test_all_syms.lean:27:7: error: Ambiguous term
+  @SignedHashInjective
+Possible interpretations:
+  MoltPetit.Model.SignedHashInjective : (MoltPetit.Model.Block → Prop) → MoltPetit.Model.Block → Prop
+  
+  Molt.SignedHashInjective : (Molt.Block → Prop) → Molt.Block → Prop
+MoltPetit.Model.SigningLog : Type
+verify-out/test_all_syms.lean:29:7: error: Ambiguous term
+  @TimedExecution
+Possible interpretations:
+  MoltPetit.Model.TimedExecution : ℕ →
+    MoltPetit.Model.ByzantineSlots → MoltPetit.Model.TimedLog → MoltPetit.Model.Block → Prop
+  
+  Molt.TimedExecution : ℕ → MoltPetit.Model.ByzantineSlots → MoltPetit.Model.TimedLog → MoltPetit.Model.Block → Prop
+badKeyrot : ℕ → ℕ → Molt.ByzantineSlots → (ℕ → ℕ → Prop) → Molt.Chain → ℕ → Prop
+badKeyrot_lossOnly : ∀ (n Δconf : ℕ) (rented : Molt.ByzantineSlots) (c₀ : Molt.Chain),
+  badKeyrot n Δconf rented (fun x x_1 => False) c₀ = rented
+badKeyrot_single_key_safe_not_enough : ∃ n Δconf rented Stolen s j,
+  ¬rented s ∧ ¬Stolen (producer n s) j ∧ badKeyrot n Δconf rented Stolen [] s
+badSched_lossOnly : ∀ (n : ℕ) (schedule : ℕ → ℕ) (rented : Molt.ByzantineSlots),
+  (Molt.badSched n schedule rented fun x x_1 => False) = rented
+verify-out/test_all_syms.lean:34:7: error: Ambiguous term
+  @badSched_single_key_safe_not_enough
+Possible interpretations:
+  MoltPetit.Model.badSched_single_key_safe_not_enough : ∃ n schedule rented Stolen s j,
+    ¬rented s ∧ ¬Stolen (producerForSlot n s) j ∧ MoltPetit.Model.badSched n schedule rented Stolen s
+  
+  Molt.badSched_single_key_safe_not_enough : ∃ n schedule rented Stolen s j,
+    ¬rented s ∧ ¬Stolen (producer n s) j ∧ Molt.badSched n schedule rented Stolen s
+@budget_of_reaction : ∀ {n Δconf d : ℕ},
+  0 < n →
+    ∀ {rented : MoltPetit.Model.ByzantineSlots} {stolenAt : ℕ → ℕ → ℕ → Prop} {c₀ : MoltPetit.Model.Chain}
+      {guard : ℕ → Prop} {Rrent T : ℕ},
+      MoltPetit.Model.Reacts n Δconf d c₀ stolenAt →
+        (∀ (u : ℕ), guard u → (MoltPetit.Model.badSlotsIn rented u n).card ≤ Rrent) →
+          (∀ (u : ℕ), guard u → (MoltPetit.Model.recentTheftProducersK n d stolenAt u).card ≤ T) →
+            Rrent + T ≤ maxByzantine n →
+              ∀ (u : ℕ),
+                guard u →
+                  (MoltPetit.Model.badSlotsIn (badKeyrotOn n Δconf rented (stolenOf stolenAt) c₀) u n).card ≤
+                    maxByzantine n
+@census_accumulates : ∀ {n Δconf : ℕ} {rented : Molt.ByzantineSlots} {Stolen : ℕ → ℕ → Prop} {c₀ : Molt.Chain} {u : ℕ}
+  {P : Finset ℕ},
+  (∀ i ∈ P, ∃ s, u ≤ s ∧ s < u + n ∧ producer n s = i ∧ ∃ j, Molt.inForce n Δconf c₀ i s ≤ j ∧ Stolen i j) →
+    P.card ≤ (Molt.badSlotsIn (badKeyrot n Δconf rented Stolen c₀) u n).card
+@census_accumulates_later_thefts : ∀ {n Δconf : ℕ},
+  1 ≤ n →
+    ∀ {rented : Molt.ByzantineSlots} {Stolen : ℕ → ℕ → Prop} {c₀ : Molt.Chain} {u : ℕ} {P : Finset ℕ},
+      (∀ i ∈ P, i < n ∧ ∃ sτ j, u + n ≤ sτ + 1 ∧ Molt.inForce n Δconf c₀ i sτ ≤ j ∧ Stolen i j) →
+        P.card ≤ (Molt.badSlotsIn (badKeyrot n Δconf rented Stolen c₀) u n).card
+@cert_max_sync_period : ∀ {n Δconf F : ℕ},
+  1 ≤ n →
+    n ≤ Δconf →
+      ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+        {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G A : Molt.Block} {clP : Molt.CertClaim}
+        {flP : ℕ → ℕ} {s₁P : Molt.Block} {srestP : Molt.Chain} {tipPrev : Molt.Block} {t : ℕ},
+        Molt.KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ →
+          Molt.SignedHashInjective (Molt.SignedDeclared n ops registry) G →
+            Molt.AcceptedSuffixK n (Molt.SignedDeclared n ops registry) G clP flP s₁P srestP tipPrev →
+              t ≤ tipPrev.slot + n →
+                n < (s₁P :: srestP).length →
+                  Molt.blockAt? (s₁P :: srestP) ((s₁P :: srestP).length - 1 - n) = some A →
+                    now ≤ t + F →
+                      ∀ {cl cl' : Molt.CertClaim} {fl fl' : ℕ → ℕ} {s₁ s₁' : Molt.Block} {srest srest' : Molt.Chain}
+                        {sTip sTip' : Molt.Block},
+                        Molt.AcceptedSuffixK n (Molt.SignedDeclared n ops registry) G cl fl s₁ srest sTip →
+                          Molt.AcceptedSuffixK n (Molt.SignedDeclared n ops registry) G cl' fl' s₁' srest' sTip' →
+                            now ≤ sTip.slot + Δ →
+                              now ≤ sTip'.slot + Δ →
+                                A ∈ s₁ :: srest →
+                                  A ∈ s₁' :: srest' →
+                                    (∀ (c : Molt.Chain),
+                                        Molt.AttestedHistoryK n Δconf ops registry G cl.tipHeight (s₁ :: srest) c →
+                                          ∀ (u : ℕ),
+                                            now < u + F + 4 * n →
+                                              (Molt.badSlotsIn (badKeyrot n Δconf rented Stolen c) u n).card ≤
+                                                faultBudget n) →
+                                      ∀ {i i' : ℕ} {B B' : Molt.Block},
+                                        Molt.blockAt? (s₁ :: srest) i = some B →
+                                          Molt.blockAt? (s₁' :: srest') i' = some B' →
+                                            cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                              i + n < (s₁ :: srest).length → i' + n < (s₁' :: srest').length → B = B'
+@cert_sync_rule : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+      {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G A : Molt.Block} {clP : Molt.CertClaim}
+      {flP : ℕ → ℕ} {s₁P : Molt.Block} {srestP : Molt.Chain} {tipPrev : Molt.Block} {t : ℕ},
+      Molt.KeyStealingEUFCMA n n ops registry rented Stolen honestSigned now Δ →
+        Molt.SignedHashInjective (Molt.SignedDeclared n ops registry) G →
+          Molt.AcceptedSuffixK n (Molt.SignedDeclared n ops registry) G clP flP s₁P srestP tipPrev →
+            t ≤ tipPrev.slot + n →
+              n < (s₁P :: srestP).length →
+                Molt.blockAt? (s₁P :: srestP) ((s₁P :: srestP).length - 1 - n) = some A →
+                  now ≤ t + n →
+                    ∀ {cl cl' : Molt.CertClaim} {fl fl' : ℕ → ℕ} {s₁ s₁' : Molt.Block} {srest srest' : Molt.Chain}
+                      {sTip sTip' : Molt.Block},
+                      Molt.AcceptedSuffixK n (Molt.SignedDeclared n ops registry) G cl fl s₁ srest sTip →
+                        Molt.AcceptedSuffixK n (Molt.SignedDeclared n ops registry) G cl' fl' s₁' srest' sTip' →
+                          now ≤ sTip.slot + Δ →
+                            now ≤ sTip'.slot + Δ →
+                              A ∈ s₁ :: srest →
+                                A ∈ s₁' :: srest' →
+                                  (∀ (c : Molt.Chain),
+                                      Molt.AttestedHistoryK n n ops registry G cl.tipHeight (s₁ :: srest) c →
+                                        ∀ (u : ℕ),
+                                          now < u + 5 * n →
+                                            (Molt.badSlotsIn (badKeyrot n n rented Stolen c) u n).card ≤
+                                              faultBudget n) →
+                                    ∀ {i i' : ℕ} {B B' : Molt.Block},
+                                      Molt.blockAt? (s₁ :: srest) i = some B →
+                                        Molt.blockAt? (s₁' :: srest') i' = some B' →
+                                          cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                            i + n < (s₁ :: srest).length → i' + n < (s₁' :: srest').length → B = B'
+verify-out/test_all_syms.lean:40:8: error(lean.unknownIdentifier): Unknown identifier `Molt.chain_order`
+@client_refresh_rule : ∀ {n Δconf : ℕ},
+  1 ≤ n →
+    n ≤ Δconf →
+      ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+        {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G : Molt.Block}
+        {sc sc' : Molt.SignedChain Sig} {A : Molt.Block} {H : ℕ},
+        Molt.KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ →
+          Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+            A ∈ Molt.stripSigs sc →
+              A ∈ Molt.stripSigs sc' →
+                now ≤ A.slot + H →
+                  (∀ (u : ℕ),
+                      now < u + n + H →
+                        (Molt.badSlotsIn (badKeyrot n Δconf rented Stolen (Molt.stripSigs sc)) u n).card ≤
+                          faultBudget n) →
+                    Molt.validSignedChainK' n Δconf ops registry sc = true →
+                      Molt.validSignedChainK' n Δconf ops registry sc' = true →
+                        ∀ {sTip sTip' : Molt.Block},
+                          List.getLast? (Molt.stripSigs sc) = some sTip →
+                            List.getLast? (Molt.stripSigs sc') = some sTip' →
+                              now ≤ sTip.slot + Δ →
+                                now ≤ sTip'.slot + Δ →
+                                  n < List.length (Molt.stripSigs sc) →
+                                    n < List.length (Molt.stripSigs sc') →
+                                      sTip.height = sTip'.height →
+                                        ∀ {B B' : Molt.Block},
+                                          Molt.blockAt? (Molt.stripSigs sc) (List.length (Molt.stripSigs sc) - 1 - n) =
+                                              some B →
+                                            Molt.blockAt? (Molt.stripSigs sc')
+                                                  (List.length (Molt.stripSigs sc') - 1 - n) =
+                                                some B' →
+                                              B = B'
+Block.contentsHash : MoltPetit.Model.Block → ℕ
+@deep_block_span : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {c : Molt.Chain},
+      Molt.ValidChain n c →
+        ∀ {m : ℕ} {A D : Molt.Block},
+          Molt.blockAt? c m = some A → Molt.blockAt? c (m + n) = some D → D.slot < A.slot + 2 * n
+denseSoFar : ℕ → Molt.Chain → ℕ → Bool
+exposedSched_lossOnly : ∀ (n : ℕ) (schedule : ℕ → ℕ) (u : ℕ),
+  exposedProducersSched n schedule (fun x x_1 => False) u = ∅
+verify-out/test_all_syms.lean:46:7: error: Ambiguous term
+  @forged_chain_time_bound
+Possible interpretations:
+  @MoltPetit.Model.forged_chain_time_bound : ∀ {n : ℕ},
+    2 ≤ n →
+      ∀ {bad : MoltPetit.Model.ByzantineSlots} {log : MoltPetit.Model.TimedLog} {G : MoltPetit.Model.Block},
+        MoltPetit.Model.TimedExecution n bad log G →
+          ByzantineBounded n bad →
+            ∀ {c : MoltPetit.Model.Chain},
+              MoltPetit.Model.ValidChain n c →
+                G.prev = none →
+                  ∀ {R : ℕ},
+                    (∀ B ∈ c, MoltPetit.Model.AvailableAt log G B R) →
+                      (∀ B ∈ c, B ≠ G → ∀ (r : ℕ), B ∈ log r → bad r) →
+                        ∀ {tip : MoltPetit.Model.Block},
+                          List.getLast? c = some tip →
+                            MoltPetit.Model.quorum n * ((tip.slot + 1) / n) ≤ maxByzantine n * (R / n + 1) + 1
+  
+  @Molt.forged_chain_time_bound : ∀ {n : ℕ},
+    2 ≤ n →
+      ∀ {bad : MoltPetit.Model.ByzantineSlots} {log : MoltPetit.Model.TimedLog} {G : MoltPetit.Model.Block},
+        MoltPetit.Model.TimedExecution n bad log G →
+          ByzantineBounded n bad →
+            ∀ {c : MoltPetit.Model.Chain},
+              MoltPetit.Model.ValidChain n c →
+                G.prev = none →
+                  ∀ {R : ℕ},
+                    (∀ B ∈ c, MoltPetit.Model.AvailableAt log G B R) →
+                      (∀ B ∈ c, B ≠ G → ∀ (r : ℕ), B ∈ log r → bad r) →
+                        ∀ {tip : MoltPetit.Model.Block},
+                          List.getLast? c = some tip →
+                            MoltPetit.Model.quorum n * ((tip.slot + 1) / n) ≤ maxByzantine n * (R / n + 1) + 1
+@forged_time_bound : ∀ {n : ℕ},
+  2 ≤ n →
+    ∀ {bad : Molt.ByzantineSlots} {log : Molt.TimedLog} {G : Molt.Block},
+      Molt.TimedExecution n bad log G →
+        FaultBounded n bad →
+          ∀ {c : Molt.Chain},
+            Molt.ValidChain n c →
+              G.prev = none →
+                ∀ {rNow : ℕ},
+                  (∀ B ∈ c, Molt.AvailableAt log G B rNow) →
+                    ∀ {k₀ : ℕ},
+                      1 ≤ k₀ →
+                        ∀ {F : Molt.Block},
+                          Molt.blockAt? c k₀ = some F →
+                            ∀ {r₀ : ℕ},
+                              F ∈ log r₀ →
+                                (∀ r < r₀, F ∉ log r) →
+                                  (∀ B ∈ c, F.slot < B.slot → ∀ (r : ℕ), B ∈ log r → bad r) →
+                                    ∀ {tip : Molt.Block},
+                                      List.getLast? c = some tip →
+                                        Molt.quorum n * ((tip.slot - F.slot) / n) ≤
+                                          faultBudget n * ((rNow - r₀) / n + 1)
+verify-out/test_all_syms.lean:48:7: error: Ambiguous term
+  @genBound_of_preRetirementBound
+Possible interpretations:
+  @MoltPetit.Model.genBound_of_preRetirementBound : ∀ {n : ℕ} {rosterGen : ℕ → ℕ} {stolenAt : ℕ → ℕ → ℕ → Prop} {T : ℕ},
+    MoltPetit.Model.ErasureTimedLock n rosterGen stolenAt →
+      (∀ (j : ℕ), (preRetirementTheftProducers n rosterGen stolenAt j).card ≤ T) →
+        ∀ (j : ℕ), {i ∈ Finset.range n | stolenOf stolenAt i j}.card ≤ T
+  
+  @Molt.genBound_of_preRetirementBound : ∀ {n : ℕ} {rosterGen : ℕ → ℕ} {stolenAt : ℕ → ℕ → ℕ → Prop} {T : ℕ},
+    MoltPetit.Model.ErasureTimedLock n rosterGen stolenAt →
+      (∀ (j : ℕ), (preRetirementTheftProducers n rosterGen stolenAt j).card ≤ T) →
+        ∀ (j : ℕ), {i ∈ Finset.range n | stolenOf stolenAt i j}.card ≤ T
+verify-out/test_all_syms.lean:49:7: error: Ambiguous term
+  @genesisOk
+Possible interpretations:
+  MoltPetit.Model.genesisOk : MoltPetit.Model.Block → Bool
+  
+  Molt.genesisOk : Molt.Block → Bool
+@global_liveness : ∀ {n : ℕ} {g : MoltPetit.Model.Block} {ss : List ℕ},
+  MoltPetit.Model.genesisOk g = true →
+    List.IsChain (fun x1 x2 => x1 < x2) (g.slot :: ss) →
+      (∀ (u : ℕ),
+          u + n ≤ (g.slot :: ss).getLast ⋯ + 1 →
+            (MoltPetit.Model.badSlotsIn (fun s => s ∉ g.slot :: ss) u n).card ≤ maxByzantine n) →
+        MoltPetit.Model.validChain n (buildChain g ss) = true ∧ List.length (buildChain g ss) = ss.length + 1
+verify-out/test_all_syms.lean:51:7: error: Ambiguous term
+  @groundedCertLock_gen_of_tail
+Possible interpretations:
+  @MoltPetit.Model.groundedCertLock_gen_of_tail : ∀ {n : ℕ},
+    2 ≤ n →
+      ∀ {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block} {cl : MoltPetit.Model.CertClaim} {g : ℕ},
+        MoltPetit.Model.GroundedCertLock n Signed G cl g → ∃ t ∈ cl.tail, t.slot = cl.tipSlot ∧ t.keyIndex = g
+  
+  @Molt.groundedCertLock_gen_of_tail : ∀ {n : ℕ},
+    2 ≤ n →
+      ∀ {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block} {cl : MoltPetit.Model.CertClaim} {g : ℕ},
+        MoltPetit.Model.GroundedCertLock n Signed G cl g → ∃ t ∈ cl.tail, t.slot = cl.tipSlot ∧ t.keyIndex = g
+verify-out/test_all_syms.lean:52:7: error: Ambiguous term
+  @groundedCertLock_gen_unique
+Possible interpretations:
+  @MoltPetit.Model.groundedCertLock_gen_unique : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block} {cl : MoltPetit.Model.CertClaim} {g : ℕ},
+        MoltPetit.Model.GroundedCertLock n Signed G cl g →
+          ∀ {t : MoltPetit.Model.Block}, t ∈ cl.tail → t.slot = cl.tipSlot → t.keyIndex = g
+  
+  @Molt.groundedCertLock_gen_unique : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block} {cl : MoltPetit.Model.CertClaim} {g : ℕ},
+        MoltPetit.Model.GroundedCertLock n Signed G cl g →
+          ∀ {t : MoltPetit.Model.Block}, t ∈ cl.tail → t.slot = cl.tipSlot → t.keyIndex = g
+Block.id : MoltPetit.Model.Block → ℕ
+verify-out/test_all_syms.lean:54:7: error: Ambiguous term
+  @inForce
+Possible interpretations:
+  MoltPetit.Model.inForce : ℕ → ℕ → MoltPetit.Model.Chain → ℕ → ℕ → ℕ
+  
+  Molt.inForce : ℕ → ℕ → Molt.Chain → ℕ → ℕ → ℕ
+@inForce_mono : ∀ {n Δconf : ℕ} {c : Molt.Chain} {i s s' : ℕ},
+  s ≤ s' → Molt.inForce n Δconf c i s ≤ Molt.inForce n Δconf c i s'
+Block.keyIndex : MoltPetit.Model.Block → ℕ
+verify-out/test_all_syms.lean:57:7: error: Ambiguous term
+  @keyMonoOk
+Possible interpretations:
+  MoltPetit.Model.keyMonoOk : ℕ → MoltPetit.Model.Chain → Bool
+  
+  Molt.keyMonoOk : ℕ → Molt.Chain → Bool
+verify-out/test_all_syms.lean:58:7: error: Ambiguous term
+  @keyrot_certified_suffix_agreement_anchored
+Possible interpretations:
+  @MoltPetit.Model.keyrot_certified_suffix_agreement_anchored : ∀ {n Δconf : ℕ},
+    1 ≤ n →
+      n ≤ Δconf →
+        ∀ {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk} {registry : MoltPetit.Model.KeyRegistry pk}
+          {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+          {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G A : MoltPetit.Model.Block},
+          MoltPetit.Model.KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ →
+            MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+              ∀ {cl cl' : MoltPetit.Model.CertClaim} {fl fl' : ℕ → ℕ},
+                MoltPetit.Model.GroundedCertK n (MoltPetit.Model.SignedDeclared n ops registry) G cl fl →
+                  MoltPetit.Model.GroundedCertK n (MoltPetit.Model.SignedDeclared n ops registry) G cl' fl' →
+                    ∀ {s₁ s₁' : MoltPetit.Model.Block} {srest srest' : MoltPetit.Model.Chain}
+                      {sTip sTip' : MoltPetit.Model.Block},
+                      (s₁ :: srest).getLast? = some sTip →
+                        (s₁' :: srest').getLast? = some sTip' →
+                          s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                            MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                              (∀ (u : ℕ),
+                                  ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                    u + n ≤ sTip.slot + 1 →
+                                      MoltPetit.Model.quorum n ≤
+                                        MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                                keyMonoFrom n fl (s₁ :: srest) = true →
+                                  (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                                    s₁'.height = cl'.tipHeight + 1 ∧
+                                        cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                      MoltPetit.Model.linksOk (s₁' :: srest') = true →
+                                        (∀ (u : ℕ),
+                                            ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                              u + n ≤ sTip'.slot + 1 →
+                                                MoltPetit.Model.quorum n ≤
+                                                  MoltPetit.Model.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                          keyMonoFrom n fl' (s₁' :: srest') = true →
+                                            (∀ B ∈ s₁' :: srest', MoltPetit.Model.SignedDeclared n ops registry B) →
+                                              now ≤ sTip.slot + Δ →
+                                                now ≤ sTip'.slot + Δ →
+                                                  A ∈ s₁ :: srest →
+                                                    A ∈ s₁' :: srest' →
+                                                      (∀ (c : MoltPetit.Model.Chain),
+                                                          MoltPetit.Model.AttestedHistoryK n Δconf ops registry G
+                                                              cl.tipHeight (s₁ :: srest) c →
+                                                            ∀ (u : ℕ),
+                                                              A.slot + 1 ≤ u + n →
+                                                                (MoltPetit.Model.badSlotsIn
+                                                                      (badKeyrotOn n Δconf rented Stolen c) u n).card ≤
+                                                                  maxByzantine n) →
+                                                        ∀ {i i' : ℕ} {B B' : MoltPetit.Model.Block},
+                                                          MoltPetit.Model.blockAt? (s₁ :: srest) i = some B →
+                                                            MoltPetit.Model.blockAt? (s₁' :: srest') i' = some B' →
+                                                              cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                                i + n < (s₁ :: srest).length →
+                                                                  i' + n < (s₁' :: srest').length → B = B'
+  
+  @Molt.keyrot_certified_suffix_agreement_anchored : ∀ {n Δconf : ℕ},
+    1 ≤ n →
+      n ≤ Δconf →
+        ∀ {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk} {registry : MoltPetit.Model.KeyRegistry pk}
+          {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+          {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G A : MoltPetit.Model.Block},
+          MoltPetit.Model.KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ →
+            MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+              ∀ {cl cl' : MoltPetit.Model.CertClaim} {fl fl' : ℕ → ℕ},
+                MoltPetit.Model.GroundedCertK n (MoltPetit.Model.SignedDeclared n ops registry) G cl fl →
+                  MoltPetit.Model.GroundedCertK n (MoltPetit.Model.SignedDeclared n ops registry) G cl' fl' →
+                    ∀ {s₁ s₁' : MoltPetit.Model.Block} {srest srest' : MoltPetit.Model.Chain}
+                      {sTip sTip' : MoltPetit.Model.Block},
+                      (s₁ :: srest).getLast? = some sTip →
+                        (s₁' :: srest').getLast? = some sTip' →
+                          s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                            MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                              (∀ (u : ℕ),
+                                  ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                    u + n ≤ sTip.slot + 1 →
+                                      MoltPetit.Model.quorum n ≤
+                                        MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                                keyMonoFrom n fl (s₁ :: srest) = true →
+                                  (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                                    s₁'.height = cl'.tipHeight + 1 ∧
+                                        cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                      MoltPetit.Model.linksOk (s₁' :: srest') = true →
+                                        (∀ (u : ℕ),
+                                            ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                              u + n ≤ sTip'.slot + 1 →
+                                                MoltPetit.Model.quorum n ≤
+                                                  MoltPetit.Model.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                          keyMonoFrom n fl' (s₁' :: srest') = true →
+                                            (∀ B ∈ s₁' :: srest', MoltPetit.Model.SignedDeclared n ops registry B) →
+                                              now ≤ sTip.slot + Δ →
+                                                now ≤ sTip'.slot + Δ →
+                                                  A ∈ s₁ :: srest →
+                                                    A ∈ s₁' :: srest' →
+                                                      (∀ (c : MoltPetit.Model.Chain),
+                                                          MoltPetit.Model.AttestedHistoryK n Δconf ops registry G
+                                                              cl.tipHeight (s₁ :: srest) c →
+                                                            ∀ (u : ℕ),
+                                                              A.slot + 1 ≤ u + n →
+                                                                (MoltPetit.Model.badSlotsIn
+                                                                      (badKeyrotOn n Δconf rented Stolen c) u n).card ≤
+                                                                  maxByzantine n) →
+                                                        ∀ {i i' : ℕ} {B B' : MoltPetit.Model.Block},
+                                                          MoltPetit.Model.blockAt? (s₁ :: srest) i = some B →
+                                                            MoltPetit.Model.blockAt? (s₁' :: srest') i' = some B' →
+                                                              cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                                i + n < (s₁ :: srest).length →
+                                                                  i' + n < (s₁' :: srest').length → B = B'
+verify-out/test_all_syms.lean:59:7: error: Ambiguous term
+  @keyrot_recent_certified_suffix_agreement
+Possible interpretations:
+  @MoltPetit.Model.keyrot_recent_certified_suffix_agreement : ∀ {n Δconf : ℕ},
+    1 ≤ n →
+      n ≤ Δconf →
+        ∀ {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk} {registry : MoltPetit.Model.KeyRegistry pk}
+          {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+          {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block},
+          MoltPetit.Model.KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ →
+            MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+              ∀ {cl cl' : MoltPetit.Model.CertClaim} {fl fl' : ℕ → ℕ},
+                MoltPetit.Model.GroundedCertK n (MoltPetit.Model.SignedDeclared n ops registry) G cl fl →
+                  MoltPetit.Model.GroundedCertK n (MoltPetit.Model.SignedDeclared n ops registry) G cl' fl' →
+                    ∀ {s₁ s₁' : MoltPetit.Model.Block} {srest srest' : MoltPetit.Model.Chain}
+                      {sTip sTip' : MoltPetit.Model.Block},
+                      (s₁ :: srest).getLast? = some sTip →
+                        (s₁' :: srest').getLast? = some sTip' →
+                          s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                            MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                              (∀ (u : ℕ),
+                                  ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                    u + n ≤ sTip.slot + 1 →
+                                      MoltPetit.Model.quorum n ≤
+                                        MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                                keyMonoFrom n fl (s₁ :: srest) = true →
+                                  (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                                    s₁'.height = cl'.tipHeight + 1 ∧
+                                        cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                      MoltPetit.Model.linksOk (s₁' :: srest') = true →
+                                        (∀ (u : ℕ),
+                                            ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                              u + n ≤ sTip'.slot + 1 →
+                                                MoltPetit.Model.quorum n ≤
+                                                  MoltPetit.Model.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                          keyMonoFrom n fl' (s₁' :: srest') = true →
+                                            (∀ B ∈ s₁' :: srest', MoltPetit.Model.SignedDeclared n ops registry B) →
+                                              now ≤ sTip.slot + Δ →
+                                                now ≤ sTip'.slot + Δ →
+                                                  (∀ (c : MoltPetit.Model.Chain),
+                                                      MoltPetit.Model.AttestedHistoryK n Δconf ops registry G
+                                                          cl.tipHeight (s₁ :: srest) c →
+                                                        ByzantineBounded n (badKeyrotOn n Δconf rented Stolen c)) →
+                                                    ∀ {i i' : ℕ} {B B' : MoltPetit.Model.Block},
+                                                      MoltPetit.Model.blockAt? (s₁ :: srest) i = some B →
+                                                        MoltPetit.Model.blockAt? (s₁' :: srest') i' = some B' →
+                                                          cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                            i + n < (s₁ :: srest).length →
+                                                              i' + n < (s₁' :: srest').length → B = B'
+  
+  @Molt.keyrot_recent_certified_suffix_agreement : ∀ {n Δconf : ℕ},
+    1 ≤ n →
+      n ≤ Δconf →
+        ∀ {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk} {registry : MoltPetit.Model.KeyRegistry pk}
+          {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+          {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block},
+          MoltPetit.Model.KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ →
+            MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+              ∀ {cl cl' : MoltPetit.Model.CertClaim} {fl fl' : ℕ → ℕ},
+                MoltPetit.Model.GroundedCertK n (MoltPetit.Model.SignedDeclared n ops registry) G cl fl →
+                  MoltPetit.Model.GroundedCertK n (MoltPetit.Model.SignedDeclared n ops registry) G cl' fl' →
+                    ∀ {s₁ s₁' : MoltPetit.Model.Block} {srest srest' : MoltPetit.Model.Chain}
+                      {sTip sTip' : MoltPetit.Model.Block},
+                      (s₁ :: srest).getLast? = some sTip →
+                        (s₁' :: srest').getLast? = some sTip' →
+                          s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                            MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                              (∀ (u : ℕ),
+                                  ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                    u + n ≤ sTip.slot + 1 →
+                                      MoltPetit.Model.quorum n ≤
+                                        MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                                keyMonoFrom n fl (s₁ :: srest) = true →
+                                  (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                                    s₁'.height = cl'.tipHeight + 1 ∧
+                                        cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                      MoltPetit.Model.linksOk (s₁' :: srest') = true →
+                                        (∀ (u : ℕ),
+                                            ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                              u + n ≤ sTip'.slot + 1 →
+                                                MoltPetit.Model.quorum n ≤
+                                                  MoltPetit.Model.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                          keyMonoFrom n fl' (s₁' :: srest') = true →
+                                            (∀ B ∈ s₁' :: srest', MoltPetit.Model.SignedDeclared n ops registry B) →
+                                              now ≤ sTip.slot + Δ →
+                                                now ≤ sTip'.slot + Δ →
+                                                  (∀ (c : MoltPetit.Model.Chain),
+                                                      MoltPetit.Model.AttestedHistoryK n Δconf ops registry G
+                                                          cl.tipHeight (s₁ :: srest) c →
+                                                        ByzantineBounded n (badKeyrotOn n Δconf rented Stolen c)) →
+                                                    ∀ {i i' : ℕ} {B B' : MoltPetit.Model.Block},
+                                                      MoltPetit.Model.blockAt? (s₁ :: srest) i = some B →
+                                                        MoltPetit.Model.blockAt? (s₁' :: srest') i' = some B' →
+                                                          cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                            i + n < (s₁ :: srest).length →
+                                                              i' + n < (s₁' :: srest').length → B = B'
+@light_client_safety : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {bad : Molt.ByzantineSlots} {signed : Molt.SigningLog} {Signed : Molt.Block → Prop} {G : Molt.Block} {now Δ : ℕ},
+      FaultBounded n bad →
+        Molt.SigUnforgeableRecent n bad Signed signed now Δ →
+          Molt.SignedHashInjective Signed G →
+            ∀ {cl cl' : Molt.CertClaim},
+              Molt.GroundedCert n Signed G cl →
+                Molt.GroundedCert n Signed G cl' →
+                  ∀ {s₁ s₁' : Molt.Block} {srest srest' : Molt.Chain} {sTip sTip' : Molt.Block},
+                    (s₁ :: srest).getLast? = some sTip →
+                      (s₁' :: srest').getLast? = some sTip' →
+                        s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                          Molt.linksOk (s₁ :: srest) = true →
+                            (∀ (u : ℕ),
+                                ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                  u + n ≤ sTip.slot + 1 →
+                                    Molt.quorum n ≤ Molt.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                              s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                Molt.linksOk (s₁' :: srest') = true →
+                                  (∀ (u : ℕ),
+                                      ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                        u + n ≤ sTip'.slot + 1 →
+                                          Molt.quorum n ≤ Molt.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                    (∀ B ∈ s₁ :: srest, Signed B) →
+                                      (∀ B ∈ s₁' :: srest', Signed B) →
+                                        now ≤ sTip.slot + Δ →
+                                          now ≤ sTip'.slot + Δ →
+                                            ∀ {i i' : ℕ} {B B' : Molt.Block},
+                                              Molt.blockAt? (s₁ :: srest) i = some B →
+                                                Molt.blockAt? (s₁' :: srest') i' = some B' →
+                                                  cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                    i + n < (s₁ :: srest).length →
+                                                      i' + n < (s₁' :: srest').length → B = B'
+verify-out/test_all_syms.lean:61:7: error: Ambiguous term
+  @linksOk
+Possible interpretations:
+  MoltPetit.Model.linksOk : MoltPetit.Model.Chain → Bool
+  
+  Molt.linksOk : Molt.Chain → Bool
+verify-out/test_all_syms.lean:62:7: error: Ambiguous term
+  @liveness_produce_blockK
+Possible interpretations:
+  @MoltPetit.Model.liveness_produce_blockK : ∀ {n Δconf me slot newId contentsHash keyIndex : ℕ}
+    {bad : MoltPetit.Model.ByzantineSlots} {record : MoltPetit.Model.SlotRecord} {c : MoltPetit.Model.Chain}
+    {tip : MoltPetit.Model.Block},
+    ByzantineBounded n bad →
+      MoltPetit.Model.validChainK n c = true →
+        List.getLast? c = some tip →
+          tip.slot < slot →
+            producerForSlot n slot = me →
+              (∀ (s : ℕ), ∀ B ∈ record s, B.slot = s) →
+                (∀ (u : ℕ),
+                    tip.slot + 1 < u + n →
+                      u + n ≤ slot + 1 →
+                        MoltPetit.Model.HonestBlocksCover bad record
+                          (c ++ [nextBlock slot newId contentsHash keyIndex tip]) u n) →
+                  MoltPetit.Model.keyFloor n c me ≤ keyIndex →
+                    MoltPetit.Model.produceBlock? n me slot newId contentsHash keyIndex c =
+                        some (nextBlock slot newId contentsHash keyIndex tip) ∧
+                      MoltPetit.Model.validChainK' n Δconf (c ++ [nextBlock slot newId contentsHash keyIndex tip]) =
+                        true
+  
+  @Molt.liveness_produce_blockK : ∀ {n Δconf me slot newId contentsHash keyIndex : ℕ}
+    {bad : MoltPetit.Model.ByzantineSlots} {record : MoltPetit.Model.SlotRecord} {c : MoltPetit.Model.Chain}
+    {tip : MoltPetit.Model.Block},
+    ByzantineBounded n bad →
+      MoltPetit.Model.validChainK n c = true →
+        List.getLast? c = some tip →
+          tip.slot < slot →
+            producerForSlot n slot = me →
+              (∀ (s : ℕ), ∀ B ∈ record s, B.slot = s) →
+                (∀ (u : ℕ),
+                    tip.slot + 1 < u + n →
+                      u + n ≤ slot + 1 →
+                        MoltPetit.Model.HonestBlocksCover bad record
+                          (c ++ [nextBlock slot newId contentsHash keyIndex tip]) u n) →
+                  MoltPetit.Model.keyFloor n c me ≤ keyIndex →
+                    MoltPetit.Model.produceBlock? n me slot newId contentsHash keyIndex c =
+                        some (nextBlock slot newId contentsHash keyIndex tip) ∧
+                      MoltPetit.Model.validChainK' n Δconf (c ++ [nextBlock slot newId contentsHash keyIndex tip]) =
+                        true
+verify-out/test_all_syms.lean:63:7: error: Ambiguous term
+  @lockstepGen_recent_genesis_agreement
+Possible interpretations:
+  @MoltPetit.Model.lockstepGen_recent_genesis_agreement : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc sc' : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              MoltPetit.Model.validSignedChainLock n ops registry sc' = true →
+                ∀ {sTip sTip' : MoltPetit.Model.Block},
+                  List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                    List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                      now ≤ sTip.slot + Δ →
+                        now ≤ sTip'.slot + Δ →
+                          2 * n < List.length (MoltPetit.Model.stripSigs sc) →
+                            2 * n < List.length (MoltPetit.Model.stripSigs sc') →
+                              ∃ P,
+                                MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) 0 = some P ∧
+                                  MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') 0 = some P
+  
+  @Molt.lockstepGen_recent_genesis_agreement : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc sc' : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              MoltPetit.Model.validSignedChainLock n ops registry sc' = true →
+                ∀ {sTip sTip' : MoltPetit.Model.Block},
+                  List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                    List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                      now ≤ sTip.slot + Δ →
+                        now ≤ sTip'.slot + Δ →
+                          2 * n < List.length (MoltPetit.Model.stripSigs sc) →
+                            2 * n < List.length (MoltPetit.Model.stripSigs sc') →
+                              ∃ P,
+                                MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) 0 = some P ∧
+                                  MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') 0 = some P
+verify-out/test_all_syms.lean:64:7: error: Ambiguous term
+  @lockstepGen_shared_prefix_sharp
+Possible interpretations:
+  @MoltPetit.Model.lockstepGen_shared_prefix_sharp : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc sc' : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              MoltPetit.Model.validSignedChainLock n ops registry sc' = true →
+                ∀ {sTip sTip' : MoltPetit.Model.Block},
+                  List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                    List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                      now ≤ sTip.slot + Δ →
+                        now ≤ sTip'.slot + Δ →
+                          sTip.slot ≤ sTip'.slot →
+                            ∀ {k : ℕ} {B : MoltPetit.Model.Block},
+                              MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) k = some B →
+                                k + n + (sTip.slot + 1) % n < List.length (MoltPetit.Model.stripSigs sc) →
+                                  ∃ P,
+                                    MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) k = some P ∧
+                                      MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') k = some P
+  
+  @Molt.lockstepGen_shared_prefix_sharp : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc sc' : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              MoltPetit.Model.validSignedChainLock n ops registry sc' = true →
+                ∀ {sTip sTip' : MoltPetit.Model.Block},
+                  List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                    List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                      now ≤ sTip.slot + Δ →
+                        now ≤ sTip'.slot + Δ →
+                          sTip.slot ≤ sTip'.slot →
+                            ∀ {k : ℕ} {B : MoltPetit.Model.Block},
+                              MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) k = some B →
+                                k + n + (sTip.slot + 1) % n < List.length (MoltPetit.Model.stripSigs sc) →
+                                  ∃ P,
+                                    MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) k = some P ∧
+                                      MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') k = some P
+verify-out/test_all_syms.lean:65:7: error: Ambiguous term
+  @lockstep_cert_gen_pinned
+Possible interpretations:
+  @MoltPetit.Model.lockstep_cert_gen_pinned : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {cl : MoltPetit.Model.CertClaim} {g : ℕ},
+            MoltPetit.Model.GroundedCertLock n (MoltPetit.Model.SignedDeclared n ops registry) G cl g →
+              ∀ {s₁ : MoltPetit.Model.Block} {srest : MoltPetit.Model.Chain} {sTip : MoltPetit.Model.Block},
+                (s₁ :: srest).getLast? = some sTip →
+                  s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                    MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                      (∀ (u : ℕ),
+                          ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                            u + n ≤ sTip.slot + 1 →
+                              MoltPetit.Model.quorum n ≤ MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                        MoltPetit.Model.lockstepFrom n cl.tipSlot g (s₁ :: srest) = true →
+                          (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                            now ≤ sTip.slot + Δ →
+                              (∃ D ∈ s₁ :: srest, cl.tipSlot / n * n + n ≤ D.slot + 1) → g = rosterGen (cl.tipSlot / n)
+  
+  @Molt.lockstep_cert_gen_pinned : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {cl : MoltPetit.Model.CertClaim} {g : ℕ},
+            MoltPetit.Model.GroundedCertLock n (MoltPetit.Model.SignedDeclared n ops registry) G cl g →
+              ∀ {s₁ : MoltPetit.Model.Block} {srest : MoltPetit.Model.Chain} {sTip : MoltPetit.Model.Block},
+                (s₁ :: srest).getLast? = some sTip →
+                  s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                    MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                      (∀ (u : ℕ),
+                          ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                            u + n ≤ sTip.slot + 1 →
+                              MoltPetit.Model.quorum n ≤ MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                        MoltPetit.Model.lockstepFrom n cl.tipSlot g (s₁ :: srest) = true →
+                          (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                            now ≤ sTip.slot + Δ →
+                              (∃ D ∈ s₁ :: srest, cl.tipSlot / n * n + n ≤ D.slot + 1) → g = rosterGen (cl.tipSlot / n)
+@lockstep_client_safety : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk}
+      {rented : Molt.ByzantineSlots} {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ}
+      {G : Molt.Block} {R T : ℕ},
+      Molt.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+        ∀ {sc sc' : Molt.SignedChain Sig},
+          Molt.validSignedChainLock n ops registry sc = true →
+            Molt.validSignedChainLock n ops registry sc' = true →
+              Molt.blockAt? (Molt.stripSigs sc) 0 = some G →
+                Molt.blockAt? (Molt.stripSigs sc') 0 = some G →
+                  ∀ {sTip sTip' : Molt.Block},
+                    List.getLast? (Molt.stripSigs sc) = some sTip →
+                      List.getLast? (Molt.stripSigs sc') = some sTip' →
+                        now ≤ sTip.slot + Δ →
+                          now ≤ sTip'.slot + Δ →
+                            n < List.length (Molt.stripSigs sc) →
+                              n < List.length (Molt.stripSigs sc') →
+                                sTip.height = sTip'.height →
+                                  ∀ {B B' : Molt.Block},
+                                    Molt.blockAt? (Molt.stripSigs sc) (List.length (Molt.stripSigs sc) - 1 - n) =
+                                        some B →
+                                      Molt.blockAt? (Molt.stripSigs sc') (List.length (Molt.stripSigs sc') - 1 - n) =
+                                          some B' →
+                                        B = B'
+@lockstep_client_safety_gen : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk}
+      {rented : Molt.ByzantineSlots} {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ}
+      {G : Molt.Block} {R T : ℕ},
+      Molt.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+        ∀ {sc sc' : Molt.SignedChain Sig},
+          Molt.validSignedChainLock n ops registry sc = true →
+            Molt.validSignedChainLock n ops registry sc' = true →
+              ∀ {sTip sTip' : Molt.Block},
+                List.getLast? (Molt.stripSigs sc) = some sTip →
+                  List.getLast? (Molt.stripSigs sc') = some sTip' →
+                    now ≤ sTip.slot + Δ →
+                      now ≤ sTip'.slot + Δ →
+                        2 * n < List.length (Molt.stripSigs sc) →
+                          2 * n < List.length (Molt.stripSigs sc') →
+                            sTip.height = sTip'.height →
+                              ∀ {B B' : Molt.Block},
+                                Molt.blockAt? (Molt.stripSigs sc) (List.length (Molt.stripSigs sc) - 1 - 2 * n) =
+                                    some B →
+                                  Molt.blockAt? (Molt.stripSigs sc') (List.length (Molt.stripSigs sc') - 1 - 2 * n) =
+                                      some B' →
+                                    B = B'
+@lockstep_client_safety_timed : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk}
+      {rented : Molt.ByzantineSlots} {stolenAt : ℕ → ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ}
+      {G : Molt.Block} {R T : ℕ},
+      Molt.LockstepPackageTimed n rosterGen ops registry rented stolenAt honestSigned now Δ G R T →
+        ∀ {sc sc' : Molt.SignedChain Sig},
+          Molt.validSignedChainLock n ops registry sc = true →
+            Molt.validSignedChainLock n ops registry sc' = true →
+              ∀ {sTip sTip' : Molt.Block},
+                List.getLast? (Molt.stripSigs sc) = some sTip →
+                  List.getLast? (Molt.stripSigs sc') = some sTip' →
+                    now ≤ sTip.slot + Δ →
+                      now ≤ sTip'.slot + Δ →
+                        2 * n < List.length (Molt.stripSigs sc) →
+                          2 * n < List.length (Molt.stripSigs sc') →
+                            sTip.height = sTip'.height →
+                              ∀ {B B' : Molt.Block},
+                                Molt.blockAt? (Molt.stripSigs sc) (List.length (Molt.stripSigs sc) - 1 - 2 * n) =
+                                    some B →
+                                  Molt.blockAt? (Molt.stripSigs sc') (List.length (Molt.stripSigs sc') - 1 - 2 * n) =
+                                      some B' →
+                                    B = B'
+verify-out/test_all_syms.lean:69:7: error: Ambiguous term
+  @lockstep_declares_rosterGen
+Possible interpretations:
+  @MoltPetit.Model.lockstep_declares_rosterGen : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) 0 = some G →
+                (∃ t, List.getLast? (MoltPetit.Model.stripSigs sc) = some t ∧ now ≤ t.slot + Δ) →
+                  ∀ (W : ℕ),
+                    ∀ B ∈ MoltPetit.Model.stripSigs sc,
+                      B.slot / n = W →
+                        (∃ D ∈ MoltPetit.Model.stripSigs sc, W * n + n ≤ D.slot + 1) → B.keyIndex = rosterGen W
+  
+  @Molt.lockstep_declares_rosterGen : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) 0 = some G →
+                (∃ t, List.getLast? (MoltPetit.Model.stripSigs sc) = some t ∧ now ≤ t.slot + Δ) →
+                  ∀ (W : ℕ),
+                    ∀ B ∈ MoltPetit.Model.stripSigs sc,
+                      B.slot / n = W →
+                        (∃ D ∈ MoltPetit.Model.stripSigs sc, W * n + n ≤ D.slot + 1) → B.keyIndex = rosterGen W
+verify-out/test_all_syms.lean:70:7: error: Ambiguous term
+  @lockstep_recent_certified_suffix_agreement
+Possible interpretations:
+  @MoltPetit.Model.lockstep_recent_certified_suffix_agreement : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {cl cl' : MoltPetit.Model.CertClaim} {g g' : ℕ},
+            MoltPetit.Model.GroundedCertLock n (MoltPetit.Model.SignedDeclared n ops registry) G cl g →
+              MoltPetit.Model.GroundedCertLock n (MoltPetit.Model.SignedDeclared n ops registry) G cl' g' →
+                ∀ {s₁ s₁' : MoltPetit.Model.Block} {srest srest' : MoltPetit.Model.Chain}
+                  {sTip sTip' : MoltPetit.Model.Block},
+                  (s₁ :: srest).getLast? = some sTip →
+                    (s₁' :: srest').getLast? = some sTip' →
+                      s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                        MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                          (∀ (u : ℕ),
+                              ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                u + n ≤ sTip.slot + 1 →
+                                  MoltPetit.Model.quorum n ≤ MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                            MoltPetit.Model.lockstepFrom n cl.tipSlot g (s₁ :: srest) = true →
+                              (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                                s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                  MoltPetit.Model.linksOk (s₁' :: srest') = true →
+                                    (∀ (u : ℕ),
+                                        ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                          u + n ≤ sTip'.slot + 1 →
+                                            MoltPetit.Model.quorum n ≤
+                                              MoltPetit.Model.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                      MoltPetit.Model.lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true →
+                                        (∀ B ∈ s₁' :: srest', MoltPetit.Model.SignedDeclared n ops registry B) →
+                                          now ≤ sTip.slot + Δ →
+                                            now ≤ sTip'.slot + Δ →
+                                              ∀ {i i' : ℕ} {B B' : MoltPetit.Model.Block},
+                                                MoltPetit.Model.blockAt? (s₁ :: srest) i = some B →
+                                                  MoltPetit.Model.blockAt? (s₁' :: srest') i' = some B' →
+                                                    cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                      i + n < (s₁ :: srest).length →
+                                                        i' + n < (s₁' :: srest').length → B = B'
+  
+  @Molt.lockstep_recent_certified_suffix_agreement : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {cl cl' : MoltPetit.Model.CertClaim} {g g' : ℕ},
+            MoltPetit.Model.GroundedCertLock n (MoltPetit.Model.SignedDeclared n ops registry) G cl g →
+              MoltPetit.Model.GroundedCertLock n (MoltPetit.Model.SignedDeclared n ops registry) G cl' g' →
+                ∀ {s₁ s₁' : MoltPetit.Model.Block} {srest srest' : MoltPetit.Model.Chain}
+                  {sTip sTip' : MoltPetit.Model.Block},
+                  (s₁ :: srest).getLast? = some sTip →
+                    (s₁' :: srest').getLast? = some sTip' →
+                      s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                        MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                          (∀ (u : ℕ),
+                              ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                u + n ≤ sTip.slot + 1 →
+                                  MoltPetit.Model.quorum n ≤ MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                            MoltPetit.Model.lockstepFrom n cl.tipSlot g (s₁ :: srest) = true →
+                              (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                                s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                  MoltPetit.Model.linksOk (s₁' :: srest') = true →
+                                    (∀ (u : ℕ),
+                                        ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                          u + n ≤ sTip'.slot + 1 →
+                                            MoltPetit.Model.quorum n ≤
+                                              MoltPetit.Model.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                      MoltPetit.Model.lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true →
+                                        (∀ B ∈ s₁' :: srest', MoltPetit.Model.SignedDeclared n ops registry B) →
+                                          now ≤ sTip.slot + Δ →
+                                            now ≤ sTip'.slot + Δ →
+                                              ∀ {i i' : ℕ} {B B' : MoltPetit.Model.Block},
+                                                MoltPetit.Model.blockAt? (s₁ :: srest) i = some B →
+                                                  MoltPetit.Model.blockAt? (s₁' :: srest') i' = some B' →
+                                                    cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                      i + n < (s₁ :: srest).length →
+                                                        i' + n < (s₁' :: srest').length → B = B'
+verify-out/test_all_syms.lean:71:7: error: Ambiguous term
+  @lockstep_recent_tip_ancestor_mem
+Possible interpretations:
+  @MoltPetit.Model.lockstep_recent_tip_ancestor_mem : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc sc' : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              MoltPetit.Model.validSignedChainLock n ops registry sc' = true →
+                MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) 0 = some G →
+                  MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') 0 = some G →
+                    ∀ {sTip sTip' : MoltPetit.Model.Block},
+                      List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                        List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                          now ≤ sTip.slot + Δ →
+                            now ≤ sTip'.slot + Δ →
+                              n < List.length (MoltPetit.Model.stripSigs sc) →
+                                sTip.height ≤ sTip'.height →
+                                  ∀ {B : MoltPetit.Model.Block},
+                                    MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc)
+                                          (List.length (MoltPetit.Model.stripSigs sc) - 1 - n) =
+                                        some B →
+                                      ∃ i',
+                                        i' + n < List.length (MoltPetit.Model.stripSigs sc') ∧
+                                          MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') i' = some B
+  
+  @Molt.lockstep_recent_tip_ancestor_mem : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc sc' : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              MoltPetit.Model.validSignedChainLock n ops registry sc' = true →
+                MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) 0 = some G →
+                  MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') 0 = some G →
+                    ∀ {sTip sTip' : MoltPetit.Model.Block},
+                      List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                        List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                          now ≤ sTip.slot + Δ →
+                            now ≤ sTip'.slot + Δ →
+                              n < List.length (MoltPetit.Model.stripSigs sc) →
+                                sTip.height ≤ sTip'.height →
+                                  ∀ {B : MoltPetit.Model.Block},
+                                    MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc)
+                                          (List.length (MoltPetit.Model.stripSigs sc) - 1 - n) =
+                                        some B →
+                                      ∃ i',
+                                        i' + n < List.length (MoltPetit.Model.stripSigs sc') ∧
+                                          MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') i' = some B
+verify-out/test_all_syms.lean:72:7: error: Ambiguous term
+  @lockstep_window_declares_rosterGen
+Possible interpretations:
+  @MoltPetit.Model.lockstep_window_declares_rosterGen : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              (∃ t, List.getLast? (MoltPetit.Model.stripSigs sc) = some t ∧ now ≤ t.slot + Δ) →
+                ∀ (W : ℕ),
+                  (∃ D ∈ MoltPetit.Model.stripSigs sc, W * n + n ≤ D.slot + 1) →
+                    ∀ {B : MoltPetit.Model.Block},
+                      B ∈ MoltPetit.Model.stripSigs sc → B.slot / n = W → B.keyIndex = rosterGen W
+  
+  @Molt.lockstep_window_declares_rosterGen : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {rosterGen : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block} {R T : ℕ},
+        MoltPetit.Model.LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T →
+          ∀ {sc : MoltPetit.Model.SignedChain Sig},
+            MoltPetit.Model.validSignedChainLock n ops registry sc = true →
+              (∃ t, List.getLast? (MoltPetit.Model.stripSigs sc) = some t ∧ now ≤ t.slot + Δ) →
+                ∀ (W : ℕ),
+                  (∃ D ∈ MoltPetit.Model.stripSigs sc, W * n + n ≤ D.slot + 1) →
+                    ∀ {B : MoltPetit.Model.Block},
+                      B ∈ MoltPetit.Model.stripSigs sc → B.slot / n = W → B.keyIndex = rosterGen W
+@max_sync_period : ∀ {n Δconf F : ℕ},
+  1 ≤ n →
+    n ≤ Δconf →
+      ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+        {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G : Molt.Block}
+        {sc sc' scPrev : Molt.SignedChain Sig} {A : Molt.Block},
+        Molt.KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ →
+          Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+            ∀ {t : ℕ} {tipPrev : Molt.Block},
+              Molt.validSignedChainK' n Δconf ops registry scPrev = true →
+                List.getLast? (Molt.stripSigs scPrev) = some tipPrev →
+                  t ≤ tipPrev.slot + n →
+                    n < List.length (Molt.stripSigs scPrev) →
+                      Molt.blockAt? (Molt.stripSigs scPrev) (List.length (Molt.stripSigs scPrev) - 1 - n) = some A →
+                        now ≤ t + F →
+                          A ∈ Molt.stripSigs sc →
+                            A ∈ Molt.stripSigs sc' →
+                              (∀ (u : ℕ),
+                                  now < u + F + 4 * n →
+                                    (Molt.badSlotsIn (badKeyrot n Δconf rented Stolen (Molt.stripSigs sc)) u n).card ≤
+                                      faultBudget n) →
+                                Molt.validSignedChainK' n Δconf ops registry sc = true →
+                                  Molt.validSignedChainK' n Δconf ops registry sc' = true →
+                                    ∀ {sTip sTip' : Molt.Block},
+                                      List.getLast? (Molt.stripSigs sc) = some sTip →
+                                        List.getLast? (Molt.stripSigs sc') = some sTip' →
+                                          now ≤ sTip.slot + Δ →
+                                            now ≤ sTip'.slot + Δ →
+                                              n < List.length (Molt.stripSigs sc) →
+                                                n < List.length (Molt.stripSigs sc') →
+                                                  sTip.height = sTip'.height →
+                                                    ∀ {B B' : Molt.Block},
+                                                      Molt.blockAt? (Molt.stripSigs sc)
+                                                            (List.length (Molt.stripSigs sc) - 1 - n) =
+                                                          some B →
+                                                        Molt.blockAt? (Molt.stripSigs sc')
+                                                              (List.length (Molt.stripSigs sc') - 1 - n) =
+                                                            some B' →
+                                                          B = B'
+@max_sync_period_tight : ∀ {n Δconf F : ℕ},
+  1 ≤ n →
+    n ≤ Δconf →
+      ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+        {stolenAt : ℕ → ℕ → ℕ → Prop} {d : ℕ} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G : Molt.Block}
+        {sc sc' scPrev : Molt.SignedChain Sig} {A : Molt.Block},
+        Molt.KeyStealingEUFCMA n Δconf ops registry rented (stolenOf stolenAt) honestSigned now Δ →
+          Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+            ∀ {t : ℕ} {tipPrev : Molt.Block},
+              Molt.validSignedChainK' n Δconf ops registry scPrev = true →
+                List.getLast? (Molt.stripSigs scPrev) = some tipPrev →
+                  t ≤ tipPrev.slot + n →
+                    n < List.length (Molt.stripSigs scPrev) →
+                      Molt.blockAt? (Molt.stripSigs scPrev) (List.length (Molt.stripSigs scPrev) - 1 - n) = some A →
+                        now ≤ t + F →
+                          A ∈ Molt.stripSigs sc →
+                            A ∈ Molt.stripSigs sc' →
+                              ∀ {Rrent T : ℕ},
+                                Molt.Reacts n Δconf d (Molt.stripSigs sc) stolenAt →
+                                  Molt.NoTheftBackdating n Δconf (Molt.stripSigs sc) stolenAt →
+                                    (∀ (u : ℕ), now < u + F + 4 * n → (Molt.badSlotsIn rented u n).card ≤ Rrent) →
+                                      (∀ (u : ℕ),
+                                          now < u + F + 4 * n →
+                                            (Molt.recentTheftProducersTight n d stolenAt u).card ≤ T) →
+                                        Rrent + T ≤ faultBudget n →
+                                          Molt.validSignedChainK' n Δconf ops registry sc = true →
+                                            Molt.validSignedChainK' n Δconf ops registry sc' = true →
+                                              ∀ {sTip sTip' : Molt.Block},
+                                                List.getLast? (Molt.stripSigs sc) = some sTip →
+                                                  List.getLast? (Molt.stripSigs sc') = some sTip' →
+                                                    now ≤ sTip.slot + Δ →
+                                                      now ≤ sTip'.slot + Δ →
+                                                        n < List.length (Molt.stripSigs sc) →
+                                                          n < List.length (Molt.stripSigs sc') →
+                                                            sTip.height = sTip'.height →
+                                                              ∀ {B B' : Molt.Block},
+                                                                Molt.blockAt? (Molt.stripSigs sc)
+                                                                      (List.length (Molt.stripSigs sc) - 1 - n) =
+                                                                    some B →
+                                                                  Molt.blockAt? (Molt.stripSigs sc')
+                                                                        (List.length (Molt.stripSigs sc') - 1 - n) =
+                                                                      some B' →
+                                                                    B = B'
+@max_sync_period_timed : ∀ {n Δconf F : ℕ},
+  1 ≤ n →
+    n ≤ Δconf →
+      ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+        {stolenAt : ℕ → ℕ → ℕ → Prop} {d : ℕ} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G : Molt.Block}
+        {sc sc' scPrev : Molt.SignedChain Sig} {A : Molt.Block},
+        Molt.KeyStealingEUFCMA n Δconf ops registry rented (stolenOf stolenAt) honestSigned now Δ →
+          Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+            ∀ {t : ℕ} {tipPrev : Molt.Block},
+              Molt.validSignedChainK' n Δconf ops registry scPrev = true →
+                List.getLast? (Molt.stripSigs scPrev) = some tipPrev →
+                  t ≤ tipPrev.slot + n →
+                    n < List.length (Molt.stripSigs scPrev) →
+                      Molt.blockAt? (Molt.stripSigs scPrev) (List.length (Molt.stripSigs scPrev) - 1 - n) = some A →
+                        now ≤ t + F →
+                          A ∈ Molt.stripSigs sc →
+                            A ∈ Molt.stripSigs sc' →
+                              ∀ {Rrent T : ℕ},
+                                Molt.Reacts n Δconf d (Molt.stripSigs sc) stolenAt →
+                                  (∀ (u : ℕ), now < u + F + 4 * n → (Molt.badSlotsIn rented u n).card ≤ Rrent) →
+                                    (∀ (u : ℕ),
+                                        now < u + F + 4 * n → (Molt.recentTheftProducersK n d stolenAt u).card ≤ T) →
+                                      Rrent + T ≤ faultBudget n →
+                                        Molt.validSignedChainK' n Δconf ops registry sc = true →
+                                          Molt.validSignedChainK' n Δconf ops registry sc' = true →
+                                            ∀ {sTip sTip' : Molt.Block},
+                                              List.getLast? (Molt.stripSigs sc) = some sTip →
+                                                List.getLast? (Molt.stripSigs sc') = some sTip' →
+                                                  now ≤ sTip.slot + Δ →
+                                                    now ≤ sTip'.slot + Δ →
+                                                      n < List.length (Molt.stripSigs sc) →
+                                                        n < List.length (Molt.stripSigs sc') →
+                                                          sTip.height = sTip'.height →
+                                                            ∀ {B B' : Molt.Block},
+                                                              Molt.blockAt? (Molt.stripSigs sc)
+                                                                    (List.length (Molt.stripSigs sc) - 1 - n) =
+                                                                  some B →
+                                                                Molt.blockAt? (Molt.stripSigs sc')
+                                                                      (List.length (Molt.stripSigs sc') - 1 - n) =
+                                                                    some B' →
+                                                                  B = B'
+verify-out/test_all_syms.lean:76:7: error: Ambiguous term
+  @noBackdate_independent
+Possible interpretations:
+  MoltPetit.Model.noBackdate_independent : ∃ bad log G,
+    MoltPetit.Model.TimedExecution 2 bad log G ∧ ¬MoltPetit.Model.NoBackdate bad log
+  
+  Molt.noBackdate_independent : ∃ bad log G,
+    MoltPetit.Model.TimedExecution 2 bad log G ∧ ¬MoltPetit.Model.NoBackdate bad log
+noMixing : ℕ → Molt.Chain → Bool
+@no_budget_beyond : ∀ {n Δconf : ℕ} {rented : Molt.ByzantineSlots} {Stolen : ℕ → ℕ → Prop} {c₀ : Molt.Chain} {u : ℕ}
+  {P : Finset ℕ},
+  (∀ i ∈ P, ∃ s, u ≤ s ∧ s < u + n ∧ producer n s = i ∧ ∃ j, Molt.inForce n Δconf c₀ i s ≤ j ∧ Stolen i j) →
+    faultBudget n < P.card → ¬(Molt.badSlotsIn (badKeyrot n Δconf rented Stolen c₀) u n).card ≤ faultBudget n
+@paced_budget_holds_under_timing : ∀ {n Δconf d P : ℕ},
+  0 < n →
+    n + d ≤ P →
+      ∀ {ι : ℕ → ℕ} {c₀ : Molt.Chain} {rented : Molt.ByzantineSlots} {Rrent : ℕ},
+        Molt.Reacts n Δconf d c₀ (pacedStolenAt ι P) →
+          Molt.NoTheftBackdating n Δconf c₀ (pacedStolenAt ι P) →
+            (∀ (u : ℕ), (Molt.badSlotsIn rented u n).card ≤ Rrent) →
+              Rrent + 1 ≤ faultBudget n →
+                ∀ (u : ℕ),
+                  (Molt.badSlotsIn (badKeyrot n Δconf rented (stolenOf (pacedStolenAt ι P)) c₀) u n).card ≤
+                    faultBudget n
+@paced_tight_census_bound_all_F : ∀ {n d P : ℕ},
+  n + d ≤ P →
+    ∀ {ι : ℕ → ℕ} (F now u : ℕ),
+      now < u + F + 4 * n → (Molt.recentTheftProducersTight n d (pacedStolenAt ι P) u).card ≤ 1
+Block.prev : MoltPetit.Model.Block → Option ℕ
+verify-out/test_all_syms.lean:82:7: error: Ambiguous term
+  @produceBlock?
+Possible interpretations:
+  MoltPetit.Model.produceBlock? : ℕ → ℕ → ℕ → ℕ → ℕ → ℕ → MoltPetit.Model.Chain → Option MoltPetit.Model.Block
+  
+  @Molt.produceBlock? : {α σ sk pk : Type} →
+    ℕ →
+      ℕ →
+        ℕ →
+          ℕ →
+            ℕ →
+              ℕ →
+                Molt.SigOps σ sk pk →
+                  Molt.KeyRegistry pk →
+                    sk →
+                      Molt.CertOps α → Molt.CertifiedChain α σ → Option (Molt.SignedBlock σ × Molt.CertifiedChain α σ)
+producer : ℕ → ℕ → ℕ
+@production_liveness : ∀ {n me slot newId contentsHash keyIndex : ℕ} {bad : MoltPetit.Model.ByzantineSlots}
+  {record : MoltPetit.Model.SlotRecord} {c : MoltPetit.Model.Chain} {tip : MoltPetit.Model.Block},
+  ByzantineBounded n bad →
+    MoltPetit.Model.validChain n c = true →
+      List.getLast? c = some tip →
+        tip.slot < slot →
+          producerForSlot n slot = me →
+            (∀ (s : ℕ), ∀ B ∈ record s, B.slot = s) →
+              (∀ (u : ℕ),
+                  tip.slot + 1 < u + n →
+                    u + n ≤ slot + 1 →
+                      MoltPetit.Model.HonestBlocksCover bad record
+                        (c ++ [nextBlock slot newId contentsHash keyIndex tip]) u n) →
+                MoltPetit.Model.produceBlock? n me slot newId contentsHash keyIndex c =
+                  some (nextBlock slot newId contentsHash keyIndex tip)
+verify-out/test_all_syms.lean:85:7: error: Ambiguous term
+  @projectSigned
+Possible interpretations:
+  MoltPetit.Model.projectSigned : ℕ → MoltPetit.Model.TimedLog → MoltPetit.Model.SigningLog
+  
+  Molt.projectSigned : ℕ → MoltPetit.Model.TimedLog → MoltPetit.Model.SigningLog
+@rust_recent_tip_ancestor_mem : ∀ {n : Aeneas.Std.U64},
+  1 ≤ ↑n →
+    ∀ {C : Type} (I : molt_petit.Crypto C) (crypto crypto' : C) {bad : MoltPetit.Model.ByzantineSlots}
+      {signed : MoltPetit.Model.SigningLog} {G : MoltPetit.Model.Block} {now : ℕ},
+      ByzantineBounded (↑n) bad →
+        MoltPetit.Model.SigUnforgeableRecent (↑n) bad (RustSigned I crypto n) signed now ↑n →
+          MoltPetit.Model.SignedHashInjective (RustSigned I crypto n) G →
+            (∀ (b : MoltPetit.Model.Block), RustSigned I crypto' n b → RustSigned I crypto n b) →
+              (∀ (cert : molt_petit.Hash),
+                  I.cert_verify crypto cert = Aeneas.Std.Result.ok true →
+                    ∃ cl,
+                      I.cert_claim crypto cert = Aeneas.Std.Result.ok cl ∧
+                        MoltPetit.Model.GroundedCert (↑n) (RustSigned I crypto n) G (toModelClaim cl)) →
+                (∀ (cert : molt_petit.Hash),
+                    I.cert_verify crypto' cert = Aeneas.Std.Result.ok true →
+                      ∃ cl,
+                        I.cert_claim crypto' cert = Aeneas.Std.Result.ok cl ∧
+                          MoltPetit.Model.GroundedCert (↑n) (RustSigned I crypto' n) G (toModelClaim cl)) →
+                  ∀ {cert cert' : molt_petit.Hash} {suffix suffix' : molt_petit.SignedChain},
+                    molt_petit.validate_certified_chain I n crypto (molt_petit.CertifiedChain.CC cert suffix) =
+                        Aeneas.Std.Result.ok true →
+                      molt_petit.validate_certified_chain I n crypto' (molt_petit.CertifiedChain.CC cert' suffix') =
+                          Aeneas.Std.Result.ok true →
+                        ∀ {sr1 sr1' : molt_petit.Block} {srtl srtl' : molt_petit.Chain},
+                          molt_petit.strip_sigs suffix = Aeneas.Std.Result.ok (molt_petit.Chain.Cons sr1 srtl) →
+                            molt_petit.strip_sigs suffix' = Aeneas.Std.Result.ok (molt_petit.Chain.Cons sr1' srtl') →
+                              ∀ {sTip sTip' : MoltPetit.Model.Block},
+                                (toModelBlock sr1 :: toModelChain srtl).getLast? = some sTip →
+                                  (toModelBlock sr1' :: toModelChain srtl').getLast? = some sTip' →
+                                    now ≤ sTip.slot + ↑n →
+                                      now ≤ sTip'.slot + ↑n →
+                                        ↑n < (toModelBlock sr1 :: toModelChain srtl).length →
+                                          sTip.height ≤ sTip'.height →
+                                            (toModelBlock sr1').height + ↑n ≤ sTip.height →
+                                              ∀ {B : MoltPetit.Model.Block},
+                                                MoltPetit.Model.blockAt? (toModelBlock sr1 :: toModelChain srtl)
+                                                      ((toModelBlock sr1 :: toModelChain srtl).length - 1 - ↑n) =
+                                                    some B →
+                                                  ∃ i',
+                                                    i' + ↑n < (toModelBlock sr1' :: toModelChain srtl').length ∧
+                                                      MoltPetit.Model.blockAt? (toModelBlock sr1' :: toModelChain srtl')
+                                                          i' =
+                                                        some B
+@rust_valid_chain_k_sound : ∀ {n : Aeneas.Std.U64} {c : molt_petit.Chain},
+  0 < ↑n →
+    molt_petit.valid_chain_k n c = Aeneas.Std.Result.ok true →
+      MoltPetit.Model.ValidChain (↑n) (toModelChain c) ∧ KeyIndexMonotone (↑n) (toModelChain c)
+@rust_valid_chain_sound : ∀ {n : Aeneas.Std.U64} {c : molt_petit.Chain},
+  molt_petit.valid_chain n c = Aeneas.Std.Result.ok true → MoltPetit.Model.ValidChain (↑n) (toModelChain c)
+verify-out/test_all_syms.lean:89:7: error: Ambiguous term
+  @same_block_same_prefix
+Possible interpretations:
+  @MoltPetit.Model.same_block_same_prefix : ∀ {record : MoltPetit.Model.SlotRecord},
+    MoltPetit.Model.IdInjective record →
+      ∀ {c c' : MoltPetit.Model.Chain},
+        ChainInRecord record c →
+          ChainInRecord record c' →
+            ParentLinked c →
+              ParentLinked c' →
+                ∀ {m : ℕ} {B : MoltPetit.Model.Block},
+                  MoltPetit.Model.blockAt? c m = some B →
+                    MoltPetit.Model.blockAt? c' m = some B →
+                      ∀ {k : ℕ},
+                        k ≤ m → ∃ P, MoltPetit.Model.blockAt? c k = some P ∧ MoltPetit.Model.blockAt? c' k = some P
+  
+  @Molt.same_block_same_prefix : ∀ {record : MoltPetit.Model.SlotRecord},
+    MoltPetit.Model.IdInjective record →
+      ∀ {c c' : MoltPetit.Model.Chain},
+        ChainInRecord record c →
+          ChainInRecord record c' →
+            ParentLinked c →
+              ParentLinked c' →
+                ∀ {m : ℕ} {B : MoltPetit.Model.Block},
+                  MoltPetit.Model.blockAt? c m = some B →
+                    MoltPetit.Model.blockAt? c' m = some B →
+                      ∀ {k : ℕ},
+                        k ≤ m → ∃ P, MoltPetit.Model.blockAt? c k = some P ∧ MoltPetit.Model.blockAt? c' k = some P
+verify-out/test_all_syms.lean:90:7: error: Ambiguous term
+  @sched_oldkey_fork_stale
+Possible interpretations:
+  @MoltPetit.Model.sched_oldkey_fork_stale : ∀ {σ sk pk : Type} {n : ℕ} {schedule : ℕ → ℕ}
+    {ops : MoltPetit.Model.SigOps σ sk pk} {registry : MoltPetit.Model.KeyRegistry pk}
+    {sc : MoltPetit.Model.SignedChain σ} {J now Δ : ℕ},
+    MoltPetit.Model.validSignedChainSched n schedule ops registry sc = true →
+      (∀ (s : ℕ), schedule s ≤ J → s + Δ < now) →
+        ∀ {t : MoltPetit.Model.Block},
+          List.getLast? (MoltPetit.Model.stripSigs sc) = some t → t.keyIndex ≤ J → ¬now ≤ t.slot + Δ
+  
+  @Molt.sched_oldkey_fork_stale : ∀ {σ sk pk : Type} {n : ℕ} {schedule : ℕ → ℕ} {ops : MoltPetit.Model.SigOps σ sk pk}
+    {registry : MoltPetit.Model.KeyRegistry pk} {sc : MoltPetit.Model.SignedChain σ} {J now Δ : ℕ},
+    MoltPetit.Model.validSignedChainSched n schedule ops registry sc = true →
+      (∀ (s : ℕ), schedule s ≤ J → s + Δ < now) →
+        ∀ {t : MoltPetit.Model.Block},
+          List.getLast? (MoltPetit.Model.stripSigs sc) = some t → t.keyIndex ≤ J → ¬now ≤ t.slot + Δ
+verify-out/test_all_syms.lean:91:7: error: Ambiguous term
+  @sched_recent_certified_suffix_agreement
+Possible interpretations:
+  @MoltPetit.Model.sched_recent_certified_suffix_agreement : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block},
+        MoltPetit.Model.SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+          MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+            ByzantineBounded n (MoltPetit.Model.badSched n schedule rented Stolen) →
+              ∀ {cl cl' : MoltPetit.Model.CertClaim},
+                MoltPetit.Model.GroundedCertSched n schedule (MoltPetit.Model.SignedDeclared n ops registry) G cl →
+                  MoltPetit.Model.GroundedCertSched n schedule (MoltPetit.Model.SignedDeclared n ops registry) G cl' →
+                    ∀ {s₁ s₁' : MoltPetit.Model.Block} {srest srest' : MoltPetit.Model.Chain}
+                      {sTip sTip' : MoltPetit.Model.Block},
+                      (s₁ :: srest).getLast? = some sTip →
+                        (s₁' :: srest').getLast? = some sTip' →
+                          s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                            MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                              (∀ (u : ℕ),
+                                  ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                    u + n ≤ sTip.slot + 1 →
+                                      MoltPetit.Model.quorum n ≤
+                                        MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                                schedPinned schedule (s₁ :: srest) = true →
+                                  (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                                    s₁'.height = cl'.tipHeight + 1 ∧
+                                        cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                      MoltPetit.Model.linksOk (s₁' :: srest') = true →
+                                        (∀ (u : ℕ),
+                                            ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                              u + n ≤ sTip'.slot + 1 →
+                                                MoltPetit.Model.quorum n ≤
+                                                  MoltPetit.Model.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                          schedPinned schedule (s₁' :: srest') = true →
+                                            (∀ B ∈ s₁' :: srest', MoltPetit.Model.SignedDeclared n ops registry B) →
+                                              now ≤ sTip.slot + Δ →
+                                                now ≤ sTip'.slot + Δ →
+                                                  ∀ {i i' : ℕ} {B B' : MoltPetit.Model.Block},
+                                                    MoltPetit.Model.blockAt? (s₁ :: srest) i = some B →
+                                                      MoltPetit.Model.blockAt? (s₁' :: srest') i' = some B' →
+                                                        cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                          i + n < (s₁ :: srest).length →
+                                                            i' + n < (s₁' :: srest').length → B = B'
+  
+  @Molt.sched_recent_certified_suffix_agreement : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block},
+        MoltPetit.Model.SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+          MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+            ByzantineBounded n (MoltPetit.Model.badSched n schedule rented Stolen) →
+              ∀ {cl cl' : MoltPetit.Model.CertClaim},
+                MoltPetit.Model.GroundedCertSched n schedule (MoltPetit.Model.SignedDeclared n ops registry) G cl →
+                  MoltPetit.Model.GroundedCertSched n schedule (MoltPetit.Model.SignedDeclared n ops registry) G cl' →
+                    ∀ {s₁ s₁' : MoltPetit.Model.Block} {srest srest' : MoltPetit.Model.Chain}
+                      {sTip sTip' : MoltPetit.Model.Block},
+                      (s₁ :: srest).getLast? = some sTip →
+                        (s₁' :: srest').getLast? = some sTip' →
+                          s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId →
+                            MoltPetit.Model.linksOk (s₁ :: srest) = true →
+                              (∀ (u : ℕ),
+                                  ↑cl.tipSlot + 2 - ↑n ≤ ↑u →
+                                    u + n ≤ sTip.slot + 1 →
+                                      MoltPetit.Model.quorum n ≤
+                                        MoltPetit.Model.windowCount (cl.tail ++ s₁ :: srest) u n) →
+                                schedPinned schedule (s₁ :: srest) = true →
+                                  (∀ B ∈ s₁ :: srest, MoltPetit.Model.SignedDeclared n ops registry B) →
+                                    s₁'.height = cl'.tipHeight + 1 ∧
+                                        cl'.tipSlot < s₁'.slot ∧ s₁'.prev = some cl'.tipId →
+                                      MoltPetit.Model.linksOk (s₁' :: srest') = true →
+                                        (∀ (u : ℕ),
+                                            ↑cl'.tipSlot + 2 - ↑n ≤ ↑u →
+                                              u + n ≤ sTip'.slot + 1 →
+                                                MoltPetit.Model.quorum n ≤
+                                                  MoltPetit.Model.windowCount (cl'.tail ++ s₁' :: srest') u n) →
+                                          schedPinned schedule (s₁' :: srest') = true →
+                                            (∀ B ∈ s₁' :: srest', MoltPetit.Model.SignedDeclared n ops registry B) →
+                                              now ≤ sTip.slot + Δ →
+                                                now ≤ sTip'.slot + Δ →
+                                                  ∀ {i i' : ℕ} {B B' : MoltPetit.Model.Block},
+                                                    MoltPetit.Model.blockAt? (s₁ :: srest) i = some B →
+                                                      MoltPetit.Model.blockAt? (s₁' :: srest') i' = some B' →
+                                                        cl.tipHeight + 1 + i = cl'.tipHeight + 1 + i' →
+                                                          i + n < (s₁ :: srest).length →
+                                                            i' + n < (s₁' :: srest').length → B = B'
+verify-out/test_all_syms.lean:92:7: error: Ambiguous term
+  @sched_recent_tip_ancestor_agreement_horizon
+Possible interpretations:
+  @MoltPetit.Model.sched_recent_tip_ancestor_agreement_horizon : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block}
+        {sc sc' : MoltPetit.Model.SignedChain Sig},
+        MoltPetit.Model.SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+          MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+            ∀ {H : ℕ},
+              ByzantineBoundedFrom H n (MoltPetit.Model.badSched n schedule rented Stolen) →
+                MoltPetit.Model.validSignedChainSched n schedule ops registry sc = true →
+                  MoltPetit.Model.validSignedChainSched n schedule ops registry sc' = true →
+                    ∀ {sTip sTip' : MoltPetit.Model.Block},
+                      List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                        List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                          now ≤ sTip.slot + Δ →
+                            now ≤ sTip'.slot + Δ →
+                              n < List.length (MoltPetit.Model.stripSigs sc) →
+                                n < List.length (MoltPetit.Model.stripSigs sc') →
+                                  H + n ≤ sTip.slot + 1 →
+                                    H + n ≤ sTip'.slot + 1 →
+                                      sTip.height = sTip'.height →
+                                        ∀ {B B' : MoltPetit.Model.Block},
+                                          MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc)
+                                                (List.length (MoltPetit.Model.stripSigs sc) - 1 - n) =
+                                              some B →
+                                            MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc')
+                                                  (List.length (MoltPetit.Model.stripSigs sc') - 1 - n) =
+                                                some B' →
+                                              B = B'
+  
+  @Molt.sched_recent_tip_ancestor_agreement_horizon : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block}
+        {sc sc' : MoltPetit.Model.SignedChain Sig},
+        MoltPetit.Model.SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+          MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+            ∀ {H : ℕ},
+              ByzantineBoundedFrom H n (MoltPetit.Model.badSched n schedule rented Stolen) →
+                MoltPetit.Model.validSignedChainSched n schedule ops registry sc = true →
+                  MoltPetit.Model.validSignedChainSched n schedule ops registry sc' = true →
+                    ∀ {sTip sTip' : MoltPetit.Model.Block},
+                      List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                        List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                          now ≤ sTip.slot + Δ →
+                            now ≤ sTip'.slot + Δ →
+                              n < List.length (MoltPetit.Model.stripSigs sc) →
+                                n < List.length (MoltPetit.Model.stripSigs sc') →
+                                  H + n ≤ sTip.slot + 1 →
+                                    H + n ≤ sTip'.slot + 1 →
+                                      sTip.height = sTip'.height →
+                                        ∀ {B B' : MoltPetit.Model.Block},
+                                          MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc)
+                                                (List.length (MoltPetit.Model.stripSigs sc) - 1 - n) =
+                                              some B →
+                                            MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc')
+                                                  (List.length (MoltPetit.Model.stripSigs sc') - 1 - n) =
+                                                some B' →
+                                              B = B'
+verify-out/test_all_syms.lean:93:7: error: Ambiguous term
+  @sched_recent_tip_ancestor_mem
+Possible interpretations:
+  @MoltPetit.Model.sched_recent_tip_ancestor_mem : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block}
+        {sc sc' : MoltPetit.Model.SignedChain Sig},
+        MoltPetit.Model.SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+          MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+            ByzantineBounded n (MoltPetit.Model.badSched n schedule rented Stolen) →
+              MoltPetit.Model.validSignedChainSched n schedule ops registry sc = true →
+                MoltPetit.Model.validSignedChainSched n schedule ops registry sc' = true →
+                  MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) 0 = some G →
+                    MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') 0 = some G →
+                      ∀ {sTip sTip' : MoltPetit.Model.Block},
+                        List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                          List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                            now ≤ sTip.slot + Δ →
+                              now ≤ sTip'.slot + Δ →
+                                n < List.length (MoltPetit.Model.stripSigs sc) →
+                                  sTip.height ≤ sTip'.height →
+                                    ∀ {B : MoltPetit.Model.Block},
+                                      MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc)
+                                            (List.length (MoltPetit.Model.stripSigs sc) - 1 - n) =
+                                          some B →
+                                        ∃ i',
+                                          i' + n < List.length (MoltPetit.Model.stripSigs sc') ∧
+                                            MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') i' = some B
+  
+  @Molt.sched_recent_tip_ancestor_mem : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block}
+        {sc sc' : MoltPetit.Model.SignedChain Sig},
+        MoltPetit.Model.SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+          MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+            ByzantineBounded n (MoltPetit.Model.badSched n schedule rented Stolen) →
+              MoltPetit.Model.validSignedChainSched n schedule ops registry sc = true →
+                MoltPetit.Model.validSignedChainSched n schedule ops registry sc' = true →
+                  MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc) 0 = some G →
+                    MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') 0 = some G →
+                      ∀ {sTip sTip' : MoltPetit.Model.Block},
+                        List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                          List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                            now ≤ sTip.slot + Δ →
+                              now ≤ sTip'.slot + Δ →
+                                n < List.length (MoltPetit.Model.stripSigs sc) →
+                                  sTip.height ≤ sTip'.height →
+                                    ∀ {B : MoltPetit.Model.Block},
+                                      MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc)
+                                            (List.length (MoltPetit.Model.stripSigs sc) - 1 - n) =
+                                          some B →
+                                        ∃ i',
+                                          i' + n < List.length (MoltPetit.Model.stripSigs sc') ∧
+                                            MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') i' = some B
+verify-out/test_all_syms.lean:94:7: error: Ambiguous term
+  @sched_recent_tip_ancestor_mem_horizon
+Possible interpretations:
+  @MoltPetit.Model.sched_recent_tip_ancestor_mem_horizon : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block}
+        {sc sc' : MoltPetit.Model.SignedChain Sig},
+        MoltPetit.Model.SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+          MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+            ∀ {H : ℕ},
+              ByzantineBoundedFrom H n (MoltPetit.Model.badSched n schedule rented Stolen) →
+                MoltPetit.Model.validSignedChainSched n schedule ops registry sc = true →
+                  MoltPetit.Model.validSignedChainSched n schedule ops registry sc' = true →
+                    ∀ {sTip sTip' : MoltPetit.Model.Block},
+                      List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                        List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                          now ≤ sTip.slot + Δ →
+                            now ≤ sTip'.slot + Δ →
+                              n < List.length (MoltPetit.Model.stripSigs sc) →
+                                H + n ≤ sTip.slot + 1 →
+                                  H + n ≤ sTip'.slot + 1 →
+                                    sTip.height ≤ sTip'.height →
+                                      ∀ {B : MoltPetit.Model.Block},
+                                        MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc)
+                                              (List.length (MoltPetit.Model.stripSigs sc) - 1 - n) =
+                                            some B →
+                                          ∃ i',
+                                            i' + n < List.length (MoltPetit.Model.stripSigs sc') ∧
+                                              MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') i' = some B
+  
+  @Molt.sched_recent_tip_ancestor_mem_horizon : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : MoltPetit.Model.SigOps Sig sk pk}
+        {registry : MoltPetit.Model.KeyRegistry pk} {rented : MoltPetit.Model.ByzantineSlots} {Stolen : ℕ → ℕ → Prop}
+        {honestSigned : ℕ → ℕ → Option MoltPetit.Model.Block} {now Δ : ℕ} {G : MoltPetit.Model.Block}
+        {sc sc' : MoltPetit.Model.SignedChain Sig},
+        MoltPetit.Model.SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+          MoltPetit.Model.SignedHashInjective (MoltPetit.Model.SignedDeclared n ops registry) G →
+            ∀ {H : ℕ},
+              ByzantineBoundedFrom H n (MoltPetit.Model.badSched n schedule rented Stolen) →
+                MoltPetit.Model.validSignedChainSched n schedule ops registry sc = true →
+                  MoltPetit.Model.validSignedChainSched n schedule ops registry sc' = true →
+                    ∀ {sTip sTip' : MoltPetit.Model.Block},
+                      List.getLast? (MoltPetit.Model.stripSigs sc) = some sTip →
+                        List.getLast? (MoltPetit.Model.stripSigs sc') = some sTip' →
+                          now ≤ sTip.slot + Δ →
+                            now ≤ sTip'.slot + Δ →
+                              n < List.length (MoltPetit.Model.stripSigs sc) →
+                                H + n ≤ sTip.slot + 1 →
+                                  H + n ≤ sTip'.slot + 1 →
+                                    sTip.height ≤ sTip'.height →
+                                      ∀ {B : MoltPetit.Model.Block},
+                                        MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc)
+                                              (List.length (MoltPetit.Model.stripSigs sc) - 1 - n) =
+                                            some B →
+                                          ∃ i',
+                                            i' + n < List.length (MoltPetit.Model.stripSigs sc') ∧
+                                              MoltPetit.Model.blockAt? (MoltPetit.Model.stripSigs sc') i' = some B
+@scheduled_client_safety : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {schedule : ℕ → ℕ} {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk}
+      {rented : Molt.ByzantineSlots} {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ}
+      {G : Molt.Block} {sc sc' : Molt.SignedChain Sig},
+      Molt.SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ →
+        Molt.SignedHashInjective (Molt.SignedDeclared n ops registry) G →
+          FaultBounded n (Molt.badSched n schedule rented Stolen) →
+            Molt.validSignedChainSched n schedule ops registry sc = true →
+              Molt.validSignedChainSched n schedule ops registry sc' = true →
+                Molt.blockAt? (Molt.stripSigs sc) 0 = some G →
+                  Molt.blockAt? (Molt.stripSigs sc') 0 = some G →
+                    ∀ {sTip sTip' : Molt.Block},
+                      List.getLast? (Molt.stripSigs sc) = some sTip →
+                        List.getLast? (Molt.stripSigs sc') = some sTip' →
+                          now ≤ sTip.slot + Δ →
+                            now ≤ sTip'.slot + Δ →
+                              n < List.length (Molt.stripSigs sc) →
+                                n < List.length (Molt.stripSigs sc') →
+                                  sTip.height = sTip'.height →
+                                    ∀ {B B' : Molt.Block},
+                                      Molt.blockAt? (Molt.stripSigs sc) (List.length (Molt.stripSigs sc) - 1 - n) =
+                                          some B →
+                                        Molt.blockAt? (Molt.stripSigs sc') (List.length (Molt.stripSigs sc') - 1 - n) =
+                                            some B' →
+                                          B = B'
+verify-out/test_all_syms.lean:96:7: error: Ambiguous term
+  @selectChain
+Possible interpretations:
+  MoltPetit.Model.selectChain : ℕ → MoltPetit.Model.Chain → MoltPetit.Model.Chain → MoltPetit.Model.Chain
+  
+  @Molt.selectChain : {α σ sk pk : Type} →
+    ℕ →
+      Molt.SigOps σ sk pk →
+        Molt.KeyRegistry pk →
+          Molt.CertOps α → Molt.CertifiedChain α σ → Molt.CertifiedChain α σ → Molt.CertifiedChain α σ
+verify-out/test_all_syms.lean:97:7: error: Ambiguous term
+  @sigUnforgeableRecent_of_timed
+Possible interpretations:
+  @MoltPetit.Model.sigUnforgeableRecent_of_timed : ∀ {n : ℕ} {bad : MoltPetit.Model.ByzantineSlots}
+    {log : MoltPetit.Model.TimedLog} {G : MoltPetit.Model.Block} {Signed : MoltPetit.Model.Block → Prop} {now Δ : ℕ},
+    MoltPetit.Model.TimedExecution n bad log G →
+      MoltPetit.Model.NoBackdate bad log →
+        (∀ ⦃B : MoltPetit.Model.Block⦄, Signed B → ∃ r, B ∈ log r) →
+          MoltPetit.Model.SigUnforgeableRecent n bad Signed (MoltPetit.Model.projectSigned n log) now Δ
+  
+  @Molt.sigUnforgeableRecent_of_timed : ∀ {n : ℕ} {bad : MoltPetit.Model.ByzantineSlots}
+    {log : MoltPetit.Model.TimedLog} {G : MoltPetit.Model.Block} {Signed : MoltPetit.Model.Block → Prop} {now Δ : ℕ},
+    MoltPetit.Model.TimedExecution n bad log G →
+      MoltPetit.Model.NoBackdate bad log →
+        (∀ ⦃B : MoltPetit.Model.Block⦄, Signed B → ∃ r, B ∈ log r) →
+          MoltPetit.Model.SigUnforgeableRecent n bad Signed (MoltPetit.Model.projectSigned n log) now Δ
+@slot_time_necessary : ∀ {n baseline perBlock τ : ℚ},
+  0 < n →
+    0 ≤ perBlock →
+      perBlock < τ →
+        τ < ProverTiming.recommendedSlot n baseline perBlock →
+          ∀ {u : ℚ},
+            ProverTiming.nextBacklog baseline perBlock τ u = u → n < ProverTiming.peakSuffix baseline perBlock τ u
+@slot_time_sufficient : ∀ {n baseline perBlock τ : ℚ},
+  0 < n →
+    0 ≤ baseline →
+      0 ≤ perBlock →
+        0 < τ →
+          ProverTiming.recommendedSlot n baseline perBlock ≤ τ →
+            ∀ {u₀ : ℚ},
+              0 ≤ u₀ →
+                u₀ ≤ n / 2 →
+                  ∀ (j : ℕ),
+                    ProverTiming.backlog baseline perBlock τ u₀ j ≤ n / 2 ∧
+                      ProverTiming.peakSuffix baseline perBlock τ (ProverTiming.backlog baseline perBlock τ u₀ j) ≤ n
+@stay_recent_client_safe : ∀ {n Δconf : ℕ},
+  1 ≤ n →
+    n ≤ Δconf →
+      ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+        {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G : Molt.Block}
+        {sc sc' scPrev : Molt.SignedChain Sig} {A : Molt.Block},
+        Molt.KeyStealingEUFCMA n Δconf ops registry rented Stolen honestSigned now Δ →
+          Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+            ∀ {t : ℕ} {tipPrev : Molt.Block},
+              Molt.validSignedChainK' n Δconf ops registry scPrev = true →
+                List.getLast? (Molt.stripSigs scPrev) = some tipPrev →
+                  t ≤ tipPrev.slot + n →
+                    n < List.length (Molt.stripSigs scPrev) →
+                      Molt.blockAt? (Molt.stripSigs scPrev) (List.length (Molt.stripSigs scPrev) - 1 - n) = some A →
+                        now ≤ t + n →
+                          A ∈ Molt.stripSigs sc →
+                            A ∈ Molt.stripSigs sc' →
+                              (∀ (u : ℕ),
+                                  now < u + 5 * n →
+                                    (Molt.badSlotsIn (badKeyrot n Δconf rented Stolen (Molt.stripSigs sc)) u n).card ≤
+                                      faultBudget n) →
+                                Molt.validSignedChainK' n Δconf ops registry sc = true →
+                                  Molt.validSignedChainK' n Δconf ops registry sc' = true →
+                                    ∀ {sTip sTip' : Molt.Block},
+                                      List.getLast? (Molt.stripSigs sc) = some sTip →
+                                        List.getLast? (Molt.stripSigs sc') = some sTip' →
+                                          now ≤ sTip.slot + Δ →
+                                            now ≤ sTip'.slot + Δ →
+                                              n < List.length (Molt.stripSigs sc) →
+                                                n < List.length (Molt.stripSigs sc') →
+                                                  sTip.height = sTip'.height →
+                                                    ∀ {B B' : Molt.Block},
+                                                      Molt.blockAt? (Molt.stripSigs sc)
+                                                            (List.length (Molt.stripSigs sc) - 1 - n) =
+                                                          some B →
+                                                        Molt.blockAt? (Molt.stripSigs sc')
+                                                              (List.length (Molt.stripSigs sc') - 1 - n) =
+                                                            some B' →
+                                                          B = B'
+@sync_induction_full_chain : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+      {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {G : Molt.Block} (now : ℕ → ℕ)
+      (c R : ℕ → Molt.SignedChain Sig),
+      (∀ (k : ℕ), Molt.KeyStealingEUFCMA n n ops registry rented Stolen honestSigned (now k) n) →
+        Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+          ∀ {tip : ℕ → Molt.Block},
+            (∀ (k : ℕ), List.getLast? (Molt.stripSigs (c k)) = some (tip k)) →
+              (∀ (k : ℕ), now k ≤ (tip k).slot + n) →
+                (∀ (k : ℕ), n < List.length (Molt.stripSigs (c k))) →
+                  (∀ (k : ℕ), Molt.validSignedChainK' n n ops registry (c k) = true) →
+                    (∀ (k : ℕ), now (k + 1) ≤ now k + n) →
+                      ∀ {a : ℕ → Molt.Block},
+                        (∀ (k : ℕ),
+                            Molt.blockAt? (Molt.stripSigs (c k)) (List.length (Molt.stripSigs (c k)) - 1 - n) =
+                              some (a k)) →
+                          (∀ (k : ℕ), a k ∈ Molt.stripSigs (c (k + 1))) →
+                            (∀ (k u : ℕ),
+                                now (k + 1) < u + 5 * n →
+                                  (Molt.badSlotsIn (badKeyrot n n rented Stolen (Molt.stripSigs (c (k + 1)))) u
+                                        n).card ≤
+                                    faultBudget n) →
+                              ∀ {rTip : ℕ → Molt.Block},
+                                (∀ (k : ℕ), List.getLast? (Molt.stripSigs (R k)) = some (rTip k)) →
+                                  (∀ (k : ℕ), Molt.validSignedChainK' n n ops registry (R k) = true) →
+                                    (∀ (k : ℕ), now k ≤ (rTip k).slot + n) →
+                                      (∀ (k : ℕ), n < List.length (Molt.stripSigs (R k))) →
+                                        (∀ (k : ℕ), (tip k).height ≤ (rTip k).height) →
+                                          (∀ (k : ℕ), Molt.stripSigs (R k) <+: Molt.stripSigs (R (k + 1))) →
+                                            a 0 ∈ Molt.stripSigs (R 0) → ∀ (k : ℕ), a k ∈ Molt.stripSigs (R k)
+@sync_rule : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+      {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G : Molt.Block}
+      {sc sc' scPrev : Molt.SignedChain Sig} {A : Molt.Block},
+      Molt.KeyStealingEUFCMA n n ops registry rented Stolen honestSigned now Δ →
+        Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+          ∀ {t : ℕ} {tipPrev : Molt.Block},
+            Molt.validSignedChainK' n n ops registry scPrev = true →
+              List.getLast? (Molt.stripSigs scPrev) = some tipPrev →
+                t ≤ tipPrev.slot + n →
+                  n < List.length (Molt.stripSigs scPrev) →
+                    Molt.blockAt? (Molt.stripSigs scPrev) (List.length (Molt.stripSigs scPrev) - 1 - n) = some A →
+                      now ≤ t + n →
+                        A ∈ Molt.stripSigs sc →
+                          A ∈ Molt.stripSigs sc' →
+                            (∀ (u : ℕ),
+                                now < u + 5 * n →
+                                  (Molt.badSlotsIn (badKeyrot n n rented Stolen (Molt.stripSigs sc)) u n).card ≤
+                                    faultBudget n) →
+                              Molt.validSignedChainK' n n ops registry sc = true →
+                                Molt.validSignedChainK' n n ops registry sc' = true →
+                                  ∀ {sTip sTip' : Molt.Block},
+                                    List.getLast? (Molt.stripSigs sc) = some sTip →
+                                      List.getLast? (Molt.stripSigs sc') = some sTip' →
+                                        now ≤ sTip.slot + Δ →
+                                          now ≤ sTip'.slot + Δ →
+                                            n < List.length (Molt.stripSigs sc) →
+                                              n < List.length (Molt.stripSigs sc') →
+                                                sTip.height = sTip'.height →
+                                                  ∀ {B B' : Molt.Block},
+                                                    Molt.blockAt? (Molt.stripSigs sc)
+                                                          (List.length (Molt.stripSigs sc) - 1 - n) =
+                                                        some B →
+                                                      Molt.blockAt? (Molt.stripSigs sc')
+                                                            (List.length (Molt.stripSigs sc') - 1 - n) =
+                                                          some B' →
+                                                        B = B'
+@sync_rule_mem : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+      {Stolen : ℕ → ℕ → Prop} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G : Molt.Block}
+      {sc sc' scPrev : Molt.SignedChain Sig} {A : Molt.Block},
+      Molt.KeyStealingEUFCMA n n ops registry rented Stolen honestSigned now Δ →
+        Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+          ∀ {t : ℕ} {tipPrev : Molt.Block},
+            Molt.validSignedChainK' n n ops registry scPrev = true →
+              List.getLast? (Molt.stripSigs scPrev) = some tipPrev →
+                t ≤ tipPrev.slot + n →
+                  n < List.length (Molt.stripSigs scPrev) →
+                    Molt.blockAt? (Molt.stripSigs scPrev) (List.length (Molt.stripSigs scPrev) - 1 - n) = some A →
+                      now ≤ t + n →
+                        A ∈ Molt.stripSigs sc →
+                          A ∈ Molt.stripSigs sc' →
+                            (∀ (u : ℕ),
+                                now < u + 5 * n →
+                                  (Molt.badSlotsIn (badKeyrot n n rented Stolen (Molt.stripSigs sc)) u n).card ≤
+                                    faultBudget n) →
+                              Molt.validSignedChainK' n n ops registry sc = true →
+                                Molt.validSignedChainK' n n ops registry sc' = true →
+                                  ∀ {sTip sTip' : Molt.Block},
+                                    List.getLast? (Molt.stripSigs sc) = some sTip →
+                                      List.getLast? (Molt.stripSigs sc') = some sTip' →
+                                        now ≤ sTip.slot + Δ →
+                                          now ≤ sTip'.slot + Δ →
+                                            n < List.length (Molt.stripSigs sc) →
+                                              n < List.length (Molt.stripSigs sc') →
+                                                sTip.height ≤ sTip'.height →
+                                                  ∀ {B : Molt.Block},
+                                                    Molt.blockAt? (Molt.stripSigs sc)
+                                                          (List.length (Molt.stripSigs sc) - 1 - n) =
+                                                        some B →
+                                                      ∃ i',
+                                                        i' + n < List.length (Molt.stripSigs sc') ∧
+                                                          Molt.blockAt? (Molt.stripSigs sc') i' = some B
+@sync_rule_timed : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {Sig sk pk : Type} {ops : Molt.SigOps Sig sk pk} {registry : Molt.KeyRegistry pk} {rented : Molt.ByzantineSlots}
+      {stolenAt : ℕ → ℕ → ℕ → Prop} {d : ℕ} {honestSigned : Molt.SigningLog} {now Δ : ℕ} {G : Molt.Block}
+      {sc sc' scPrev : Molt.SignedChain Sig} {A : Molt.Block},
+      Molt.KeyStealingEUFCMA n n ops registry rented (stolenOf stolenAt) honestSigned now Δ →
+        Molt.SignedHashInjective (Molt.KeyStealingSigned n ops registry) G →
+          ∀ {t : ℕ} {tipPrev : Molt.Block},
+            Molt.validSignedChainK' n n ops registry scPrev = true →
+              List.getLast? (Molt.stripSigs scPrev) = some tipPrev →
+                t ≤ tipPrev.slot + n →
+                  n < List.length (Molt.stripSigs scPrev) →
+                    Molt.blockAt? (Molt.stripSigs scPrev) (List.length (Molt.stripSigs scPrev) - 1 - n) = some A →
+                      now ≤ t + n →
+                        A ∈ Molt.stripSigs sc →
+                          A ∈ Molt.stripSigs sc' →
+                            ∀ {Rrent T : ℕ},
+                              Molt.Reacts n n d (Molt.stripSigs sc) stolenAt →
+                                (∀ (u : ℕ), now < u + 5 * n → (Molt.badSlotsIn rented u n).card ≤ Rrent) →
+                                  (∀ (u : ℕ), now < u + 5 * n → (Molt.recentTheftProducersK n d stolenAt u).card ≤ T) →
+                                    Rrent + T ≤ faultBudget n →
+                                      Molt.validSignedChainK' n n ops registry sc = true →
+                                        Molt.validSignedChainK' n n ops registry sc' = true →
+                                          ∀ {sTip sTip' : Molt.Block},
+                                            List.getLast? (Molt.stripSigs sc) = some sTip →
+                                              List.getLast? (Molt.stripSigs sc') = some sTip' →
+                                                now ≤ sTip.slot + Δ →
+                                                  now ≤ sTip'.slot + Δ →
+                                                    n < List.length (Molt.stripSigs sc) →
+                                                      n < List.length (Molt.stripSigs sc') →
+                                                        sTip.height = sTip'.height →
+                                                          ∀ {B B' : Molt.Block},
+                                                            Molt.blockAt? (Molt.stripSigs sc)
+                                                                  (List.length (Molt.stripSigs sc) - 1 - n) =
+                                                                some B →
+                                                              Molt.blockAt? (Molt.stripSigs sc')
+                                                                    (List.length (Molt.stripSigs sc') - 1 - n) =
+                                                                  some B' →
+                                                                B = B'
+@theft_exposure_window : ∀ {n Δconf d : ℕ} {c₀ : MoltPetit.Model.Chain} {stolenAt : ℕ → ℕ → ℕ → Prop},
+  MoltPetit.Model.Reacts n Δconf d c₀ stolenAt →
+    MoltPetit.Model.NoTheftBackdating n Δconf c₀ stolenAt →
+      ∀ {i j r s : ℕ}, stolenAt i j r → MoltPetit.Model.inForce n Δconf c₀ i s ≤ j → r ≤ s ∧ s < r + d
+@validCertifiedChain : {α σ sk pk : Type} →
+  ℕ → Molt.SigOps σ sk pk → Molt.KeyRegistry pk → Molt.CertOps α → Molt.CertifiedChain α σ → Bool
+verify-out/test_all_syms.lean:107:7: error: Ambiguous term
+  @validChain
+Possible interpretations:
+  MoltPetit.Model.validChain : ℕ → MoltPetit.Model.Chain → Bool
+  
+  Molt.validChain : ℕ → Molt.Chain → Bool
+verify-out/test_all_syms.lean:108:7: error: Ambiguous term
+  @validChainK
+Possible interpretations:
+  MoltPetit.Model.validChainK : ℕ → MoltPetit.Model.Chain → Bool
+  
+  Molt.validChainK : ℕ → Molt.Chain → Bool
+@validChainK_structural : ∀ {n : ℕ} {c : Molt.Chain}, Molt.validChainK n c = true → Molt.validChain n c = true
+verify-out/test_all_syms.lean:110:7: error: Ambiguous term
+  @validSignedChainK'
+Possible interpretations:
+  @MoltPetit.Model.validSignedChainK' : {σ sk pk : Type} →
+    ℕ → ℕ → MoltPetit.Model.SigOps σ sk pk → MoltPetit.Model.KeyRegistry pk → MoltPetit.Model.SignedChain σ → Bool
+  
+  @Molt.validSignedChainK' : {σ sk pk : Type} →
+    ℕ → ℕ → Molt.SigOps σ sk pk → Molt.KeyRegistry pk → Molt.SignedChain σ → Bool
+verify-out/test_all_syms.lean:111:7: error: Ambiguous term
+  @validSignedChainLock
+Possible interpretations:
+  @MoltPetit.Model.validSignedChainLock : {σ sk pk : Type} →
+    ℕ → MoltPetit.Model.SigOps σ sk pk → MoltPetit.Model.KeyRegistry pk → MoltPetit.Model.SignedChain σ → Bool
+  
+  @Molt.validSignedChainLock : {σ sk pk : Type} →
+    ℕ → Molt.SigOps σ sk pk → Molt.KeyRegistry pk → Molt.SignedChain σ → Bool
+verify-out/test_all_syms.lean:112:7: error: Ambiguous term
+  @validSignedChainSched
+Possible interpretations:
+  @MoltPetit.Model.validSignedChainSched : {σ sk pk : Type} →
+    ℕ → (ℕ → ℕ) → MoltPetit.Model.SigOps σ sk pk → MoltPetit.Model.KeyRegistry pk → MoltPetit.Model.SignedChain σ → Bool
+  
+  @Molt.validSignedChainSched : {σ sk pk : Type} →
+    ℕ → (ℕ → ℕ) → Molt.SigOps σ sk pk → Molt.KeyRegistry pk → Molt.SignedChain σ → Bool
+@validSuffix : {α σ sk pk : Type} →
+  ℕ → Molt.SigOps σ sk pk → Molt.KeyRegistry pk → Molt.CertOps α → α → Molt.SignedChain σ → Bool
+verify-out/test_all_syms.lean:114:8: error(lean.unknownIdentifier): Unknown identifier `valid_chain_be`
+@valid_chain_be_validChain : ∀ {n q : Aeneas.Std.U64} {c : molt_petit.Chain},
+  molt_petit.quorum n = Aeneas.Std.Result.ok q →
+    molt_petit.valid_chain_be UB () n q (toChainG c) = Aeneas.Std.Result.ok true →
+      MoltPetit.Model.ValidChain (↑n) (toModelChain c)
+verify-out/test_all_syms.lean:116:7: error: Ambiguous term
+  @window_shared_prefix
+Possible interpretations:
+  @MoltPetit.Model.window_shared_prefix : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {bad : MoltPetit.Model.ByzantineSlots} {record : MoltPetit.Model.SlotRecord} {u : ℕ},
+        HonestSlotsUniqueOn u n bad record →
+          MoltPetit.Model.IdInjective record →
+            ∀ {c c' : MoltPetit.Model.Chain},
+              MoltPetit.Model.ValidChain n c →
+                MoltPetit.Model.ValidChain n c' →
+                  ChainInRecord record c →
+                    ChainInRecord record c' →
+                      ∀ {tip tip' : MoltPetit.Model.Block},
+                        List.getLast? c = some tip →
+                          List.getLast? c' = some tip' →
+                            u + n ≤ tip.slot + 1 →
+                              u + n ≤ tip'.slot + 1 →
+                                (MoltPetit.Model.badSlotsIn bad u n).card ≤ maxByzantine n →
+                                  ∀ {k : ℕ} {B : MoltPetit.Model.Block},
+                                    MoltPetit.Model.blockAt? c k = some B →
+                                      B.slot < u →
+                                        ∃ P,
+                                          MoltPetit.Model.blockAt? c k = some P ∧ MoltPetit.Model.blockAt? c' k = some P
+  
+  @Molt.window_shared_prefix : ∀ {n : ℕ},
+    1 ≤ n →
+      ∀ {bad : MoltPetit.Model.ByzantineSlots} {record : MoltPetit.Model.SlotRecord} {u : ℕ},
+        HonestSlotsUniqueOn u n bad record →
+          MoltPetit.Model.IdInjective record →
+            ∀ {c c' : MoltPetit.Model.Chain},
+              MoltPetit.Model.ValidChain n c →
+                MoltPetit.Model.ValidChain n c' →
+                  ChainInRecord record c →
+                    ChainInRecord record c' →
+                      ∀ {tip tip' : MoltPetit.Model.Block},
+                        List.getLast? c = some tip →
+                          List.getLast? c' = some tip' →
+                            u + n ≤ tip.slot + 1 →
+                              u + n ≤ tip'.slot + 1 →
+                                (MoltPetit.Model.badSlotsIn bad u n).card ≤ maxByzantine n →
+                                  ∀ {k : ℕ} {B : MoltPetit.Model.Block},
+                                    MoltPetit.Model.blockAt? c k = some B →
+                                      B.slot < u →
+                                        ∃ P,
+                                          MoltPetit.Model.blockAt? c k = some P ∧ MoltPetit.Model.blockAt? c' k = some P
+@groundedCert_history : ∀ {n : ℕ},
+  1 ≤ n →
+    ∀ {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block} {cl : MoltPetit.Model.CertClaim},
+      MoltPetit.Model.GroundedCert n Signed G cl → ∃ c, GroundedHistory n Signed G cl c

@@ -6,7 +6,6 @@ import Molt.Liveness
 import Molt.LockstepGen
 import Molt.LockstepCert
 import Molt.CertClientRule
-import Molt.SyncRuleTimed
 import Molt.SyncInduction
 import Molt.KeyStealingTimedScope
 
@@ -198,15 +197,6 @@ this file with every new headline theorem.
 /-- info: 'Molt.keyrot_certified_suffix_agreement_anchored' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Molt.keyrot_certified_suffix_agreement_anchored
-
--- Mode 1 timed theft client rule & max sync period (paper §6.3, mode 1).
-/-- info: 'Molt.sync_rule_timed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.sync_rule_timed
-
-/-- info: 'Molt.max_sync_period_timed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.max_sync_period_timed
 
 -- Mode 1 sync induction over full chain (paper §6.3, mode 1).
 /-- info: 'Molt.sync_induction_full_chain' depends on axioms: [propext, Classical.choice, Quot.sound] -/

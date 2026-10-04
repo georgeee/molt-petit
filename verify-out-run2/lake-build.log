@@ -1,0 +1,5604 @@
+⚠ [8406/8659] Replayed Aeneas.Std.Slice
+warning: Aeneas/Std/Slice.lean:364:4: declaration uses `sorry`
+warning: Aeneas/Std/Slice.lean:587:8: declaration uses `sorry`
+⚠ [8479/8659] Replayed Aeneas.Std.StringIter
+warning: Aeneas/Std/StringIter.lean:13:4: declaration uses `sorry`
+⚠ [8575/8659] Replayed Rust.Extracted
+warning: Rust/Extracted.lean:26:0: Unscoped option maxHeartbeats is not allowed:
+Please scope this to individual declarations, as in
+```
+set_option maxHeartbeats in
+-- comment explaining why this is necessary
+example : ... := ...
+```
+
+Note: This linter can be disabled with `set_option linter.style.setOption false`
+warning: Rust/Extracted.lean:786:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+⚠ [8580/8659] Replayed MoltPetit.Model.Definitions
+warning: MoltPetit/Model/Definitions.lean:162:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/Definitions.lean:189:7: extra space in the source
+
+This part of the code
+  'sign   : sk'
+should be written as
+  'sign : sk'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Definitions.lean:303:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/Definitions.lean:323:8: extra space in the source
+
+This part of the code
+  'tipId     : Nat'
+should be written as
+  'tipId : Nat'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Definitions.lean:332:8: extra space in the source
+
+This part of the code
+  'claim    : α'
+should be written as
+  'claim : α →'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Definitions.lean:340:7: extra space in the source
+
+This part of the code
+  'cert   : α'
+should be written as
+  'cert : α
+'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Definitions.lean:410:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/Definitions.lean:411:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/Definitions.lean:570:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+⚠ [8582/8659] Replayed MoltPetit.Model.Safety
+warning: MoltPetit/Model/Safety.lean:363:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:363:22: extra space in the source
+
+This part of the code
+  'c  k  ='
+should be written as
+  'c k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:363:25: extra space in the source
+
+This part of the code
+  'k  = some'
+should be written as
+  'k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:363:36: extra space in the source
+
+This part of the code
+  'B)  (hB''
+should be written as
+  'B) (hB''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:363:58: extra space in the source
+
+This part of the code
+  'k  = some'
+should be written as
+  'k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:364:8: extra space in the source
+
+This part of the code
+  '(hD  : blockAt?'
+should be written as
+  '(hD : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:364:22: extra space in the source
+
+This part of the code
+  'c  m  ='
+should be written as
+  'c m = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:364:25: extra space in the source
+
+This part of the code
+  'm  = some'
+should be written as
+  'm = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:364:36: extra space in the source
+
+This part of the code
+  'D)  (hD''
+should be written as
+  ' (hD''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Safety.lean:365:11: extra space in the source
+
+This part of the code
+  '(hDeep  : k'
+should be written as
+  '(hDeep : k +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8584/8659] Replayed MoltPetit.Model.Liveness
+warning: MoltPetit/Model/Liveness.lean:106:6: 'simp at hTip' is a flexible tactic modifying 'hTip'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: MoltPetit/Model/Liveness.lean:106:6: Try this:
+  [apply] simp only [List.cons_append, List.nil_append] at hTip
+info: MoltPetit/Model/Liveness.lean:107:6: 'subst hTip' uses 'hTip'!
+warning: MoltPetit/Model/Liveness.lean:137:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/Liveness.lean:139:2: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/Liveness.lean:141:2: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/Liveness.lean:163:8: extra space in the source
+
+This part of the code
+  '(hS        : StrictSlots'
+should be written as
+  '(hS : StrictSlots'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:166:14: extra space in the source
+
+This part of the code
+  '(hBudgetU  : (badSlotsIn'
+should be written as
+  '(hBudgetU : (badSlotsIn'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:167:12: extra space in the source
+
+This part of the code
+  '(hCover    : HonestBlocksCover'
+should be written as
+  '(hCover : HonestBlocksCover'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:211:13: extra space in the source
+
+This part of the code
+  '(hBudget   : ByzantineBounded'
+should be written as
+  '(hBudget : ByzantineBounded'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:212:8: extra space in the source
+
+This part of the code
+  '(hS        : StrictSlots'
+should be written as
+  '(hS : StrictSlots'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:215:12: extra space in the source
+
+This part of the code
+  '(hCover    : HonestBlocksCover'
+should be written as
+  '(hCover : HonestBlocksCover'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:235:13: extra space in the source
+
+This part of the code
+  '(hBudget   : ByzantineBounded'
+should be written as
+  '(hBudget : ByzantineBounded'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:236:12: extra space in the source
+
+This part of the code
+  '(hValid    : validChain'
+should be written as
+  '(hValid : validChain'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:237:12: extra space in the source
+
+This part of the code
+  '(hTipEq    : c.getLast?'
+should be written as
+  '(hTipEq : c.getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:238:12: extra space in the source
+
+This part of the code
+  '(hTipLt    : tip.slot'
+should be written as
+  '(hTipLt : tip.slot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:240:12: extra space in the source
+
+This part of the code
+  '(hCover    : ∀'
+should be written as
+  '(hCover :
+  '
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Liveness.lean:401:16: `List.getLast?_eq_getLast` has been deprecated: Use `List.getLast?_eq_some_getLast` instead
+⚠ [8586/8659] Replayed MoltPetit.TS.Bridge
+warning: MoltPetit/TS/Bridge.lean:97:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:112:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:127:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:148:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:168:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:223:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:305:23: 'push_cast' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: MoltPetit/TS/Bridge.lean:296:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:330:6: 'push_cast' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: MoltPetit/TS/Bridge.lean:339:50: 'push_cast' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: MoltPetit/TS/Bridge.lean:380:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:515:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/TS/Bridge.lean:537:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+⚠ [8587/8659] Replayed MoltPetit.Model.Grounded
+warning: MoltPetit/Model/Grounded.lean:30:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/Grounded.lean:141:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/Grounded.lean:194:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/Grounded.lean:303:34: 'push_cast' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: MoltPetit/Model/Grounded.lean:441:4: 'simp [hrec]' is a flexible tactic modifying '⊢'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: MoltPetit/Model/Grounded.lean:442:4: 'exact or_and_right.symm' uses '⊢'!
+warning: MoltPetit/Model/Grounded.lean:379:9: extra space in the source
+
+This part of the code
+  '(hcl  : GroundedCert'
+should be written as
+  '(hcl : GroundedCert'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:383:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (s₁'
+should be written as
+  '(hTipS : (s₁'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:383:38: extra space in the source
+
+This part of the code
+  'srest).getLast?  = some'
+should be written as
+  'srest).getLast? = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:385:11: extra space in the source
+
+This part of the code
+  '(hLink  : s₁.height'
+should be written as
+  '(hLink : s₁.height'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:561:9: extra space in the source
+
+This part of the code
+  '(hcl  : GroundedCert'
+should be written as
+  '(hcl : GroundedCert'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:564:10: extra space in the source
+
+This part of the code
+  '(hval  : MoltPetit.validateSuffix'
+should be written as
+  '(hval : MoltPetit.validateSuffix'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:564:55: extra space in the source
+
+This part of the code
+  'cl)  (toTSChain'
+should be written as
+  'cl) (toTSChain'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:564:82: extra space in the source
+
+This part of the code
+  'srest))   = true)'
+should be written as
+  'srest)) = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:566:13: extra space in the source
+
+This part of the code
+  '(hSigned  : ∀'
+should be written as
+  '(hSigned : ∀ B'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:566:35: extra space in the source
+
+This part of the code
+  'srest,  TSSigned'
+should be written as
+  'srest, TSSigned'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:569:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (s₁'
+should be written as
+  '(hTipS : (s₁'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:569:38: extra space in the source
+
+This part of the code
+  'srest).getLast?  = some'
+should be written as
+  'srest).getLast? = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:571:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:571:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:574:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:574:34: extra space in the source
+
+This part of the code
+  'srest)   i  ='
+should be written as
+  'srest) i = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:574:38: extra space in the source
+
+This part of the code
+  'i  = some'
+should be written as
+  'i = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:577:11: extra space in the source
+
+This part of the code
+  '(hDeep  : i'
+should be written as
+  '(hDeep : i +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:577:16: extra space in the source
+
+This part of the code
+  'i  + n'
+should be written as
+  'i + n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/Grounded.lean:602:6: 'simp [blockAt?] at hB' is a flexible tactic modifying 'hB'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: MoltPetit/Model/Grounded.lean:602:6: Try this:
+  [apply] simp only [add_zero] at hB
+info: MoltPetit/Model/Grounded.lean:603:6: 'subst hB' uses 'hB'!
+warning: MoltPetit/Model/Grounded.lean:613:6: 'simp [blockAt?] at hB' is a flexible tactic modifying 'hB'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: MoltPetit/Model/Grounded.lean:613:6: Try this:
+  [apply] simp only [add_zero] at hB
+info: MoltPetit/Model/Grounded.lean:614:6: 'subst hB' uses 'hB'!
+⚠ [8589/8659] Replayed MoltPetit.Results.Results
+warning: MoltPetit/Results/Results.lean:433:13: extra space in the source
+
+This part of the code
+  '(hBudget   : ByzantineBounded'
+should be written as
+  '(hBudget : ByzantineBounded'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:434:12: extra space in the source
+
+This part of the code
+  '(hValid    : validChain'
+should be written as
+  '(hValid : validChain'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:435:12: extra space in the source
+
+This part of the code
+  '(hTipEq    : c.getLast?'
+should be written as
+  '(hTipEq : c.getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:436:12: extra space in the source
+
+This part of the code
+  '(hTipLt    : tip.slot'
+should be written as
+  '(hTipLt : tip.slot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:437:11: extra space in the source
+
+This part of the code
+  '(hMine     : producerForSlot'
+should be written as
+  '(hMine : producerForSlot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:439:12: extra space in the source
+
+This part of the code
+  '(hCover    : ∀'
+should be written as
+  '(hCover :
+  '
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:456:59: unused variable `hn`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: MoltPetit/Results/Results.lean:470:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Results/Results.lean:483:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Results/Results.lean:460:10: extra space in the source
+
+This part of the code
+  '(hSig      : SigCorrect'
+should be written as
+  '(hSig : SigCorrect'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:461:13: extra space in the source
+
+This part of the code
+  '(hBudget   : ByzantineBounded'
+should be written as
+  '(hBudget : ByzantineBounded'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:462:12: extra space in the source
+
+This part of the code
+  '(hValid    : validSignedChain'
+should be written as
+  '(hValid : validSignedChain'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:463:12: extra space in the source
+
+This part of the code
+  '(hTipEq    : (stripSigs'
+should be written as
+  '(hTipEq : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:464:12: extra space in the source
+
+This part of the code
+  '(hTipLt    : tip.slot'
+should be written as
+  '(hTipLt : tip.slot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:465:11: extra space in the source
+
+This part of the code
+  '(hMine     : producerForSlot'
+should be written as
+  '(hMine : producerForSlot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:467:12: extra space in the source
+
+This part of the code
+  '(hCover    : ∀'
+should be written as
+  '(hCover :
+  '
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/Results.lean:517:13: unused variable `hu`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+⚠ [8592/8659] Replayed MoltPetit.Model.KeyRotation
+warning: MoltPetit/Model/KeyRotation.lean:12:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotation.lean:226:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotation.lean:378:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+⚠ [8593/8659] Replayed MoltPetit.Model.KeyStealing
+warning: MoltPetit/Model/KeyStealing.lean:6:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+⚠ [8594/8659] Replayed MoltPetit.Model.KeyStealingSafety
+warning: MoltPetit/Model/KeyStealingSafety.lean:22:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+⚠ [8595/8659] Replayed MoltPetit.Model.KeyStealingUnique
+warning: MoltPetit/Model/KeyStealingUnique.lean:9:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:11:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:73:10: extra space in the source
+
+This part of the code
+  '(hSig  : ∀'
+should be written as
+  '(hSig : ∀ B'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:73:33: extra space in the source
+
+This part of the code
+  'sc,  B ='
+should be written as
+  'sc, B = G'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:128:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:233:4: `push_neg` has been deprecated. Prefer using `push Not` instead.
+If you'd rather continue using `push_neg` in your project, you can implement it as follows:
+```
+open Lean.Parser.Tactic in
+macro "push_neg" cfg:optConfig loc:(location)? : tactic =>
+  `(tactic| push $cfg:optConfig Not $[$loc]?)
+```
+warning: MoltPetit/Model/KeyStealingUnique.lean:210:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:210:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:212:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:212:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingUnique.lean:212:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8596/8659] Replayed MoltPetit.Model.KeyStealingHorizonCore
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:139:4: `push_neg` has been deprecated. Prefer using `push Not` instead.
+If you'd rather continue using `push_neg` in your project, you can implement it as follows:
+```
+open Lean.Parser.Tactic in
+macro "push_neg" cfg:optConfig loc:(location)? : tactic =>
+  `(tactic| push $cfg:optConfig Not $[$loc]?)
+```
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:192:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:192:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:194:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:194:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:194:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:265:8: extra space in the source
+
+This part of the code
+  '(hA  : A'
+should be written as
+  '(hA : A ∈'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:270:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:270:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:272:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:272:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizonCore.lean:272:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8597/8659] Replayed MoltPetit.Results.KeyStealingResults
+warning: MoltPetit/Results/KeyStealingResults.lean:9:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Results/KeyStealingResults.lean:23:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Results/KeyStealingResults.lean:214:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:214:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:216:10: extra space in the source
+
+This part of the code
+  '(hSig  : ∀'
+should be written as
+  '(hSig : ∀ B'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:216:33: extra space in the source
+
+This part of the code
+  'sc,  B ='
+should be written as
+  'sc, B = G'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:218:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:218:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:218:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:222:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:222:35: extra space in the source
+
+This part of the code
+  'sc)  k  ='
+should be written as
+  'sc) k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:222:38: extra space in the source
+
+This part of the code
+  'k  = some'
+should be written as
+  'k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:223:38: extra space in the source
+
+This part of the code
+  'k  = some'
+should be written as
+  'k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:224:8: extra space in the source
+
+This part of the code
+  '(hD  : blockAt?'
+should be written as
+  '(hD : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:224:35: extra space in the source
+
+This part of the code
+  'sc)  m  ='
+should be written as
+  'sc) m = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:224:38: extra space in the source
+
+This part of the code
+  'm  = some'
+should be written as
+  'm = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:226:11: extra space in the source
+
+This part of the code
+  '(hDeep  : k'
+should be written as
+  '(hDeep : k +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:260:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:260:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:262:10: extra space in the source
+
+This part of the code
+  '(hSig  : ∀'
+should be written as
+  '(hSig : ∀ B'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:262:33: extra space in the source
+
+This part of the code
+  'sc,  B ='
+should be written as
+  'sc, B = G'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:264:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:264:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:264:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:268:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:268:35: extra space in the source
+
+This part of the code
+  'sc)  k ='
+should be written as
+  'sc) k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:270:10: extra space in the source
+
+This part of the code
+  '(hLen  : k'
+should be written as
+  '(hLen : k +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:270:34: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:337:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:337:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:339:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:339:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:342:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:342:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:344:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:344:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:346:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:346:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:350:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:350:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:350:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:402:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:402:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:404:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:404:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:407:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:407:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:409:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:409:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:411:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:411:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:493:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:493:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:495:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:495:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:498:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:498:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:500:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:500:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:502:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:502:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:506:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:506:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:506:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:528:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:528:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:530:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:530:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:533:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:533:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:535:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:535:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:537:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingResults.lean:537:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8598/8659] Replayed MoltPetit.Model.KeyStealingCert
+warning: MoltPetit/Model/KeyStealingCert.lean:184:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingCert.lean:271:8: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingCert.lean:292:8: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingCert.lean:369:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingCert.lean:432:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingCert.lean:497:34: 'push_cast' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: MoltPetit/Model/KeyStealingCert.lean:516:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingCert.lean:591:9: extra space in the source
+
+This part of the code
+  '(hcl  : GroundedCertK'
+should be written as
+  '(hcl : GroundedCertK'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingCert.lean:591:65: extra space in the source
+
+This part of the code
+  'cl  fl)'
+should be written as
+  'cl fl)
+'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingCert.lean:594:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (s₁'
+should be written as
+  '(hTipS : (s₁'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingCert.lean:594:27: extra space in the source
+
+This part of the code
+  'srest ).getLast?'
+should be written as
+  'srest).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingCert.lean:596:11: extra space in the source
+
+This part of the code
+  '(hLink  : s₁.height'
+should be written as
+  '(hLink : s₁.height'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8599/8659] Replayed MoltPetit.Model.KeyRotationLiveness
+warning: MoltPetit/Model/KeyRotationLiveness.lean:77:13: extra space in the source
+
+This part of the code
+  '(hBudget   : ByzantineBounded'
+should be written as
+  '(hBudget : ByzantineBounded'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:78:13: extra space in the source
+
+This part of the code
+  '(hValidK   : validChainK'
+should be written as
+  '(hValidK : validChainK'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:79:12: extra space in the source
+
+This part of the code
+  '(hTipEq    : c.getLast?'
+should be written as
+  '(hTipEq : c.getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:80:12: extra space in the source
+
+This part of the code
+  '(hTipLt    : tip.slot'
+should be written as
+  '(hTipLt : tip.slot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:82:12: extra space in the source
+
+This part of the code
+  '(hCover    : ∀'
+should be written as
+  '(hCover :
+  '
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:84:12: extra space in the source
+
+This part of the code
+  '(hFloor    : keyFloor'
+should be written as
+  '(hFloor : keyFloor'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:134:13: extra space in the source
+
+This part of the code
+  '(hBudget   : ByzantineBounded'
+should be written as
+  '(hBudget : ByzantineBounded'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:135:13: extra space in the source
+
+This part of the code
+  '(hValidK   : validChainK'
+should be written as
+  '(hValidK : validChainK'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:136:12: extra space in the source
+
+This part of the code
+  '(hTipEq    : c.getLast?'
+should be written as
+  '(hTipEq : c.getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:137:12: extra space in the source
+
+This part of the code
+  '(hTipLt    : tip.slot'
+should be written as
+  '(hTipLt : tip.slot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:138:11: extra space in the source
+
+This part of the code
+  '(hMine     : producerForSlot'
+should be written as
+  '(hMine : producerForSlot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:140:12: extra space in the source
+
+This part of the code
+  '(hCover    : ∀'
+should be written as
+  '(hCover :
+  '
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:142:12: extra space in the source
+
+This part of the code
+  '(hFloor    : keyFloor'
+should be written as
+  '(hFloor : keyFloor'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:176:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:181:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:203:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:165:10: extra space in the source
+
+This part of the code
+  '(hSig      : SigCorrect'
+should be written as
+  '(hSig : SigCorrect'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:166:13: extra space in the source
+
+This part of the code
+  '(hBudget   : ByzantineBounded'
+should be written as
+  '(hBudget : ByzantineBounded'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:167:14: extra space in the source
+
+This part of the code
+  '(hValidK'  : validSignedChainK''
+should be written as
+  '(hValidK' : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:168:12: extra space in the source
+
+This part of the code
+  '(hTipEq    : (stripSigs'
+should be written as
+  '(hTipEq : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:169:12: extra space in the source
+
+This part of the code
+  '(hTipLt    : tip.slot'
+should be written as
+  '(hTipLt : tip.slot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:170:11: extra space in the source
+
+This part of the code
+  '(hMine     : producerForSlot'
+should be written as
+  '(hMine : producerForSlot'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:172:12: extra space in the source
+
+This part of the code
+  '(hCover    : ∀'
+should be written as
+  '(hCover :
+  '
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationLiveness.lean:175:12: extra space in the source
+
+This part of the code
+  '(hFloor    : keyFloor'
+should be written as
+  '(hFloor : keyFloor'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8600/8659] Replayed MoltPetit.Model.KeyStealingBudget
+warning: MoltPetit/Model/KeyStealingBudget.lean:38:5: please avoid 'open (scoped) Classical' statements: this can hide theorem statements which would be better stated with explicit decidability statements.
+Instead, use `open Classical in` for definitions or instances, the `classical` tactic for proofs.
+For theorem statements, either add missing decidability assumptions or use `open Classical in`.
+
+Note: This linter can be disabled with `set_option linter.style.openClassical false`
+⚠ [8602/8659] Replayed MoltPetit.TS.BridgeK
+warning: MoltPetit/TS/BridgeK.lean:87:63: This simp argument is unused:
+  Ne.symm hpj
+
+Hint: Omit it from the simp argument list.
+  simp [MoltPetit.floorBump, MoltPetit.floorLookup, hpj,̵ ̵N̵e̵.̵s̵y̵m̵m̵ ̵h̵p̵j̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: MoltPetit/TS/BridgeK.lean:129:10: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/TS/BridgeK.lean:135:10: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+⚠ [8603/8659] Replayed MoltPetit.Model.KeyStealingSchedule
+warning: MoltPetit/Model/KeyStealingSchedule.lean:147:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:147:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:149:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:149:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:149:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:203:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:215:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:215:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:217:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:217:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:219:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:219:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:219:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:222:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:222:33: extra space in the source
+
+This part of the code
+  'sc ) k'
+should be written as
+  'sc) k ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:222:38: extra space in the source
+
+This part of the code
+  'k  = some'
+should be written as
+  'k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:222:49: extra space in the source
+
+This part of the code
+  'B)  (hB''
+should be written as
+  'B) (hB''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:222:84: extra space in the source
+
+This part of the code
+  'k  = some'
+should be written as
+  'k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:223:8: extra space in the source
+
+This part of the code
+  '(hD  : blockAt?'
+should be written as
+  '(hD : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:223:33: extra space in the source
+
+This part of the code
+  'sc ) m'
+should be written as
+  'sc) m ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:223:38: extra space in the source
+
+This part of the code
+  'm  = some'
+should be written as
+  'm = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:223:49: extra space in the source
+
+This part of the code
+  'D)  (hD''
+should be written as
+  'D) (hD''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingSchedule.lean:224:11: extra space in the source
+
+This part of the code
+  '(hDeep  : k'
+should be written as
+  '(hDeep : k +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8604/8659] Replayed MoltPetit.Results.KeyStealingScheduleResults
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:92:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:92:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:94:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:94:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:96:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:96:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:96:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:99:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:99:33: extra space in the source
+
+This part of the code
+  'sc ) k'
+should be written as
+  'sc) k ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:101:10: extra space in the source
+
+This part of the code
+  '(hLen  : k'
+should be written as
+  '(hLen : k +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:101:34: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:128:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:146:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:146:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:148:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:148:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:151:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:151:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:153:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:153:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:155:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:155:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:159:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:159:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:159:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:188:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:188:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:190:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:190:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:193:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:193:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:195:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:195:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:197:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Results/KeyStealingScheduleResults.lean:197:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8605/8659] Replayed MoltPetit.Model.KeyStealingScheduleCert
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:238:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSchedCore'
+should be written as
+  '(hVal : validSignedChainSchedCore'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:238:66: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:240:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:240:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:240:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:296:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSchedCore'
+should be written as
+  '(hVal : validSignedChainSchedCore'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:296:66: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:298:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:298:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:300:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:300:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:300:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:303:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:303:33: extra space in the source
+
+This part of the code
+  'sc ) k'
+should be written as
+  'sc) k ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:303:38: extra space in the source
+
+This part of the code
+  'k  = some'
+should be written as
+  'k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:303:49: extra space in the source
+
+This part of the code
+  'B)  (hB''
+should be written as
+  'B) (hB''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:303:84: extra space in the source
+
+This part of the code
+  'k  = some'
+should be written as
+  'k = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:304:8: extra space in the source
+
+This part of the code
+  '(hD  : blockAt?'
+should be written as
+  '(hD : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:304:33: extra space in the source
+
+This part of the code
+  'sc ) m'
+should be written as
+  'sc) m ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:304:38: extra space in the source
+
+This part of the code
+  'm  = some'
+should be written as
+  'm = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:304:49: extra space in the source
+
+This part of the code
+  'D)  (hD''
+should be written as
+  'D) (hD''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:305:11: extra space in the source
+
+This part of the code
+  '(hDeep  : k'
+should be written as
+  '(hDeep : k +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:334:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSchedCore'
+should be written as
+  '(hVal : validSignedChainSchedCore'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:334:66: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:336:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:336:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:338:13: extra space in the source
+
+This part of the code
+  '(hRecent  : ∃'
+should be written as
+  '(hRecent : ∃ t,'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:338:21: extra space in the source
+
+This part of the code
+  't,  (stripSigs'
+should be written as
+  't, (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:338:35: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:341:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:341:33: extra space in the source
+
+This part of the code
+  'sc ) k'
+should be written as
+  'sc) k ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:343:10: extra space in the source
+
+This part of the code
+  '(hLen  : k'
+should be written as
+  '(hLen : k +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:343:34: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:421:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:479:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:535:34: 'push_cast' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:626:9: extra space in the source
+
+This part of the code
+  '(hcl  : GroundedCertSched'
+should be written as
+  '(hcl : GroundedCertSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:629:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (s₁'
+should be written as
+  '(hTipS : (s₁'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:629:27: extra space in the source
+
+This part of the code
+  'srest ).getLast?'
+should be written as
+  'srest).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleCert.lean:631:11: extra space in the source
+
+This part of the code
+  '(hLink  : s₁.height'
+should be written as
+  '(hLink : s₁.height'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8606/8659] Replayed MoltPetit.Model.KeyStealingScheduleBudget
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:96:5: please avoid 'open (scoped) Classical' statements: this can hide theorem statements which would be better stated with explicit decidability statements.
+Instead, use `open Classical in` for definitions or instances, the `classical` tactic for proofs.
+For theorem statements, either add missing decidability assumptions or use `open Classical in`.
+
+Note: This linter can be disabled with `set_option linter.style.openClassical false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:235:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:235:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:237:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:237:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:240:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:240:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:242:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:242:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:244:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:244:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:248:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:248:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:248:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:266:9: extra space in the source
+
+This part of the code
+  '(hcl  : GroundedCertSched'
+should be written as
+  '(hcl : GroundedCertSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:269:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (s₁'
+should be written as
+  '(hTipS : (s₁'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:269:27: extra space in the source
+
+This part of the code
+  'srest ).getLast?'
+should be written as
+  'srest).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:271:11: extra space in the source
+
+This part of the code
+  '(hLink  : s₁.height'
+should be written as
+  '(hLink : s₁.height'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:335:84: The syntax is now `structure S : Type extends P` rather than `structure S extends P : Type`
+
+Note: The purpose of this change is to accommodate `structure S extends toP : P` syntax for naming parent projections.
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:413:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:413:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:415:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:415:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:418:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:418:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:420:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:420:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:422:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:422:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:426:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:426:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:426:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:441:9: extra space in the source
+
+This part of the code
+  '(hcl  : GroundedCertSched'
+should be written as
+  '(hcl : GroundedCertSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:444:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (s₁'
+should be written as
+  '(hTipS : (s₁'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:444:27: extra space in the source
+
+This part of the code
+  'srest ).getLast?'
+should be written as
+  'srest).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleBudget.lean:446:11: extra space in the source
+
+This part of the code
+  '(hLink  : s₁.height'
+should be written as
+  '(hLink : s₁.height'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8607/8659] Replayed MoltPetit.Model.KeyStealingScheduleHorizon
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:257:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:257:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:260:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:260:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:262:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:262:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:264:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:264:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:266:8: extra space in the source
+
+This part of the code
+  '(hH  : H'
+should be written as
+  '(hH : H +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:266:29: extra space in the source
+
+This part of the code
+  'sTip.slot  + 1)'
+should be written as
+  'sTip.slot + 1)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:270:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:270:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:270:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:318:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:318:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:321:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:321:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:323:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:323:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:325:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:325:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:326:8: extra space in the source
+
+This part of the code
+  '(hH  : H'
+should be written as
+  '(hH : H +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:326:29: extra space in the source
+
+This part of the code
+  'sTip.slot  + 1)'
+should be written as
+  'sTip.slot + 1)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:375:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:375:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:378:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:378:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:380:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:380:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:382:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:382:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:384:8: extra space in the source
+
+This part of the code
+  '(hH  : H'
+should be written as
+  '(hH : H +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:384:29: extra space in the source
+
+This part of the code
+  'sTip.slot  + 1)'
+should be written as
+  'sTip.slot + 1)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:424:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSchedCore'
+should be written as
+  '(hVal : validSignedChainSchedCore'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:424:66: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:427:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:427:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:429:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:429:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:431:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:431:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:433:8: extra space in the source
+
+This part of the code
+  '(hH  : H'
+should be written as
+  '(hH : H +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:433:29: extra space in the source
+
+This part of the code
+  'sTip.slot  + 1)'
+should be written as
+  'sTip.slot + 1)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:437:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:437:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:437:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:481:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSchedCore'
+should be written as
+  '(hVal : validSignedChainSchedCore'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:481:66: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:484:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:484:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:486:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:486:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:488:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:488:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:489:8: extra space in the source
+
+This part of the code
+  '(hH  : H'
+should be written as
+  '(hH : H +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleHorizon.lean:489:29: extra space in the source
+
+This part of the code
+  'sTip.slot  + 1)'
+should be written as
+  'sTip.slot + 1)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8609/8659] Replayed MoltPetit.Model.KeyStealingLockstep
+warning: MoltPetit/Model/KeyStealingLockstep.lean:13:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:53:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:510:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:544:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:562:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainLock'
+should be written as
+  '(hVal : validSignedChainLock'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:562:52: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:564:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:564:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:567:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:567:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:569:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:569:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:571:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:571:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:575:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:575:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:575:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:593:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainLock'
+should be written as
+  '(hVal : validSignedChainLock'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:593:52: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:595:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:595:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:598:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:598:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:600:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:600:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:602:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingLockstep.lean:602:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8610/8659] Replayed MoltPetit.Model.KeyStealingLockstepGen
+warning: MoltPetit/Model/KeyStealingLockstepGen.lean:50:5: please avoid 'open (scoped) Classical' statements: this can hide theorem statements which would be better stated with explicit decidability statements.
+Instead, use `open Classical in` for definitions or instances, the `classical` tactic for proofs.
+For theorem statements, either add missing decidability assumptions or use `open Classical in`.
+
+Note: This linter can be disabled with `set_option linter.style.openClassical false`
+warning: MoltPetit/Model/KeyStealingLockstepGen.lean:144:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingLockstepGen.lean:302:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+⚠ [8611/8659] Replayed MoltPetit.Model.KeyStealingScheduleTimed
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:7:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:81:5: please avoid 'open (scoped) Classical' statements: this can hide theorem statements which would be better stated with explicit decidability statements.
+Instead, use `open Classical in` for definitions or instances, the `classical` tactic for proofs.
+For theorem statements, either add missing decidability assumptions or use `open Classical in`.
+
+Note: This linter can be disabled with `set_option linter.style.openClassical false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:353:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:353:70: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:356:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:356:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:358:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:358:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:360:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:360:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:362:8: extra space in the source
+
+This part of the code
+  '(hH  : H'
+should be written as
+  '(hH : H +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:362:29: extra space in the source
+
+This part of the code
+  'sTip.slot  + 1)'
+should be written as
+  'sTip.slot + 1)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:366:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:366:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:366:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:389:22: The syntax is now `structure S : Type extends P` rather than `structure S extends P : Type`
+
+Note: The purpose of this change is to accommodate `structure S extends toP : P` syntax for naming parent projections.
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:403:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:403:70: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:406:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:406:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:408:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:408:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:410:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:410:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:412:8: extra space in the source
+
+This part of the code
+  '(hH  : H'
+should be written as
+  '(hH : H +'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:412:29: extra space in the source
+
+This part of the code
+  'sTip.slot  + 1)'
+should be written as
+  'sTip.slot + 1)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:416:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:416:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingScheduleTimed.lean:416:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8612/8659] Replayed MoltPetit.Model.KeyStealingLockstepTimed
+warning: MoltPetit/Model/KeyStealingLockstepTimed.lean:22:5: please avoid 'open (scoped) Classical' statements: this can hide theorem statements which would be better stated with explicit decidability statements.
+Instead, use `open Classical in` for definitions or instances, the `classical` tactic for proofs.
+For theorem statements, either add missing decidability assumptions or use `open Classical in`.
+
+Note: This linter can be disabled with `set_option linter.style.openClassical false`
+warning: MoltPetit/Model/KeyStealingLockstepTimed.lean:98:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+⚠ [8613/8659] Replayed MoltPetit.Model.KeyStealingLockstepCert
+warning: MoltPetit/Model/KeyStealingLockstepCert.lean:229:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingLockstepCert.lean:293:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: MoltPetit/Model/KeyStealingLockstepCert.lean:417:34: 'push_cast' tactic does nothing
+
+Note: This linter can be disabled with `set_option linter.unusedTactic false`
+⚠ [8614/8659] Replayed MoltPetit.Model.KeyStealingHorizon
+warning: MoltPetit/Model/KeyStealingHorizon.lean:78:10: extra space in the source
+
+This part of the code
+  '(hSig  : ∀'
+should be written as
+  '(hSig : ∀ B'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:78:33: extra space in the source
+
+This part of the code
+  'sc,  B ='
+should be written as
+  'sc, B = G'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:81:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:81:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:84:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:84:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:86:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:86:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:88:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:88:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:92:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:92:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:92:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:142:8: extra space in the source
+
+This part of the code
+  '(hA  : A'
+should be written as
+  '(hA : A ∈'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:146:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:146:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:149:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:149:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:151:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:151:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:153:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:153:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:157:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:157:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:157:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:230:8: extra space in the source
+
+This part of the code
+  '(hA  : A'
+should be written as
+  '(hA : A ∈'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:234:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:234:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:237:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:237:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:239:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:239:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:241:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:241:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:245:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:245:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:245:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:334:9: unused variable `b`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:335:9: unused variable `b`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:319:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:319:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:322:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:322:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:324:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:324:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:326:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:326:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:330:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:330:33: extra space in the source
+
+This part of the code
+  'sc ) ((stripSigs'
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyStealingHorizon.lean:330:50: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8616/8659] Replayed MoltPetit.Model.KeyStealingTimed
+warning: MoltPetit/Model/KeyStealingTimed.lean:55:5: please avoid 'open (scoped) Classical' statements: this can hide theorem statements which would be better stated with explicit decidability statements.
+Instead, use `open Classical in` for definitions or instances, the `classical` tactic for proofs.
+For theorem statements, either add missing decidability assumptions or use `open Classical in`.
+
+Note: This linter can be disabled with `set_option linter.style.openClassical false`
+⚠ [8617/8659] Replayed MoltPetit.Model.KeyStealingSignatureTimed
+warning: MoltPetit/Model/KeyStealingSignatureTimed.lean:49:5: please avoid 'open (scoped) Classical' statements: this can hide theorem statements which would be better stated with explicit decidability statements.
+Instead, use `open Classical in` for definitions or instances, the `classical` tactic for proofs.
+For theorem statements, either add missing decidability assumptions or use `open Classical in`.
+
+Note: This linter can be disabled with `set_option linter.style.openClassical false`
+⚠ [8619/8659] Replayed MoltPetit.Model.KeyRotationTests
+warning: MoltPetit/Model/KeyRotationTests.lean:37:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:37:14: extra space in the source
+
+This part of the code
+  'G  : Block'
+should be written as
+  'G : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationTests.lean:38:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:39:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:41:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:42:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:43:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:45:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:47:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:76:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:86:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:92:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:92:15: extra space in the source
+
+This part of the code
+  'G2  : Block'
+should be written as
+  'G2 : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationTests.lean:93:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:93:15: extra space in the source
+
+This part of the code
+  'C1  : Block'
+should be written as
+  'C1 : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationTests.lean:94:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:94:15: extra space in the source
+
+This part of the code
+  'C2  : Block'
+should be written as
+  'C2 : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationTests.lean:95:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:95:15: extra space in the source
+
+This part of the code
+  'C3  : Block'
+should be written as
+  'C3 : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationTests.lean:96:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:96:15: extra space in the source
+
+This part of the code
+  'C4  : Block'
+should be written as
+  'C4 : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationTests.lean:97:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:97:15: extra space in the source
+
+This part of the code
+  'C5  : Block'
+should be written as
+  'C5 : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationTests.lean:98:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:98:15: extra space in the source
+
+This part of the code
+  'C6  : Block'
+should be written as
+  'C6 : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: MoltPetit/Model/KeyRotationTests.lean:99:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: MoltPetit/Model/KeyRotationTests.lean:99:15: extra space in the source
+
+This part of the code
+  'C7  : Block'
+should be written as
+  'C7 : Block'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8628/8659] Replayed Rust.Bridge
+warning: Rust/Bridge.lean:76:59: Used `tac1 <;> tac2` where `(tac1; tac2)` would suffice
+
+Note: This linter can be disabled with `set_option linter.unnecessarySeqFocus false`
+warning: Rust/Bridge.lean:247:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: Rust/Bridge.lean:368:8: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: Rust/Bridge.lean:450:45: This simp argument is unused:
+  decide_eq_true_eq
+
+Hint: Omit it from the simp argument list.
+  simp only [toModelBlock, toModelClaim,̵ ̵d̵e̵c̵i̵d̵e̵_̵e̵q̵_̵t̵r̵u̵e̵_̵e̵q̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Rust/Bridge.lean:636:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: Rust/Bridge.lean:659:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+⚠ [8630/8659] Replayed Rust.Equiv
+warning: Rust/Equiv.lean:86:4: 'simp [toChainG, window_count_be, UB] at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:86:4: Try this:
+  [apply] simp only [toModelChain_nil] at h
+info: Rust/Equiv.lean:87:4: 'subst h' uses 'h'!
+warning: Rust/Equiv.lean:92:4: 'simp at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:92:4: Try this:
+  [apply] simp only [toModelChain_cons] at h
+info: Rust/Equiv.lean:93:4: 'obtain ⟨hi, hhi, h⟩ := bind_inv h' uses 'h'!
+warning: Rust/Equiv.lean:106:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+warning: Rust/Equiv.lean:138:2: 'simp at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:139:2: 'obtain ⟨cnt, hcnt, h⟩ := bind_inv h' uses 'h'!
+warning: Rust/Equiv.lean:153:38: This simp argument is unused:
+  UB
+
+Hint: Omit it from the simp argument list.
+  simp only [genesis_ok_be, toBlockG,̵ ̵U̵B̵] at h
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Rust/Equiv.lean:154:2: 'simp at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:157:4: 'injection h with h' uses 'h'!
+warning: Rust/Equiv.lean:154:2: 'simp at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:160:4: 'cases hp : b.prev with
+| none => simp
+| some p => rw [hp] at h; simp at h' uses 'h'!
+warning: Rust/Equiv.lean:173:2: 'simp at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:174:2: 'obtain ⟨succ, hsucc, h⟩ := bind_inv h' uses 'h'!
+warning: Rust/Equiv.lean:217:4: 'simp at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:217:4: Try this:
+  [apply] simp only [toModelChain_cons] at h
+info: Rust/Equiv.lean:218:4: 'obtain ⟨here, hhere, h⟩ := bind_inv h' uses 'h'!
+warning: Rust/Equiv.lean:227:6: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: Rust/Equiv.lean:279:4: 'simp at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:280:4: 'obtain ⟨u, hu, h⟩ := bind_inv h' uses 'h'!
+warning: Rust/Equiv.lean:319:2: 'simp [matured_dense_be] at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:320:2: 'obtain ⟨lpn, hlpn, h⟩ := bind_inv h' uses 'h'!
+warning: Rust/Equiv.lean:352:4: 'simp at h' is a flexible tactic modifying 'h'. Try 'simp?' and use the suggested 'simp only [...]'. Alternatively, use `suffices` to explicitly state the simplified form.
+
+Note: This linter can be disabled with `set_option linter.flexible false`
+info: Rust/Equiv.lean:352:4: Try this:
+  [apply] simp only [toModelChain_cons] at h
+info: Rust/Equiv.lean:353:4: 'obtain ⟨genesis, hgen, h⟩ := bind_inv h' uses 'h'!
+warning: Rust/Equiv.lean:371:8: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+⚠ [8631/8659] Replayed Rust.Results_rust
+warning: Rust/Results_rust.lean:249:100: This line exceeds the 100 character limit, please shorten it!
+
+Note: This linter can be disabled with `set_option linter.style.longLine false`
+⚠ [8636/8659] Replayed Molt.Verifier
+warning: Molt/Verifier.lean:171:15: This simp argument is unused:
+  hc
+
+Hint: Omit it from the simp argument list.
+  simp only ̵[̵h̵c̵]̵
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Molt/Verifier.lean:172:15: This simp argument is unused:
+  hc
+
+Hint: Omit it from the simp argument list.
+  simp only ̵[̵h̵c̵]̵
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Molt/Verifier.lean:174:17: This simp argument is unused:
+  hg
+
+Hint: Omit it from the simp argument list.
+  simp only [h̵g̵,̵ ̵linksOk_eq_core]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Molt/Verifier.lean:175:17: This simp argument is unused:
+  hg
+
+Hint: Omit it from the simp argument list.
+  simp only [h̵g̵,̵ ̵linksOk_eq_core, windowDense_eq_core]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+⚠ [8638/8659] Replayed Molt.Results
+warning: Molt/Results.lean:62:9: extra space in the source
+
+This part of the code
+  '(hcl  : GroundedCert'
+should be written as
+  '(hcl : GroundedCert'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Results.lean:66:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (s₁'
+should be written as
+  '(hTipS : (s₁'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Results.lean:66:38: extra space in the source
+
+This part of the code
+  'srest).getLast?  = some'
+should be written as
+  'srest).getLast? = some'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Results.lean:68:11: extra space in the source
+
+This part of the code
+  '(hLink  : s₁.height'
+should be written as
+  '(hLink : s₁.height'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8639/8659] Replayed Molt.Rotation
+warning: Molt/Rotation.lean:282:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainK''
+should be written as
+  '(hVal : validSignedChainK''
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:282:56: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:285:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:285:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:287:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:287:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:289:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:289:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:293:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:293:33: extra space in the source
+
+This part of the code
+  'sc )
+ '
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:294:20: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:380:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainSched'
+should be written as
+  '(hVal : validSignedChainSched'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:380:62: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:382:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:382:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:385:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:385:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:387:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:387:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:389:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:389:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:393:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:393:33: extra space in the source
+
+This part of the code
+  'sc )
+ '
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:394:20: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:415:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainLock'
+should be written as
+  '(hVal : validSignedChainLock'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:415:52: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:417:11: extra space in the source
+
+This part of the code
+  '(hHead  : blockAt?'
+should be written as
+  '(hHead : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:417:36: extra space in the source
+
+This part of the code
+  'sc ) 0'
+should be written as
+  'sc) 0 ='
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:420:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:420:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:422:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:422:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:424:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:424:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:428:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:428:33: extra space in the source
+
+This part of the code
+  'sc )
+ '
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/Rotation.lean:429:20: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8641/8659] Replayed Molt.ClientRule
+warning: Molt/ClientRule.lean:202:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:202:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:204:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:204:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:206:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:206:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:210:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:210:33: extra space in the source
+
+This part of the code
+  'sc )
+ '
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:211:20: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:262:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:262:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:264:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:264:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:266:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:266:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:270:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:270:33: extra space in the source
+
+This part of the code
+  'sc )
+ '
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:271:20: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:308:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:308:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:310:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:310:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:312:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/ClientRule.lean:312:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8643/8659] Replayed Molt.LockstepGen
+warning: Molt/LockstepGen.lean:50:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainLock'
+should be written as
+  '(hVal : validSignedChainLock'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:50:52: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:53:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:53:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:55:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:55:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:57:11: extra space in the source
+
+This part of the code
+  '(hLong  : 2'
+should be written as
+  '(hLong : 2 *'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:57:35: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:61:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:61:33: extra space in the source
+
+This part of the code
+  'sc )
+ '
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:62:20: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:81:10: extra space in the source
+
+This part of the code
+  '(hVal  : validSignedChainLock'
+should be written as
+  '(hVal : validSignedChainLock'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:81:52: extra space in the source
+
+This part of the code
+  'sc  = true)'
+should be written as
+  'sc = true)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:84:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:84:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:86:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:86:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:88:11: extra space in the source
+
+This part of the code
+  '(hLong  : 2'
+should be written as
+  '(hLong : 2 *'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:88:35: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:92:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:92:33: extra space in the source
+
+This part of the code
+  'sc )
+ '
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/LockstepGen.lean:93:20: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+⚠ [8646/8659] Replayed Molt.MaxSync
+warning: Molt/MaxSync.lean:37:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: Molt/MaxSync.lean:41:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: Molt/MaxSync.lean:49:16: unused variable `B`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: Molt/MaxSync.lean:110:4: The `show` tactic should only be used to indicate intermediate goal states for readability.
+However, this tactic invocation changed the goal. Please use `change` instead for these purposes.
+
+Note: This linter can be disabled with `set_option linter.style.show false`
+warning: Molt/MaxSync.lean:200:11: extra space in the source
+
+This part of the code
+  '(hTipS  : (stripSigs'
+should be written as
+  '(hTipS : (stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/MaxSync.lean:200:27: extra space in the source
+
+This part of the code
+  'sc ).getLast?'
+should be written as
+  'sc).getLast?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/MaxSync.lean:202:13: extra space in the source
+
+This part of the code
+  '(hRecent  : now'
+should be written as
+  '(hRecent : now'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/MaxSync.lean:202:32: extra space in the source
+
+This part of the code
+  'sTip.slot  + Δ)'
+should be written as
+  'sTip.slot + Δ)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/MaxSync.lean:204:11: extra space in the source
+
+This part of the code
+  '(hLong  : n'
+should be written as
+  '(hLong : n <'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/MaxSync.lean:204:31: extra space in the source
+
+This part of the code
+  'sc ).length)'
+should be written as
+  'sc).length)'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/MaxSync.lean:208:8: extra space in the source
+
+This part of the code
+  '(hB  : blockAt?'
+should be written as
+  '(hB : blockAt?'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/MaxSync.lean:208:33: extra space in the source
+
+This part of the code
+  'sc )
+ '
+should be written as
+  'sc) ((stripSigs'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+warning: Molt/MaxSync.lean:209:20: extra space in the source
+
+This part of the code
+  'sc ).length'
+should be written as
+  'sc).length'
+
+
+Note: This linter can be disabled with `set_option linter.style.whitespace false`
+Build completed successfully (8659 jobs).

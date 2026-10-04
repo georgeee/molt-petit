@@ -1,0 +1,1 @@
+nix-run /home/etheron-bare-exec/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin/lake
