@@ -43,7 +43,18 @@ theorem sched_loss_agreement {n σ ℓ φ : Nat} {schedule : Nat → Nat} (hn : 
     (hDeep : h + n < (stripSigs sc).length)
     (hDeep' : h + n < (stripSigs sc').length) :
     blockAt? (stripSigs sc) h = blockAt? (stripSigs sc') h := by
-  sorry
+  have hVS : ValidChain n (stripSigs sc) := validChain_of_validSignedChainSched hVal
+  have hVS' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSched hVal'
+  have hAvail : ∀ B ∈ stripSigs sc, AvailableAt log G B R := by
+    intro B hB
+    obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem_sched hVal hB)
+    exact Or.inr ⟨r, hrR, hrLog⟩
+  have hAvail' : ∀ B ∈ stripSigs sc', AvailableAt log G B R := by
+    intro B hB
+    obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem_sched hVal' hB)
+    exact Or.inr ⟨r, hrR, hrLog⟩
+  exact exposure_agreement hn hexec hClock hBudget hL hL' hVS hVS'
+    hHead hHead' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 /-- **Mode 3 against key loss: timed agreement for the lockstep validator.** -/
 theorem lockstep_loss_agreement {n σ ℓ φ : Nat} (hn : 1 ≤ n)
