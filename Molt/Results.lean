@@ -9,8 +9,8 @@ import MoltPetit.TS.TimedResults
 The two headline theorems of the timed exposure model, restated in the
 paper's vocabulary and transported from the core development:
 
-* `timed_light_client_safety` ← `MoltPetit.Model.exposure_certified_agreement`
-* `no_early_signing`          ← `MoltPetit.Model.exposure_no_early_signing`
+* `timed_light_client_safety` ← `MoltPetit.Model.exposure_certified_agreement_on`
+* `no_early_signing`          ← `MoltPetit.Model.exposure_no_early_signing_on`
 
 Per-implementation corollaries (`Rust.rust_timed_certified_agreement`,
 `MoltPetit.Model.ts_timed_certified_agreement`) live with the pipelines they
@@ -79,14 +79,14 @@ with the other presentation's at every height that is at least `n` below both
 tips. No block needs to be *exposed* in either suffix: the conclusion is about
 the attested histories themselves.
 
-Transported from `MoltPetit.Model.exposure_certified_agreement`. -/
+Transported from `MoltPetit.Model.exposure_certified_agreement_on`. -/
 theorem timed_light_client_safety {n σ ℓ φ : Nat} (hn : 1 ≤ n)
-    {exposed : Exposure} {log : TimedLog} {G : Block}
-    (hexec : SigningExecution exposed log G)
-    (hClock : HonestClock σ exposed log)
+    {Signed : Block → Prop} {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecutionOn Signed exposed log G)
+    (hClock : HonestClockOn Signed σ exposed log)
     (hBudget : ExposureBounded n ℓ φ exposed)
     (hL : n ≤ ℓ + 1) (hL' : n + faultBudget n + σ + 1 ≤ quorum n + ℓ)
-    {Signed : Block → Prop} {R : Nat}
+    {R : Nat}
     (hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r ≤ R, B ∈ log r)
     {cl cl' : CertClaim}
     (hcl  : GroundedCert n Signed G cl)
@@ -116,7 +116,7 @@ theorem timed_light_client_safety {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
     blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
   rw [linksOk_eq_core] at hLinks hLinks'
-  exact MoltPetit.Model.exposure_certified_agreement hn hexec hClock hBudget hL hL' hbridge hcl hcl'
+  exact MoltPetit.Model.exposure_certified_agreement_on hn hexec hClock hBudget hL hL' hbridge hcl hcl'
     hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'
     hSigned hSigned' hRecent hRecent' hc hc' hDeep hDeep'
 
@@ -125,8 +125,8 @@ theorem timed_light_client_safety {n σ ℓ φ : Nat} (hn : 1 ≤ n)
 /-- **No early signing** (paper Theorem 2): no block of a valid chain is
 signed more than the budget's lookback `ℓ` slots before its stamp.
 
-Transported from `MoltPetit.Model.exposure_no_early_signing`. -/
-alias no_early_signing := MoltPetit.Model.exposure_no_early_signing
+Transported from `MoltPetit.Model.exposure_no_early_signing_on`. -/
+alias no_early_signing := MoltPetit.Model.exposure_no_early_signing_on
 
 /-- Theorem 1, full-chain form under the cumulative budget: no clock
 hypothesis (paper §6.1, third remark). -/
@@ -150,5 +150,13 @@ alias exposure_no_early_signing_on := MoltPetit.Model.exposure_no_early_signing_
 /-- Theorem 1 (certificate form) with custody and clocks assumed only for
 blocks satisfying the signature predicate. -/
 alias exposure_certified_agreement_on := MoltPetit.Model.exposure_certified_agreement_on
+
+/-- Theorem 1, full-chain form under the cumulative budget with custody
+assumed only for admissible blocks. -/
+alias exposure_agreement_ever_on := MoltPetit.Model.exposure_agreement_ever_on
+
+/-- No early signing under the cumulative budget with custody and clocks
+assumed only for admissible blocks. -/
+alias exposure_no_early_signing_ever_on := MoltPetit.Model.exposure_no_early_signing_ever_on
 
 end Molt
