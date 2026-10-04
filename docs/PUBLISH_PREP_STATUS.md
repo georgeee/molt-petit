@@ -117,7 +117,7 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
 1. **W7 (Multi-chain network model):** Retained as future work / limitation (§6.4 L1223). The rollout evaluation concluded that formalizing a full dynamic gossip network model with fork choice is out of scope for this consensus protocol paper and yields diminishing returns.
 2. **Mode 2 Certificate Horizon Scoping:** Proved under global all-window budget (`sched_recent_certified_suffix_agreement`). Horizon scoping for certificates remains future work (while Mode 1 and Mode 3 certificate forms are fully closed).
 3. **Mode-1 reaction delay (`Reacts`):** Mode-1 reaction delay `Reacts` is read off the validated chain (open, disclosed in Named seams).
-4. **W3b timed theft layer (§6.3), withdrawn:** `NoTheftBackdating` is degenerate: it forces every theft to real slot 0 (`noTheftBackdating_degenerate`, audit run 3 F-02). The paper no longer cites the tight census or `max_sync_period_tight`. A theft is charged through `Reacts` to every window `u` with `u < r + d`. Charging a theft only to later windows needs forward-secure signing, and is future work.
+4. **W3b timed theft layer (§6.3), removed:** `NoTheftBackdating` was degenerate: it forced every theft to real slot 0 (audit run 3 F-02). At George's request (10-04), the layer was deleted from the Lean (KeyStealingSignatureTimed, MaxSyncSignatureTimed and their guards), and the paper no longer mentions it. A theft is charged through `Reacts` to every window `u` with `u < r + d`. Charging a theft only to later windows needs forward-secure signing, and is future work.
 5. **W4 Sync Induction Hypotheses (§6.3):** The paper now states `sync_induction_full_chain` is machine-checked conditional on `hRLe` (reference tip at least as tall at every sync), while the informal density argument justifying `hRLe` remains acknowledged as informal on paper.
 6. **Mode 3 Certificate Generation Attestation (§6.3):** The certificate attests the tip generation alongside the claim, but for $n \ge 2$ this generation is uniquely determined by the tail buffer (`groundedCertLock_gen_of_tail`, `groundedCertLock_gen_unique`), so only $n = 1$ carries an extra counter over the wire.
 7. **Mode 3 Safety Twins (§6.3):** Both the cumulative global form (Theorem 5, depth $n$) and the per-generation credited form (Theorem 5b, depth $2n$) are presented as options for deployments, with the modes table highlighting credited erasure under Theorem 5b.
@@ -136,4 +136,8 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
   - Every statement in the paper was checked against its Lean statement.
 - Disclosed open items (not carve-outs; each is stated in the paper as future work or a named seam): mode-1 `Reacts` is read off the validated chain; mode-2 certificate horizon scoping; per-generation credit for mode-3 certificates; forward-secure theft timing; the multi-chain network model; the recency check in the node loop.
 
-STATUS: COMPLETE
+## 6. Reopened (2026-10-04)
+
+`Reacts` (the mode-1 reaction delay, a hypothesis of Thm 3 `sync_rule_timed`) quantifies over every slot `s ≥ r + d` on the finite presented chain. At large `s`, `inForce` is the floor of the whole chain, so `Reacts` implies that every stolen version is already rotated past on the presented chain. A live, not-yet-rotated theft (the attack the theorem is for) falsifies it. Decision pending with George.
+
+STATUS: READY FOR REVIEW

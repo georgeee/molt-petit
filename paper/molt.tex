@@ -1040,10 +1040,8 @@ with $u < r + d$ (\code{recentTheftProducersK}), and to no window starting
 $d$ or more slots after it. Charging a theft \emph{only} to the windows
 after it would need a no-back-dating guarantee for stolen keys --- a
 forward-security property~\cite{forwardsec} of the signature primitive,
-which this development does not assume. The naive hypothesis-level form
-of that guarantee is degenerate: it forces every theft to real slot $0$
-(\code{noTheftBackdating\_degenerate}). A non-degenerate form is future
-work, so the census, and with it $F$, stays bounded as above. The sync rule is the $F = n$, $S = 5n$ instance.
+which this development does not assume; it is future work, so the
+census, and with it $F$, stays bounded as above. The sync rule is the $F = n$, $S = 5n$ instance.
 (Engine: \code{client\_refresh\_rule}, parametric in
 the anchor's age; \code{stay\_recent\_client\_safe} derives the age
 bound.)
@@ -1308,9 +1306,7 @@ Section~\ref{sec:opmodel}.
 First, the mode-1 census is retroactive within a stretch: a theft is
 charged to every earlier window of the client's stretch, which is what
 bounds the sync period $F$. Confining a theft's charge to the windows
-after it needs forward-secure signing; a hypothesis-level shortcut is
-degenerate (\code{noTheftBackdating\_degenerate}), and the
-non-degenerate form is future work.
+after it needs forward-secure signing, and is future work.
 Second, while mode~3 formalizes per-generation erasure credit at depth $2n$
 (Theorem~\ref{thm:lock-gen}), both mode~2's certificate theorem
 (\code{sched\_recent\_certified\_suffix\_agreement}) and mode~3's certificate

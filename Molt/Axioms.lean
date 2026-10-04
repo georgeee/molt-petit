@@ -7,7 +7,6 @@ import Molt.LockstepGen
 import Molt.LockstepCert
 import Molt.CertClientRule
 import Molt.SyncRuleTimed
-import Molt.MaxSyncSignatureTimed
 import Molt.SyncInduction
 import Molt.KeyStealingTimedScope
 
@@ -208,19 +207,6 @@ this file with every new headline theorem.
 /-- info: 'Molt.max_sync_period_timed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Molt.max_sync_period_timed
-
--- Mode 1 paced tight census & separation witness (paper §6.3, mode 1).
-/-- info: 'Molt.max_sync_period_tight' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.max_sync_period_tight
-
-/-- info: 'Molt.paced_tight_census_bound_all_F' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.paced_tight_census_bound_all_F
-
-/-- info: 'Molt.paced_separation_witnessed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms Molt.paced_separation_witnessed
 
 -- Mode 1 sync induction over full chain (paper §6.3, mode 1).
 /-- info: 'Molt.sync_induction_full_chain' depends on axioms: [propext, Classical.choice, Quot.sound] -/

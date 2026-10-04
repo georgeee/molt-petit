@@ -1,5 +1,4 @@
 import MoltPetit.TS.TimedResults
-import MoltPetit.Model.KeyStealingSignatureTimed
 
 /-!
 # Pinned statement and axiom audit for the TypeScript timed certified theorem
@@ -52,13 +51,3 @@ example
 /-- info: 'MoltPetit.Model.ts_timed_certified_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms MoltPetit.Model.ts_timed_certified_agreement
-
-open MoltPetit.Model in
-example {n Δconf : Nat} (hΔ : 1 ≤ Δconf)
-    {c₀ : Chain} {stolenAt : Nat → Nat → Nat → Prop}
-    (h : NoTheftBackdating n Δconf c₀ stolenAt)
-    {i j r : Nat} (hst : stolenAt i j r) : r = 0 :=
-  noTheftBackdating_degenerate hΔ h hst
-
--- `noTheftBackdating_degenerate` is a trivial lemma whose axiom footprint may be a
--- subset of the standard three; its `sorry`-freedom is enforced by `tools/check.sh`.
