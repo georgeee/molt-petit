@@ -37,18 +37,22 @@ theorem signedDeclared_of_mem {σ sk pk : Type} {n Δconf : Nat}
 /-- **Mode 1 against key loss: timed agreement for the mode-1 validator.** -/
 theorem keyrot_loss_agreement {n Δconf σ ℓ φ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
-    (hexec : SigningExecution exposed log G)
-    (hClock : HonestClock σ exposed log)
+    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
+    {Formed : Block → Prop}
+    (hexec : SigningExecutionOn (fun B => SignedDeclared n ops registry B ∧ Formed B)
+      exposed log G)
+    (hClock : HonestClockOn (fun B => SignedDeclared n ops registry B ∧ Formed B) σ exposed log)
     (hBudget : ExposureBounded n ℓ φ exposed)
     (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
-    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {R : Nat}
-    (hbridge : ∀ ⦃B : Block⦄, SignedDeclared n ops registry B → ∃ r ≤ R, B ∈ log r)
+    (hbridge : ∀ ⦃B : Block⦄, SignedDeclared n ops registry B → Formed B → ∃ r ≤ R, B ∈ log r)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainK' n Δconf ops registry sc = true)
     (hVal' : validSignedChainK' n Δconf ops registry sc' = true)
     (hHead : blockAt? (stripSigs sc) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {tip tip' : Block}
     (hTip : (stripSigs sc).getLast? = some tip)
     (hTip' : (stripSigs sc').getLast? = some tip')
@@ -64,15 +68,23 @@ theorem keyrot_loss_agreement {n Δconf σ ℓ φ : Nat} (hn : 1 ≤ n)
   have hVS' : ValidChain n (stripSigs sc') := by
     rw [validSignedChainK', Bool.and_eq_true] at hVal'
     exact (validChainK'_sound hVal'.2).1
+  have hAdm : ∀ B ∈ stripSigs sc, B ≠ G → SignedDeclared n ops registry B ∧ Formed B :=
+    fun B hB hne => ⟨signedDeclared_of_mem hVal hB, hFormed B hB hne⟩
+  have hAdm' : ∀ B ∈ stripSigs sc', B ≠ G → SignedDeclared n ops registry B ∧ Formed B :=
+    fun B hB hne => ⟨signedDeclared_of_mem hVal' hB, hFormed' B hB hne⟩
   have hAvail : ∀ B ∈ stripSigs sc, AvailableAt log G B R := by
     intro B hB
-    obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem hVal hB)
-    exact Or.inr ⟨r, hrR, hrLog⟩
+    by_cases hBG : B = G
+    · exact Or.inl hBG
+    · obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem hVal hB) (hFormed B hB hBG)
+      exact Or.inr ⟨r, hrR, hrLog⟩
   have hAvail' : ∀ B ∈ stripSigs sc', AvailableAt log G B R := by
     intro B hB
-    obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem hVal' hB)
-    exact Or.inr ⟨r, hrR, hrLog⟩
-  exact exposure_agreement hn hexec hClock hBudget hL hL' hVS hVS'
-    hHead hHead' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
+    by_cases hBG : B = G
+    · exact Or.inl hBG
+    · obtain ⟨r, hrR, hrLog⟩ := hbridge (signedDeclared_of_mem hVal' hB) (hFormed' B hB hBG)
+      exact Or.inr ⟨r, hrR, hrLog⟩
+  exact exposure_agreement_on hn hexec hClock hBudget hL hL' hVS hVS'
+    hHead hHead' hAdm hAdm' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 end MoltPetit.Model
