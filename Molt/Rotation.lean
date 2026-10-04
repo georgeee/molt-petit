@@ -9,6 +9,7 @@ import MoltPetit.Model.KeyStealingScheduleTimed
 import MoltPetit.Model.KeyRotationLoss
 import MoltPetit.Model.KeyRotationLossSchedLock
 import MoltPetit.Model.KeyStealingScheduleCertHorizon
+import MoltPetit.Model.SchedExposure
 
 /-!
 # Key rotation (paper §6.3)
@@ -349,6 +350,24 @@ alias keyrot_loss_agreement :=
 /-- Mode 2 against key loss: Theorem 1 for the scheduled validator. -/
 alias sched_loss_agreement :=
   MoltPetit.Model.sched_loss_agreement
+
+/-- What the mode-2 validator admits, per block: a signature verifying under
+the declared version, and a declared version meeting the schedule. -/
+abbrev SchedAdmissible := @MoltPetit.Model.SchedAdmissible
+
+/-- Mode-2 exposure: a stamp is exposed when its seat is controlled, or a
+version of its key at or above the stamp's scheduled floor is stolen. -/
+abbrev schedExposed := MoltPetit.Model.schedExposed
+
+/-- Mode 2 against key theft (paper Theorem `thm:sched`): Theorem 1 for the
+scheduled validator, with custody assumed only for admissible blocks and
+exposure read at the schedule. -/
+alias sched_exposure_agreement :=
+  MoltPetit.Model.sched_exposure_agreement
+
+/-- Mode 2 against key theft at the certificate presentation. -/
+alias sched_exposure_certified_agreement :=
+  MoltPetit.Model.sched_exposure_certified_agreement
 
 /-- Mode 3 against key loss: Theorem 1 for the lockstep validator. -/
 alias lockstep_loss_agreement :=
