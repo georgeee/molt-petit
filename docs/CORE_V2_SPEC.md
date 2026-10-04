@@ -3,10 +3,12 @@
 Reviewer-owned spec. Four statements are pinned in `MoltPetit/Model/ExposureSafety.lean`
 and guarded by `Molt/AxiomsExposureSafety.lean`:
 
-- `MoltPetit.Model.exposure_agreement` (Theorem 1)
-- `MoltPetit.Model.exposure_no_early_signing` (forged chains cannot run ahead of real time)
+- `MoltPetit.Model.exposure_agreement` (Theorem 1, windowed budget; Pass 19b below)
+- `MoltPetit.Model.exposure_no_early_signing` (no chain block is signed more than `ℓ` before its stamp)
+- `MoltPetit.Model.exposure_agreement_ever`, `MoltPetit.Model.exposure_no_early_signing_ever`
+  (cumulative budget; Steps A–D)
 
-Do not edit either statement, the guard, or the definitions `Exposure`,
+Do not edit any of these statements, the guard, or the definitions `Exposure`,
 `SigningExecution`, `HonestClock`, `ExposureBounded` and `ExposureBoundedEver` in `MoltPetit/Model/Definitions.lean`.
 
 ## Why a new core
