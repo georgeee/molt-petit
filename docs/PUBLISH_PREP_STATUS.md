@@ -254,3 +254,11 @@ STATUS: READY FOR REVIEW
 - Headline, `no_early_signing`, Rust/TS bridges, loss theorems (modes 1–3), mode-2
   theft theorems all move to the `_on` form; new `exposure_*_ever_on`. Spec
   docs/PASS23_SPEC.md; pins in Molt/AxiomsPass23.lean and the existing guard files.
+- Proved by Archon run aff21653 (9bd06d1..c1ee375; the first attempt c70046bc died on the agy
+  300 s turn cut, fixed upstream in agent-cage v0.5.34, not yet deployed on bare1). Pins unchanged
+  (`git diff c3f912e -- '*Axioms*'` empty); gate green. `toOn` derives the restricted
+  `chain_order` from the old one via `id_inj`; headline is `exposure_certified_agreement_on`.
+- Paper: the `verify` predicates are read against F_SIG at the verifier's slot (Canetti 2004),
+  which makes `hbridge` causality rather than a false statement about a concrete scheme.
+
+STATUS: READY FOR REVIEW
