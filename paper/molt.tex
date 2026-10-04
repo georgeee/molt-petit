@@ -64,11 +64,12 @@ assumptions of Section~\ref{sec:assumptions} --- the core claims about
 the imported Rust validator source itself, proved sound against the model
 and re-used as the recursive-proof circuit (with circuit-backend faithfulness
 a stated trust assumption), and today's key-rotation results at
-model level. Beyond the classical counting argument, we prove that forged
-chains advance at half real-time speed, and light-client safety is
-proved directly in a timed model, against an adversary that harvests
-coerced signatures stamped for any slot, so the recency check is a
-machine-checked safety ingredient --- and we develop key rotation inside
+model level. Light-client safety is proved in a timed model against an
+adversary that obtains signing keys at arbitrary real times --- by theft
+or by transient compromise --- and signs whatever stamps they verify; the
+fault budget counts only key exposure around each window's own time, so
+the recency check is a machine-checked safety ingredient, and no valid
+chain can run ahead of real time --- and we develop key rotation inside
 consensus: every mode recovers from lost keys, and against an adversary
 who steals keys and keeps them forever, two modes come with exactly
 stated operator duties and no client duty beyond the genesis and a clock. Measured with post-quantum signatures on commodity
@@ -109,13 +110,16 @@ proof of the validity rule itself, plus a short suffix of signed blocks
 (Section~\ref{sec:rules}).
 
 Two ideas carry the security argument beyond the standard counting.
-First, \emph{recency is a safety ingredient, not a freshness nicety}: a
-per-slot adversary --- one that corrupts producers slot by slot --- can
-slowly harvest coerced signatures into a perfectly
-valid-looking fork, but each block's id commits to its parent's
-signature, so forged suffixes provably advance at half real-time speed
---- any fork old enough to be dangerous is too stale to be accepted
-(Section~\ref{sec:timed}). Second, \emph{key rotation lives inside
+First, \emph{recency is a safety ingredient, not a freshness nicety}:
+over a deployment's lifetime keys leak --- signers are compromised and
+later cleaned, keys are stolen --- and a fork signed with keys exposed long
+after its stamps is the classic long-range attack. The fault budget here
+counts, for each window of $n$ slots, only the keys exposed during a
+bounded stretch of real time around that window, from about $2n$ slots
+before it to $\varphi$ slots after it. A client that refuses tips older
+than $\varphi$ is exactly the client for whom later exposure cannot
+matter, and no adversary can prepare a valid chain ahead of real time to
+get around the check (Section~\ref{sec:timed}). Second, \emph{key rotation lives inside
 consensus}: every block declares its signing-key version, so rotation is
 ordered by the chain like any other event. Every mode recovers from a lost key with no extra client duty.
 Against an adversary who steals keys outright and keeps them forever,
@@ -161,8 +165,7 @@ participants produces blocks in public round-robin slots; every block
 declares the signing-key version it was signed under; a node holds a
 constant-size certificate plus a short suffix of recent signed blocks;
 and a verifier accepts a chain only if it validates and its tip is
-recent --- at most $b$ slots old on the verifier's own clock, where
-$b + \delta \le n$ --- then trusts everything $n$ blocks deep. Key rotation is part of the protocol
+recent --- at most $b$ slots old on the verifier's own clock --- then trusts everything $n$ blocks deep. Key rotation is part of the protocol
 from the start: a deployment completes the validator by fixing one of
 three rotation \emph{pins}. A pin bounds the key version a block may
 declare --- a floor in modes 1--2, exact per window of a fixed grid in
@@ -303,7 +306,7 @@ when, is deterministic and public; there is no leader election. Two
 constants derived from $n$ appear throughout: the \emph{quorum}
 $\quorum = \lceil 2n/3 \rceil$ and the \emph{fault budget}
 $\fmax = \lfloor (n-1)/3 \rfloor$ --- the number of slots per $n$-slot
-window that faulty participants may control
+window whose keys the adversary may hold
 (Assumption~\ref{ass:budget} makes this precise).
 Table~\ref{tab:notation} collects the paper's symbols.
 
@@ -320,7 +323,9 @@ $\quorum = \lceil 2n/3 \rceil$ & window quorum & \S\ref{sec:protocol} \\
 $\fmax = \lfloor (n{-}1)/3 \rfloor$ & per-window fault budget & Asm.~\ref{ass:budget} \\
 $\tau$ & slot duration (seconds) & \S\ref{sec:impl} \\
 $\mathit{now}$ & verifier's clock; recency test
-  $\mathit{now} \le \mathit{tip.slot} + b$ with $b + \delta \le n$ & \S\ref{sec:protocol} \\
+  $\mathit{now} \le \mathit{tip.slot} + b$ & \S\ref{sec:protocol} \\
+$\varphi$, $\ell$, $\sigma$ & freshness $b + \delta$; budget lookback;
+  honest clock lead & Asm.~\ref{ass:budget}--\ref{ass:clock} \\
 $H(\cdot)$ & the block-id hash & \S\ref{sec:protocol} \\
 $\mathit{keyFor}(i,j)$, \code{keyIndex} & seat $i$'s public key at
   version $j$; the version a block declares & \S\ref{sec:protocol} \\
@@ -330,10 +335,11 @@ $R$, $\mathit{gen}(s) = \lfloor s/R \rfloor$ & rotation-schedule period;
   scheduled key version (mode 2) & \S\ref{sec:results} \\
 \bottomrule
 \end{tabular}
-\caption{Notation. Every timing rule in the paper is set by $n$: the
-density window, the recency bound ($b + \delta \le n$), the trust depth,
-and the confirmation depth at which a mode-1 rotation takes force
-(Section~\ref{sec:results}). There is no other timing constant.}
+\caption{Notation. The density window, the trust depth, and the
+confirmation depth at which a mode-1 rotation takes force
+(Section~\ref{sec:results}) are all set by $n$. The recency bound $b$ is
+the deployment's choice; it sets how long after a window key exposure
+still counts against it (Assumption~\ref{ass:budget}).}
 \label{tab:notation}
 \end{table}
 
@@ -453,20 +459,23 @@ one rule. Accept a certified chain if and only if:
   (\code{validCertifiedChain} plus the mode's key checks);
 \item it is \emph{recent}: $\mathit{now} \le \mathit{tip.slot} + b$ on the
   verifier's own clock, where the real time $R$ is at most $\delta$ slots ahead of
-  $\mathit{now}$ ($R \le \mathit{now} + \delta$) and $b + \delta \le n$.
+  $\mathit{now}$ ($R \le \mathit{now} + \delta$); so the tip is at most
+  $\varphi = b + \delta$ slots old in real time.
   (This clock comparison is the one line a
   deployment implements outside the verified validator ---
   Section~\ref{sec:limitations}.)
 \end{enumerate}
 It then trusts the blocks $n$ deep below the tip. Both halves are
-necessary: validity without recency admits carefully aged forgeries
-(Section~\ref{sec:results} quantifies exactly how old a forgery must be),
-and recency without validity means nothing. The parameter $n$ governs the
-density window, the trust depth, and the recency condition
-$b + \delta \le n$. For example, choosing $b = n/2$ leaves $n/2$ slots
---- about $14$\,s at the prototype's parameters ($n = 7$, $\tau \approx 4$\,s)
---- for clock skew and network propagation combined, then trust
-everything from $n$ blocks back.
+necessary: validity without recency admits forks signed with keys
+exposed long after the fact --- the long-range attack
+(Section~\ref{sec:results}) --- and recency without validity means
+nothing. The parameter $n$ governs the density window and the trust
+depth. The recency bound $b$ is traded against the fault budget: a tip
+may be up to $\varphi = b + \delta$ slots old in real time, and key
+exposure counts against a window until $\varphi$ slots after it
+(Assumption~\ref{ass:budget}). For example, $b = n$ at the prototype's
+parameters ($n = 7$, $\tau \approx 4$\,s) accepts tips up to about half a
+minute old on the verifier's clock.
 
 \section{The rules a node runs}
 \label{sec:rules}
@@ -549,61 +558,72 @@ are related.
 
 The adversary, stated once: message delivery is entirely adversarial for
 every safety result (timeliness enters only for liveness,
-Assumption~\ref{ass:delivery}); corruption is dynamic and per-slot, within
-the budget below, with full control of a bad slot's producer, including
-the power to make it sign arbitrary messages; the verifier's clock satisfies
-the real-time bound $R \le \mathit{now} + \delta$ with $b + \delta \le n$
-(Assumption~\ref{ass:clock}) while the adversary's timing is unconstrained.
-What the adversary cannot do is exactly Assumptions~\ref{ass:sig}--\ref{ass:cert}:
-forge signatures of keys it does not control, find hash collisions among
-blocks that occur, or forge certificates.
+Assumption~\ref{ass:delivery}); the adversary obtains signing keys --- by
+stealing them, or by controlling a signer for a while --- at any real
+times it likes, within the budget below, and an exposed key signs
+anything, stamped with any slot, at any real time; the verifier's clock
+satisfies the real-time bound $R \le \mathit{now} + \delta$
+(Assumption~\ref{ass:clock}) while the adversary's timing is
+unconstrained. What the adversary cannot do is exactly
+Assumptions~\ref{ass:sig}--\ref{ass:cert}: sign under keys that are not
+exposed, find hash collisions among blocks that occur, or forge
+certificates.
 
-\begin{assumption}[Fault budget]\label{ass:budget}
-In every window of $n$ consecutive real slots, at most
-$\fmax = \lfloor (n-1)/3 \rfloor$ slots are \emph{bad}: during a bad real
-slot the adversary fully controls that slot's producer, including feeding
-it arbitrary content to sign. Corruption is per \emph{real slot}, not per
-participant --- the same participant may be controlled in one of its slots
-and honest in the next.
-\quad\textit{(Lean: \code{ByzantineBounded}.)}
+\begin{assumption}[Exposure budget]\label{ass:budget}
+The key that verifies stamp $s$ (seat $s \bmod n$'s) is \emph{exposed} at
+real slot $r$ when someone other than its honest holder can sign under it
+then: the seat is Byzantine, the key has been stolen, or the adversary
+controls the signer. Exposure is arbitrary in time --- a stolen key stays
+exposed, control of a signer may come and go. The budget: of any $n$
+consecutive stamps $[v, v + n)$, at most $\fmax = \lfloor (n-1)/3
+\rfloor$ have their key exposed at some real slot in
+$[v - \ell,\ v + n + \varphi)$, where $\varphi$ is the freshness of
+Assumption~\ref{ass:clock} and the lookback $\ell$ satisfies
+$2n + \fmax + \sigma + 1 \le \quorum + \ell$ for the honest clock lead
+$\sigma$ of Assumption~\ref{ass:sig}. For $n = 3\fmax + 1$ that is
+$\ell \ge 2n - \fmax + \sigma$. Exposure outside that stretch of real
+time --- control that ended before it, theft that happened after it ---
+does not count against the window.
+\quad\textit{(Lean: \code{ExposureBounded}.)}
 \end{assumption}
 
 \begin{assumption}[Signatures]\label{ass:sig}
-Signing happens at real slots (\code{TimedExecution}). The assumption
-bundles: \emph{(a) custody} --- honest nodes sign only through their
-honest signing path, and their secret keys never leave them; \emph{(b)
-unforgeability} --- no one can produce a valid signature on a message the
-key holder never signed, even after obtaining signatures on messages of
-their own choosing (the standard EUF-CMA notion); here the attacker gets
-exactly that power at every bad slot, whose producer can be made to sign
-anything; and \emph{(c) the timed signing discipline} --- at a bad real slot
-the producer's key signs arbitrarily many blocks with any stamp in its
-residue class (\code{key\_match}); an honest real slot signs only its own
-current block (\code{honest\_stamp}) and at most once (\code{honest\_once});
-and every producer signature accepted by the verifier at real slot $R$
-was produced at some real slot no later than $R$ (\code{hbridge},
-causality plus EUF-CMA).
+Signing happens at real slots (\code{SigningExecution}). The assumption
+bundles: \emph{(a) custody} --- while a stamp's key is unexposed, only its
+honest holder signs under it; \emph{(b) unforgeability} --- no one can
+produce a valid signature on a message the key holder never signed, even
+after obtaining signatures on messages of their own choosing (the
+standard EUF-CMA notion); and \emph{(c) the honest signing discipline}
+--- an honest holder signs at most one block per stamp, ever, keeping a
+persisted signing record as the standard guard against equivocation
+after a restart (with (a): \code{honest\_once}); its clock leads real time
+by at most $\sigma$ slots, so it never signs a stamp more than $\sigma$
+slots ahead (\code{HonestClock}); and every producer signature accepted
+by the verifier at real slot $R$ was produced at some real slot no later
+than $R$ (\code{hbridge}, causality plus EUF-CMA).
 The id-formation contract of Section~\ref{sec:protocol} ensures that a block
 is signed only once its parent is available (\code{chain\_order}).
-\quad\textit{(Lean: \code{TimedExecution}, \code{hbridge}.)}
+\quad\textit{(Lean: \code{SigningExecution}, \code{HonestClock}, \code{hbridge}.)}
 \end{assumption}
 
-The adversary may hold coerced signatures stamped for any future slot of
-the coerced producer, and the model gives it exactly that power.
+Nothing constrains an exposed key: it signs blocks stamped for past or
+future slots, at any real time, in any number; the only limit is how many
+keys are exposed, and when (Assumption~\ref{ass:budget}). Honest clocks
+may run fast by up to $\sigma$; slow clocks cost only liveness.
 
-One forward note for key rotation: with versioned keys, custody and
-unforgeability must hold for every version a verifier can still be asked
-to check --- as stated, a single leaked \emph{retired} key falsifies the
-assumption. Section~\ref{sec:results} replaces it, for the rotation
-results, with an explicitly scoped assumption --- the \emph{surface}
-defined there --- in which stolen keys of any version sign anything
-forever and safety is recovered by validator rules.
+One forward note for key rotation: with versioned keys, a leaked
+\emph{retired} key is exposure of its seat --- as stated, it counts
+against every window it can still verify, which without a pin is every
+later one. Section~\ref{sec:results} rescopes the assumption for the
+rotation results --- the \emph{surface} defined there --- in which stolen
+keys of any version sign anything forever and safety is recovered by
+validator rules.
 
 \begin{assumption}[Hash collision resistance, over blocks that
 occur]\label{ass:hash}
 For the headline theorem, collision resistance holds over the blocks that
 occur: any two blocks occurring in the execution with equal ids are
-equal (\code{TimedExecution.id\_inj} over \code{SignedEver}). This is
+equal (\code{SigningExecution.id\_inj} over \code{SignedEver}). This is
 classical collision resistance in the form a proof can consume, not a
 weakening of it: plain injectivity of $H$ is false outright --- ids are
 shorter than blocks, so colliding values exist in the type --- while
@@ -615,7 +635,7 @@ We call this \emph{hash injectivity}; for the theft-resistant rotation
 results (modes 2 and 3) the domain is blocks verifying under their
 \emph{declared} version (\code{SignedDeclared}) ---
 Section~\ref{sec:protocol} explains why \code{keyIndex} is in the
-preimage. \quad\textit{(Lean: \code{TimedExecution.id\_inj},
+preimage. \quad\textit{(Lean: \code{SigningExecution.id\_inj},
 \code{SignedHashInjective}.)}
 \end{assumption}
 
@@ -634,11 +654,12 @@ existence is a consequence, not a hypothesis.
 The verifier reads local time $\mathit{now}$, and real time is at most
 $\delta$ slots ahead of it ($R \le \mathit{now} + \delta$). The verifier
 accepts a tip when $\mathit{now} \le \mathit{tip.slot} + b$. Theorem~1
-applies whenever $b + \delta \le n$, because
-$R \le \mathit{now} + \delta \le \mathit{tip.slot} + b + \delta \le \mathit{tip.slot} + n$.
-Here $\delta$ covers clock skew and propagation combined. For example,
-$b = n/2$ leaves $n/2$ slots --- about $14$\,s at the prototype's
-parameters --- for skew plus propagation.
+then applies at freshness $\varphi = b + \delta$, because
+$R \le \mathit{now} + \delta \le \mathit{tip.slot} + b + \delta$.
+Here $\delta$ covers clock skew and propagation combined. No relation
+between $b$ and $n$ is needed: a larger $b$ tolerates slower delivery at
+the price of a longer stretch of real time in which exposure counts
+against each window (Assumption~\ref{ass:budget}).
 \end{assumption}
 
 \begin{assumption}[Honest delivery --- liveness only]\label{ass:delivery}
@@ -651,19 +672,21 @@ be built on. \quad\textit{(Lean: \code{HonestBlocksCover}.)}
 \label{sec:results}
 
 The results come in a fixed order. First, light-client safety
-(Theorem~\ref{thm:lc}), proved directly in the timed model
-(\code{timed\_light\_client\_safety}). Next, the timed model, where forged
-chains take real time (Theorem~\ref{thm:forge}); this forged-time bound rests on
-the same rate argument as Theorem~\ref{thm:lc}. Then the rotation results per mode
+(Theorem~\ref{thm:lc}), proved in the timed model
+(\code{timed\_light\_client\_safety}). Next, no valid chain runs ahead of
+real time (Theorem~\ref{thm:forge}), the fact the proof of
+Theorem~\ref{thm:lc} rests on. Then the rotation results per mode
 (Section~\ref{sec:rotation}), and finally liveness.
 
 Two adversaries appear, and it matters which one a result faces. The
-\emph{per-slot} adversary of Section~\ref{sec:assumptions} takes full
-control of any slots it likes within the budget, but walks away with no
-key it can reuse elsewhere. The \emph{key-stealing} adversary of
-Section~\ref{sec:rotation} additionally exports signing keys outright
-(defined there). Theorems~\ref{thm:lc} and~\ref{thm:forge} face the
-first; all of Section~\ref{sec:rotation} faces the second.
+\emph{exposure} adversary of Section~\ref{sec:assumptions} obtains keys
+at arbitrary real times, by theft or by transient control, within the
+budget, and a seat counts as exposed whichever of its keys is. The
+\emph{key-stealing} adversary of Section~\ref{sec:rotation} is charged
+more finely: a stolen key counts only while its version is live, which is
+what rotation buys (defined there). Theorems~\ref{thm:lc}
+and~\ref{thm:forge} face the first; all of Section~\ref{sec:rotation}
+faces the second.
 
 Every result below is a Lean theorem, proved once against the model.
 The light-client theorem (Theorem~\ref{thm:lc}) is carried to each
@@ -683,16 +706,21 @@ more than classical logic.
 
 \begin{theorem}[Recent chains share their deep blocks; Lean
 \code{timed\_light\_client\_safety}]\label{thm:lc}
-Fix $n \ge 1$ and a deployment genesis $G$. Suppose:
+Fix $n \ge 1$, a deployment genesis $G$, a freshness $\varphi$, an honest
+clock lead $\sigma$, and a lookback $\ell$ with
+$2n + \fmax + \sigma + 1 \le \quorum + \ell$. Suppose:
 \begin{itemize}
-\item a timed execution (\code{TimedExecution}): signing happens at real slots;
-  at a bad real slot the producer's key signs arbitrarily many blocks with
-  any stamp in its residue class (\code{key\_match}); an honest real slot
-  signs only its own current block (\code{honest\_stamp}) and at most once
-  (\code{honest\_once}); a block is signed only once its parent is available
-  (\code{chain\_order}); and collision resistance holds over occurring blocks
-  (\code{id\_inj});
-\item the fault budget over real slots: $\code{ByzantineBounded}\ n\ \mathit{bad}$;
+\item a signing execution (\code{SigningExecution}): signing happens at
+  real slots; while the key that verifies a stamp is unexposed, at most one
+  block with that stamp is ever signed under it (\code{honest\_once}); a
+  block is signed only once its parent is available (\code{chain\_order});
+  and collision resistance holds over occurring blocks (\code{id\_inj}).
+  Exposed keys are unconstrained;
+\item honest clocks lead real time by at most $\sigma$ slots
+  (\code{HonestClock});
+\item the exposure budget (\code{ExposureBounded}~$n$~$\ell$~$\varphi$): of
+  any $n$ consecutive stamps $[v, v + n)$, at most $\fmax$ have their key
+  exposed at some real slot in $[v - \ell,\ v + n + \varphi)$;
 \item the verifier is at real slot $R$, and every producer signature it accepts
   was produced at some real slot no later than $R$ (\code{hbridge}: EUF-CMA
   plus causality);
@@ -701,7 +729,7 @@ Fix $n \ge 1$ and a deployment genesis $G$. Suppose:
   linkage to the claim (\code{hLink}), internal linkage (\code{hLinks}),
   density of maturing windows (\code{hDense}), and verifying signatures
   (\code{hSigned});
-\item both tips are recent in real time: $R \le \mathit{tip.slot} + n$.
+\item both tips are fresh in real time: $R \le \mathit{tip.slot} + \varphi$.
 \end{itemize}
 Then, taking any histories the two groundings attest (\code{GroundedHistory}),
 the two full chains (attested history concatenated with suffix) agree at
@@ -712,84 +740,72 @@ agree on everything at least $n$ blocks below the lower tip.
 Two remarks. First, the conclusion also covers a chain the node
 \emph{produced} rather than received, because production ships nothing
 that does not pass the same validator (Section~\ref{sec:rules}). Second,
-honest-slot uniqueness of chain blocks is derived, not assumed: the model
-constrains only what honest real slots sign. A block signed \emph{late}
---- at a real slot after its stamp --- can only come from a bad real slot,
-and on a chain meeting the real-time recency bar such blocks form a tail
-of at most $\fmax$ blocks inside one window (\code{late\_tail\_short}; the
-same rate argument as Theorem~\ref{thm:forge}). Below that tail every
-honest-slot block is the unique block signed at its slot, and the classic
-count $2\quorum > n + \fmax$ forces the two chains through a shared honest
-block.
+the proof is the classic count with its timing made explicit. Take the
+last full window of $n$ stamps below the lower tip: each chain holds at
+least $\quorum$ blocks there, so at least $2\quorum - n \ge \fmax + 1$
+stamps carry a block on both. Were every such pair distinct,
+\code{honest\_once} would make each of those stamps' keys exposed at one
+of the two signing times. Each signature was made by $R$, at most
+$\varphi$ slots after the window ends, and --- by Theorem~\ref{thm:forge}
+--- no earlier than $\ell$ slots before it starts. That is $\fmax + 1$
+exposed stamps inside one budget stretch, which the budget forbids. So the
+two chains share a block in that window, and the parent-id chain (id
+formation plus collision resistance) makes them agree on everything below
+it.
 
-A third remark on the untimed model: the earlier result
-\code{Molt.light\_client\_safety} reaches the same conclusion in an
-untimed model, but it assumes the residue \code{SigUnforgeableRecent}
-directly and keeps the exposure hypothesis. It is not the headline.
+A third remark, on the lookback. Counting every exposure up to
+$\varphi$ slots after a window --- however long before it --- removes the
+clock hypothesis: \code{exposure\_agreement\_ever} proves the full-chain
+form of Theorem~\ref{thm:lc} under that cumulative budget
+(\code{ExposureBoundedEver}) without \code{HonestClock}. The lookback is
+what lets a signer that was compromised and then cleaned up stop counting
+against later windows; the honest clock lead is its price.
 
-\subsection{Forged chains take real time}
+\subsection{No chain runs ahead of real time}
 \label{sec:timed}
 
-The recency rule needs a model in which coercion has a price. The \emph{timed model}
-(\code{TimedExecution}) adds a real-time axis: a log of what each real
-slot's producer signed --- at an honest real slot, at most its own
-current block; at a bad real slot, arbitrarily many blocks of the
-adversary's choosing under that producer's key --- arbitrary content,
-and stamped with any slot at all, not only the real slot at which the
-signing happens. The id-formation contract
-of Section~\ref{sec:protocol} appears as the field \code{chain\_order}: a
-block can be signed only once its parent is \emph{available}, because the
-parent's id preimage contains the parent's signature, and predicting
-another party's signature on a known message is exactly an EUF-CMA
-forgery. (This holds even for a deterministic signature scheme: the value
-is determined, but computing it without the key is the forgery the game
-forbids.)
+The recency rule needs one more fact: an adversary must not be able to
+build, early, a chain whose tip will look recent later. The id-formation
+contract of Section~\ref{sec:protocol} appears as the field
+\code{chain\_order}: a block can be signed only once its parent is
+\emph{available}, because the parent's id preimage contains the parent's
+signature, and predicting another party's signature on a known message
+is exactly an EUF-CMA forgery. (This holds even for a deterministic
+signature scheme: the value is determined, but computing it without the
+key is the forgery the game forbids.)
 
-\begin{theorem}[Forged suffixes advance at half speed; Lean
-\code{forged\_time\_bound}]\label{thm:forge}
-In the timed model with the fault budget: let a valid chain be available
-at real slot $r_{\mathrm{now}}$, let $F$ be one of its blocks, first
-signed at real slot $r_0$, and let every chain block past $F$'s slot have
-been signed only at bad real slots (the suffix above $F$ is forged by
-coercion). Then
+\begin{theorem}[No valid chain runs ahead of real time; Lean
+\code{no\_early\_signing}]\label{thm:forge}
+Under the signing execution, honest clocks and exposure budget of
+Theorem~\ref{thm:lc} (lookback condition included), let $c$ be a valid
+chain from genesis $G$ whose blocks all exist by some real slot, and let
+$B \neq G$ be one of its blocks with $B.\mathit{slot} \ge n - 1$. If $B$
+was signed at real slot $r$, then
 \[
-\quorum \cdot \left\lfloor
-  \tfrac{\mathit{tip.slot} - F.\mathit{slot}}{n} \right\rfloor
-\;\le\;
-\fmax \cdot \left( \left\lfloor \tfrac{r_{\mathrm{now}} - r_0}{n}
-  \right\rfloor + 1 \right).
+B.\mathit{slot} \;\le\; r + n + \fmax + \sigma + 1 - \quorum .
 \]
-Since $\quorum \approx 2\fmax$: forging a suffix that spans $s$ slots
-takes about $2s$ real slots. The from-genesis corollary
-(\code{forged\_chain\_time\_bound}) reads: a fully forged chain claiming
-tip slot $s$ cannot exist before real slot ${\approx}\,2s$. (The Lean
-statements carry non-degeneracy side conditions --- $n \ge 2$, $F$ not
-the first block; a forged span under one window makes the
-bound trivially true, ruling nothing out.)
+For $n = 3\fmax + 1$ the lead is $2\fmax + 1 + \sigma$: no valid chain
+gets more than about $2n/3 + \sigma$ slots ahead of real time.
 \end{theorem}
 
-The proof is two counting facts. First, at most one block of a valid
-chain is first-signed at any real slot. At real slot $r$ only $r$'s
-producer's key can be made to sign, so two chain blocks first-signed at
-$r$ belong to one producer and their slot stamps differ by at least $n$;
-density puts some other seat's block between those stamps; and signing
-order (\code{chain\_order}: a block cannot be signed before its parent
-exists) forces that middle block's first signing back to $r$ as well ---
-under a key that real slot cannot reach. Second, density demands
-$\quorum$ blocks per \emph{stamped} window while the budget supplies only
-$\fmax$ bad slots per \emph{real} window. The ratio
-$\quorum/\fmax \approx 2$ is the theorem.
+The proof is one count, by induction along the chain. The window of $n$
+stamps ending at $B$ is matured at $B$, so it holds at least $\quorum$
+blocks, all of them $B$ or its ancestors, and all signed no later than
+$r$ (\code{chain\_order}). An honest one is stamped at most $r + \sigma$.
+An exposed one costs the budget one stamp: by induction its signature is
+not early either, so it falls inside the window's budget stretch, and
+$B$'s own signature does too, since consecutive blocks of a valid chain
+are less than $n$ stamps apart. If $B$ were signed earlier than the
+bound, the honest stamps would cover too little of the window to reach
+$\quorum$.
 
-Theorem~\ref{thm:forge} and Theorem~\ref{thm:lc} rest on the same rate
-argument: coercion buys at most $\fmax$ signatures per $n$ real slots, while
-density demands $\quorum$ blocks per $n$ stamped slots. A fork meeting the
-real-time recency bar has had too little real time to forge an $n$-deep
-ancestor, and Theorem~\ref{thm:lc} is the machine-checked statement of
-exactly that at staleness $n$. A patient adversary \emph{can} grow a
-fork forever by harvesting coerced signatures window after window --- but only
-at half speed, so its tip falls ever further behind real time, and a
-stale tip is exactly what the recency check refuses.
-Appendix~\ref{app:timed-uniq} discusses the untimed model's residue.
+What this rules out, and what it does not. A patient adversary can still
+bank signatures into a long fork, by exposing keys long after the stamps
+it signs. Such a fork is stale: late exposure does not count against old
+windows, but it cannot produce recent blocks either, because recent
+windows have their own budget. A stale fork is exactly what the recency
+check refuses. Theorem~\ref{thm:forge} rules out the converse: a fork
+prepared early so as to look recent later.
 
 \subsection{Key rotation}
 \label{sec:rotation}
@@ -818,8 +834,8 @@ accordingly: the honest-slot uniqueness guarantee now holds only for
 non-stolen, non-rented entries. The budget (refining
 Assumption~\ref{ass:budget}) is two rates per $n$-slot window. The
 first: $\rho$ \emph{rented} slots --- slots the adversary fully controls
-for that one slot and then loses, exactly Assumption~\ref{ass:budget}'s
-bad slots. A rented slot yields signatures stamped for that slot only: a
+for that one slot and then loses, the shortest transient exposure of
+Assumption~\ref{ass:budget}. A rented slot yields signatures stamped for that slot only: a
 rented device made to sign blocks stamped for other slots has had that
 key version stolen, and is counted in $T$. This is the reading the
 per-mode signature surfaces encode. The second: $T$ producers with a \emph{then-live} key stolen
@@ -838,7 +854,7 @@ the shelf. Hash injectivity (Assumption~\ref{ass:hash}) is consumed
 alongside, over declared-version signed blocks (\code{SignedDeclared}).
 
 \begin{assumption}[No back-dating, honest custody --- per mode]\label{ass:rotation-honest}
-Fix rotation mode 2 or 3 and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). Unlike the untimed residue \code{SigUnforgeableRecent} (Appendix~\ref{app:timed-uniq}), this is stated directly rather than derived: Appendix~\ref{app:timed-uniq}'s derivation needs only \emph{one} key's safety per real slot, while \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's, and the timed-model route does not generalize here without weakening an already-assumed primitive (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
+Fix rotation mode 2 or 3 and a producer $i$ whose currently active delegate key has been neither rented nor stolen at real slot $r$. The block, if any, that $i$'s signing device produces at real slot $r$ is stamped exactly $s=r$ and declares exactly $i$'s currently active key version at $r$. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). It is stated directly, as an operational assumption, rather than derived from the signing execution of Theorem~\ref{thm:lc}: \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
 \end{assumption}
 
 \emph{Without theft, formally.} A \emph{lost} key (destroyed, not
@@ -877,15 +893,16 @@ inherits it directly.
 
 \begin{theorem}[Mode 1 under key loss; Lean
 \code{keyrot\_loss\_agreement}]\label{thm:keyloss}
-Fix $n \ge 1$, a deployment genesis $G$, a timed execution
-(\code{TimedExecution}) and the fault budget over real slots
-(\code{ByzantineBounded}), as in Theorem~\ref{thm:lc}. The verifier is
+Fix $n \ge 1$, a deployment genesis $G$, and the signing execution,
+honest clocks and exposure budget of Theorem~\ref{thm:lc}
+(\code{SigningExecution}, \code{HonestClock}, \code{ExposureBounded},
+lookback condition included). The verifier is
 at real slot $R$, and every block that verifies under its declared key
 version (\code{SignedDeclared}) was produced at some real slot no later
 than $R$ (\code{hbridge}). Take two signed chains that both pass the
 mode-1 validator (\code{validSignedChainK$'$}, at any confirmation
 depth), both start at $G$, and both have tips recent in real time
-($R \le \mathit{tip.slot} + n$). Then they agree at every height $h$
+($R \le \mathit{tip.slot} + \varphi$). Then they agree at every height $h$
 with $h + n$ below both lengths.
 \end{theorem}
 
@@ -1122,8 +1139,9 @@ hypothesis enters.
 
 \begin{theorem}[Liveness; Lean \code{production\_liveness},
 \code{global\_liveness}]\label{thm:live}
-\emph{Local:} under the fault budget and honest delivery
-(Assumptions~\ref{ass:budget} and~\ref{ass:delivery}), when a slot
+\emph{Local:} with at most $\fmax$ slots per $n$-slot window whose
+producers fail (\code{ByzantineBounded}) and honest delivery
+(Assumption~\ref{ass:delivery}), when a slot
 arrives that belongs to an honest producer holding an accepted chain,
 production succeeds --- the extension passes the same validator everyone
 runs. \emph{Global:} a synchronous honest run within the budget (over
@@ -1331,10 +1349,9 @@ equivalence lemma \code{valid\_chain\_be\_validChain} is proved at the
 native u64 instantiation) --- everything not machine-checked is a named
 hypothesis standing next to the theorem that consumes it: the operational
 assumptions of Section~\ref{sec:assumptions}; the per-mode signature
-surfaces of modes 2 and 3 (assumed, not derived from the timed model, and, precisely, cannot
-be by the technique of Appendix~\ref{app:timed-uniq} without weakening the
-surface's per-key premise; Assumption~\ref{ass:rotation-honest} records the
-resulting operational content directly instead); version independence
+surfaces of modes 2 and 3 (assumed, not derived from the timed model;
+Assumption~\ref{ass:rotation-honest} records their operational content
+directly); version independence
 of keys under theft (instantiable with key-insulated
 signatures~\cite{keyinsulated}); the circuit path's out-of-circuit trust
 anchor (the roster commitment to the cold roots); and the recency check
@@ -1344,19 +1361,23 @@ future work; and the per-mode operational assumptions of
 Section~\ref{sec:rotation} (not-before and cold-root custody; lockstep
 coordination and erasure).
 
-\paragraph{The long-range residual, and options against it.} A patient
-adversary can bank coerced signatures into an arbitrarily long fork ---
-forever stale, hence harmless to any client applying the recency rule of
-Theorem~\ref{thm:lc}, but never impossible. Three options
-would remove the residual rather than contain it, each at a price:
-forward-secure signatures~\cite{forwardsec} (a stateful signer);
-monotone, once-corrupt-always-corrupt accounting (simply a weaker
-adversary); or, against stolen keys, running rotation modes 2--3, at
-the price of a schedule or an erasure discipline.
-Consensus-managed one-time keys (the XMSS variant of
+\paragraph{The long-range residual, and options against it.} Exposure
+after a window's stretch of real time does not count against it, so a
+patient adversary can bank signatures from keys exposed late --- stolen,
+or reached through a signer it controls for a while --- into an
+arbitrarily long fork on old stamps. Such a fork is forever stale, hence
+harmless to any client applying the recency rule of
+Theorem~\ref{thm:lc} (and Theorem~\ref{thm:forge} forbids preparing one in
+advance), but never impossible. Three options would remove the residual
+rather than contain it, each at a price: forward-secure
+signatures~\cite{forwardsec} (a stateful signer); counting every exposure
+forever (\code{exposure\_agreement\_ever} covers that budget too), which
+charges a cleaned-up signer to the budget for good; or, against stolen
+keys, running rotation modes 2--3, at the price of a schedule or an
+erasure discipline. Consensus-managed one-time keys (the XMSS variant of
 Section~\ref{sec:impl}) shift key state into the chain and are
-complementary. We keep the per-slot model as the most adversarial and
-operationally simplest, and accept the contained residual.
+complementary. We keep the windowed budget, the weakest of these
+assumptions, and accept the contained residual.
 
 \paragraph{Artifact.} The repository builds with \code{lake build}:
 the model and results, both implementation bridges, and the paper-facing
@@ -1369,87 +1390,6 @@ asserts faithfulness only and says nothing about the proofs. What no
 machine re-checks is exactly the trusted base above: the translators and
 circuit gadgets themselves, and the hand-audited re-emission
 corrections.
-
-\appendix
-
-\section{The untimed residue, derived}
-\label{app:timed-uniq}
-
-The headline Theorem~\ref{thm:lc} does not use this residue or
-\code{NoBackdate}. Rather, this appendix shows the route by which the
-untimed model's residue \code{SigUnforgeableRecent} (used in
-\code{light\_client\_safety}) follows from EUF-CMA plus no back-dating.
-In the untimed model, that residue is the hypothesis that at an honest
-slot, a verifying block is the unique block its producer's honest signing
-path signed for that slot. This appendix shows it is not arbitrary --- in
-the timed model it follows from the real-time axis, where a block's
-\emph{stamp} (the slot it claims) and the \emph{real time} it was signed
-are separate quantities, and everything turns on how far apart they can
-be.
-
-The timed model (Section~\ref{sec:timed}) records what each real slot's
-producer signed: at an honest real slot, at most its own current block;
-at a bad one, anything under that producer's key. The untimed residue instead
-speaks of a \emph{stamped} log --- per producer, per claimed slot. A
-projection connects them (\code{projectSigned}): a producer's entry for
-stamped slot $s$ is the block \emph{stamped} $s$ that it signed \emph{at
-real slot} $s$, its own slot --- single-valued at an honest slot because
-an honest node signs at most once per slot (at a bad slot the entry is
-an arbitrary choice the theorem never consults). Two hypotheses then
-close the gap:
-\begin{itemize}
-\item the \emph{EUF-CMA bridge}: a verifying signature was produced at
-  \emph{some} real slot --- with no constraint on which;
-\item \emph{no back-dating} (\code{NoBackdate}): a block whose stamp is
-  an honest slot was signed \emph{only} at the real slot equal to its
-  stamp.
-\end{itemize}
-
-\begin{theorem}[Untimed residue, derived; Lean
-\code{sigUnforgeableRecent\_of\_timed}]\label{thm:timed-uniq}
-In any timed execution satisfying the EUF-CMA bridge and no back-dating,
-the untimed residue \code{SigUnforgeableRecent} holds for the projected log
---- at every recency window, the bar being a parameter the proof never uses.
-\end{theorem}
-
-The proof is three steps: the verifying block was signed at some real
-slot; no-back-dating forces that slot to be its stamp; so it sits in
-the log at its own honest slot, where signing-at-most-once makes it
-unique. Notably, recency is not even consumed --- the per-block pinning
-comes entirely from no-back-dating, while recency separately buys the
-forged-time bound of Theorem~\ref{thm:forge}.
-
-\emph{What no-back-dating is, and why it is not free.} Operationally it
-is key custody re-anchored to the stamp: an honest producer's slot-$s$
-signature can only be its genuine slot-$s$ call, \emph{and no bad slot
-of the same producer may mint a block bearing that honest stamp}. The
-constraint is on the \emph{stamp}, not on the signer: a rented or stolen
-key still signs arbitrary content at any real slot, stamped with any
-slot it likes --- any slot except one of its own producer's honest ones.
-The second clause is the whole content --- the bare timed model does allow
-a bad real slot to mint a block stamped for one of its producer's
-honest slots, and we machine-check exactly such an execution
-(\code{noBackdate\_independent}, at $n = 2$): every timed-model field
-holds, no-back-dating fails. So neither recency, nor the id-formation
-order, nor the forged-time bound supplies it; it is the precise extra
-hypothesis, checked to be \emph{independent} --- no timed-model field
-implies it. In the standard vocabulary this stamp-to-slot binding
-is two-sided: forward security proper~\cite{forwardsec} supplies the
-back-dating half (an evolved key cannot sign earlier periods), while
-the forward half --- no pre-signing of future honest stamps --- rests
-on the signing path's period being locked to real slots; a key-evolving
-scheme under a one-period-per-slot schedule, honestly updated, provides
-both halves --- provided a bad slot yields signatures but never the key
-itself, since an exfiltrated evolving key can be evolved forward and
-defeats the forward half.
-
-The per-mode key-stealing surfaces of Section~\ref{sec:rotation} are not
-instances of Theorem~\ref{thm:timed-uniq}: their EUF-CMA hypothesis is stated
-per key version, one level finer than this appendix's per-real-slot corruption
-predicate, and a real slot can be safe for one key while unsafe for another
-eligible one at the same slot --- see Assumption~\ref{ass:rotation-honest}
-(machine-checked: \code{badSched\_single\_key\_safe\_not\_enough},
-\code{badKeyrot\_single\_key\_safe\_not\_enough}).
 
 \begin{thebibliography}{99}
 
