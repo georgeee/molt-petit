@@ -218,3 +218,21 @@ STATUS: READY FOR REVIEW
   for `_ever`/`ts_timed`) and F-02 (`Rust.` prefix in the table) are fixed. Gate green.
 
 STATUS: COMPLETE
+
+### Pass 22 (2026-10-04, reviewer)
+- Core generalized to `SigningExecutionOn Adm` / `HonestClockOn Adm`: custody and clocks
+  are claimed only for blocks satisfying a per-block admissibility predicate that every
+  non-genesis block of both chains satisfies. `exposure_agreement_on`,
+  `exposure_no_early_signing_on`, `exposure_certified_agreement_on` proved; the unrestricted
+  theorems are now their `Adm := True` corollaries (pins unchanged).
+- Mode 2 theft safety is Theorem 1 read at the schedule: `sched_exposure_agreement` and
+  `sched_exposure_certified_agreement` (SchedExposure.lean), with `SchedAdmissible`
+  (verifies under declared version ∧ `schedule slot ≤ keyIndex`) and `schedExposed`
+  (seat controlled ∨ some version ≥ floor stolen). Replaces the operational
+  `SchedUnforgeable` surface and the untimed horizon budget in the paper headline; early
+  theft and cold-root theft are budget charges, not assumptions. The horizon theorem
+  stays as the genesis-free alternative. Mode 3 keeps its per-key surface (chain-dependent pin).
+- Archon run d6fb45c6 (9bb1dce); paper e9cc26a, aliases 40f153a, historical-doc fixes bb02c8d.
+  Gate green. Audit pending.
+
+STATUS: READY FOR REVIEW
