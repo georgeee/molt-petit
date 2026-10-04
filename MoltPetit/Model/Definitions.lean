@@ -731,46 +731,45 @@ structure TimedExecution (n : Nat) (bad : ByzantineSlots) (log : TimedLog)
   id_inj : ∀ ⦃B B' : Block⦄, SignedEver log G B → SignedEver log G B' →
     B.id = B'.id → B = B'
 
-/-- Key exposure: `exposed i r` holds when, at real slot `r`, someone other
-than seat `i`'s honest key holder can sign under seat `i`'s key — the seat is
-Byzantine, or its key is stolen and not yet dead. Arbitrary in time: a stolen
-key signs whenever its thief likes. -/
+/-- Key exposure: `exposed s r` holds when, at real slot `r`, someone other
+than its honest holder can sign under the key that verifies stamp `s` — the
+stamp's seat is Byzantine, or that key has been stolen. Arbitrary in time: a
+stolen key signs whenever its thief likes, any stamp it verifies. -/
 abbrev Exposure := Nat → Nat → Prop
 
 /--
 The signing execution. `log r` is the set of blocks whose producer
-signature was created at real slot `r`; a block's signature verifies only
-under the key of its stamp's seat `producerForSlot n B.slot`.
+signature was created at real slot `r`.
 
-* `honest_early` — an unexposed seat's signatures come from its honest
-  holder, whose clock runs at most `σ` slots ahead of real time; it signs a
-  block only once its own clock has reached the block's stamp.
-* `honest_once` — an honest holder signs at most one block per stamp, ever
-  (a persisted signing record).
+* `honest_once` — while a stamp's key is unexposed, only its honest holder
+  signs under it, and an honest holder signs at most one block per stamp,
+  ever (a persisted signing record).
 * `chain_order` — id formation: signing a block requires its parent's id
   preimage, which contains the parent's signature, so the parent is
   available then. Predicting an unavailable parent's id is an EUF-CMA forgery.
 * `id_inj` — hash collision resistance over the blocks that occur.
 -/
-structure SigningExecution (n σ : Nat) (exposed : Exposure) (log : TimedLog)
-    (G : Block) : Prop where
-  honest_early : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r →
-    ¬ exposed (producerForSlot n B.slot) r → B.slot ≤ r + σ
+structure SigningExecution (exposed : Exposure) (log : TimedLog) (G : Block) : Prop where
   honest_once : ∀ ⦃r r' : Nat⦄ ⦃B B' : Block⦄, B ∈ log r → B' ∈ log r' →
-    B.slot = B'.slot →
-    ¬ exposed (producerForSlot n B.slot) r → ¬ exposed (producerForSlot n B.slot) r' →
-    B = B'
+    B.slot = B'.slot → ¬ exposed B.slot r → ¬ exposed B.slot r' → B = B'
   chain_order : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r →
     ∀ ⦃i : Nat⦄, B.prev = some i →
       ∃ P : Block, P.id = i ∧ AvailableAt log G P r
   id_inj : ∀ ⦃B B' : Block⦄, SignedEver log G B → SignedEver log G B' →
     B.id = B'.id → B = B'
 
+/-- Honest clocks run at most `σ` slots ahead of real time: a signature made
+under an unexposed key at real slot `r` is on a stamp at most `r + σ`. -/
+def HonestClock (σ : Nat) (exposed : Exposure) (log : TimedLog) : Prop :=
+  ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → ¬ exposed B.slot r → B.slot ≤ r + σ
+
 open Classical in
-/-- The exposure budget: in every window of `Λ` real slots, at most
-`maxByzantine n` seats are exposed at any moment of the window. -/
-def ExposureBounded (n Λ : Nat) (exposed : Exposure) : Prop :=
-  ∀ u, ((Finset.range n).filter fun i => ∃ r, u ≤ r ∧ r < u + Λ ∧ exposed i r).card
+/-- The exposure budget with freshness `ρ`: of any `n` consecutive stamps
+`[v, v + n)`, at most `maxByzantine n` have a key exposed at any real slot
+before `v + n + ρ` — that is, at any time up to `ρ` slots after the window
+ends. Exposure is never forgotten: a key stolen at any earlier time counts. -/
+def ExposureBounded (n ρ : Nat) (exposed : Exposure) : Prop :=
+  ∀ v, ((Finset.Ico v (v + n)).filter fun s => ∃ r, r < v + n + ρ ∧ exposed s r).card
     ≤ maxByzantine n
 
 -- ===========================================================================

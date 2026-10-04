@@ -1,10 +1,13 @@
 # Core v2: light-client safety under arbitrary-time key exposure
 
-Reviewer-owned spec. The pinned statement is
-`MoltPetit.Model.exposure_agreement` in `MoltPetit/Model/ExposureSafety.lean`,
-with its type guarded by `Molt/AxiomsExposureSafety.lean`. Do not edit the statement,
-the guard, or the new definitions `Exposure`, `SigningExecution` and `ExposureBounded`
-in `MoltPetit/Model/Definitions.lean`.
+Reviewer-owned spec. Two statements are pinned in `MoltPetit/Model/ExposureSafety.lean`
+and guarded by `Molt/AxiomsExposureSafety.lean`:
+
+- `MoltPetit.Model.exposure_agreement` (Theorem 1)
+- `MoltPetit.Model.exposure_no_early_signing` (forged chains cannot run ahead of real time)
+
+Do not edit either statement, the guard, or the definitions `Exposure`,
+`SigningExecution`, `HonestClock` and `ExposureBounded` in `MoltPetit/Model/Definitions.lean`.
 
 ## Why a new core
 
@@ -13,22 +16,23 @@ The old `TimedExecution` model (Definitions §7) assumed two things that are fal
 - `key_match`: a corrupted key signs only at its own seat's real slots.
 - `honest_stamp`: honest producers have zero clock skew.
 
-A stolen key signs whenever its holder likes. The new model has neither assumption:
+A stolen key signs whenever its holder likes. In the new model:
 
-- `exposed i r` is an arbitrary predicate saying the key of seat `i` is usable by
-  someone else at real slot `r`.
-- An honest holder's signature only satisfies `B.slot ≤ r + σ`, which allows a
-  clock that runs up to `σ` slots ahead.
-- The budget is per seat over sliding windows of `Λ` real slots.
+- `exposed s r` is an arbitrary predicate on the key that verifies stamp `s`, at real slot `r`.
+- The budget counts every stamp whose key was exposed at *any* time before
+  `v + n + ρ`. Keys, once stolen, stay stolen. Thefts after that time do not count
+  (the long-range-attack boundary).
+- Honest clock skew `σ` enters only the no-early-signing theorem. Safety does not depend on it.
 
-The new proof is written from scratch. **Do not reuse or import** `Timed.lean`,
-`TimedSafety.lean` or `TimedSafetyCert.lean`, or any lemma about
-`TimedExecution`/`ByzantineSlots`. Those modules are going to be deleted. Generic
-list/chain lemmas from other modules may be reused if they do not mention the old
-timed model, but self-contained new lemmas are preferred.
+The proof is written from scratch. **Do not import or use** `Timed.lean`,
+`TimedSafety.lean`, `TimedSafetyCert.lean`, `TimedSig.lean`, or any lemma about
+`TimedExecution`/`ByzantineSlots`; they are going to be deleted. Put helpers in
+`ExposureSafety.lean` above the theorems, or in a new imported file
+`MoltPetit/Model/ExposureCore.lean`.
 
-Put helper lemmas in `MoltPetit/Model/ExposureSafety.lean`, above the theorem, or in a
-new file `MoltPetit/Model/ExposureCore.lean` that it imports.
+The helpers already there (`availableAt_parent_of_signed`, `step_A_ancestor_available`,
+`ancestor_availableAt`, and the list lemmas) were written against an earlier draft.
+Keep and fix them as needed.
 
 ## Notation
 
@@ -36,104 +40,78 @@ new file `MoltPetit/Model/ExposureCore.lean` that it imports.
 |---|---|
 | `f` | `maxByzantine n` |
 | `q` | `quorum n` |
-| `seat s` | `producerForSlot n s = s % n` |
-| `e` | `n + f + σ + 1 - q`, the early-signing bound. `q ≤ n` for `n ≥ 1`, so `e ≥ f + σ + 1 ≥ σ + 1`. |
-
-From `hΛ`, `Λ ≥ 2n + ρ` and `Λ ≥ n + e + ρ`. The second holds because
-`n + e = 2n + f + σ + 1 - q ≤ 2n + (f + σ + 1 - q)`.
+| `e` | `n + f + σ + 1 - q` |
 
 The arithmetic fact `2q - n ≥ f + 1` holds for every `n ≥ 1`. Check it by residue of `n`
-mod 3, with `n = 3k`, `3k+1`, `3k+2`.
+mod 3. Also `q ≥ f + 1`, and `q ≥ f + 2` when `n ≥ 2`.
 
-## Step A — ancestors are available at the signing time
+## Step A: ancestors are available at the signing time
 
 Let `c` be a `ValidChain` with `blockAt? c 0 = some G` and `∀ B ∈ c, AvailableAt log G B R`.
 If `B` is at index `j`, `B ∈ log r`, and `k ≤ j`, then the block at index `k` satisfies
 `AvailableAt log G _ r`.
 
-Proof:
-1. `chain_order` at `r` gives `P'` with `P'.id = B.prev` and `P'` available at `r`.
-2. The chain parent `P` has `B.prev = some P.id` (ParentLinked).
-3. Both `P'` and `P` are `SignedEver`: available implies SignedEver, and `hAvail` gives it for `P`.
-4. `id_inj` then gives `P' = P`, so `P` is available at `r`.
-5. Iterate. An available non-genesis block has some `r₁ ≤ r` with `P ∈ log r₁`, so apply
-   `chain_order` at `r₁`, and so on down. Induct on `j - k`.
+1. `chain_order` gives a parent candidate `P'` available at `r`.
+2. `id_inj` identifies `P'` with the chain parent. Both are SignedEver.
+3. Iterate. Available means genesis, or in `log r₁` for some `r₁ ≤ r`.
 
-## Step B (Lemma E) — no chain block is signed more than `e` slots early
+This step is already largely done.
 
-Let `c` be as in Step A. For every block `B ∈ c` with `B ≠ G` and `n - 1 ≤ B.slot`, and
-every `r` with `B ∈ log r`, we have `B.slot ≤ r + e`.
+## Step B: `exposure_no_early_signing`
 
-This holds for **every** signing time `r`, not only the first one. The proof is by strong
-induction on `B.slot`.
+Let `s = B.slot ≥ n - 1`, and suppose `s > r + e`. Write `d = s - r`, so `d ≥ e + 1`.
 
-Assume `d := B.slot - r > e` and derive a contradiction. Let `s = B.slot` and take the
-window `W = [s + 1 - n, s]`, of length `n`. It is matured at `B` (`MaturedWindowsDense`
-with `D = B`, `u = s + 1 - n`), so at least `q` chain blocks have stamps in `W`. All of
-them are `B` or ancestors of `B`, by StrictSlots and index order. By Step A, each one other
-than `G` is in `log r_A` for some `r_A ≤ r`. Classify the blocks of `W`:
+The window `W = [v, v + n)` with `v = s + 1 - n` is matured at `B`
+(`MaturedWindowsDense`, `D = B`, `u = v`), so at least `q` chain blocks have stamps in `W`.
+They are `B` or ancestors of `B` (StrictSlots plus index order). By Step A each `A` other
+than `G` is in `log r_A` with `r_A ≤ r`. Classify them:
 
-- **Genesis:** at most 1.
-- **Honest type:** `A ≠ G` and `seat A.slot` is not exposed at `r_A`. By `honest_early`,
-  `A.slot ≤ r_A + σ ≤ r + σ`. These stamps are distinct and lie in `[s + 1 - n, r + σ]`, so
-  there are at most `n + σ - d` of them (0 if that is negative).
-- **Exposed type:** `A ≠ G` and `seat A.slot` is exposed at `r_A`. Stamps in `W` are
-  distinct mod `n`, so the seats are distinct. Every `r_A` lies in one interval of length
-  at most `2n`:
-  - If `A.slot ≥ n - 1`, the induction hypothesis gives `r_A ≥ A.slot - e ≥ s + 1 - n - e`,
-    and `r_A ≤ r = s - d < s - e`. The interval `[s + 1 - n - e, r]` has length less than `n`.
-  - If some `A.slot < n - 1`, then `s < 2n - 2` and every `r_A ∈ [0, r]` with `r < s`.
-    That interval has length at most `2n - 2`.
+- **Genesis:** at most 1 block.
+- **Exposed type:** `A ≠ G` and `exposed A.slot r_A`. Then `r_A ≤ r < s < v + n + ρ`, so
+  `A.slot` is in the filter set of `ExposureBounded` at `v`. Stamps are distinct, so there
+  are at most `f` of these.
+- **Honest type:** `A ≠ G` and `¬ exposed A.slot r_A`. `HonestClock` gives
+  `A.slot ≤ r_A + σ ≤ r + σ`. These distinct stamps lie in `[v, r + σ]`, so there are at most
+  `r + σ + 1 - v = n + σ - d` of them (0 if negative).
 
-  Take `u` to be `s + 1 - n - e` (truncated) or `0`. Then `[u, u + Λ)` contains every `r_A`,
-  so `ExposureBounded` gives at most `f` exposed-type blocks.
+So `q ≤ (n + σ - d) + f + 1 ≤ n + σ + f - e` (with `d ≥ e + 1`), and
+`n + σ + f - e = q - 1 < q`. If the honest bound is truncated at 0, then `q ≤ f + 1`. That is
+impossible for `n ≥ 2`. For `n = 1`, `W = {s}` holds only `B`, so the genesis count is 0 and
+`q = 1 ≤ f = 0` is false.
 
-So `q ≤ (n + σ - d) + f + 1`. With `d ≥ e + 1`, this gives `q ≤ n + σ + f - e < q`, a
-contradiction.
+No induction is needed.
 
-Edge cases:
-- When `n + σ - d ≤ 0`, the honest count is 0. If `n ≥ 2`, then `q ≥ f + 2`, which is a
-  contradiction. If `n = 1`, `W = {s}` contains only `B` (since `G ≠ B` and stamps are
-  distinct), `B` is exposed type, and the count is `1 > f = 0`, also a contradiction.
-- `B` itself falls in one of the classes: it is honest type only if `d ≤ σ < e`.
+## Step C: common prefix from a common block
 
-## Step C — common prefix from a common block
-
-Let `X` be at index `j` in both `c` and `c'` (SequentialHeights gives
-`X.height = j = j'`). Then `blockAt? c k = blockAt? c' k` for all `k ≤ j`. Prove this by
+If `X` is at index `j` in `c` and at index `j'` in `c'`, SequentialHeights gives
+`j = X.height = j'`. Then `blockAt? c k = blockAt? c' k` for every `k ≤ j`. Prove it by
 downward induction using ParentLinked, `id_inj` and SignedEver from `hAvail`/`hAvail'`.
 
-## Step D — the main count
+## Step D: `exposure_agreement`
 
-Let `m = min tip.slot tip'.slot`, and let `c₀` be the chain whose tip has slot `m`.
+Let `m = min tip.slot tip'.slot`, and let `c₀` be the chain whose tip has slot `m`. Then
+`R ≤ m + ρ` (its `hRecent`).
 
-1. Since `c₀.length ≥ n + 1` and slots strictly increase, `m ≥ n`.
-2. `W* = [m + 1 - n, m]` is matured in both chains. Use `D` = the tip, with
-   `u + n = m + 1 ≤ tip.slot + 1`.
+1. `c₀.length ≥ n + 1` and slots strictly increase, so `m ≥ n`.
+2. `W* = [v, v + n)` with `v = m + 1 - n` is matured in both chains. Use the tips as `D`;
+   `v + n = m + 1 ≤ tip.slot + 1`.
 3. Let `S` and `S'` be the stamp sets of `c` and `c'` in `W*`. Each has at least `q`
    elements, so `|S ∩ S'| ≥ 2q - n ≥ f + 1`.
 4. Suppose that for every `s ∈ S ∩ S'` the blocks `X_s ∈ c` and `X'_s ∈ c'` differ.
-   1. Neither is `G`. If `X_s = G`, it sits at index 0 of `c'`, and StrictSlots on `c'`
+   1. Neither is `G`. If `X_s = G`, it is at index 0 of `c'`, and StrictSlots on `c'`
       forces `X'_s = G`.
-   2. Pick `r ≤ R` with `X_s ∈ log r` and `r' ≤ R` with `X'_s ∈ log r'` (`hAvail`).
-   3. By `honest_once`, `seat s` is exposed at `r` or at `r'`.
-5. Both of these times lie in one window:
-   - Lower bound: if `s ≥ n - 1`, Step B gives `r, r' ≥ s - e ≥ m + 1 - n - e`. If
-     `s < n - 1`, then `m < 2n - 2` and the bound is `r, r' ≥ 0`.
-   - Upper bound: `r, r' ≤ R ≤ m + ρ`.
-   - Window: take `u = m + 1 - n - e` (truncated) or `0`. Then `[u, u + Λ)` contains the
-     interval, using `Λ ≥ n + e + ρ` and `Λ ≥ 2n + ρ`.
-6. The seats `s % n` are distinct across `S ∩ S'`. That gives at least `f + 1` exposed seats
-   in one `Λ`-window, contradicting `ExposureBounded`.
-7. So some `X ∈ W*` is in both chains, at the same index `j` (Step C setup).
-8. In `c₀`, the blocks after `X` have strictly increasing slots in `(X.slot, m]` and
-   `X.slot ≥ m + 1 - n`. So at most `n - 1` blocks follow `X`, and `j ≥ c₀.length - n > h`
-   by `hDeep`/`hDeep'`.
-9. Step C at `k = h` finishes the proof.
+   2. Pick `r, r' ≤ R` with `X_s ∈ log r` and `X'_s ∈ log r'` (`hAvail`).
+   3. By `honest_once`, `exposed s r` or `exposed s r'` holds.
+   4. Both times are `≤ R ≤ m + ρ < v + n + ρ`, so every `s ∈ S ∩ S'` is in the filter set
+      of `ExposureBounded` at `v`. That gives at least `f + 1` stamps, a contradiction.
+5. So some block `X` with stamp in `W*` is in both chains, at the same index `j` (Step C).
+6. In `c₀`, the blocks after `X` have strictly increasing slots in `(X.slot, m]`, and
+   `X.slot ≥ v`. So at most `n - 1` blocks follow `X`, and `j ≥ c₀.length - n > h`
+   (`hDeep`/`hDeep'`).
+7. Step C at `k = h` finishes the proof.
 
 ## Gate
 
 `bash tools/check.sh` must print `check: all green`. The old modules still build alongside
-the new one at this stage; they are removed in a later pass. Write
-`STATUS: READY FOR REVIEW` in `docs/PUBLISH_PREP_STATUS.md` (Pass 19 section) only when the
-gate is green and `#print axioms` shows only `[propext, Classical.choice, Quot.sound]`.
+the new one at this stage. Write `STATUS: READY FOR REVIEW` in `docs/PUBLISH_PREP_STATUS.md`
+(Pass 19 section) only when the gate is green and both `#print axioms` guards pass.
