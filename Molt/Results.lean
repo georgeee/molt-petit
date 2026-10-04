@@ -1,6 +1,7 @@
 import Molt.Assumptions
 import MoltPetit.Results.Results
 import MoltPetit.Model.ExposureCert
+import MoltPetit.TS.TimedResults
 
 /-!
 # What the theorems guarantee: safety and no early signing (paper §6.1–6.2)
@@ -45,6 +46,10 @@ abbrev HonestClock := MoltPetit.Model.HonestClock
 
 /-- The exposure budget with freshness `φ`. -/
 abbrev ExposureBounded := MoltPetit.Model.ExposureBounded
+
+/-- The cumulative exposure budget: every exposure before the window's
+freshness deadline counts, however early. -/
+abbrev ExposureBoundedEver := MoltPetit.Model.ExposureBoundedEver
 
 /-- Semantic grounded history of a certificate claim. -/
 abbrev GroundedHistory := MoltPetit.Model.GroundedHistory
@@ -112,5 +117,15 @@ signed more than the budget's lookback `ℓ` slots before its stamp.
 
 Transported from `MoltPetit.Model.exposure_no_early_signing`. -/
 alias no_early_signing := MoltPetit.Model.exposure_no_early_signing
+
+/-- Theorem 1, full-chain form under the cumulative budget: no clock
+hypothesis (paper §6.1, third remark). -/
+alias exposure_agreement_ever := MoltPetit.Model.exposure_agreement_ever
+
+/-- No early signing under the cumulative budget (paper §6.1, third remark). -/
+alias exposure_no_early_signing_ever := MoltPetit.Model.exposure_no_early_signing_ever
+
+/-- Theorem 1 for the TypeScript validator (paper §7). -/
+alias ts_timed_certified_agreement := MoltPetit.Model.ts_timed_certified_agreement
 
 end Molt

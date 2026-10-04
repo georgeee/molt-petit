@@ -28,6 +28,18 @@ this file with every new headline theorem.
 #guard_msgs in
 #print axioms Molt.no_early_signing
 
+/-- info: 'Molt.exposure_agreement_ever' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.exposure_agreement_ever
+
+/-- info: 'Molt.exposure_no_early_signing_ever' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.exposure_no_early_signing_ever
+
+/-- info: 'Molt.ts_timed_certified_agreement' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Molt.ts_timed_certified_agreement
+
 
 -- Loss-only collapse, mode-1 census (paper mode 0).
 /-- info: 'Molt.badKeyrot_lossOnly' depends on axioms: [propext, Quot.sound] -/

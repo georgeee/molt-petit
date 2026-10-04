@@ -198,3 +198,23 @@ STATUS: READY FOR REVIEW
 - Full verification pass green (`bash tools/check.sh` prints `check: all green`).
 
 STATUS: READY FOR REVIEW
+
+### Core v2 review (2026-10-04, reviewer)
+- The timed core was reformalized from scratch (George's decision (b)). `TimedExecution`
+  (with its `key_match` seat-aligned corruption and zero-skew `honest_stamp`), `TimedSig`,
+  `NoBackdate` and the forged-time bounds are deleted. Theorem 1 is
+  `exposure_certified_agreement`, which ends in `exposure_agreement`. It is proved over:
+  - `SigningExecution`: stamp-indexed exposure at arbitrary real times;
+  - `HonestClock σ`;
+  - the windowed `ExposureBounded n ℓ φ`, with `n ≤ ℓ + 1` and `n + f + σ + 1 ≤ q + ℓ`.
+- Theorem 2 is `exposure_no_early_signing` (`B.slot ≤ r + ℓ`). The cumulative `_ever`
+  forms need no clock. Rust, TS and loss consumers are ported (Pass 20). Mode 2/3 honest
+  custody in the paper is per stamp and tolerates clock lead σ.
+- Degeneracy check of the new ∀-hypotheses at s = 0 and s → ∞: none is degenerate.
+  - `HonestClock`: an honest block signed at r is stamped ≤ r + σ.
+  - `honest_once`: per stamp, unexposed at both signing times.
+  - `ExposureBounded`: a per-window count over a bounded real-time stretch.
+- Audit 66574f0e: READY, 93 claims faithful, 0 blocker/major. MINOR F-01 (Molt aliases
+  for `_ever`/`ts_timed`) and F-02 (`Rust.` prefix in the table) are fixed. Gate green.
+
+STATUS: COMPLETE

@@ -116,7 +116,7 @@ later cleaned, keys are stolen --- and a fork signed with keys exposed long
 after its stamps is the classic long-range attack. The fault budget here
 counts, for each window of $n$ slots, only the keys exposed during a
 bounded stretch of real time around that window, from about $n$ slots
-before it to $\varphi$ slots after it. A client that refuses tips older
+(plus the honest clocks' maximum lead) before it to $\varphi$ slots after it. A client that refuses tips older
 than $\varphi$ is exactly the client for whom later exposure cannot
 matter, and no adversary can prepare a valid chain further ahead of real
 time than the lookback to get around the check (Section~\ref{sec:timed}). Second, \emph{key rotation lives inside
@@ -256,7 +256,7 @@ cumulative, depth-$n$ form remains available. Section~\ref{sec:rotation}.)
 no theft, any mode & any of the three &
   genesis + clock & no & no &
   Thm.~\ref{thm:lc}: \code{timed\_light\_client\_safety}
-  (+~Rust: \code{rust\_timed\_certified\_agreement}); per validator
+  (+~Rust: \code{Rust.rust\_timed\_certified\_agreement}); per validator
   \code{keyrot\_loss\_agreement}, \code{sched\_loss\_agreement},
   \code{lockstep\_loss\_agreement} \\
 \addlinespace
