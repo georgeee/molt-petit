@@ -49,6 +49,34 @@ theorem lockstepGen_recent_certified_suffix_agreement
     (hDeep : i + 2 * n < (s₁ :: srest).length)
     (hDeep' : i' + 2 * n < (s₁' :: srest').length) :
     B = B' := by
-  sorry
+  obtain ⟨c, sc, hstrip, hValL, hHead, hfullTip, hLen, _, _⟩ :=
+    groundedCertLock_signedChain hn hcl hTipS hLink hLinks hDense hLockS hSigned
+  obtain ⟨c', sc', hstrip', hValL', hHead', hfullTip', hLen', _, _⟩ :=
+    groundedCertLock_signedChain hn hcl' hTipS' hLink' hLinks' hDense' hLockS' hSigned'
+  have hBfull : blockAt? (stripSigs sc) (c.length + i) = some B := by
+    rw [hstrip]
+    unfold blockAt? at hB ⊢
+    rw [List.getElem?_append_right (by omega)]
+    simpa using hB
+  have hB'full : blockAt? (stripSigs sc') (c'.length + i') = some B' := by
+    rw [hstrip']
+    unfold blockAt? at hB' ⊢
+    rw [List.getElem?_append_right (by omega)]
+    simpa using hB'
+  have hkEq : c'.length + i' = c.length + i := by omega
+  rw [hkEq] at hB'full
+  rcases Nat.le_total sTip.slot sTip'.slot with hle | hle
+  · obtain ⟨P, hPc, hPc'⟩ := lockstepGen_shared_prefix_deep hn hP hValL hValL' hfullTip hfullTip'
+      hRecent hRecent' hle hBfull (k := c.length + i)
+      (by rw [hstrip, List.length_append]; omega)
+    rw [hBfull] at hPc
+    rw [hB'full] at hPc'
+    rw [Option.some.inj hPc, Option.some.inj hPc']
+  · obtain ⟨P, hPc', hPc⟩ := lockstepGen_shared_prefix_deep hn hP hValL' hValL hfullTip' hfullTip
+      hRecent' hRecent hle hB'full (k := c.length + i)
+      (by rw [hstrip', List.length_append]; omega)
+    rw [hBfull] at hPc
+    rw [hB'full] at hPc'
+    rw [Option.some.inj hPc, Option.some.inj hPc']
 
 end MoltPetit.Model
