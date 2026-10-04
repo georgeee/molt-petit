@@ -69,8 +69,9 @@ chains advance at half real-time speed, and light-client safety is
 proved directly in a timed model, against an adversary that harvests
 coerced signatures stamped for any slot, so the recency check is a
 machine-checked safety ingredient --- and we develop key rotation inside
-consensus against an adversary who steals keys and keeps them forever:
-three rotation modes with exactly stated operator and client duties. Measured with post-quantum signatures on commodity
+consensus: every mode recovers from lost keys, and against an adversary
+who steals keys and keeps them forever, two modes come with exactly
+stated operator duties and no client duty beyond the genesis and a clock. Measured with post-quantum signatures on commodity
 hardware, the verified consensus rule adds under $2\%$ to any
 certificate's proving cost.
 \end{abstract}
