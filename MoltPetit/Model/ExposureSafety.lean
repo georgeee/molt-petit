@@ -240,6 +240,7 @@ theorem honest_filter_card_le (v n r σ : Nat) :
   rw [Nat.card_Ico] at hle
   exact hle
 
+open Classical in
 theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
     (hexec : SigningExecution exposed log G)
@@ -250,7 +251,58 @@ theorem exposure_no_early_signing {n σ ρ : Nat} (hn : 1 ≤ n)
     {B : Block} (hB : B ∈ c) (hBG : B ≠ G) (hSlot : n - 1 ≤ B.slot)
     {r : Nat} (hr : B ∈ log r) :
     B.slot ≤ r + (n + maxByzantine n + σ + 1 - quorum n) := by
-  sorry
+  by_contra hgt
+  have hgt' : r + (n + maxByzantine n + σ + 1 - quorum n) < B.slot := Nat.lt_of_not_ge hgt
+  let v := B.slot + 1 - n
+  have hv : v + n ≤ B.slot + 1 := by omega
+  have hr_lt : r < v + n + ρ := by omega
+  obtain ⟨m, hm⟩ := exists_blockAt_of_mem hB
+  have hDense := hc.2.2.2 hm v hv
+  have hcard_eq := chainSlotsIn_card hc.2.1 v n
+  have hq_le : quorum n ≤ (chainSlotsIn c v n).card := by omega
+  have hE_card :
+      ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')).card ≤
+        maxByzantine n :=
+    hBudget v
+  have hH_card : ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)).card ≤ r + σ + 1 - v :=
+    honest_filter_card_le v n r σ
+  have hsub := chainSlotsIn_subset_classification hexec hClock hc hHead hAvail hm hr v hv hr_lt
+  rcases Nat.eq_or_lt_of_le hn with rfl | hn2
+  · have hnotmem := genesis_slot_not_mem_chainSlotsIn_of_ne hc.2.1 hHead hB hBG
+    have hsub' : chainSlotsIn c v 1 ⊆
+        ((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + ρ ∧ exposed s r')) ∪
+        ((Finset.Ico v (v + 1)).filter (fun s => s ≤ r + σ)) := by
+      intro s hs
+      have hmem := hsub hs
+      rcases Finset.mem_insert.mp hmem with heq | hmem'
+      · subst heq; contradiction
+      · exact hmem'
+    have hcard_le := calc
+      (chainSlotsIn c v 1).card ≤
+          (((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + ρ ∧ exposed s r')) ∪
+            ((Finset.Ico v (v + 1)).filter (fun s => s ≤ r + σ))).card :=
+        Finset.card_le_card hsub'
+      _ ≤ ((Finset.Ico v (v + 1)).filter (fun s => ∃ r', r' < v + 1 + ρ ∧ exposed s r')).card +
+          ((Finset.Ico v (v + 1)).filter (fun s => s ≤ r + σ)).card := Finset.card_union_le _ _
+    unfold maxByzantine quorum at *
+    omega
+  · have hcard_le := calc
+      (chainSlotsIn c v n).card ≤
+          (insert G.slot (((Finset.Ico v (v + n)).filter
+            (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')) ∪
+            ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)))).card :=
+        Finset.card_le_card hsub
+      _ ≤ (((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')) ∪
+            ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ))).card + 1 :=
+        Finset.card_insert_le _ _
+      _ ≤ ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r')).card +
+          ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ)).card + 1 := by
+        have := Finset.card_union_le
+          ((Finset.Ico v (v + n)).filter (fun s => ∃ r', r' < v + n + ρ ∧ exposed s r'))
+          ((Finset.Ico v (v + n)).filter (fun s => s ≤ r + σ))
+        omega
+    have hq_add2 := quorum_ge_maxByzantine_add_two n hn2
+    omega
 
 theorem exposure_agreement {n ρ : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block}
