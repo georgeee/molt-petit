@@ -104,4 +104,43 @@ theorem exposure_certified_agreement {n σ ℓ φ : Nat} (hn : 1 ≤ n)
   exact exposure_agreement hn hexec hClock hBudget hL hL' hVS hVS'
     hHead hHead' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
 
+/-- **Timed certified light-client safety, admissibility-restricted.** Custody and
+the honest clock are assumed only for blocks satisfying `Signed`. -/
+theorem exposure_certified_agreement_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
+    {Signed : Block → Prop} {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecutionOn Signed exposed log G)
+    (hClock : HonestClockOn Signed σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
+    {R : Nat}
+    (hbridge : ∀ ⦃B : Block⦄, Signed B → ∃ r ≤ R, B ∈ log r)
+    {cl cl' : CertClaim}
+    (hcl : GroundedCert n Signed G cl)
+    (hcl' : GroundedCert n Signed G cl')
+    {s₁ s₁' : Block} {srest srest' : Chain}
+    {sTip sTip' : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 →
+        quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
+        s₁'.prev = some cl'.tipId)
+    (hLinks' : linksOk (s₁' :: srest') = true)
+    (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip'.slot + 1 →
+        quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
+    (hSigned : ∀ B ∈ s₁ :: srest, Signed B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', Signed B)
+    (hRecent : R ≤ sTip.slot + φ)
+    (hRecent' : R ≤ sTip'.slot + φ)
+    {c c' : Chain}
+    (hc : GroundedHistory n Signed G cl c)
+    (hc' : GroundedHistory n Signed G cl' c')
+    {h : Nat}
+    (hDeep : h + n < (c ++ s₁ :: srest).length)
+    (hDeep' : h + n < (c' ++ s₁' :: srest').length) :
+    blockAt? (c ++ s₁ :: srest) h = blockAt? (c' ++ s₁' :: srest') h := by
+  sorry
+
 end MoltPetit.Model

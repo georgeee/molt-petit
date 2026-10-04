@@ -885,4 +885,41 @@ theorem exposure_agreement {n σ ℓ φ : Nat} (hn : 1 ≤ n)
     · refine ⟨r, by omega, by omega, hexp⟩
     · refine ⟨r', by omega, by omega, hexp⟩
 
+-- ---------------------------------------------------------------------------
+-- Admissibility-restricted forms (Pass 22)
+-- ---------------------------------------------------------------------------
+
+theorem exposure_no_early_signing_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
+    {Adm : Block → Prop} {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecutionOn Adm exposed log G)
+    (hClock : HonestClockOn Adm σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
+    {c : Chain} (hc : ValidChain n c) (hHead : blockAt? c 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B)
+    {R : Nat} (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    {B : Block} (hB : B ∈ c) (hBG : B ≠ G)
+    {r : Nat} (hr : B ∈ log r) :
+    B.slot ≤ r + ℓ := by
+  sorry
+
+theorem exposure_agreement_on {n σ ℓ φ : Nat} (hn : 1 ≤ n)
+    {Adm : Block → Prop} {exposed : Exposure} {log : TimedLog} {G : Block}
+    (hexec : SigningExecutionOn Adm exposed log G)
+    (hClock : HonestClockOn Adm σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
+    {c c' : Chain} (hc : ValidChain n c) (hc' : ValidChain n c')
+    (hHead : blockAt? c 0 = some G) (hHead' : blockAt? c' 0 = some G)
+    (hAdm : ∀ B ∈ c, B ≠ G → Adm B) (hAdm' : ∀ B ∈ c', B ≠ G → Adm B)
+    {R : Nat}
+    (hAvail : ∀ B ∈ c, AvailableAt log G B R)
+    (hAvail' : ∀ B ∈ c', AvailableAt log G B R)
+    {tip tip' : Block}
+    (hTip : c.getLast? = some tip) (hTip' : c'.getLast? = some tip')
+    (hRecent : R ≤ tip.slot + φ) (hRecent' : R ≤ tip'.slot + φ)
+    {h : Nat} (hDeep : h + n < c.length) (hDeep' : h + n < c'.length) :
+    blockAt? c h = blockAt? c' h := by
+  sorry
+
 end MoltPetit.Model

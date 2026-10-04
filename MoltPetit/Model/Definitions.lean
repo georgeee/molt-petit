@@ -729,6 +729,28 @@ under an unexposed key at real slot `r` is on a stamp at most `r + σ`. -/
 def HonestClock (σ : Nat) (exposed : Exposure) (log : TimedLog) : Prop :=
   ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → ¬ exposed B.slot r → B.slot ≤ r + σ
 
+/--
+The signing execution restricted to the blocks a validator admits. `Adm B`
+is a per-block admissibility check (for mode 2: the block verifies under its
+declared version and that version meets the schedule pin). Custody and the
+honest clock are then claimed only for admissible blocks: a block no
+validator would accept may be signed by anyone, at any time, under any key.
+`SigningExecution` is the case `Adm = fun _ => True`.
+-/
+structure SigningExecutionOn (Adm : Block → Prop) (exposed : Exposure) (log : TimedLog)
+    (G : Block) : Prop where
+  honest_once : ∀ ⦃r r' : Nat⦄ ⦃B B' : Block⦄, B ∈ log r → B' ∈ log r' → Adm B → Adm B' →
+    B.slot = B'.slot → ¬ exposed B.slot r → ¬ exposed B.slot r' → B = B'
+  chain_order : ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r →
+    ∀ ⦃i : Nat⦄, B.prev = some i →
+      ∃ P : Block, P.id = i ∧ AvailableAt log G P r
+  id_inj : ∀ ⦃B B' : Block⦄, SignedEver log G B → SignedEver log G B' →
+    B.id = B'.id → B = B'
+
+/-- Honest clocks, for admissible blocks only. -/
+def HonestClockOn (Adm : Block → Prop) (σ : Nat) (exposed : Exposure) (log : TimedLog) : Prop :=
+  ∀ ⦃r : Nat⦄ ⦃B : Block⦄, B ∈ log r → Adm B → ¬ exposed B.slot r → B.slot ≤ r + σ
+
 open Classical in
 /-- The exposure budget with lookback `ℓ` and freshness `φ`: of any `n`
 consecutive stamps `[v, v + n)`, at most `maxByzantine n` have a key exposed
