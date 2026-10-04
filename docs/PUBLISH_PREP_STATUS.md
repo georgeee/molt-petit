@@ -140,7 +140,6 @@ order. A pass marked *(reviewer spec pending)* has no spec yet: skip it and reco
 
 `Reacts` (the mode-1 reaction delay, a hypothesis of Thm 3 `sync_rule_timed`) quantifies over every slot `s ≥ r + d` on the finite presented chain. At large `s`, `inForce` is the floor of the whole chain, so `Reacts` implies that every stolen version is already rotated past on the presented chain. A live, not-yet-rotated theft (the attack the theorem is for) falsifies it. Decision pending with George.
 
-STATUS: READY FOR REVIEW
 
 ### Pass 16 (2026-10-04): mode 1 = key-loss recovery
 - Deleted the `Reacts` layer (`sync_rule_timed`, `max_sync_period_timed`): its
@@ -157,3 +156,15 @@ STATUS: READY FOR REVIEW
   and `lockstepGen_recent_certified_suffix_agreement` (mode 3, per-generation census
   at depth 2n; 8e20bf9), guards Molt/AxiomsSchedCertHorizon.lean and
   Molt/AxiomsLockstepCertGen.lean. Paper no longer lists them as future work.
+
+### Reviewer sign-off (2026-10-04)
+- Audit run 5 (f3c6c672) found F-01 (intro two-client reading) and F-02 (missing Molt
+  aliases), both fixed in 5a89ecf. Audit run 6 (3811c550) came back READY: 101 claims
+  faithful, 0 findings.
+- The reviewer checked the rotation hypotheses (ByzantineBoundedFrom H, LockstepPackageGen
+  rentBound/genBound, ErasureTimedLock) for degeneracy at s=0 and as s grows: none.
+- Stated limitations, not gaps: modes 2 and 3 are model-level (the Rust validator carries
+  only the mode-1 floor); the per-mode signature surfaces are operational assumptions;
+  there is no multi-chain network model.
+
+STATUS: COMPLETE
