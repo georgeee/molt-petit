@@ -640,9 +640,10 @@ collision resistance says only that no adversary ever \emph{exhibits}
 one. Scoping the domain to blocks that can actually occur is what turns
 the second statement into the first; every block of a validated
 certified chain is in that domain.
-We call this \emph{hash injectivity}; for the theft-resistant rotation
-results (modes 2 and 3) the domain is blocks verifying under their
-\emph{declared} version (\code{SignedDeclared}) ---
+We call this \emph{hash injectivity}. Mode 2's theft theorem uses it in
+exactly this form; for mode 3 and the untimed mode-2 form the domain is
+blocks verifying under their \emph{declared} version
+(\code{SignedDeclared}) ---
 Section~\ref{sec:protocol} explains why \code{keyIndex} is in the
 preimage. \quad\textit{(Lean: \code{SigningExecution.id\_inj},
 \code{SignedHashInjective}.)}
@@ -690,13 +691,14 @@ Theorem~\ref{thm:lc} rests on. Then the rotation results per mode
 Two adversaries appear, and it matters which one a result faces. The
 \emph{exposure} adversary of Section~\ref{sec:assumptions} obtains keys
 at arbitrary real times, by theft or by transient control, within the
-budget, and a seat counts as exposed whichever of its keys is. The
-\emph{key-stealing} adversary of Section~\ref{sec:rotation} is charged
-more finely: a stolen key counts only while its version is live, which is
-what rotation buys (defined there). Theorems~\ref{thm:lc}
-and~\ref{thm:forge} face the first, and so does mode 2's theft theorem,
-with exposure read at the schedule (a key exposes only stamps it can still
-sign admissibly); mode 3 and the untimed mode-2 form face the second.
+budget. Theorems~\ref{thm:lc} and~\ref{thm:forge} face it with a stamp
+counted as exposed whichever of its seat's keys is; mode 2's theft
+theorem faces the same adversary with exposure read at the schedule, so
+a stolen key exposes only the stamps it can still sign admissibly ---
+which is what rotation buys. The \emph{key-stealing} adversary of
+Section~\ref{sec:rotation} is charged through a per-slot census of
+rented slots and stolen live versions instead; mode 3 and the untimed
+mode-2 form face it.
 
 Every result below is a Lean theorem, proved once against the model.
 The light-client theorem (Theorem~\ref{thm:lc}) is carried to each
@@ -845,33 +847,34 @@ client must do, and what theorem you get.
 key-stealing adversary: a stolen key of \emph{any} version signs
 anything, at any slot, forever --- no forward
 security~\cite{forwardsec} is assumed. Mode 2 meets it with the
-assumptions of Theorem~\ref{thm:lc} read at the schedule (below). Mode 3,
-whose pin depends on the chain, and the untimed mode-2 form meet it
-through a per-mode \emph{signature surface} ---
-the bundle of custody and unforgeability assumptions the theorems
-consume, the analogue of Assumption~\ref{ass:sig} --- is rescoped
-accordingly: the honest-slot uniqueness guarantee now holds only for
-non-stolen, non-rented entries. The budget (refining
-Assumption~\ref{ass:budget}) is two rates per $n$-slot window. The
-first: $\rho$ \emph{rented} slots --- slots the adversary fully controls
-for that one slot and then loses, the shortest transient exposure of
-Assumption~\ref{ass:budget}. A rented slot yields signatures stamped for that slot only: a
-rented device made to sign blocks stamped for other slots has had that
-key version stolen, and is counted in $T$. This is the reading the
-per-mode signature surfaces encode. The second: $T$ producers with a \emph{then-live} key stolen
---- a stolen version at-or-above the floor where it is counted.
-Together: $\rho + T \le \fmax$. The key-stealing corruption predicate
-(\code{badSched} in mode 2; mode 3 reads it at the roster's counter) counts a slot bad if it is rented \emph{or} some
+assumptions of Theorem~\ref{thm:lc}, read at the schedule (below).
+Mode 3, whose pin depends on the chain, and the untimed mode-2 form meet
+it through a per-mode \emph{signature surface}: the bundle of custody and
+unforgeability assumptions the theorems consume, the analogue of
+Assumption~\ref{ass:sig}, under which the honest-slot uniqueness
+guarantee holds only for non-stolen, non-rented entries. Their budget
+(refining Assumption~\ref{ass:budget}) is two rates per $n$-slot window.
+The first: $\rho$ \emph{rented} slots --- slots the adversary fully
+controls for that one slot and then loses, the shortest transient
+exposure of Assumption~\ref{ass:budget}. A rented slot yields signatures
+stamped for that slot only: a rented device made to sign blocks stamped
+for other slots has had that key version stolen, and is counted in $T$.
+This is the reading the per-mode signature surfaces encode. The second:
+$T$ producers with a \emph{then-live} key stolen --- a stolen version
+at-or-above the floor where it is counted. Together:
+$\rho + T \le \fmax$. The key-stealing corruption predicate
+(\code{badSched} in the untimed mode-2 form; mode 3 reads it at the
+roster's counter) counts a slot bad if it is rented \emph{or} some
 version at-or-above the one in force for its producer is stolen ---
 which builds \emph{healing} into the definition: a stolen key stops
-counting the moment its retirement takes force. Each consumes
-its own rescoping of this one surface --- the \emph{scheduled surface}
-(untimed mode 2), the \emph{core surface} over the pin-free validator
-(mode 3) --- and each rescoping includes
-\emph{version independence}: stealing version $j$ yields nothing about
-$j' > j$, which key-insulated signatures~\cite{keyinsulated} provide off
-the shelf. Hash injectivity (Assumption~\ref{ass:hash}) is consumed
-alongside, over declared-version signed blocks (\code{SignedDeclared}).
+counting the moment its retirement takes force. Each consumes its own
+rescoping of the surface --- the \emph{scheduled surface} (untimed
+mode 2), the \emph{core surface} over the pin-free validator (mode 3)
+--- and each rescoping includes \emph{version independence}: stealing
+version $j$ yields nothing about $j' > j$, which key-insulated
+signatures~\cite{keyinsulated,keyinsulatedsig} provide off the shelf. Hash injectivity
+(Assumption~\ref{ass:hash}) is consumed alongside, over declared-version
+signed blocks (\code{SignedDeclared}).
 
 \begin{assumption}[Honest custody --- per-key surfaces]\label{ass:rotation-honest}
 For mode 3 and the untimed mode-2 form: fix the rotation mode, a stamp $s$ whose seat is not rented, and a key version $j$ of its producer $i$ that has never been stolen. Every block stamped $s$ that verifies under version $j$ was signed by $i$'s own signing device, and that device signs at most one block per stamp, ever (a persisted signing record), declaring the version the mode's rule assigns to that stamp. The device's clock may lead real time by up to $\sigma$ slots, as in Assumption~\ref{ass:sig}; nothing here asks for an exact clock. This constrains the honest, uncorrupted signing path only: the instant a delegate key is rented or stolen, the adversary of Section~\ref{sec:rotation} is free of it, exactly as elsewhere in this paper (a stolen key signs anything, at any slot, forever). It is stated directly, as an operational assumption, rather than derived from the signing execution of Theorem~\ref{thm:lc}: \code{SchedUnforgeable}/\code{SchedCoreUnforgeable} are stated per individual key version, and one real slot can host several eligible key versions of which only one verifies --- so one key's safety does not certify the slot's (machine-checked: \code{badSched\_single\_key\_safe\_not\_enough}).
@@ -1023,7 +1026,7 @@ not an extra assumption: it is how an operator stays within the budget the
 theorem consumes. One modelling rule remains: $\mathit{Stolen}$ must list
 every version the adversary can sign under. \emph{Version independence}
 --- stealing version $j$ yields nothing about $j' > j$, which
-key-insulated signatures~\cite{keyinsulated} provide off the shelf --- is
+key-insulated signatures~\cite{keyinsulated,keyinsulatedsig} provide off the shelf --- is
 what keeps that list as short as what was actually taken.
 
 \emph{Operator duties.} Keep one offline cold root per seat and delegate
@@ -1110,7 +1113,7 @@ grid window at any other generation would need a quorum of adversarial
 blocks, which
 a $\rho + T \le \fmax$ adversary cannot supply. Pinning makes every
 accepted lockstep chain pass mode 2's validator at the (one-grid-window-lagged)
-counter, so the whole scheduled theorem set transports.
+counter, so the untimed mode-2 theorems transport.
 
 \begin{theorem}[Lockstep safety, per-generation census; Lean \code{lockstep\_client\_safety\_gen},\hfil\penalty0
 \code{lockstepGen\_recent\_tip\_ancestor\_mem}]\label{thm:lock-gen}
@@ -1364,6 +1367,26 @@ threshold is enforced by counting blocks in a window, and the light
 client's constant-size object is a recursive proof of that counting rule,
 not an aggregate of votes.
 
+\paragraph{Long-range attacks, key evolution, weak subjectivity.} Keys
+that leak after the fact are the classic long-range threat to
+proof-of-stake and permissioned chains alike~\cite{stakebleeding}. Two
+remedies dominate. Key-evolving (forward-secure)
+signatures~\cite{forwardsec}, as in Ouroboros Praos~\cite{praos}, make an
+old key useless once its holder erases it; weak
+subjectivity~\cite{weaksubj} instead has a client that was offline too
+long obtain a recent checkpoint from a trusted source. Molt Petit's
+recency rule is the weak-subjectivity condition made a theorem
+hypothesis, but on the tip's age as read from the client's own clock
+rather than on a trusted checkpoint: a client may sleep arbitrarily long
+and needs no trusted party on waking, and the windowed budget states
+exactly which leaks a fork can still exploit --- only those that recency
+rejects (Theorems~\ref{thm:lc}--\ref{thm:forge}). Against theft, mode 2's
+public schedule does the work of key evolution without erasure --- a
+retired key is dead by the validator's rule, not by its destruction ---
+and mode 3 is the erasure-based variant with a free cadence.
+Key-insulated signatures~\cite{keyinsulated,keyinsulatedsig} supply the
+version independence both rotation modes rely on.
+
 \paragraph{Machine-checked consensus.} Velisarios~\cite{velisarios}
 (BFT in Coq), Verdi~\cite{verdi} (verified Raft, extracted OCaml), and
 IronFleet~\cite{ironfleet} (Paxos-based replication in Dafny) all prove
@@ -1422,7 +1445,7 @@ surfaces of mode 3 and of the untimed mode-2 form (assumed, not derived from the
 Assumption~\ref{ass:rotation-honest} records their operational content
 directly); version independence
 of keys under theft (instantiable with key-insulated
-signatures~\cite{keyinsulated}); the circuit path's out-of-circuit trust
+signatures~\cite{keyinsulatedsig}); the circuit path's out-of-circuit trust
 anchor (the roster commitment to the cold roots); and the recency check
 itself, which lives in the unverified node loop since the pure validators
 carry no clock --- threading $\mathit{now}$ through them is mechanical
@@ -1438,15 +1461,17 @@ or reached through a signer it controls for a while --- into an
 arbitrarily long fork on old stamps. Such a fork is forever stale, hence
 harmless to any client applying the recency rule of
 Theorem~\ref{thm:lc} (and Theorem~\ref{thm:forge} forbids preparing one in
-advance), but never impossible. Three options would remove the residual
+advance), but never impossible. Two options would remove the residual
 rather than contain it, each at a price: forward-secure
-signatures~\cite{forwardsec} (a stateful signer); counting every exposure
-forever (\code{exposure\_agreement\_ever} covers that budget too), which
-charges a cleaned-up signer to the budget for good; or, against stolen
-keys, running rotation modes 2--3, at the price of a schedule or an
-erasure discipline. Consensus-managed one-time keys (the XMSS variant of
-Section~\ref{sec:impl}) shift key state into the chain and are
-complementary. We keep the windowed budget, the weakest of these
+signatures~\cite{forwardsec} with erasure (a stateful signer); or counting
+every exposure forever (\code{exposure\_agreement\_ever} covers that
+budget too), which charges a cleaned-up signer to the budget for good.
+Key rotation does not remove it: in mode 2 a stolen current key meets the
+floor of every older stamp, and in mode 3 a fork may switch to the
+current generation at its branch point, so in both a late theft can still
+sign old stamps --- into a fork that recency rejects. Consensus-managed
+one-time keys (the XMSS variant of Section~\ref{sec:impl}) shift key state
+into the chain and are complementary. We keep the windowed budget, the weakest of these
 assumptions, and accept the contained residual.
 
 \paragraph{Artifact.} The repository builds with \code{lake build}:
@@ -1523,6 +1548,15 @@ M.~Bellare, S.~K.~Miner.
 \bibitem{keyinsulated}
 Y.~Dodis, J.~Katz, S.~Xu, M.~Yung.
 \emph{Key-Insulated Public Key Cryptosystems}. EUROCRYPT 2002.
+
+\bibitem{keyinsulatedsig}
+Y.~Dodis, J.~Katz, S.~Xu, M.~Yung.
+\emph{Strong Key-Insulated Signature Schemes}. PKC 2003.
+
+\bibitem{stakebleeding}
+P.~Ga\v{z}i, A.~Kiayias, A.~Russell.
+\emph{Stake-Bleeding Attacks on Proof-of-Stake Blockchains}. Crypto Valley
+Conference on Blockchain Technology (CVCBT) 2018.
 
 \bibitem{sphincsplus}
 D.~J.~Bernstein, A.~H\"ulsing, S.~K\"olbl, R.~Niederhagen, J.~Rijneveld,
