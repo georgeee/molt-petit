@@ -1076,7 +1076,8 @@ client genesis-free, deriving genesis agreement instead of assuming it
 \code{sched\_recent\_genesis\_agreement\_horizon}): at equal tip heights
 two accepted chains agree on the block $n$ below each tip, and at unequal
 heights the lower chain's $n$-deep ancestor is a block of the taller
-chain, at least $n$ deep there. It consumes the scheduled per-key
+chain, at least $n$ deep there; and two accepted chains each longer
+than $n$ blocks share their genesis. It consumes the scheduled per-key
 signature surface (\code{SchedUnforgeable},
 Assumption~\ref{ass:rotation-honest}) and the untimed census budget of
 the adversary paragraph above, from a horizon $H$ on
@@ -1287,7 +1288,7 @@ it:
 \item \emph{The circuit} instantiates the same source's backend-generic
   validator (\code{valid\_chain\_be}) over plonky2, so the recursive
   certificate proves exactly the predicate that was verified
-  (\code{valid\_chain\_be\_validChain}); the per-gadget faithfulness of
+  (\code{Rust.valid\_chain\_be\_validChain}); the per-gadget faithfulness of
   the circuit backend is the one remaining trust assumption, stated
   rather than proved.
 \item \emph{A TypeScript twin} (\code{moltPetit.ts}) reaches Lean through
@@ -1467,7 +1468,7 @@ Section~\ref{sec:impl} --- the Lean kernel; the pinned translation
 front-ends (Charon + Aeneas, Thales), including the hand-audited
 emitter-bug corrections in the vendored TS emission; and the per-gadget
 faithfulness of the circuit backend, stated rather than proved (the
-equivalence lemma \code{valid\_chain\_be\_validChain} is proved at the
+equivalence lemma \code{Rust.valid\_chain\_be\_validChain} is proved at the
 native u64 instantiation) --- everything not machine-checked is a named
 hypothesis standing next to the theorem that consumes it: the operational
 assumptions of Section~\ref{sec:assumptions}; the signature
@@ -1494,7 +1495,7 @@ Theorem~\ref{thm:lc} (and Theorem~\ref{thm:forge} forbids preparing one in
 advance), but never impossible. Two options would remove the residual
 rather than contain it, each at a price: forward-secure
 signatures~\cite{forwardsec} with erasure (a stateful signer); or counting
-every exposure forever (\code{exposure\_agreement\_ever} covers that
+every exposure forever (\code{exposure\_agreement\_ever\_on} covers that
 budget too), which charges a cleaned-up signer to the budget for good.
 Key rotation does not remove it: in mode 2 a stolen current key meets the
 floor of every older stamp, and in mode 3 a fork may switch to the
