@@ -23,6 +23,7 @@ import Molt.AxiomsTSTimed
 import Molt.AxiomsKeyRotationLoss
 import Molt.AxiomsSchedCertHorizon
 import Molt.AxiomsLockstepCertGen
+import Molt.AxiomsRotationLoss
 
 /-!
 # Molt — the paper-aligned codebase

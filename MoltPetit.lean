@@ -24,6 +24,7 @@ import MoltPetit.Model.KeyRotationLiveness
 import MoltPetit.Model.KeyRotationLoss
 import MoltPetit.Model.KeyStealingScheduleCertHorizon
 import MoltPetit.Model.KeyStealingLockstepCertGen
+import MoltPetit.Model.KeyRotationLossSchedLock
 import MoltPetit.Model.KeyStealingBudget
 import MoltPetit.Model.KeyStealingLongRange
 import MoltPetit.TS.BridgeK
