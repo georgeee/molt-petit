@@ -1330,6 +1330,10 @@ what carries Theorem~\ref{thm:lc} to the shipped code
 \item Id formation is checked by the hashing layer, not by the validator.
   So this theorem, and its TypeScript twin, take it as an assumption on
   the blocks shown (\code{hFormedS}) and at each certificate step.
+\item The Rust theorem lets the two chains be checked under two crypto
+  contexts, provided every signature the second accepts, the first
+  accepts too (\code{hCryptoSig}). With a single context, as in a
+  deployment, this holds trivially.
 \item The bridges cover the validator's core rules and its key-version
   checks (\code{rust\_valid\_chain\_sound},
   \code{rust\_valid\_chain\_k\_sound}). The three rotation pins of
