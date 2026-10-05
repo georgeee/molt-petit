@@ -64,7 +64,9 @@ are no voting rounds, and finality is at a fixed depth.
 All safety claims are machine-checked in Lean~4, under the assumptions
 listed in Section~\ref{sec:assumptions}. The core claims cover the actual
 Rust validator code, which is also the code proved inside the recursive
-certificate (we trust the proof system to run it faithfully). The
+certificate (we trust the proof system to run it faithfully). Block ids
+are checked by the hashing layer around the validator, an assumption we
+name. The
 key-rotation results are proved for the protocol model.
 
 The attacker may obtain validators' signing keys at any time --- by
@@ -143,10 +145,11 @@ list of operator duties, and their clients may sleep for as long as they
 like. The third mode, reactive rotation, recovers from lost keys only; we
 show why theft defeats it (Section~\ref{sec:rotation}).
 
-\paragraph{The code is what is proved.} The validator is one Rust file. We
-translate it into Lean~4 (with Charon and Aeneas) and prove it sound
-against the model, so the core safety theorems are about the code that
-runs. The key-rotation results are proved for the model today
+\paragraph{Proofs about the shipped validator.} The validator is one Rust file. We
+translate it into Lean~4 (with Charon and Aeneas) and prove the
+translation sound against the model, so the core safety theorems are
+about the code that runs. Block ids are checked outside it, by the
+hashing layer; that is a named assumption. The key-rotation results are proved for the model today
 (Section~\ref{sec:impl}). The same Rust source is the circuit of the
 recursive proof, so the prover proves exactly the rule that was verified;
 we trust the proof system to run that code faithfully. A separate
@@ -201,8 +204,11 @@ clock, and sleep as long as you like}. Losing a key changes none of the
 assumptions of Theorem~\ref{thm:lc}, so each mode's validator inherits it
 (Theorem~\ref{thm:keyloss}). The validator that lost its key recovers
 through its mode: a new key version in mode 1, the next scheduled
-generation in mode 2, the next lockstep switch in mode 3. It loses only
-the slots it missed (\code{liveness\_produce\_blockK}).
+generation in mode 2, the next lockstep switch in mode 3. In mode 1, Lean
+proves that once it has a new registered key, its next slot produces a
+valid block, provided the other honest validators kept every window
+dense while it was out (\code{liveness\_produce\_blockK},
+Assumption~\ref{ass:delivery}).
 
 \paragraph{Mode 1: reactive rotation.}
 Validators rotate whenever they choose, routinely or after losing a key.
@@ -760,8 +766,11 @@ timing made explicit.
 $\varphi$ slots after a window would count against it, however long ago
 it happened. Under that simpler, cumulative budget
 (\code{ExposureBoundedEver}) the theorem holds without any assumption on
-clocks (\code{exposure\_agreement\_ever\_on}), and so does the bound on
-early signing (\code{exposure\_no\_early\_signing\_ever\_on}). The
+clocks (\code{exposure\_agreement\_ever\_on}). A bound on early signing
+also holds there, but it still assumes honest clocks and depends on
+their lead: $B.\mathit{slot} \le r + n + \fmax + \sigma + 1 - \quorum$
+for blocks with $B.\mathit{slot} \ge n - 1$
+(\code{exposure\_no\_early\_signing\_ever\_on}). The
 lookback lets a signer that was compromised and then cleaned up stop
 counting against later windows. The honest clock bound is its price.
 
@@ -1118,12 +1127,16 @@ Assume:
 \item hash collision resistance;
 \item the $\rho + T \le \fmax$ budget, read at the counter one grid
   window back, over Assumption~\ref{ass:rotation-honest} for the pin-free
-  validator.
+  validator;
+\item both tips recent: $\mathit{now} \le \mathit{tip.slot} + \Delta$;
+\item chains longer than $n$ blocks (\code{hLong}): both chains at equal
+  heights, the lower one at unequal heights.
 \end{itemize}
 Take two chains from the genesis that pass the lockstep validator. Then,
 with no trusted recent checkpoint:
 \begin{itemize}
-\item at equal tip heights, they agree on the block $n$ below each tip;
+\item at equal tip heights (\code{hTipHeight}), they agree on the block
+  $n$ below each tip;
 \item at unequal heights (\code{lockstep\_recent\_tip\_ancestor\_mem}),
   the lower chain's block $n$ deep is a block of the taller chain, at
   least $n$ deep there.
