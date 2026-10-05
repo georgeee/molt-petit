@@ -1064,16 +1064,17 @@ client work without holding the genesis
 \code{sched\_recent\_tip\_ancestor\_mem\_horizon},
 \code{sched\_recent\_genesis\_agreement\_horizon}). It shows:
 \begin{itemize}
-\item at equal tip heights, two accepted chains agree on the block $n$
-  below each tip;
-\item at unequal heights, the lower chain's block $n$ deep is also a
-  block of the taller chain, at least $n$ deep there;
+\item at equal tip heights, two accepted chains longer than $n$ blocks
+  agree on the block $n$ below each tip;
+\item at unequal heights, if the lower chain is longer than $n$ blocks,
+  its block $n$ deep is also a block of the taller chain, at least $n$
+  deep there;
 \item two accepted chains longer than $n$ blocks share their genesis.
 \end{itemize}
 It uses Assumption~\ref{ass:rotation-honest} (\code{SchedUnforgeable})
 and the $\rho + T$ count, from some starting slot $H$ on
 (\code{ByzantineBoundedFrom}~$H$~$n$~(\code{badSched}~\dots), with
-$H + n \le \mathit{tip.slot} + 1$). Its count charges a stolen,
+$H + n \le \mathit{tip.slot} + 1$ for both tips). Its count charges a stolen,
 not-yet-retired key from the start of time, so early theft and cold-root
 custody must be assumed rather than charged. Its certificate form is
 \code{sched\_recent\_certified\_suffix\_agreement\_horizon}, which, like
