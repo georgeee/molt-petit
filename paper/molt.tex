@@ -767,9 +767,11 @@ timing made explicit.
 \paragraph{Why the lookback.} Without a lookback, every exposure up to
 $\varphi$ slots after a window would count against it, however long ago
 it happened. Under that simpler, cumulative budget
-(\code{ExposureBoundedEver}) the theorem holds, with its other
-assumptions unchanged, without any assumption on clocks
-(\code{exposure\_agreement\_ever\_on}). A bound on early signing also
+(\code{ExposureBoundedEver}) agreement holds without any assumption on
+clocks, for full chains: two valid chains from the genesis, whose blocks
+all exist by time $R$, with the other assumptions of Theorem~\ref{thm:lc}
+(\code{exposure\_agreement\_ever\_on}). We have not proved its
+certificate form. A bound on early signing also
 holds there, but it still assumes honest clocks and depends on their
 lead: for a non-genesis block $B$ of a chain as in Theorem~\ref{thm:forge},
 with $B.\mathit{slot} \ge n - 1$,
@@ -1013,7 +1015,8 @@ Both forms come from one generalisation of the core, proved once.
 Theorems~\ref{thm:lc} and~\ref{thm:forge} hold, with all their other
 assumptions, when Assumption~\ref{ass:sig} is required only of blocks
 meeting some per-block test that every block of both chains passes
-(\code{exposure\_agreement\_on}, \code{exposure\_no\_early\_signing\_on},
+(for full chains, \code{exposure\_agreement\_on} and
+\code{exposure\_no\_early\_signing\_on}; for certificates,
 \code{exposure\_certified\_agreement\_on}).
 
 That restriction matters. Required of \emph{every} signed block, the
@@ -1299,6 +1302,7 @@ failing validators (\code{ByzantineBounded}), and honest delivery
   reaches its slot, it produces a block, and the extended chain passes
   the same validator everyone runs.
 \item \emph{Globally:} in a synchronous honest run within the budget,
+  from a well-formed genesis,
   where each honest block reaches the next honest validator within its
   slot, the chain is accepted with one block per honest slot. So it
   reaches any height, and every block eventually becomes $n$ deep.
@@ -1314,7 +1318,7 @@ Prover cost sets it, not network latency. A slot must be long enough for
 the proving pipeline to keep its uncovered tail at most $n$ blocks
 forever. Lean proves a threshold that is sufficient, starting from a
 proving backlog of at most $n/2$ blocks, and necessary over the
-pipeline's steady states (\code{slot\_time\_sufficient},
+pipeline's steady states when proving one block takes less than a slot (\code{slot\_time\_sufficient},
 \code{slot\_time\_necessary}). Section~\ref{sec:impl} evaluates it at the
 measured proving costs.
 
@@ -1576,8 +1580,8 @@ Two options would remove it, each at a price:
 \item forward-secure signatures~\cite{forwardsec} with erasure, which
   need a stateful signer;
 \item counting every exposure forever
-  (\code{exposure\_agreement\_ever\_on} covers this budget too), which
-  charges a cleaned-up signer to the budget for good.
+  (\code{exposure\_agreement\_ever\_on} covers this budget, for full
+  chains), which charges a cleaned-up signer to the budget for good.
 \end{itemize}
 Key rotation does not remove it. In mode 2, a stolen current key passes
 the pin for every older slot. In mode 3, a fork may switch to the current
