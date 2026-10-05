@@ -205,9 +205,10 @@ assumptions of Theorem~\ref{thm:lc}, so each mode's validator inherits it
 (Theorem~\ref{thm:keyloss}). The validator that lost its key recovers
 through its mode: a new key version in mode 1, the next scheduled
 generation in mode 2, the next lockstep switch in mode 3. In mode 1, Lean
-proves that once it has a new registered key, its next slot produces a
-valid block, provided the other honest validators kept every window
-dense while it was out (\code{liveness\_produce\_blockK},
+proves that once it has a new registered key, its next slot extends its
+valid chain with a valid block, provided at most $\fmax$ slots per window
+failed and the other honest validators kept every window dense while it
+was out (\code{liveness\_produce\_blockK},
 Assumption~\ref{ass:delivery}).
 
 \paragraph{Mode 1: reactive rotation.}
@@ -291,7 +292,8 @@ trusts roster coordination and physical key destruction.
 Lean names appear in \code{typewriter}. A cited theorem \code{xxx} is
 proved as \code{MoltPaper.xxx} in the file \code{Paper/Proofs.lean}. Its
 exact statement is \code{thm\_xxx}, in the file
-\code{Spec/Statements.lean}. Every cited
+\code{Spec/Statements.lean}. All results assume a non-empty roster,
+$n \ge 1$. Every cited
 definition is in \code{Spec/}: a few files that hold the definitions and
 statements only, and that the rest of the development imports. The
 precise forms live there; this paper explains them.
@@ -693,8 +695,8 @@ differently, slot by slot: rented slots plus stolen key versions that are
 still live. Mode 3 and the untimed mode 2 theorem face this attacker.
 
 \paragraph{How far each result reaches.} Every result is a Lean theorem
-about the model. Theorem~\ref{thm:lc} is also carried to both
-implementations by their soundness bridges (Section~\ref{sec:impl}):
+about the model. Theorem~\ref{thm:lc}, with the same assumptions, is
+also carried to both implementations by their soundness bridges (Section~\ref{sec:impl}):
 \code{rust\_timed\_certified\_agreement} for the Rust validator, which
 also covers its key-version checks, and
 \code{ts\_timed\_certified\_agreement} for the TypeScript one. The other
@@ -731,8 +733,8 @@ and $\ell \ge n + \fmax + \sigma + 1 - \quorum$. Assume:
   Assumption~\ref{ass:sig}(b), with the verifier checking at real
   time $R$.
 \item \emph{Two accepted chains}: each is a certificate
-  (\code{GroundedCert}) plus a tail the verifier accepts, as in
-  Section~\ref{sec:rules}.
+  (\code{GroundedCert}) plus a non-empty tail the verifier accepts, as
+  in Section~\ref{sec:rules}.
 \item \emph{Both are recent}: $R \le \mathit{tip.slot} + \varphi$ for
   both tips.
 \end{itemize}
@@ -765,11 +767,13 @@ timing made explicit.
 \paragraph{Why the lookback.} Without a lookback, every exposure up to
 $\varphi$ slots after a window would count against it, however long ago
 it happened. Under that simpler, cumulative budget
-(\code{ExposureBoundedEver}) the theorem holds without any assumption on
-clocks (\code{exposure\_agreement\_ever\_on}). A bound on early signing
-also holds there, but it still assumes honest clocks and depends on
-their lead: $B.\mathit{slot} \le r + n + \fmax + \sigma + 1 - \quorum$
-for blocks with $B.\mathit{slot} \ge n - 1$
+(\code{ExposureBoundedEver}) the theorem holds, with its other
+assumptions unchanged, without any assumption on clocks
+(\code{exposure\_agreement\_ever\_on}). A bound on early signing also
+holds there, but it still assumes honest clocks and depends on their
+lead: for a non-genesis block $B$ of a chain as in Theorem~\ref{thm:forge},
+with $B.\mathit{slot} \ge n - 1$,
+$B.\mathit{slot} \le r + n + \fmax + \sigma + 1 - \quorum$
 (\code{exposure\_no\_early\_signing\_ever\_on}). The
 lookback lets a signer that was compromised and then cleaned up stop
 counting against later windows. The honest clock bound is its price.
@@ -1006,9 +1010,9 @@ admissible tail blocks.
 \end{theorem}
 
 Both forms come from one generalisation of the core, proved once.
-Theorems~\ref{thm:lc} and~\ref{thm:forge} hold when
-Assumption~\ref{ass:sig} is required only of blocks meeting some
-per-block test that every block of both chains passes
+Theorems~\ref{thm:lc} and~\ref{thm:forge} hold, with all their other
+assumptions, when Assumption~\ref{ass:sig} is required only of blocks
+meeting some per-block test that every block of both chains passes
 (\code{exposure\_agreement\_on}, \code{exposure\_no\_early\_signing\_on},
 \code{exposure\_certified\_agreement\_on}).
 
@@ -1046,8 +1050,9 @@ Delegate each generation's signing key just in time for its era; then a
 theft costs only the rest of that era. The era length $E$ is a dial:
 longer eras mean fewer cold-root ceremonies, but a stolen live key counts
 for longer. A retired key is harmless by rule, not by secrecy. Separately,
-a chain whose tip states a generation whose era ended more than $n$ slots
-ago fails the recency check (\code{sched\_oldkey\_fork\_stale}).
+a chain whose tip states a generation whose era ended longer ago than
+the recency window fails the recency check
+(\code{sched\_oldkey\_fork\_stale}).
 
 \paragraph{What breaks first.}
 \begin{enumerate}
@@ -1306,8 +1311,9 @@ assumes. A full model of a network with many chains is future work.
 
 \paragraph{The slot time.} One number remains: the slot length $\tau$.
 Prover cost sets it, not network latency. A slot must be long enough for
-the proving pipeline to keep its uncovered tail under $n$ blocks forever.
-Lean proves a threshold that is sufficient, and necessary over the
+the proving pipeline to keep its uncovered tail at most $n$ blocks
+forever. Lean proves a threshold that is sufficient, starting from a
+proving backlog of at most $n/2$ blocks, and necessary over the
 pipeline's steady states (\code{slot\_time\_sufficient},
 \code{slot\_time\_necessary}). Section~\ref{sec:impl} evaluates it at the
 measured proving costs.
@@ -1554,7 +1560,8 @@ assumption of the theorem that uses it:
 \end{itemize}
 That the circuit gadgets are faithful is stated, not proved. The
 equivalence lemma, \code{valid\_chain\_be\_validChain}, is proved for
-the native 64-bit instantiation.
+the native 64-bit instantiation, for every $n < 2^{63} - 1$, where its
+quorum arithmetic cannot overflow.
 
 \paragraph{The long-range residual.} Exposure after a window's stretch of
 time does not count against it. So a patient attacker can collect
