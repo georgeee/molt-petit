@@ -62,7 +62,8 @@ slots, at least two thirds of the validators produced a block. There
 are no voting rounds, and finality is at a fixed depth.
 
 All safety claims are machine-checked in Lean~4, under the assumptions
-listed in Section~\ref{sec:assumptions}. The core claims cover the actual
+listed in Section~\ref{sec:assumptions} and a few implementation
+assumptions named in Section~\ref{sec:impl}. The core claims cover the actual
 Rust validator code, which is also the code proved inside the recursive
 certificate (we trust the proof system to run it faithfully). Block ids
 are checked by the hashing layer around the validator, an assumption we
@@ -1066,11 +1067,12 @@ the recency window fails the recency check
 \item A stolen cold root, which costs its validator for good.
 \end{enumerate}
 
-\paragraph{Without a genesis.} An older, untimed form lets a full-chain
-client work without holding the genesis
-(\code{sched\_recent\_tip\_ancestor\_agreement\_horizon},
-\code{sched\_recent\_tip\_ancestor\_mem\_horizon},
-\code{sched\_recent\_genesis\_agreement\_horizon}). It shows:
+\paragraph{Without a genesis.} An older, \emph{untimed} form lets a
+full-chain client work without holding the genesis. It has no real-time
+model of signing, though it still uses the recency check. Its results are
+\code{sched\_recent\_tip\_ancestor\_agreement\_horizon},
+\code{sched\_recent\_tip\_ancestor\_mem\_horizon} and
+\code{sched\_recent\_genesis\_agreement\_horizon}. It shows:
 \begin{itemize}
 \item at equal tip heights, two accepted chains longer than $n$ blocks
   agree on the block $n$ below each tip;
@@ -1079,8 +1081,10 @@ client work without holding the genesis
   deep there;
 \item two accepted chains longer than $n$ blocks share their genesis.
 \end{itemize}
-It uses Assumption~\ref{ass:rotation-honest} (\code{SchedUnforgeable})
-and the $\rho + T$ count, from some starting slot $H$ on
+It uses Assumption~\ref{ass:rotation-honest} (\code{SchedUnforgeable}),
+hash collision resistance (Assumption~\ref{ass:hash}), the recency check
+on both tips ($\mathit{now} \le \mathit{tip.slot} + \Delta$), and the
+$\rho + T$ count, from some starting slot $H$ on
 (\code{ByzantineBoundedFrom}~$H$~$n$~(\code{badSched}~\dots), with
 $H + n \le \mathit{tip.slot} + 1$ for both tips). Its count charges a stolen,
 not-yet-retired key from the start of time, so early theft and cold-root
