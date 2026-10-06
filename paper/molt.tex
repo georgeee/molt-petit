@@ -1062,7 +1062,7 @@ Delegate each generation's signing key just in time for its era; then a
 theft costs only the rest of that era. The era length $E$ is a dial:
 longer eras mean fewer cold-root ceremonies, but a stolen live key counts
 for longer. A retired key is harmless by rule, not by secrecy. Separately,
-a chain whose tip states a generation whose era ended longer ago than
+a chain that passes the mode-2 validator and whose tip states a generation whose era ended longer ago than
 the recency window fails the recency check
 (\code{sched\_oldkey\_fork\_stale}).
 
