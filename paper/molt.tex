@@ -465,6 +465,13 @@ and only if:
 \end{enumerate}
 Then trust everything $n$ blocks below the newest block.
 
+Every certificate-level theorem in this paper is about certified chains that
+pass this rule. In Lean that appears as explicit hypotheses on each tail:
+it links to the certificate's newest block (\code{hLink}) and block to
+block (\code{hLinks}), its windows are dense (\code{hDense}), its blocks
+are signed (\code{hSigned}), it meets the mode's key-version checks, and
+its newest block is recent (\code{hRecent}).
+
 If the verifier's clock is off by at most $\delta$ slots, the newest block
 is at most $\varphi = b + \delta$ slots old in real time. This clock
 comparison is the one line a deployment implements outside the verified
@@ -769,8 +776,8 @@ timing made explicit.
 $\varphi$ slots after a window would count against it, however long ago
 it happened. Under that simpler, cumulative budget
 (\code{ExposureBoundedEver}) agreement holds without any assumption on
-clocks, for full chains: two valid chains from the genesis, whose blocks
-all exist by time $R$, with the other assumptions of Theorem~\ref{thm:lc}
+clocks, for full chains: two valid chains from the genesis, whose
+non-genesis blocks are admissible and all exist by time $R$, with the other assumptions of Theorem~\ref{thm:lc}
 (\code{exposure\_agreement\_ever\_on}). We have not proved its
 certificate form. A bound on early signing also
 holds there, but it still assumes honest clocks and depends on their
@@ -856,7 +863,8 @@ theorems count shrinks to rented slots alone, in every mode
 mode 2's count). Theorem~\ref{thm:lc} then applies to each mode's
 validator unchanged: \code{keyrot\_loss\_agreement} (mode 1,
 Theorem~\ref{thm:keyloss}), \code{sched\_loss\_agreement} (mode 2) and
-\code{lockstep\_loss\_agreement} (mode 3). A client holding only the
+\code{lockstep\_loss\_agreement} (mode 3), each for chains with
+correctly formed ids (\code{hFormed}), as in Theorem~\ref{thm:keyloss}. A client holding only the
 genesis and a clock gets the guarantees of
 Sections~\ref{sec:lc}--\ref{sec:timed}, with no anchor and any pin.
 
@@ -1263,7 +1271,8 @@ flash storage, which does not erase by overwriting, is not.
   (\code{same\_block\_same\_prefix}) give the rest. In Lean:
   \code{lockstep\_client\_safety} and
   \code{lockstep\_recent\_tip\_ancestor\_mem}, through the pinning theorem
-  \code{lockstep\_declares\_rosterGen}. For certificates:
+  \code{lockstep\_declares\_rosterGen}. For two certified chains that
+  pass the verifier rule (Section~\ref{sec:verifier-rule}), tips recent included:
   \code{lockstep\_recent\_certified\_suffix\_agreement} at depth $n$ and
   \code{lockstepGen\_recent\_certified\_suffix\_agreement} at depth $2n$,
   with the certificate's counter pinned to the roster's once its grid
@@ -1358,7 +1367,8 @@ what carries Theorem~\ref{thm:lc} to the shipped code
 \emph{The circuit.} The same source has a validator that is generic over
 its backend (\code{valid\_chain\_be}). Run over plonky2, it is the
 certificate's circuit, so the certificate proves exactly the rule that
-was verified (\code{valid\_chain\_be\_validChain}). That each circuit
+was verified, for every $n < 2^{63} - 1$
+(\code{valid\_chain\_be\_validChain}). That each circuit
 gadget is faithful is the one remaining trust assumption; it is stated,
 not proved.
 
