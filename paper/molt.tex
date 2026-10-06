@@ -1318,7 +1318,8 @@ what makes honest blocks merge into the single chain the global form
 assumes. A full model of a network with many chains is future work.
 
 \paragraph{The slot time.} One number remains: the slot length $\tau$.
-Prover cost sets it, not network latency. A slot must be long enough for
+Prover cost sets it, not network latency. The proving cost has a fixed
+part per certificate and a part per block, both non-negative. A slot must be long enough for
 the proving pipeline to keep its uncovered tail at most $n$ blocks
 forever. Lean proves a threshold that is sufficient, starting from a
 proving backlog of at most $n/2$ blocks, and necessary over the
