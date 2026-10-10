@@ -97,6 +97,8 @@ theorem LockstepPackage.toGen : LockstepPackage.thm_toGen :=
   @MoltPetit.Model.LockstepPackage.toGen
 theorem LockstepPackageTimed.toGen : LockstepPackageTimed.thm_toGen :=
   @MoltPetit.Model.LockstepPackageTimed.toGen'
+theorem LockstepPackage.toGen_of_low : LockstepPackage.thm_toGen_of_low :=
+  @MoltPetit.Model.LockstepPackage.toGen_of_low
 theorem genBound_of_preRetirementBound : thm_genBound_of_preRetirementBound :=
   @MoltPetit.Model.genBound_of_preRetirementBound
 theorem lockstepGen_recent_genesis_agreement : thm_lockstepGen_recent_genesis_agreement :=
