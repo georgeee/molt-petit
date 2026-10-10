@@ -72,6 +72,8 @@ theorem sched_exposure_agreement : thm_sched_exposure_agreement :=
   @MoltPetit.Model.sched_exposure_agreement
 theorem sched_exposure_certified_agreement : thm_sched_exposure_certified_agreement :=
   @MoltPetit.Model.sched_exposure_certified_agreement
+theorem sched_liveness_produce_block : thm_sched_liveness_produce_block :=
+  @MoltPetit.Model.sched_liveness_produce_block
 theorem sched_loss_agreement : thm_sched_loss_agreement :=
   @MoltPetit.Model.sched_loss_agreement
 theorem sched_oldkey_fork_stale : thm_sched_oldkey_fork_stale :=
