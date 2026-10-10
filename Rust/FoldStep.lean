@@ -571,4 +571,20 @@ theorem cert_step_core_be_sound {n q : U64} {st : CertStateG U64}
     · simp at ht3
   · simp at h
 
+
+def tailPush : TailG U64 → U64 → U64 → TailG U64
+  | .TNil, f, s => .TCons f s .TNil
+  | .TCons f0 s0 tl, f, s => .TCons f0 s0 (tailPush tl f s)
+
+theorem tail_push_be_eq (t : TailG U64) (f s : U64) :
+    tail_push_be UB.coremarkerCopyInst t f s = ok (tailPush t f s) := by
+  induction t with
+  | TNil =>
+    unfold tail_push_be
+    rfl
+  | TCons f0 s0 tl ih =>
+    unfold tail_push_be
+    rw [ih]
+    rfl
+
 end Rust
