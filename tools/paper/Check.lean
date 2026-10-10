@@ -34,8 +34,11 @@ elab "#paper_check" : command => do
       unless (env.find? (`MoltPaper ++ b)).any (·.isTheorem) &&
           modOf (`MoltPaper ++ thmName b) == `Spec.Statements do
         logError m!"paper cites theorem `{t}`: needs MoltPaper.{thmName b} in Spec/Statements.lean and MoltPaper.{t} in Paper/Proofs.lean"
+    -- `Molt` re-exports some Spec definitions under the same name (abbrevs,
+    -- or a copy proved equal by `rfl`); a citation is fine when one of the
+    -- candidates is declared in Spec/.
     else if let some c := dev.head? then
-      unless (`Spec).isPrefixOf (modOf c) do
+      unless dev.any (fun c' => (`Spec).isPrefixOf (modOf c')) do
         logError m!"paper cites `{t}` = {c}, declared in {modOf c}, not in Spec/"
   for (n, ci) in env.constants.map₁.toList do
     if ci.isTheorem && modOf n == `Paper.Proofs then
