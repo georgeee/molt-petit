@@ -239,8 +239,9 @@ theorem lockstep_aligned_budget
 theorem LockstepPackageGen.alignedBudget {n : Nat} {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     (hn : 0 < n) :
     AlignedBounded n (badLockAt n rosterGen rented Stolen) :=
   lockstep_aligned_budget hn hP.rentBound hP.genBound hP.budget_le
@@ -256,10 +257,10 @@ prose witness). -/
 theorem LockstepPackage.toGen {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat} (hn : 0 < n)
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat} (hn : 0 < n)
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     (hSurj : ∀ j, ∃ W, rosterGen W = j) :
-    LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T where
+    LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T where
   unforgeable := hP.unforgeable
   declared := hP.declared
   hashInj := hP.hashInj
@@ -298,8 +299,8 @@ theorem lockstep_window_declares_rosterGen
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc : SignedChain Sig} (hVal : validSignedChainLock n ops registry sc = true)
     (hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ)
     (W : Nat) (hMat : ∃ D ∈ stripSigs sc, W * n + n ≤ D.slot + 1)
@@ -405,8 +406,8 @@ theorem honestSlotsUniqueOn_lockstep
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
@@ -472,11 +473,13 @@ theorem lockstepGen_shared_prefix
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -492,10 +495,16 @@ theorem lockstepGen_shared_prefix
     have h2 := hVal'
     rw [validSignedChainLock, Bool.and_eq_true, Bool.and_eq_true] at h2
     exact (validChainK_sound h2.1.2).1
-  have hSig : ∀ b ∈ stripSigs sc, b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_lock hVal hb)
-  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_lock hVal' hb)
+  have hSig : ∀ b ∈ stripSigs sc, b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_lock hVal hb, hFormed b hb h⟩
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_lock hVal' hb, hFormed' b hb h⟩
   have hId : IdInjective (chainUnionRecord sc sc') := idInjective_keyrot hP.hashInj hSig hSig'
   have hTipSmem : sTip ∈ stripSigs sc := by
     have h' := blockAt_getLast hTipS
@@ -520,11 +529,13 @@ theorem lockstepGen_shared_prefix_deep
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -559,7 +570,7 @@ theorem lockstepGen_shared_prefix_deep
   have hcomm : n * W = W * n := Nat.mul_comm n W
   have hWmat : W * n + n ≤ sTip.slot + 1 := by omega
   have hBu : B.slot < W * n := by omega
-  exact lockstepGen_shared_prefix hn hP hVal hVal' hTipS hTipS' hRecent hRecent' hle
+  exact lockstepGen_shared_prefix hn hP hVal hVal' hFormed hFormed' hTipS hTipS' hRecent hRecent' hle
     hWmat hB hBu
 
 /-- **The sharp depth.** `2n` in `lockstepGen_shared_prefix_deep` is the
@@ -573,11 +584,13 @@ theorem lockstepGen_shared_prefix_sharp
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -611,7 +624,7 @@ theorem lockstepGen_shared_prefix_sharp
   have hcomm : n * W = W * n := Nat.mul_comm n W
   have hWmat : W * n + n ≤ sTip.slot + 1 := by omega
   have hBu : B.slot < W * n := by omega
-  exact lockstepGen_shared_prefix hn hP hVal hVal' hTipS hTipS' hRecent hRecent' hle
+  exact lockstepGen_shared_prefix hn hP hVal hVal' hFormed hFormed' hTipS hTipS' hRecent hRecent' hle
     hWmat hB hBu
 
 -- ===========================================================================
@@ -627,11 +640,13 @@ theorem lockstepGen_recent_tip_ancestor_agreement
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -655,12 +670,12 @@ theorem lockstepGen_recent_tip_ancestor_agreement
     omega
   rw [← hLenEq] at hB'
   rcases Nat.le_total sTip.slot sTip'.slot with hle | hle
-  · obtain ⟨P, hPc, hPc'⟩ := lockstepGen_shared_prefix_deep hn hP hVal hVal' hTipS hTipS'
+  · obtain ⟨P, hPc, hPc'⟩ := lockstepGen_shared_prefix_deep hn hP hVal hVal' hFormed hFormed' hTipS hTipS'
       hRecent hRecent' hle hB (k := (stripSigs sc).length - 1 - 2 * n) (by omega)
     rw [hB] at hPc
     rw [hB'] at hPc'
     rw [Option.some.inj hPc, Option.some.inj hPc']
-  · obtain ⟨P, hPc', hPc⟩ := lockstepGen_shared_prefix_deep hn hP hVal' hVal hTipS' hTipS
+  · obtain ⟨P, hPc', hPc⟩ := lockstepGen_shared_prefix_deep hn hP hVal' hVal hFormed' hFormed hTipS' hTipS
       hRecent' hRecent hle hB' (k := (stripSigs sc).length - 1 - 2 * n) (by omega)
     rw [hB] at hPc
     rw [hB'] at hPc'
@@ -673,11 +688,13 @@ theorem lockstepGen_recent_tip_ancestor_mem
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -698,7 +715,7 @@ theorem lockstepGen_recent_tip_ancestor_mem
   set k : Nat := (stripSigs sc).length - 1 - 2 * n with hk
   have hkn' : k + 2 * n < (stripSigs sc').length := by omega
   rcases Nat.le_total sTip.slot sTip'.slot with hle | hle
-  · obtain ⟨P, hPc, hPc'⟩ := lockstepGen_shared_prefix_deep hn hP hVal hVal' hTipS hTipS'
+  · obtain ⟨P, hPc, hPc'⟩ := lockstepGen_shared_prefix_deep hn hP hVal hVal' hFormed hFormed' hTipS hTipS'
       hRecent hRecent' hle hB (k := k) (by omega)
     exact ⟨k, hkn', by rw [hB] at hPc; rw [Option.some.inj hPc]; exact hPc'⟩
   · have hBex : ∃ C, blockAt? (stripSigs sc') k = some C := by
@@ -709,7 +726,7 @@ theorem lockstepGen_recent_tip_ancestor_mem
         omega
       | some C => exact ⟨C, rfl⟩
     obtain ⟨C, hC⟩ := hBex
-    obtain ⟨P, hPc', hPc⟩ := lockstepGen_shared_prefix_deep hn hP hVal' hVal hTipS' hTipS
+    obtain ⟨P, hPc', hPc⟩ := lockstepGen_shared_prefix_deep hn hP hVal' hVal hFormed' hFormed hTipS' hTipS
       hRecent' hRecent hle hC (k := k) (by omega)
     rw [hB] at hPc
     exact ⟨k, hkn', by rw [Option.some.inj hPc]; exact hPc'⟩
@@ -723,11 +740,13 @@ theorem lockstepGen_recent_genesis_agreement
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -742,7 +761,7 @@ theorem lockstepGen_recent_genesis_agreement
     | some C => exact ⟨C, rfl⟩
   obtain ⟨C, hC⟩ := hB0
   rcases Nat.le_total sTip.slot sTip'.slot with hle | hle
-  · exact lockstepGen_shared_prefix_deep hn hP hVal hVal' hTipS hTipS' hRecent hRecent' hle
+  · exact lockstepGen_shared_prefix_deep hn hP hVal hVal' hFormed hFormed' hTipS hTipS' hRecent hRecent' hle
       hC (k := 0) (by omega)
   · have hB0' : ∃ C', blockAt? (stripSigs sc') 0 = some C' := by
       cases hopt : blockAt? (stripSigs sc') 0 with
@@ -752,7 +771,7 @@ theorem lockstepGen_recent_genesis_agreement
         omega
       | some C' => exact ⟨C', rfl⟩
     obtain ⟨C', hC'⟩ := hB0'
-    obtain ⟨P, hPc', hPc⟩ := lockstepGen_shared_prefix_deep hn hP hVal' hVal hTipS' hTipS
+    obtain ⟨P, hPc', hPc⟩ := lockstepGen_shared_prefix_deep hn hP hVal' hVal hFormed' hFormed hTipS' hTipS
       hRecent' hRecent hle hC' (k := 0) (by omega)
     exact ⟨P, hPc, hPc'⟩
 
