@@ -434,9 +434,9 @@ Mirrors `groundedCertK_suffix_history`; the suffix-side rotation check is the
 **pin alone** (`schedPinned` over the suffix — computable from each block's own
 slot), replacing the default certificate's `keyMonoFrom` against a carried
 floor snapshot. -/
-theorem groundedCertSched_suffix_history {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
-    {Signed : Block → Prop} {G : Block} {cl : CertClaim}
-    (hG : GroundedCertSched n schedule Signed G cl)
+theorem groundedHistorySched_suffix_history {n : Nat} (_hn : 1 ≤ n) {schedule : Nat → Nat}
+    {Signed : Block → Prop} {G : Block} {cl : CertClaim} {c : Chain}
+    (hist : GroundedHistorySched n schedule Signed G cl c)
     {s₁ : Block} {srest : Chain} {sTip : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
@@ -445,13 +445,11 @@ theorem groundedCertSched_suffix_history {n : Nat} (hn : 1 ≤ n) {schedule : Na
       quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hPinS : schedPinned schedule (s₁ :: srest) = true)
     (hSigned : ∀ B ∈ s₁ :: srest, Signed B) :
-    ∃ c : Chain,
-      validChain n (c ++ s₁ :: srest) = true ∧
-      schedPinned schedule (c ++ s₁ :: srest) = true ∧
-      blockAt? (c ++ s₁ :: srest) 0 = some G ∧
-      c.length = cl.tipHeight + 1 ∧
-      (∀ B ∈ c ++ s₁ :: srest, Signed B) := by
-  obtain ⟨c, hist⟩ := groundedCertSched_history hn hG
+    validChain n (c ++ s₁ :: srest) = true ∧
+    schedPinned schedule (c ++ s₁ :: srest) = true ∧
+    blockAt? (c ++ s₁ :: srest) 0 = some G ∧
+    c.length = cl.tipHeight + 1 ∧
+    (∀ B ∈ c ++ s₁ :: srest, Signed B) := by
   obtain ⟨t, hTipEq, htId, htSlot, htHeight⟩ := hist.tip
   have hMat := (validChain_sound hist.valid).2.2.2
   have hTipAt : blockAt? c (c.length - 1) = some t := blockAt_getLast hTipEq
@@ -479,7 +477,7 @@ theorem groundedCertSched_suffix_history {n : Nat} (hn : 1 ≤ n) {schedule : Na
     refine ⟨?_, hLinks⟩
     rw [childOk, decide_eq_true_eq]
     exact ⟨by omega, by omega, by rw [hLink.2.2, htId]⟩
-  refine ⟨c, ?_, ?_, ?_, hist.len_eq, ?_⟩
+  refine ⟨?_, ?_, ?_, hist.len_eq, ?_⟩
   · exact validChain_append_suffix hFullDense (s₁ :: srest) c t rfl
       hist.valid hTipEq hLinksT hSlotsLe
   · -- the pin over the full chain: prefix from the derivation, suffix as checked
@@ -502,6 +500,26 @@ theorem groundedCertSched_suffix_history {n : Nat} (hn : 1 ≤ n) {schedule : Na
     rcases List.mem_append.mp hB with hBc | hBs
     · exact hist.signed B hBc
     · exact hSigned B hBs
+
+theorem groundedCertSched_suffix_history {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
+    {Signed : Block → Prop} {G : Block} {cl : CertClaim}
+    (hG : GroundedCertSched n schedule Signed G cl)
+    {s₁ : Block} {srest : Chain} {sTip : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 →
+      quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hPinS : schedPinned schedule (s₁ :: srest) = true)
+    (hSigned : ∀ B ∈ s₁ :: srest, Signed B) :
+    ∃ c : Chain,
+      validChain n (c ++ s₁ :: srest) = true ∧
+      schedPinned schedule (c ++ s₁ :: srest) = true ∧
+      blockAt? (c ++ s₁ :: srest) 0 = some G ∧
+      c.length = cl.tipHeight + 1 ∧
+      (∀ B ∈ c ++ s₁ :: srest, Signed B) := by
+  obtain ⟨c, hist⟩ := groundedCertSched_history hn hG
+  exact ⟨c, groundedHistorySched_suffix_history hn hist hTipS hLink hLinks hDense hPinS hSigned⟩
 
 -- ===========================================================================
 -- The certificate-level headline — no floor, global budget, no anchor
