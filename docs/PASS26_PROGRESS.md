@@ -8,7 +8,7 @@ In progress: 5. `cert_next_tail_be_repr`
 - [x] 2. Counting (`tail_count_be_corr`)
 - [x] 3. Window checks
 - [x] 4. `TailRepr` and `cert_step_core_be_sound`
-- [ ] 5. `cert_next_tail_be_repr`
+- [x] 5. `cert_next_tail_be_repr`
 - [ ] 6. Prefix claim and genesis repr
 - [ ] 7. Mode 2 `cert_fold_sched_sound`
 - [ ] 8. Mode 3 `cert_fold_lock_sound`

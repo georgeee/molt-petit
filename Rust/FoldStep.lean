@@ -738,4 +738,221 @@ theorem map_filter_slot (c : List MoltPetit.Model.Block) (bound : Nat) :
     · simp [h, ih]
     · simp [h, ih]
 
+
+theorem filter_filter_ge (l : List Nat) (a b : Nat) (hab : a ≤ b) :
+    (l.filter (a ≤ ·)).filter (b ≤ ·) = l.filter (b ≤ ·) := by
+  induction l with
+  | nil => rfl
+  | cons x tl ih =>
+    simp only [List.filter_cons]
+    by_cases hx : b ≤ x
+    · have hxa : a ≤ x := by omega
+      simp [hx, hxa, ih]
+    · by_cases hxa : a ≤ x
+      · simp [hx, hxa, ih]
+      · simp [hx, hxa, ih]
+
+/-- Soundness of `cert_next_tail_be`: if `TailRepr n st cl` holds, the core step accepts
+a block `b`, and `cert_next_tail_be` produces `t'`, then `TailRepr n (stepState b t') cl'`
+holds for the claim `cl'` built by `extend`. -/
+theorem cert_next_tail_be_repr {n q : U64} {st : CertStateG U64}
+    {cl : MoltPetit.Model.CertClaim} (b : molt_petit.Block)
+    (hq : molt_petit.quorum n = ok q)
+    (hn : 1 ≤ n.val)
+    (hrep : TailRepr n.val st cl)
+    (hcore : cert_step_core_be UBK () n q st (toBlockG b) = ok true)
+    {t' : TailG U64}
+    (ht' : cert_next_tail_be UB () st.tail b.slot = ok t') :
+    TailRepr n.val (stepState b t')
+      { tipId := (toModelBlock b).id
+      , tipSlot := (toModelBlock b).slot
+      , tipHeight := (toModelBlock b).height
+      , tail := (cl.tail ++ [toModelBlock b]).filter fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } := by
+  have ⟨hheight, hslot, hprev, hdense⟩ := cert_step_core_be_sound b hq hn hrep hcore
+  by_cases hn2 : 2 ≤ n.val
+  · have hlen : (entrySlots st.tail).length = n.val - 1 := hrep.tail_len
+    cases htail : st.tail with
+    | TNil =>
+      rw [htail] at hlen
+      simp only [entrySlots_nil, List.length_nil] at hlen
+      omega
+    | TCons f0 s0 tl =>
+      have hcorr := cert_next_tail_be_corr (TailG.TCons f0 s0 tl) b.slot
+      rw [htail] at ht'
+      rw [ht'] at hcorr
+      dsimp only at hcorr
+      injection hcorr with ht'_eq
+      subst ht'_eq
+      have hsuff_st : PresentSuffix st.tail := hrep.tail_suffix
+      rw [htail] at hsuff_st
+      have htl_len : (entrySlots tl).length + 1 = n.val - 1 := by
+        rw [htail] at hlen
+        simp only [entrySlots_cons, List.length_cons] at hlen
+        exact hlen
+      have hlen' : (entrySlots (tailPush tl 1#u64 b.slot)).length = n.val - 1 := by
+        rw [entrySlots_tailPush]
+        simp only [List.length_append, List.length_singleton]
+        omega
+      have hflags' : ∀ f ∈ tailFlags (tailPush tl 1#u64 b.slot), f = 0 ∨ f = 1 := by
+        intro f hf
+        rw [tailFlags_tailPush, List.mem_append] at hf
+        rcases hf with htl_f | hnew_f
+        · have : f ∈ tailFlags st.tail := by
+            rw [htail]
+            simp only [tailFlags_cons, List.mem_cons]
+            right; exact htl_f
+          exact hrep.tail_flags f this
+        · simp only [List.mem_singleton] at hnew_f
+          subst hnew_f
+          right; rfl
+      have hsuff' : PresentSuffix (tailPush tl 1#u64 b.slot) :=
+        presentSuffix_tailPush_one tl b.slot hsuff_st.2
+      have hps_tl_mono : (presentSlots tl).Pairwise (· < ·) := by
+        have hmono := hrep.tail_mono
+        rw [htail] at hmono
+        simp only [presentSlots_cons] at hmono
+        split_ifs at hmono with hf0
+        · exact List.Pairwise.of_cons hmono
+        · exact hmono
+      have hps_tl_lt : ∀ y ∈ presentSlots tl, y < (toModelBlock b).slot := by
+        intro y hy
+        have hymem : y ∈ presentSlots st.tail := by
+          rw [htail, presentSlots_cons]
+          split_ifs with hf0
+          · exact List.mem_cons_of_mem _ hy
+          · exact hy
+        have hlast := hrep.tail_last hn2
+        have hle := le_last_of_pairwise_lt (presentSlots st.tail) hrep.tail_mono hlast y hymem
+        change cl.tipSlot < b.slot.val at hslot
+        dsimp [toModelBlock]
+        omega
+      have hmono' : (presentSlots (tailPush tl 1#u64 b.slot)).Pairwise (· < ·) := by
+        rw [presentSlots_tailPush_one]
+        exact pairwise_lt_append_singleton (presentSlots tl) b.slot.val hps_tl_mono hps_tl_lt
+      have hlast' : 2 ≤ n.val → (presentSlots (tailPush tl 1#u64 b.slot)).getLast? = some (toModelBlock b).slot := by
+        intro _
+        rw [presentSlots_tailPush_one]
+        exact getLast?_append_singleton (presentSlots tl) b.slot.val
+      have htail_eq' : (presentSlots (tailPush tl 1#u64 b.slot)).filter ((toModelBlock b).slot + 2 - n.val ≤ ·) =
+          ((cl.tail ++ [toModelBlock b]).filter fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot)).map (·.slot) := by
+        set bound := (toModelBlock b).slot + 2 - n.val
+        have hbound_le : bound ≤ b.slot.val := by
+          dsimp [bound, toModelBlock]
+          omega
+        rw [presentSlots_tailPush_one]
+        have hfilter_push : ((presentSlots tl ++ [b.slot.val]).filter (bound ≤ ·)) =
+            (presentSlots tl).filter (bound ≤ ·) ++ [b.slot.val] := by
+          rw [List.filter_append]
+          congr 1
+          simp only [List.filter_cons, List.filter_nil]
+          simp [hbound_le]
+        rw [hfilter_push]
+        have hfilter_cl : ((cl.tail ++ [toModelBlock b]).filter fun x => decide (bound ≤ x.slot)) =
+            (cl.tail.filter fun x => decide (bound ≤ x.slot)) ++ [toModelBlock b] := by
+          rw [List.filter_append]
+          congr 1
+          simp only [List.filter_cons, List.filter_nil]
+          have : bound ≤ (toModelBlock b).slot := by
+            dsimp [toModelBlock]
+            exact hbound_le
+          simp [this]
+        rw [hfilter_cl, List.map_append, List.map_singleton]
+        congr 1
+        rw [← map_filter_slot]
+        have heq := hrep.tail_eq
+        have hbound_ge : cl.tipSlot + 2 - n.val ≤ bound := by
+          change cl.tipSlot < b.slot.val at hslot
+          dsimp [bound, toModelBlock]
+          omega
+        have hflt := filter_filter_ge (presentSlots st.tail) (cl.tipSlot + 2 - n.val) bound hbound_ge
+        have hdrop_head : (presentSlots st.tail).filter (bound ≤ ·) = (presentSlots tl).filter (bound ≤ ·) := by
+          rw [htail, presentSlots_cons]
+          split_ifs with hf0
+          · simp only [List.filter_cons]
+            have hf_all : ∀ f ∈ tailFlags st.tail, f = 1 := by
+              rw [htail]
+              intro f hf
+              simp only [tailFlags_cons, List.mem_cons] at hf
+              rcases hf with rfl | hrest
+              · exact hf0
+              · exact hsuff_st.1 hf0 f hrest
+            have heq_slots := presentSlots_eq_entrySlots_of_flags_one st.tail hf_all
+            have hps_len : (presentSlots st.tail).length = n.val - 1 := by
+              rw [heq_slots, hrep.tail_len]
+            have hps_eq : presentSlots st.tail = s0.val :: presentSlots tl := by
+              rw [htail, presentSlots_cons, hf0]; rfl
+            have htl_ps_len : (presentSlots tl).length = n.val - 2 := by
+              rw [hps_eq] at hps_len
+              simp only [List.length_cons] at hps_len
+              omega
+            have hmono_cons : (s0.val :: presentSlots tl).Pairwise (· < ·) := by
+              rw [← hps_eq]; exact hrep.tail_mono
+            have hlast_cons : (s0.val :: presentSlots tl).getLast? = some cl.tipSlot := by
+              rw [← hps_eq]; exact hrep.tail_last hn2
+            have hhead_le := head_le_last_of_pairwise_lt s0.val (presentSlots tl) hmono_cons hlast_cons
+            have hs0_lt : s0.val < bound := by
+              rw [htl_ps_len] at hhead_le
+              change cl.tipSlot < b.slot.val at hslot
+              dsimp [bound, toModelBlock]
+              omega
+            have : ¬ (bound ≤ s0.val) := by omega
+            simp [this]
+          · rfl
+        rw [heq] at hflt
+        rw [hdrop_head] at hflt
+        exact hflt.symm
+      dsimp [stepState]
+      exact ⟨⟨b.id, rfl, rfl⟩, rfl, rfl, hlen', hflags', hsuff', hmono', hlast', htail_eq'⟩
+  · have hn1 : n.val = 1 := by omega
+    have hlen : (entrySlots st.tail).length = 0 := by
+      have := hrep.tail_len
+      omega
+    have htail : st.tail = .TNil := by
+      cases h : st.tail with
+      | TNil => rfl
+      | TCons f s tl =>
+        rw [h] at hlen
+        simp only [entrySlots_cons, List.length_cons] at hlen
+        omega
+    have hcorr := cert_next_tail_be_corr .TNil b.slot
+    rw [htail] at ht'
+    rw [ht'] at hcorr
+    dsimp only at hcorr
+    injection hcorr with ht'_eq
+    subst ht'_eq
+    have hlen' : (entrySlots (.TNil : TailG U64)).length = n.val - 1 := by
+      simp only [entrySlots_nil, List.length_nil]
+      omega
+    have hflags' : ∀ f ∈ tailFlags (.TNil : TailG U64), f = 0 ∨ f = 1 := by
+      intro f hf
+      simp only [tailFlags_nil, List.not_mem_nil] at hf
+    have hsuff' : PresentSuffix (.TNil : TailG U64) := trivial
+    have hmono' : (presentSlots (.TNil : TailG U64)).Pairwise (· < ·) := by simp
+    have hlast' : 2 ≤ n.val → (presentSlots (.TNil : TailG U64)).getLast? = some (toModelBlock b).slot := by
+      intro h2; omega
+    have htail_eq' : (presentSlots (.TNil : TailG U64)).filter ((toModelBlock b).slot + 2 - n.val ≤ ·) =
+        ((cl.tail ++ [toModelBlock b]).filter fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot)).map (·.slot) := by
+      simp only [presentSlots_nil, List.filter_nil]
+      have hbound : (toModelBlock b).slot + 2 - n.val = (toModelBlock b).slot + 1 := by omega
+      rw [hbound]
+      have hnil : ((cl.tail ++ [toModelBlock b]).filter fun x => decide ((toModelBlock b).slot + 1 ≤ x.slot)) = [] := by
+        apply List.filter_eq_nil_iff.mpr
+        intro x hx
+        simp only [decide_eq_true_iff]
+        rw [List.mem_append] at hx
+        rcases hx with hcl | hb
+        · have : cl.tail = [] := by
+            have heq := hrep.tail_eq
+            rw [htail] at heq
+            simp only [presentSlots_nil, List.filter_nil] at heq
+            exact List.map_eq_nil_iff.mp heq.symm
+          rw [this] at hcl
+          simp at hcl
+        · simp only [List.mem_singleton] at hb
+          subst hb
+          omega
+      rw [hnil, List.map_nil]
+    dsimp [stepState]
+    exact ⟨⟨b.id, rfl, rfl⟩, rfl, rfl, hlen', hflags', hsuff', hmono', hlast', htail_eq'⟩
+
 end Rust
