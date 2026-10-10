@@ -1,6 +1,6 @@
 # Pass 25 Progress
 
-In progress: (none)
+In progress: step 5 check.sh all green
 
 - [x] step 1 LockstepPackageTimed.toGen alias
 - [x] step 2 LockstepPackage.toGen_of_low
