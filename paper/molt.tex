@@ -64,8 +64,9 @@ are no voting rounds, and finality is at a fixed depth.
 All safety claims are machine-checked in Lean~4, under the assumptions
 listed in Section~\ref{sec:assumptions} and a few implementation
 assumptions named in Section~\ref{sec:impl}. The core claims cover the actual
-Rust validator code, which is also the code proved inside the recursive
-certificate (we trust the proof system to run it faithfully). Block ids
+Rust validator code. The recursive certificate proves a circuit written
+in the same source and proved equal to the model's chain rule (we trust
+the proof system to run it faithfully). Block ids
 are checked by the hashing layer around the validator, an assumption we
 name. The
 key-rotation results are proved for the protocol model.
@@ -80,8 +81,8 @@ valid chain can claim to be far ahead of real time.
 Validators can rotate keys inside the protocol. Every rotation mode
 recovers from lost keys. Against an attacker who steals keys and keeps
 them forever, two modes stay safe given clearly stated duties for
-operators, and clients still need only the genesis and a clock. With a
-public rotation schedule, safety against theft follows directly from the
+operators, and clients still need only the genesis, a clock and, in
+one of the two, the public rotation schedule. With that schedule, safety against theft follows directly from the
 main theorem. With post-quantum signatures on ordinary hardware, the
 verified consensus rule adds under $2\%$ to the cost of producing a
 certificate.
@@ -102,9 +103,11 @@ Molt Petit is built so that this client needs only three things:
 \item a clock, and
 \item a small, constant-size \emph{certificate}, fetched from anyone.
 \end{itemize}
-If the certificate verifies and its newest block is recent, the client
-can act on everything at least $n$ blocks below that newest block. Two
-clients that follow this rule never act on conflicting blocks.
+If the certificate verifies, at least one signed block follows it, and
+the newest block is recent, the client can act on everything at least
+$n$ blocks below that newest block. Two clients that follow this rule at
+the same time never act on conflicting blocks; Section~\ref{sec:lc}
+says when clients checking at different times are covered.
 
 This guarantee is a machine-checked theorem about the validator code that
 actually ships (\code{rust\_timed\_certified\_agreement}, and
@@ -123,8 +126,9 @@ Density makes deep forks impossible while the fault budget holds, so a
 block $n$ deep is final; finality is a fixed depth, not a probability.
 Fork choice matters only for liveness: a node simply follows the highest
 valid tip. A node never stores history. It holds a recursive proof that
-the chain so far is valid, plus a short tail of signed blocks
-(Section~\ref{sec:rules}).
+the chain so far is valid, plus a tail of signed blocks
+(Section~\ref{sec:rules}); in mode 3 the tail must hold more than $n$
+blocks (Section~\ref{sec:rotation}).
 
 \paragraph{Recent certificates matter.} Over a deployment's lifetime,
 keys leak: machines are broken into and later cleaned, keys are stolen.
@@ -149,11 +153,13 @@ show why theft defeats it (Section~\ref{sec:rotation}).
 \paragraph{Proofs about the shipped validator.} The validator is one Rust file. We
 translate it into Lean~4 (with Charon and Aeneas) and prove the
 translation sound against the model, so the core safety theorems are
-about the code that runs. Block ids are checked outside it, by the
+about the code that runs, with signature checking modelled as an ideal
+functionality (Section~\ref{sec:assumptions}). Block ids are checked outside it, by the
 hashing layer; that is a named assumption. The key-rotation results are proved for the model today
-(Section~\ref{sec:impl}). The same Rust source is the circuit of the
-recursive proof, so the prover proves exactly the rule that was verified;
-we trust the proof system to run that code faithfully. A separate
+(Section~\ref{sec:impl}). The same Rust source also holds the circuit
+of the recursive proof, a separate function proved equal to the model's
+links-and-density rule; it checks no key versions. We trust the proof
+system to run that code faithfully. A separate
 TypeScript implementation is proved sound against the same model, which
 keeps the model independent of any one implementation. The build checks
 that no theorem assumes anything beyond classical logic.
@@ -182,10 +188,12 @@ paper makes it precise.
 One protocol runs throughout. A fixed roster of $n$ validators produces
 blocks in public round-robin slots. Every block states which version of
 its producer's key signed it. A node holds a constant-size certificate
-plus a short tail of recent signed blocks. A verifier accepts a chain
-only if it is valid and its newest block is recent, at most $b$ slots
-old on the verifier's own clock. It then trusts everything $n$ blocks
-deep.
+plus a tail of recent signed blocks. A verifier accepts a chain only if
+it is valid, its tail holds at least one block, and its newest block is
+recent, at most $b$ slots old on the verifier's own clock. It then
+trusts everything $n$ blocks deep. In mode 3 the certificate theorems
+need a tail of more than $n$ blocks, or $2n$ under the per-generation
+budget (Section~\ref{sec:rotation}).
 
 Key rotation is built in. A deployment picks one of three rotation
 \emph{modes}. The modes differ in one rule, the \emph{pin}: the lowest
@@ -201,16 +209,21 @@ duty below is a fixed rule in time, not a response to an event.
 Any attacker in this paper can make a validator \emph{lose} its key:
 destroy it, jam its signer, or force a rotation. Against that, all three
 modes give the same client contract: \textbf{keep the genesis and a
-clock, and sleep as long as you like}. Losing a key changes none of the
-assumptions of Theorem~\ref{thm:lc}, so each mode's validator inherits it
-(Theorem~\ref{thm:keyloss}). The validator that lost its key recovers
-through its mode: a new key version in mode 1, the next scheduled
-generation in mode 2, the next lockstep switch in mode 3. In mode 1, Lean
-proves that once it has a new registered key, its next slot extends its
-valid chain with a valid block, provided at most $\fmax$ slots per window
-failed and the other honest validators kept every window dense while it
-was out (\code{liveness\_produce\_blockK},
-Assumption~\ref{ass:delivery}).
+clock, and sleep as long as you like}. A destroyed key is held by no
+one, so losing it exposes nothing, provided the validator's record of
+what it has signed survives the loss. Theorem~\ref{thm:lc}'s assumptions
+are then unchanged, and it holds for each mode's validator
+(Theorem~\ref{thm:keyloss}). This is a modelling argument, made in
+Section~\ref{sec:rotation}, not a separate theorem. The validator that
+lost its key recovers through its mode: a new key version in mode 1, the
+next scheduled generation in mode 2 (offline for up to one era), the
+next lockstep switch in mode 3. In mode 1, Lean proves the chain part:
+in the unsigned model, its next block, stating the new version, extends
+its valid chain to a valid chain, provided at most $\fmax$ slots per
+window failed, its own missed slots included, and the other honest
+validators kept every window dense while it was out
+(\code{liveness\_produce\_blockK}, Assumption~\ref{ass:delivery}). That
+the new version has a key verifiers accept is the deployment's duty.
 
 \paragraph{Mode 1: reactive rotation.}
 Validators rotate whenever they choose, routinely or after losing a key.
@@ -263,9 +276,9 @@ earns a finer fault budget, counted per generation
 no theft, any mode & any of the three &
   genesis + clock & no &
   Thm.~\ref{thm:lc}: \code{timed\_light\_client\_safety}
-  (Rust: \code{rust\_timed\_certified\_agreement}); per mode
-  \code{keyrot\_loss\_agreement}, \code{sched\_loss\_agreement},
-  \code{lockstep\_loss\_agreement} \\
+  (Rust: \code{rust\_timed\_certified\_agreement}); restricted to each
+  mode's validator: \code{keyrot\_loss\_agreement},
+  \code{sched\_loss\_agreement}, \code{lockstep\_loss\_agreement} \\
 \addlinespace
 1 reactive & the chain itself & --- & --- &
   none against theft (Section~\ref{sec:rotation}); lost keys: row above \\
@@ -277,8 +290,9 @@ no theft, any mode & any of the three &
 \addlinespace
 3 lockstep & the roster's counter &
   genesis + clock (clock only: Thm.~\ref{thm:lock-gen}) & yes &
-  Thm.~\ref{thm:lock}: \code{lockstep\_client\_safety};
-  Thm.~\ref{thm:lock-gen}: \code{lockstep\_client\_safety\_gen} \\
+  Thm.~\ref{thm:lock-gen}: \code{lockstep\_client\_safety\_gen};
+  Thm.~\ref{thm:lock} (theft budget is lifetime):
+  \code{lockstep\_client\_safety} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -408,7 +422,7 @@ a rotation mode (Section~\ref{sec:rotation}).
 \subsection{What a node holds}
 
 A node does not keep history. It keeps a \emph{certified chain}: a
-constant-size certificate plus a short tail of recent signed blocks. The
+constant-size certificate plus a tail of recent signed blocks. The
 certificate vouches for everything below the tail. It exposes a
 \emph{claim}: the slot, height and id of the newest block it covers,
 plus a few blocks near that point so that density can be counted across
@@ -460,13 +474,18 @@ and only if:
   Section~\ref{sec:rules}, namely certificate, signatures, links,
   density, and key versions under the deployment's mode
   (\code{validCertifiedChain} plus the mode's key checks); and
+\item it has a \emph{tail}: at least one signed block follows the
+  certificate; in mode 3, and for the untimed mode-2 certificate
+  theorem, more than $n$ ($2n$ under mode 3's per-generation budget);
+  and
 \item it is \emph{recent}: its newest block is at most $b$ slots old on
   the verifier's clock.
 \end{enumerate}
 Then trust everything $n$ blocks below the newest block.
 
 Every certificate-level theorem in this paper is about certified chains that
-pass this rule. In Lean that appears as explicit hypotheses on each tail:
+pass this rule. A bare certificate, with no tail, is covered by none of
+them. In Lean the rule appears as explicit hypotheses on each tail:
 it links to the certificate's newest block (\code{hLink}) and block to
 block (\code{hLinks}), its windows are dense (\code{hDense}), its blocks
 are signed (\code{hSigned}), it meets the mode's key-version checks, and
@@ -535,7 +554,8 @@ affects safety: the theorems of Section~\ref{sec:results} hold for
 Selection matters only for liveness.
 
 \paragraph{Compaction.} From time to time, a node folds the oldest tail
-blocks into the certificate, keeping the tail short. Certificates are
+blocks into the certificate, keeping the tail short, but never shorter
+than the verifier rule requires. Certificates are
 proofs, not authority, so anyone may run the prover; one untrusted
 proving service is enough. If proving falls behind, tails simply grow
 until it catches up.
