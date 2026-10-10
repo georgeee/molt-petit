@@ -65,7 +65,7 @@ All safety claims are machine-checked in Lean~4, under the assumptions
 listed in Section~\ref{sec:assumptions} and a few implementation
 assumptions named in Section~\ref{sec:impl}. The core claims cover the actual
 Rust validator code. The recursive certificate proves a circuit written
-in the same source and proved equal to the model's chain rule (we trust
+in the same source and proved sound for the model's chain rule (we trust
 the proof system to run it faithfully). Block ids
 are checked by the hashing layer around the validator, an assumption we
 name. The
@@ -157,8 +157,8 @@ about the code that runs, with signature checking modelled as an ideal
 functionality (Section~\ref{sec:assumptions}). Block ids are checked outside it, by the
 hashing layer; that is a named assumption. The key-rotation results are proved for the model today
 (Section~\ref{sec:impl}). The same Rust source also holds the circuit
-of the recursive proof, a separate function proved equal to the model's
-links-and-density rule; it checks no key versions. We trust the proof
+of the recursive proof, a separate function proved sound for the model's
+links-and-density rule (what it accepts satisfies the rule); it checks no key versions. We trust the proof
 system to run that code faithfully. A separate
 TypeScript implementation is proved sound against the same model, which
 keeps the model independent of any one implementation. The build checks
