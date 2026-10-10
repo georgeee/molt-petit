@@ -1,6 +1,7 @@
 import Rust.Results_rust
 import Rust.Equiv
 import Rust.BridgeK
+import Rust.FoldStep
 
 /-!
 # Axiom audit — Rust results
@@ -37,6 +38,17 @@ Charon + Aeneas extraction is certified to introduce no axioms of its own.
 /-- info: 'Rust.valid_chain_be_validChain' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Rust.valid_chain_be_validChain
+-- Pass 26: the certificate fold step (what the fold circuit runs) yields the
+-- GroundedCert* claims the certified theorems take (N2, N5)
+/-- info: 'Rust.cert_fold_k_sound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Rust.cert_fold_k_sound
+/-- info: 'Rust.cert_fold_sched_sound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Rust.cert_fold_sched_sound
+/-- info: 'Rust.cert_fold_lock_sound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Rust.cert_fold_lock_sound
 -- The indexed validator, re-extracted and bridged: Rust valid_chain_k acceptance
 -- projects to the model's ValidChain ∧ KeyIndexMonotone (the ≤ in-force pin follows
 -- on full chains) — no Aeneas Std `sorry` reaches the closure.
