@@ -25,7 +25,7 @@ use plonky2::plonk::proof::{ProofWithPublicInputs, ProofWithPublicInputsTarget};
 
 use plonky2::hash::hash_types::HashOutTarget;
 
-use molt_petit::{valid_chain_be, Backend as MpBackend, BlockG, ChainG, Hash, HashG};
+use molt_petit::{valid_chain_be, Backend as MpBackend, BackendK as MpBackendK, BlockG, ChainG, Hash, HashG};
 
 use crate::backend::CMP_BITS;
 use crate::sphincs;
@@ -46,8 +46,8 @@ pub struct MBool {
 
 /// A plonky2 circuit that implements `molt_petit::Backend`.
 pub struct MpCircuit {
-    b: RefCell<CircuitBuilder<F, D>>,
-    pw: RefCell<PartialWitness<F>>,
+    pub(crate) b: RefCell<CircuitBuilder<F, D>>,
+    pub(crate) pw: RefCell<PartialWitness<F>>,
 }
 
 impl MpCircuit {
@@ -56,6 +56,27 @@ impl MpCircuit {
             b: RefCell::new(CircuitBuilder::<F, D>::new(CircuitConfig::standard_recursion_config())),
             pw: RefCell::new(PartialWitness::new()),
         }
+    }
+
+    /// A circuit constant (fixed in the circuit, not chosen by the prover).
+    pub fn constant(&self, v: F) -> MNum {
+        let t = self.b.borrow_mut().constant(v);
+        MNum { t, v }
+    }
+
+    /// Wrap an existing wire whose value the witness already determines.
+    pub fn wrap(&self, t: Target, v: F) -> MNum {
+        MNum { t, v }
+    }
+
+    /// The wire of a number (to connect or register it).
+    pub fn target(x: &MNum) -> Target {
+        x.t
+    }
+
+    /// The value of a number.
+    pub fn value(x: &MNum) -> F {
+        x.v
     }
 
     /// Lift a witness field element to a wire.
@@ -146,6 +167,56 @@ impl MpBackend for MpCircuit {
     }
     fn bool_to_num(&self, b: MBool) -> MNum {
         MNum { t: b.t.target, v: if b.v { F::ONE } else { F::ZERO } }
+    }
+}
+
+impl MpCircuit {
+    /// Witnessed floor division: `a = q * d + r`, `r < d`, `q < 2^CMP_BITS`.
+    /// Sound for `a < 2^CMP_BITS` and `0 < d < 2^20` (so `q * d + r` does not
+    /// wrap the Goldilocks field); the fold step only divides by `n` and `era`.
+    fn divmod(&self, a: MNum, d: MNum) -> (MNum, MNum) {
+        let (av, dv) = (a.v.to_canonical_u64(), d.v.to_canonical_u64());
+        let (qv, rv) = if dv == 0 { (0, 0) } else { (av / dv, av % dv) };
+        let (q, r) = {
+            let mut b = self.b.borrow_mut();
+            let q = b.add_virtual_target();
+            let r = b.add_virtual_target();
+            let qd = b.mul(q, d.t);
+            let s = b.add(qd, r);
+            b.connect(s, a.t);
+            b.range_check(q, CMP_BITS);
+            (q, r)
+        };
+        self.pw.borrow_mut().set_target(q, F::from_canonical_u64(qv)).expect("set q");
+        self.pw.borrow_mut().set_target(r, F::from_canonical_u64(rv)).expect("set r");
+        let rq = MNum { t: r, v: F::from_canonical_u64(rv) };
+        let below = self.lt(rq, d);
+        self.assert(below);
+        (MNum { t: q, v: F::from_canonical_u64(qv) }, rq)
+    }
+}
+
+impl MpBackendK for MpCircuit {
+    fn div(&self, a: MNum, d: MNum) -> MNum {
+        self.divmod(a, d).0
+    }
+    fn rem(&self, a: MNum, d: MNum) -> MNum {
+        self.divmod(a, d).1
+    }
+    fn select(&self, c: MBool, a: MNum, b: MNum) -> MNum {
+        let t = self.b.borrow_mut().select(c.t, a.t, b.t);
+        MNum { t, v: if c.v { a.v } else { b.v } }
+    }
+    fn monus(&self, a: MNum, b: MNum) -> MNum {
+        let below = self.lt(a, b);
+        let diff = {
+            let mut bl = self.b.borrow_mut();
+            bl.sub(a.t, b.t)
+        };
+        let dv = if a.v.to_canonical_u64() < b.v.to_canonical_u64() { F::ZERO } else { a.v - b.v };
+        let zero = self.zero();
+        let t = self.b.borrow_mut().select(below.t, zero.t, diff);
+        MNum { t, v: dv }
     }
 }
 

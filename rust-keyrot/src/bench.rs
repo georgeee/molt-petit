@@ -19,6 +19,7 @@
 //!   4. Inline certificate over 4 blocks (consensus + density + K verifies).
 //!   5. Recursive certificate over 4 blocks (consensus + K subproofs).
 //!   6-10. Medians, recursive-batch scaling, aggregation strategies (8/64/2048).
+//!   BENCH_FOLD=1: the fold certificate (one cyclic proof per block).
 //!
 //! Run:  ~/.rustup/.../bin/cargo run --release --bin bench
 
@@ -291,7 +292,86 @@ fn xmss_bench() -> Result<()> {
     Ok(())
 }
 
+/// The recursive (fold) certificate: one cyclic proof per block, each running
+/// the verified `cert_step_*_be` and verifying the previous proof. Prints a
+/// recursion-floor calibration row first, so the fold rows can be read against
+/// the published table on other hardware.
+fn fold_bench() -> Result<()> {
+    use molt_petit_keyrot::fold_circuit::{demo_chain, exposed_state, native_step, FoldProver, Mode};
+    use plonky2::gates::noop::NoopGate;
+
+    println!("\nFold certificate (cyclic recursion, verified cert_step_*_be per block)");
+    // Calibration: verify one 2^13-row proof inside a 2^12-row circuit, as in
+    // the table's recursion-floor row.
+    let mut b = CircuitBuilder::<F, D>::new(CircuitConfig::standard_recursion_config());
+    while b.num_gates() < (1 << 13) - 200 {
+        b.add_gate(NoopGate, vec![]);
+    }
+    let inner = b.build::<C>();
+    let ip = inner.prove(PartialWitness::new())?;
+    let mut ob = CircuitBuilder::<F, D>::new(CircuitConfig::standard_recursion_config());
+    let pt = ob.add_virtual_proof_with_pis(&inner.common);
+    let vd = ob.constant_verifier_data(&inner.verifier_only);
+    ob.verify_proof::<C>(&pt, &vd, &inner.common);
+    let outer = ob.build::<C>();
+    let mut v = vec![];
+    for _ in 0..5 {
+        let mut pw = PartialWitness::new();
+        pw.set_proof_with_pis_target(&pt, &ip)?;
+        let t = Instant::now();
+        outer.prove(pw)?;
+        v.push(t.elapsed());
+    }
+    println!(
+        "   calibration: recursion floor (verify one 2^{} proof): degree 2^{}, PROVE {:.3} s (median of 5)",
+        inner.common.degree_bits(),
+        outer.common.degree_bits(),
+        median(v).as_secs_f64()
+    );
+
+    let steps = 2 * N as u64 + 2;
+    for (label, mode) in [("mode 1 (K)", Mode::K), ("mode 2 (Sched, era = n)", Mode::Sched { era: N as u64 }), ("mode 3 (Lock)", Mode::Lock)] {
+        let (g, bs) = demo_chain(N, steps);
+        let t = Instant::now();
+        let mut fp = FoldProver::new(N, mode, &g, 12)?;
+        let shape = t.elapsed();
+        let mut st = fp.genesis_state().clone();
+        let mut proof: Option<Pf> = None;
+        let (mut tb, mut tp, mut tv) = (vec![], vec![], vec![]);
+        let mut degree = 0;
+        for blk in &bs {
+            let next = native_step(N as u64, mode, &st, blk).expect("native accepts");
+            let (data, p) = fp.step(&st, proof.as_ref(), blk)?;
+            tb.push(fp.last_build);
+            tp.push(fp.last_prove);
+            let t = Instant::now();
+            data.verify(p.clone())?;
+            tv.push(t.elapsed());
+            degree = data.common.degree_bits();
+            assert_eq!(exposed_state(N, mode, &p)?, next);
+            st = next;
+            proof = Some(p);
+        }
+        let bytes = proof.as_ref().map(|p| p.to_bytes().len()).unwrap_or(0);
+        println!(
+            "   {label}: n = {N}, {steps} blocks, step circuit {} gates -> degree 2^{degree}; shape fixed in {:.1} s; \
+             per block PROVE {:.2} s (median; circuit rebuild {:.2} s, a prototype artifact), verify {:.1} ms, proof {} KiB; state == native fold at every block",
+            fp.step_gates,
+            shape.as_secs_f64(),
+            median(tp).as_secs_f64(),
+            median(tb).as_secs_f64(),
+            ms(median(tv)),
+            bytes / 1024
+        );
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
+    // BENCH_FOLD=1 runs ONLY the fold-certificate section.
+    if std::env::var("BENCH_FOLD").is_ok() {
+        return fold_bench();
+    }
     let threshold = quorum(N as u64) as usize;
     println!("Molt Petit × plonky2 — performance (n = {N}, quorum q = {threshold})");
     println!("SPHINCS+ over Poseidon (NIST SLH-DSA sets), Poseidon-Goldilocks\n");

@@ -19,6 +19,7 @@
 pub mod backend;
 pub mod chain;
 pub mod es256;
+pub mod fold_circuit;
 pub mod crypto;
 pub mod keyset;
 pub mod mp_circuit;
