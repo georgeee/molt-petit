@@ -588,6 +588,8 @@ against the window.
 For the usual roster size $n = 3\fmax + 1 \ge 4$, a lookback of
 $\ell = n - 1 + \sigma$ is enough, where $\sigma$ is the honest clock lead
 of Assumption~\ref{ass:sig}. The general condition is in the Lean.
+For $n \le 3$ the budget is $\fmax = 0$: the results hold, but they
+tolerate no exposure at all.
 \quad\textit{(Lean: \code{ExposureBounded}.)}
 \end{assumption}
 
@@ -612,9 +614,17 @@ signature (Section~\ref{sec:protocol}).
 \end{assumption}
 
 Part (b) is the ideal-signature reading of Section~\ref{sec:protocol}; a
-signature scheme provides it exactly when it is EUF-CMA. For part (c), an
+signature scheme provides it exactly when it is EUF-CMA. In the Lean,
+\code{verify} is that ideal functionality's table at time $R$, not a
+concrete scheme. So the theorems cover the validator code, while the
+cryptography (key lookup, signature and certificate checks) enters only
+as this assumption. For part (c), an
 honest validator keeps a persistent record of what it has signed, the
-standard guard against signing twice after a restart. A slow clock costs
+standard guard against signing twice after a restart. The record must
+be kept apart from the key material and outlive it: a validator that
+loses its key and signs again under a new key version must still refuse
+every slot it already signed, or part (c) fails with nothing charged to
+the budget. A slow clock costs
 only liveness; a fast one is bounded by $\sigma$.
 
 One more fact follows from how ids are formed: a block can be signed only
@@ -645,17 +655,34 @@ collision resistance says no one ever \emph{finds} one. Limiting the
 statement to blocks that actually occur turns the second fact into the
 first. Mode 3 and the untimed mode 2 theorem use the same assumption over
 blocks that verify under the key version they state
-(\code{SignedDeclared}).
+(\code{SignedDeclared}). A third form, \code{IdInjective} over a record
+of the blocks that occur (\code{ChainInRecord}), is what
+\code{same\_block\_same\_prefix} uses to extend agreement on one block to
+its whole prefix. All three say that no one finds a collision among real
+blocks.
 
 \begin{assumption}[Certificate soundness]\label{ass:cert}
 A certificate that verifies vouches for a claim built from the genesis
 by adding one block at a time. Each step checks the links, the density
-of newly completed windows, and the new block's signature and id.
-\quad\textit{(Lean: \code{GroundedCert}.)}
+of newly completed windows, and that the new block is admissible
+(Assumption~\ref{ass:sig}). Modes 2 and 3 add their key-version check to
+each step (Section~\ref{sec:rotation}).
+\quad\textit{(Lean: \code{GroundedCert}, \code{GroundedCertSched},
+\code{GroundedCertLock}.)}
 \end{assumption}
 
 This assumption does not assume a valid chain behind the certificate. A
-proved lemma rebuilds that chain from the steps.
+proved lemma rebuilds that chain from the steps (\code{groundedCert\_history},
+with \code{groundedCertSched\_history} and \code{groundedCertLock\_history}
+for modes 2 and 3). The certificate theorems are stated for any such
+chain: they conclude about the rebuilt history followed by the tail.
+
+The genesis needs no signature in Theorem~\ref{thm:lc}'s certificate. The
+full-chain validators of every mode, and the certificate steps of modes 2
+and 3, check it like any other block: it must be signed by validator~0
+under the key version it states, and in mode 2's certificate form its id
+must count as formed. That signature is part of the id of every height-1
+block, so a deployment fixes it once, with the genesis.
 
 \begin{assumption}[Clock]\label{ass:clock}
 The verifier's clock reads $\mathit{now}$, and real time is at most
@@ -705,10 +732,12 @@ still live. Mode 3 and the untimed mode 2 theorem face this attacker.
 \paragraph{How far each result reaches.} Every result is a Lean theorem
 about the model. Theorem~\ref{thm:lc}, with the same assumptions, is
 also carried to both implementations by their soundness bridges (Section~\ref{sec:impl}):
-\code{rust\_timed\_certified\_agreement} for the Rust validator, which
-also covers its key-version checks, and
-\code{ts\_timed\_certified\_agreement} for the TypeScript one. The other
-results are, today, proved for the model only.
+\code{rust\_timed\_certified\_agreement} for the Rust validator and
+\code{ts\_timed\_certified\_agreement} for the TypeScript one. Theorem~\ref{thm:lc}
+needs no key-version rule, and the validator it is proved for
+(\code{validate\_certified\_chain}) runs none. The key-version check at a
+certificate boundary is proved sound separately (Section~\ref{sec:impl}).
+The other results are, today, proved for the model only.
 
 \paragraph{Where to check.} Each result the paper cites as \code{xxx} is
 stated as \code{thm\_xxx} in \code{Spec/Statements.lean} and proved as
@@ -753,6 +782,12 @@ least $n$ blocks below the lower tip.
 The result also covers a chain the node \emph{produced} rather than
 received, because production ships nothing that would fail the
 validator (Section~\ref{sec:rules}).
+
+The theorem compares two chains checked at one real time $R$. Two
+clients that check at different times are covered when the earlier
+chain is still recent at the later time: apply the theorem there to
+both. We have not proved a statement for chains checked at different
+times.
 
 \paragraph{Why it holds.} The proof is the classic quorum count, with the
 timing made explicit.
@@ -857,14 +892,20 @@ the client must do.
 
 \paragraph{Lost keys, in every mode.} A \emph{lost} key (destroyed, not
 stolen) gives the attacker nothing. The validator rotates, and the
-protocol already supports that. With nothing stolen, the corruption the
-theorems count shrinks to rented slots alone, in every mode
-(\code{badKeyrot\_lossOnly}, \code{badSched\_lossOnly}; mode 3 inherits
-mode 2's count). Theorem~\ref{thm:lc} then applies to each mode's
-validator unchanged: \code{keyrot\_loss\_agreement} (mode 1,
+protocol already supports that. The argument is about how a deployment
+reads Assumption~\ref{ass:budget}, not a separate theorem. A destroyed
+key is held by no one, so losing it exposes nothing and charges nothing
+to the budget, provided the validator's signing record survives the loss
+(Assumption~\ref{ass:sig}(c)). Theorem~\ref{thm:lc}'s assumptions are
+unchanged, and so is the theorem. Restricting it to the chains each
+mode's validator accepts gives \code{keyrot\_loss\_agreement} (mode 1,
 Theorem~\ref{thm:keyloss}), \code{sched\_loss\_agreement} (mode 2) and
 \code{lockstep\_loss\_agreement} (mode 3), each for chains with
-correctly formed ids (\code{hFormed}), as in Theorem~\ref{thm:keyloss}. A client holding only the
+correctly formed ids (\code{hFormed}). These say that each mode's extra
+rule costs nothing; they contain nothing specific to loss. In the
+slot-by-slot count used by mode 3 and the untimed mode 2, the same
+reading is \code{badKeyrot\_lossOnly} and \code{badSched\_lossOnly}:
+with nothing stolen, only rented slots count. A client holding only the
 genesis and a clock gets the guarantees of
 Sections~\ref{sec:lc}--\ref{sec:timed}, with no anchor and any pin.
 
@@ -877,14 +918,19 @@ security~\cite{forwardsec}. Modes 2 and 3 are built for this attacker.
 \item Mode 3, and an older untimed form of mode 2, count theft
   differently: per window of $n$ slots, at most $\rho$ \emph{rented}
   slots plus at most $T$ validators with a \emph{live} key stolen, with
-  $\rho + T \le \fmax$.
+  $\rho + T \le \fmax$. (The untimed mode 2 theorems take the combined
+  count directly: at most $\fmax$ slots per window that are rented or
+  have a live stolen key. The split into $\rho$ and $T$ is one way to
+  meet it.)
 \end{itemize}
 A rented slot is one the attacker controls for that slot only and then
 loses. If a rented device is made to sign for other slots, that key
 version counts as stolen, in $T$. A stolen key is \emph{live} if its
 version is at least the one in force. So a stolen key stops counting as
 soon as its retirement takes force: healing is built into the count
-(\code{badSched}).
+(\code{badSched}), looking forward from the theft. Looking back, the
+count can still charge windows before the theft; the untimed mode 2
+theorems and Theorem~\ref{thm:lock} do, as each says below.
 
 This count also needs \emph{version independence}: stealing version $j$
 reveals nothing about any later version $j' > j$. Key-insulated
@@ -901,20 +947,31 @@ never stolen. Then:
   signed by $i$'s own signing device;
 \item that device signs at most one block per slot, ever, keeping a
   persistent record;
-\item it states the version the mode's rule assigns to that slot.
+\item in mode 3, it states the version the mode's rule assigns to that
+  slot.
 \end{itemize}
-\quad\textit{(Lean: \code{SchedUnforgeable}, \code{SchedCoreUnforgeable}.)}
+\quad\textit{(Lean: \code{SchedUnforgeable}, \code{SchedCoreUnforgeable};
+the third item is the \code{declared} field of mode 3's packages.)}
 \end{assumption}
 
 The device's clock may run up to $\sigma$ slots ahead, as in
 Assumption~\ref{ass:sig}. The assumption covers only the honest path:
-once a key is rented or stolen, the attacker is free of it.
+once a key is rented or stolen, the attacker is free of it. The first
+item applies to a block that verifies under version $j$ whatever version
+the block states, so it also rules out an unstolen key of a wrong
+version signing for that slot. The untimed mode 2 theorems use
+\code{SchedUnforgeable} for full chains and the stronger
+\code{SchedCoreUnforgeable} for the certificate form. Both are read at
+the verifier's clock reading $\mathit{now}$; two clients with different
+readings each need it at their own reading.
 
 Why it is assumed rather than derived from Theorem~\ref{thm:lc}'s
 assumptions: it is stated per key version, and one slot can have several
 eligible key versions, only one of which verifies. So one key being safe
-does not make the slot safe. Lean checks this gap
-(\code{badSched\_single\_key\_safe\_not\_enough}).
+does not make the slot safe. This is a property of the definition: the
+count quantifies over every live version, so a single safe version does
+not clear the slot. We record it as
+\code{badSched\_single\_key\_safe\_not\_enough}.
 
 \subsubsection*{Mode 1: rotate when you want}
 
@@ -922,21 +979,33 @@ does not make the slot safe. Lean checks this gap
 signing under a higher version. The pin comes from the chain being
 checked. Validator $i$'s version \emph{in force} at a slot
 (\code{inForce}) is the highest version $i$ has used in the chain's
-\emph{confirmed} part, meaning blocks at least $n$ slots old. No block may
-state less (\code{validSignedChainK$'$}).
+\emph{confirmed} part, meaning blocks at least $\Delta_{\mathrm{conf}}$
+slots old. No block may state less (\code{validSignedChainK$'$}).
 
-Why $n$ slots: every chain must switch at the same moment, and ``the
-announcing block is confirmed'' is that moment. At depth $n$, all
-accepted chains provably agree. (The Lean proof allows any depth of at
-least $n$.) At the prototype's settings, a rotation takes effect in under
-half a minute.
+On a full chain the pin adds nothing: the monotone rule already forbids
+a validator to state less than any version it used earlier, so every
+chain that passes \code{keyMonoOk} passes the pin, for every
+$\Delta_{\mathrm{conf}}$. The theorems below hold for any
+$\Delta_{\mathrm{conf}}$. At a certificate boundary the verifier holds
+the certificate's snapshot of each validator's version floor instead of
+the history, and checks each tail block against it (\code{keyMonoFrom}).
+That check is proved sound for both implementations
+(Section~\ref{sec:impl}); no agreement theorem relies on it, since
+Theorem~\ref{thm:lc} needs no key-version rule. We take
+$\Delta_{\mathrm{conf}} = n$ slots, so at the prototype's settings a
+rotation takes effect in under half a minute.
 
 \paragraph{What it guarantees: recovery from key loss.} A validator that
-loses its key signs its next block under a higher registered version,
-and production resumes (\code{liveness\_produce\_blockK}). The new
-version must already be in the deployment's key registry, for instance
-delegated from the validator's cold root. The verifier never learns a new
-key from the chain. Loss changes none of the assumptions of
+loses its key signs its next block under a higher version, and
+production resumes. The Lean proves the chain part of this
+(\code{liveness\_produce\_blockK}): in the unsigned model, a block that
+states a version at least the producer's floor extends a valid chain to
+a valid chain, if the windows it completes are dense. The windows count
+the recovering validator's own missed slots against the $\fmax$. That
+the new version has a key the verifier accepts is outside the
+statement: the deployment's key registry must already map it, for
+instance delegated from the validator's cold root. The verifier never
+learns a new key from the chain. Loss changes none of the assumptions of
 Theorem~\ref{thm:lc}, so mode 1 inherits it directly.
 
 \begin{theorem}[Mode 1 under key loss; Lean
@@ -992,7 +1061,9 @@ at the schedule. Slot $s$, with validator $i = s \bmod n$, is
 \item someone other than $i$ can sign with one of $i$'s keys of version
   $j \ge \mathit{gen}(s)$ (written $\mathit{Stolen}(i, j, r)$).
 \end{itemize}
-Both may change over time arbitrarily. A block is \emph{admissible} when
+Both may change over time, with one restriction: once a key has really
+been stolen, $\mathit{Stolen}$ stays true for it, since the thief still
+holds it (Assumption~\ref{ass:budget}). A block is \emph{admissible} when
 it verifies under the version it states, that version is at least
 $\mathit{gen}$ of its slot (\code{SchedAdmissible}), and its id is
 correctly formed. Assumption~\ref{ass:sig} is needed for admissible
@@ -1020,13 +1091,14 @@ step (\code{GroundedCertSched}, \code{GroundedHistorySched}) and
 admissible tail blocks.
 \end{theorem}
 
-Both forms come from one generalisation of the core, proved once.
-Theorems~\ref{thm:lc} and~\ref{thm:forge} hold, with all their other
-assumptions, when Assumption~\ref{ass:sig} is required only of blocks
-meeting some per-block test that every block of both chains passes
-(for full chains, \code{exposure\_agreement\_on} and
-\code{exposure\_no\_early\_signing\_on}; for certificates,
-\code{exposure\_certified\_agreement\_on}).
+Both forms come from one core, proved once. Theorems~\ref{thm:lc}
+and~\ref{thm:forge} are already stated for an arbitrary per-block test:
+Assumption~\ref{ass:sig} is required only of blocks that pass it, and
+every block of both chains must pass it. Under their general names they
+are \code{exposure\_certified\_agreement\_on} and
+\code{exposure\_no\_early\_signing\_on}; the full-chain form of
+Theorem~\ref{thm:lc} is \code{exposure\_agreement\_on}. Mode 2 picks
+the test: admissibility as defined above.
 
 That restriction matters. Required of \emph{every} signed block, the
 assumption would fail as soon as a stolen key signed a block with a
@@ -1040,10 +1112,13 @@ Assumption~\ref{ass:budget} precise.
 \item A stolen version $j$ exposes only slots whose generation is at
   most $j$.
 \item It counts against every window whose stretch of real time reaches
-  the theft, from about the time of the theft until era $j$ ends. It
-  never counts against a window whose stretch ended before the theft.
-\item A retired key exposes nothing, stolen or not. No erasure is
-  needed.
+  the theft, from about the time of the theft until era $j$ ends. Since
+  a window's stretch closes $\varphi$ slots after the window, a theft up
+  to $\varphi$ slots after era $j$ ends still counts against era $j$'s
+  last windows. It never counts against a window whose stretch ended
+  before the theft.
+\item A key retired more than $\varphi$ slots ago exposes nothing,
+  stolen or not. No erasure is needed.
 \item A key made ahead of its era and stolen early counts until its era
   ends.
 \item A stolen \emph{cold root} gives every later version of its
@@ -1061,7 +1136,13 @@ what was actually taken.
 Delegate each generation's signing key just in time for its era; then a
 theft costs only the rest of that era. The era length $E$ is a dial:
 longer eras mean fewer cold-root ceremonies, but a stolen live key counts
-for longer. A retired key is harmless by rule, not by secrecy. Separately,
+for longer. A retired key is harmless by rule, not by secrecy. A
+validator that loses its live key is offline until its next generation,
+up to one era, and its slots count against $\fmax$ while it waits. The
+model gives each validator one key per version (\code{KeyRegistry}), so
+re-delegating a fresh key for the same generation is outside it; a
+deployment that allows it must count both keys under that version in
+$\mathit{Stolen}$. Separately,
 a chain that passes the mode-2 validator and whose tip states a generation whose era ended longer ago than
 the recency window fails the recency check
 (\code{sched\_oldkey\_fork\_stale}).
@@ -1098,8 +1179,14 @@ $H + n \le \mathit{tip.slot} + 1$ for both tips). Its count charges a stolen,
 not-yet-retired key from the start of time, so early theft and cold-root
 custody must be assumed rather than charged. Its certificate form is
 \code{sched\_recent\_certified\_suffix\_agreement\_horizon}, which, like
-every certificate, still starts from the genesis. Otherwise
-Theorem~\ref{thm:sched} supersedes it.
+every certificate, still starts from the genesis. It concludes only about
+blocks of the presented tail at least $n$ tail blocks below the tail's
+tip, so a client needs a tail longer than $n$ blocks.
+\code{sched\_recent\_certified\_history\_agreement\_horizon} extends it
+to the rebuilt history behind the certificate
+(\code{groundedCertSched\_history}): the full chains agree on every block
+at least $n$ below both tips. Otherwise Theorem~\ref{thm:sched}
+supersedes it.
 
 \paragraph{A mode-2 deployment, end to end.}
 \begin{itemize}
@@ -1166,6 +1253,15 @@ The client holds only the genesis and a clock; there is no schedule to
 store.
 \end{theorem}
 
+\paragraph{Its budget is a lifetime cap.} Theft here is not time-stamped,
+and the counter starts at its genesis value and never goes down. So the
+budget's first window already counts every validator that \emph{ever}
+has a key of any used generation stolen, and the budget must hold at
+that window too. In effect $T$ caps the number of validators that lose a
+key over the deployment's whole life: with $n = 7$, two. Rotation does
+not reset it. Theorem~\ref{thm:lock-gen}, which counts each generation
+separately, and its timed form below are the theorems to plan with.
+
 \paragraph{Why it holds.} A Lean \emph{pinning} theorem
 (\code{lockstep\_declares\_rosterGen}) shows that on any accepted recent
 chain, every complete grid window states exactly the roster's counter.
@@ -1212,8 +1308,10 @@ window is not complete and cannot be used, which is why the depth is
 $2n$: exactly $n + ((t{+}1) \bmod n)$ for lower tip slot $t$
 (\code{lockstepGen\_shared\_prefix\_sharp}).
 
-The two budgets are not comparable in general. The first gives the second
-when the counter never skips a generation (\code{LockstepPackage.toGen}).
+The first budget gives the second when the counter never skips a
+generation (\code{LockstepPackage.toGen}). They differ otherwise only for
+generations the counter never uses, so in practice the per-generation
+budget is the weaker requirement.
 
 \paragraph{Operator duties.} Two, and they are this mode's real price.
 \begin{itemize}
@@ -1227,8 +1325,12 @@ generation is stolen after the roster has moved past it
 while a generation is live into the per-generation count
 Theorem~\ref{thm:lock-gen} needs (\code{genBound\_of\_preRetirementBound};
 end to end, \code{lockstep\_client\_safety\_timed}). So a deployment
-budgets $T$ validators lost \emph{per generation, while it is live}, not
-$T$ over all time.
+budgets $T$ validators whose generation-$j$ key is stolen \emph{before $j$
+retires}, per generation, not $T$ over all time. A theft before $j$'s
+first window counts too, as in mode 2; nothing assumes it away. Theft
+times here are read on the protocol's grid (real slot $r$ falls in grid
+window $r/n$), so ``erased at the switch'' means by the end of the grid
+window in which the counter moves.
 
 Mode 2 needs neither erasure nor provisioning discipline as a
 hypothesis: its schedule makes retired keys harmless, and its budget
@@ -1247,7 +1349,9 @@ flash storage, which does not erase by overwriting, is not.
   boundary.
 \item \emph{Clients.} They hold the genesis and a clock, nothing else,
   and may sleep for any length of time. On waking, they sync from a
-  certificate plus a short tail, as in modes 1 and 2.
+  certificate plus a tail, as in modes 1 and 2, but the tail must be
+  longer than $n$ blocks ($2n$ under the per-generation count): the
+  certificate theorems below need that many signed blocks.
 \item \emph{The certificate} carries the claim and the tip generation.
   For $n \ge 2$, the claim's own tail determines the generation
   (\code{groundedCertLock\_gen\_of\_tail},
@@ -1257,12 +1361,14 @@ flash storage, which does not erase by overwriting, is not.
 \item \emph{What must hold.} Assumption~\ref{ass:rotation-honest} for
   the pin-free validator, hash collision resistance, the clock
   (Assumption~\ref{ass:clock}), the moving-together discipline, and
-  \emph{either} the $\rho + T$ budget read at the counter one grid window
-  back (Theorem~\ref{thm:lock}, depth $n$), \emph{or}, at depth $2n$, at
-  most $\rho$ rented slots per window and, for each generation $j$, at
-  most $T$ validators whose generation-$j$ key is stolen while $j$ is
-  live (Theorem~\ref{thm:lock-gen}; with time-stamped theft,
-  \code{lockstep\_client\_safety\_timed}).
+  \emph{either}, at depth $2n$, at most $\rho$ rented slots per window
+  and, for each generation $j$, at most $T$ validators whose
+  generation-$j$ key is stolen (Theorem~\ref{thm:lock-gen}); with
+  time-stamped theft and erasure, only thefts before $j$ retires count
+  (\code{lockstep\_client\_safety\_timed}); \emph{or}, at depth $n$, the
+  $\rho + T$ budget read at the counter one grid window back
+  (Theorem~\ref{thm:lock}), which caps the validators that ever lose a
+  key.
 \item \emph{What you get.} Any two accepted chains agree on the lower
   chain's whole confirmed part, with no schedule and no anchor. At equal
   heights they agree on the block $n$ below each tip ($2n$ under the
@@ -1274,9 +1380,17 @@ flash storage, which does not erase by overwriting, is not.
   \code{lockstep\_declares\_rosterGen}. For two certified chains that
   pass the verifier rule (Section~\ref{sec:verifier-rule}), tips recent included:
   \code{lockstep\_recent\_certified\_suffix\_agreement} at depth $n$ and
-  \code{lockstepGen\_recent\_certified\_suffix\_agreement} at depth $2n$,
-  with the certificate's counter pinned to the roster's once its grid
-  window completes (\code{lockstep\_cert\_gen\_pinned}).
+  \code{lockstepGen\_recent\_certified\_suffix\_agreement} at depth $2n$
+  cover blocks of the tails, at least $n$ (or $2n$) tail blocks below
+  each tail's tip. A shorter tail gets no guarantee from them. With the
+  history rebuilt behind each certificate
+  (\code{groundedCertLock\_history}),
+  \code{lockstep\_recent\_certified\_history\_agreement} and
+  \code{lockstepGen\_recent\_certified\_history\_agreement} extend this
+  to the certified prefix: the two full chains agree on every block at
+  least $n$ (or $2n$) below both tips. The certificate's counter is
+  pinned to the roster's once its grid window completes
+  (\code{lockstep\_cert\_gen\_pinned}).
 \end{itemize}
 
 The modes and their main theorems are summarised in
@@ -1286,12 +1400,13 @@ Section~\ref{sec:opmodel}.
 \begin{enumerate}
 \item Mode 1 has no guarantee under key theft (see above).
 \item The mode-2 and mode-3 results are about the model. The Rust
-  validator carries the mode-1 check (bridged in
-  \texttt{Rust/BridgeK.lean}), but neither the schedule pin nor the
-  lockstep rule.
+  validator carries mode 1's monotone check, for full chains
+  (\code{rust\_valid\_chain\_k\_sound}) and at a certificate boundary
+  (\code{validate\_suffix\_k\_sound}), but neither the schedule pin nor
+  the lockstep rule. No agreement theorem uses the monotone check.
 \item Mode 3 and the untimed form of mode 2 rest on
   Assumption~\ref{ass:rotation-honest}, which is assumed, not derived:
-  one safe key does not make a safe slot
+  by the definition of the count, one safe key does not make a safe slot
   (\code{badSched\_single\_key\_safe\_not\_enough},
   \code{badKeyrot\_single\_key\_safe\_not\_enough}). Mode 2's theft
   theorem needs no such assumption; it uses Assumption~\ref{ass:sig}
@@ -1314,17 +1429,23 @@ failing validators (\code{ByzantineBounded}), and honest delivery
 \item \emph{Locally:} when an honest validator holding an accepted chain
   reaches its slot, it produces a block, and the extended chain passes
   the same validator everyone runs.
-\item \emph{Globally:} in a synchronous honest run within the budget,
-  from a well-formed genesis,
-  where each honest block reaches the next honest validator within its
-  slot, the chain is accepted with one block per honest slot. So it
-  reaches any height, and every block eventually becomes $n$ deep.
+\item \emph{Globally:} from a well-formed genesis, a chain with one block
+  in each slot of an increasing list passes the validator, with one block
+  per listed slot, if at most $\fmax$ slots of every window are missing
+  from the list.
 \end{itemize}
 \end{theorem}
 
-The fork-choice rule, adopting the valid chain with the highest tip, is
-what makes honest blocks merge into the single chain the global form
-assumes. A full model of a network with many chains is future work.
+The global form is a density fact about one chain, in the unsigned model
+with block ids standing in for hashes. Read as liveness, the list is the
+honest slots of a synchronous run in which each honest block reaches the
+next honest validator within its slot; the chain then grows by one block
+per honest slot, so it reaches any height and every block eventually
+becomes $n$ deep. That reading is ours, not a Lean statement: the theorem
+models no network, delivery or adversary. The fork-choice rule, adopting
+the valid chain with the highest tip, is what makes honest blocks merge
+into the single chain it assumes. A model of a network with many chains
+is future work.
 
 \paragraph{The slot time.} One number remains: the slot length $\tau$.
 Prover cost sets it, not network latency. The proving cost has a fixed
@@ -1358,17 +1479,28 @@ what carries Theorem~\ref{thm:lc} to the shipped code
   contexts, provided every signature the second accepts, the first
   accepts too (\code{hCryptoSig}). With a single context, as in a
   deployment, this holds trivially.
-\item The bridges cover the validator's core rules and its key-version
-  checks (\code{rust\_valid\_chain\_sound},
-  \code{rust\_valid\_chain\_k\_sound}). The three rotation pins of
+\item The bridges cover the validator's core rules
+  (\code{rust\_valid\_chain\_sound}) and mode 1's monotone key-version
+  check, both on a full chain (\code{rust\_valid\_chain\_k\_sound}) and
+  at a certificate boundary against the certificate's floor snapshot
+  (\code{validate\_suffix\_k\_sound}, with the TypeScript twin
+  \code{ts\_validateSuffixK\_sound}). The validator in
+  \code{rust\_timed\_certified\_agreement},
+  \code{validate\_certified\_chain}, runs no key-version check, and
+  Theorem~\ref{thm:lc} needs none. The three rotation pins of
   Section~\ref{sec:rotation} are, today, checked in the model only.
 \end{itemize}
 
 \emph{The circuit.} The same source has a validator that is generic over
 its backend (\code{valid\_chain\_be}). Run over plonky2, it is the
-certificate's circuit, so the certificate proves exactly the rule that
-was verified, for every $n < 2^{63} - 1$
-(\code{valid\_chain\_be\_validChain}). That each circuit
+certificate's circuit. It is a different function from the native
+validator \code{validate\_certified\_chain}, written in the same file;
+its Lean translation is proved equal to the model's links-and-density
+rule, for every $n < 2^{63} - 1$ (\code{valid\_chain\_be\_validChain}).
+The circuit sees neither a block's key version nor its contents hash.
+Those are bound only through the id, which hashes them, so the
+certificate checks no key-version rule; the per-step checks of modes 2
+and 3 (Section~\ref{sec:rotation}) are not in it. That each circuit
 gadget is faithful is the one remaining trust assumption; it is stated,
 not proved.
 
@@ -1438,8 +1570,15 @@ Two points matter for deployment.
 \item \emph{Consensus is nearly free.} The verified validator adds almost
   nothing to what the application already pays for signatures.
 \item \emph{The slot time follows.} The measured costs feed the slot-time
-  rule of Section~\ref{sec:liveness}. On this hardware, with $n = 7$, it
-  gives $\tau \approx 4$\,s, the figure used throughout the paper.
+  rule of Section~\ref{sec:liveness}, $\tau \ge \mathit{perBlock} +
+  2\,\mathit{baseline}/n$ (\code{recommendedSlot}). Take the per-block
+  cost as one signature subproof plus its check at the recursion floor,
+  $0.36 + 0.19 = 0.55$\,s, and, conservatively, the whole measured
+  certificate as the fixed part. With $n = 7$ that gives
+  $\tau \ge 1.4$\,s for recursive signatures ($3.0$\,s) and
+  $\tau \ge 2.4$\,s for inline ones ($6.6$\,s). The paper uses
+  $\tau = 4$\,s, a margin of about $1.6\times$ over the larger bound for
+  application load and slower hardware.
 \end{itemize}
 Where stateful signatures are acceptable, XMSS~\cite{xmssrfc} over the
 same Poseidon gadgets shrinks the in-circuit verifier from $2^{13}$ to
@@ -1575,7 +1714,10 @@ assumption of the theorem that uses it:
   through them is routine future work);
 \item the operational duties of Section~\ref{sec:rotation}: moving
   together and erasure in mode 3. In mode 2, key provisioning is charged
-  to the budget, not assumed.
+  to the budget, not assumed;
+\item that a lost key exposes nothing: a modelling argument about how a
+  deployment reads the budget (Section~\ref{sec:rotation}), resting on a
+  signing record that survives the loss of key material.
 \end{itemize}
 That the circuit gadgets are faithful is stated, not proved. The
 equivalence lemma, \code{valid\_chain\_be\_validChain}, is proved for
