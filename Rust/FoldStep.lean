@@ -577,7 +577,7 @@ def tailPush : TailG U64 → U64 → U64 → TailG U64
   | .TCons f0 s0 tl, f, s => .TCons f0 s0 (tailPush tl f s)
 
 theorem tail_push_be_eq (t : TailG U64) (f s : U64) :
-    tail_push_be UB.coremarkerCopyInst t f s = ok (tailPush t f s) := by
+    tail_push_be core.marker.CopyU64 t f s = ok (tailPush t f s) := by
   induction t with
   | TNil =>
     unfold tail_push_be
@@ -586,5 +586,156 @@ theorem tail_push_be_eq (t : TailG U64) (f s : U64) :
     unfold tail_push_be
     rw [ih]
     rfl
+
+theorem cert_next_tail_be_corr (t : TailG U64) (slot : U64) :
+    cert_next_tail_be UB () t slot = ok (match t with
+      | .TNil => .TNil
+      | .TCons _ _ tl => tailPush tl 1#u64 slot) := by
+  cases t with
+  | TNil => rfl
+  | TCons f s tl =>
+    unfold cert_next_tail_be
+    dsimp [UB, U64Backend.Insts.Molt_petitBackendU64Bool.one]
+    change tail_push_be core.marker.CopyU64 tl 1#u64 slot = _
+    rw [tail_push_be_eq]
+
+@[simp] theorem entrySlots_tailPush (t : TailG U64) (f s : U64) :
+    entrySlots (tailPush t f s) = entrySlots t ++ [s.val] := by
+  induction t with
+  | TNil => rfl
+  | TCons f0 s0 tl ih =>
+    simp only [tailPush, entrySlots_cons, ih, List.cons_append]
+
+@[simp] theorem tailFlags_tailPush (t : TailG U64) (f s : U64) :
+    tailFlags (tailPush t f s) = tailFlags t ++ [f.val] := by
+  induction t with
+  | TNil => rfl
+  | TCons f0 s0 tl ih =>
+    simp only [tailPush, tailFlags_cons, ih, List.cons_append]
+
+@[simp] theorem presentSlots_tailPush_one (t : TailG U64) (s : U64) :
+    presentSlots (tailPush t 1#u64 s) = presentSlots t ++ [s.val] := by
+  induction t with
+  | TNil =>
+    simp only [tailPush, presentSlots_cons, presentSlots_nil, List.nil_append]
+    rfl
+  | TCons f0 s0 tl ih =>
+    simp only [tailPush, presentSlots_cons, ih]
+    split_ifs <;> simp [List.cons_append]
+
+theorem presentSuffix_tailPush_one (t : TailG U64) (s : U64)
+    (h : PresentSuffix t) : PresentSuffix (tailPush t 1#u64 s) := by
+  induction t with
+  | TNil =>
+    simp [tailPush, PresentSuffix, tailFlags]
+  | TCons f0 s0 tl ih =>
+    dsimp [PresentSuffix] at h ⊢
+    dsimp [tailPush]
+    refine ⟨?_, ih h.2⟩
+    intro hf0
+    intro f' hf'
+    rw [tailFlags_tailPush] at hf'
+    rw [List.mem_append] at hf'
+    rcases hf' with htl | hlast
+    · exact h.1 hf0 f' htl
+    · simp only [List.mem_singleton] at hlast
+      subst hlast
+      rfl
+
+theorem getLast?_append_singleton {α : Type} (l : List α) (x : α) :
+    (l ++ [x]).getLast? = some x := by
+  induction l with
+  | nil => rfl
+  | cons a tl ih =>
+    cases tl with
+    | nil => rfl
+    | cons b rest =>
+      have : (a :: b :: rest ++ [x]).getLast? = (b :: rest ++ [x]).getLast? := rfl
+      rw [this, ih]
+
+theorem pairwise_lt_append_singleton (l : List Nat) (x : Nat)
+    (hmono : l.Pairwise (· < ·)) (hlt : ∀ y ∈ l, y < x) :
+    (l ++ [x]).Pairwise (· < ·) := by
+  induction l with
+  | nil =>
+    simp
+  | cons a tl ih =>
+    have hmono' : tl.Pairwise (· < ·) := List.Pairwise.of_cons hmono
+    have hlt' : ∀ y ∈ tl, y < x := fun y hy => hlt y (List.Mem.tail a hy)
+    have hax : a < x := hlt a (List.Mem.head tl)
+    have ih' := ih hmono' hlt'
+    simp only [List.cons_append, List.pairwise_cons] at hmono ⊢
+    refine ⟨?_, ih'⟩
+    intro y hy
+    rw [List.mem_append] at hy
+    rcases hy with htl | hlast
+    · exact hmono.1 y htl
+    · simp only [List.mem_singleton] at hlast
+      subst hlast
+      exact hax
+
+theorem le_last_of_pairwise_lt : ∀ (l : List Nat) {last : Nat},
+    l.Pairwise (· < ·) → l.getLast? = some last → ∀ y ∈ l, y ≤ last
+  | [], _, _, hlast => by simp at hlast
+  | [a], last, _, hlast => by
+    simp only [List.getLast?_singleton, Option.some.injEq] at hlast
+    subst hlast
+    intro y hy
+    simp only [List.mem_singleton] at hy
+    subst hy
+    rfl
+  | a :: b :: rest, last, hmono, hlast => by
+    have hmono' : (b :: rest).Pairwise (· < ·) := List.Pairwise.of_cons hmono
+    have hlast' : (b :: rest).getLast? = some last := by
+      have : (a :: b :: rest).getLast? = (b :: rest).getLast? := rfl
+      rw [← this]
+      exact hlast
+    have hab : a < b := List.rel_of_pairwise_cons hmono (by simp)
+    have ih := le_last_of_pairwise_lt (b :: rest) hmono' hlast'
+    intro y hy
+    cases hy with
+    | head =>
+      have := ih b (List.Mem.head rest)
+      omega
+    | tail _ hy' =>
+      exact ih y hy'
+
+theorem head_le_last_of_pairwise_lt : ∀ (a : Nat) (tl : List Nat) {last : Nat},
+    (a :: tl).Pairwise (· < ·) → (a :: tl).getLast? = some last →
+    a + tl.length ≤ last
+  | a, [], last, _, hlast => by
+    simp only [List.getLast?_singleton, Option.some.injEq] at hlast
+    subst hlast
+    simp
+  | a, b :: rest, last, hmono, hlast => by
+    have hmono' : (b :: rest).Pairwise (· < ·) := List.Pairwise.of_cons hmono
+    have hlast' : (b :: rest).getLast? = some last := by
+      have : (a :: b :: rest).getLast? = (b :: rest).getLast? := rfl
+      rw [← this]
+      exact hlast
+    have hab : a < b := List.rel_of_pairwise_cons hmono (by simp)
+    have ih := head_le_last_of_pairwise_lt b rest hmono' hlast'
+    simp only [List.length_cons]
+    omega
+
+theorem presentSlots_eq_entrySlots_of_flags_one : ∀ (t : TailG U64),
+    (∀ f ∈ tailFlags t, f = 1) → presentSlots t = entrySlots t
+  | .TNil, _ => rfl
+  | .TCons f s tl, h => by
+    have hf : f.val = 1 := h f.val (by simp)
+    have htl : ∀ f' ∈ tailFlags tl, f' = 1 := fun f' hf' => h f' (by simp [hf'])
+    simp only [presentSlots_cons, entrySlots_cons, hf, if_true]
+    rw [presentSlots_eq_entrySlots_of_flags_one tl htl]
+
+theorem map_filter_slot (c : List MoltPetit.Model.Block) (bound : Nat) :
+    (c.map (·.slot)).filter (bound ≤ ·) =
+    (c.filter fun x => decide (bound ≤ x.slot)).map (·.slot) := by
+  induction c with
+  | nil => rfl
+  | cons x tl ih =>
+    simp only [List.map_cons, List.filter_cons]
+    by_cases h : bound ≤ x.slot
+    · simp [h, ih]
+    · simp [h, ih]
 
 end Rust
