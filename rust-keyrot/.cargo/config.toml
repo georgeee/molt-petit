@@ -1,0 +1,11 @@
+# Build settings for the plonky2-backed key-rotation integration.
+#
+# * RUSTC_BOOTSTRAP=1 — plonky2 uses unstable rustc features (`specialization`);
+#   this enables them on the stable compiler, so no nightly is needed.
+#
+# The original tree (georgeee/mini-consensus-lean) also forced the bfd linker to
+# dodge a broken rustup `lld` wrapper on one machine; that override breaks the
+# nixpkgs toolchain (`-C link-self-contained` is unsupported there) and was
+# dropped on import.
+[env]
+RUSTC_BOOTSTRAP = "1"

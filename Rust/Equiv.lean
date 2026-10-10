@@ -6,7 +6,7 @@ import Spec.RustBridge
 
 `valid_chain_be` is the backend-generic consensus validator: the SAME Rust source
 is instantiated with the native `U64Backend` here and with a plonky2 circuit
-backend in `molt_petit_keyrot`. What is proved is the `U64` instantiation — we
+backend in `molt_petit_keyrot` (`rust-keyrot/`). What is proved is the `U64` instantiation — we
 connect it to the model exactly as `Bridge.lean` connects the concrete
 `valid_chain`:
 
@@ -371,7 +371,7 @@ theorem valid_chain_be_sound {n q : U64} {c : Chain}
     · simp at h
 
 /-- **The shared validator source is sound at the `U64` instantiation.** If the
-backend-generic validator — the SAME source the circuit in `molt_petit_keyrot`
+backend-generic validator — the SAME source the circuit in `rust-keyrot/`
 instantiates — accepts a chain at the native `U64` backend (with `q = quorum n`),
 the chain is semantically `ValidChain` in the model: the exact conclusion the
 proven `valid_chain` gives (`rust_valid_chain_sound`). This binds only the `U64`

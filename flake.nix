@@ -185,6 +185,16 @@
         fileset = fs.unions [ ./rust/Cargo.toml ./rust/src ];
       };
 
+      # The plonky2 certificate prototype and the crate it links (path dep
+      # `../rust`), together, so the relative path resolves.
+      keyrotSrc = fs.toSource {
+        root = ./.;
+        fileset = fs.unions [
+          ./rust/Cargo.toml ./rust/src
+          ./rust-keyrot/Cargo.toml ./rust-keyrot/Cargo.lock ./rust-keyrot/src
+        ];
+      };
+
       tsSrc = fs.toSource {
         root = ./.;
         fileset = fs.unions [ ./moltPetit.ts ];
@@ -305,7 +315,7 @@
               lean-from-ts = c.lean-from-ts or null;
               inherit extractedLean emittedLean goldenEmitted deviationsPatch
                 thalesFixesPatch upstreamPrPatches tsSrc rustCrateSrc
-                lakefileToml;
+                keyrotSrc lakefileToml;
               charonRev = charon.rev;
               aeneasSrc = aeneas;
               aeneasRev = aeneas.rev;
@@ -341,6 +351,9 @@
             tsc = all.tsc;
             # The molt_petit crate typechecks, fully offline.
             cargo = all.cargo;
+            # The plonky2 certificate prototype builds against this crate and
+            # its tests pass (crates.io deps vendored from Cargo.lock).
+            keyrot = all.keyrot;
           }
           // lib.optionalAttrs (c ? thales) {
             # Checked-in golden == fresh thales emission, byte-exact.

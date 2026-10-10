@@ -14,10 +14,12 @@
 # re-checked by `nix run .#verify-lean`, which needs the network and therefore
 # cannot be a check.  Run both, or you have gated on half the claim.
 #
-# SCOPE: `rust-keyrot/` and `rust-keyrot-p3/` (in georgeee/mini-consensus-lean) are deliberately outside this
-# flake — they are plonky2 demos that reuse the `molt_petit` crate as a
-# library, nothing in the Lean development derives from them, and their
-# `rust-toolchain.toml` says `channel = "stable"`.  Nothing below covers them.
+# SCOPE: `rust-keyrot/` (the plonky2 certificate prototype and the source of
+# the paper's measurements, imported from georgeee/mini-consensus-lean@5c9afbf)
+# is covered only by `keyrot` below: it builds and its tests pass against this
+# crate.  Nothing in the Lean development derives from it; the Lean side of
+# the circuit claim is `Rust.valid_chain_be_validChain`, about the crate it
+# runs in-circuit.
 { lib
 , runCommand
 , writeText
@@ -39,6 +41,8 @@
 , upstreamPrPatches     # dir tools/thales-reemission/upstream-prs/patches
 , tsSrc                 # dir containing moltPetit.ts
 , rustCrateSrc          # the molt_petit crate
+, keyrotSrc             # rust/ + rust-keyrot/ (the plonky2 prototype)
+, rustPlatform
 , lakefileToml          # path to lakefile.toml
 , charonRev             # locked rev of the `charon` flake input
 , aeneasSrc             # source tree of the `aeneas` flake input
@@ -614,6 +618,32 @@ in
       runHook preInstall
       echo "OK: cargo check passes"
       touch "$out"
+      runHook postInstall
+    '';
+  };
+
+  ##########################################################################
+  # keyrot — the plonky2 certificate prototype builds and its tests pass.
+  #
+  # PROVES: `rust-keyrot/` compiles against the current `molt_petit` crate
+  # (so `mp_circuit.rs` still runs the verified `valid_chain_be` in-circuit)
+  # and its unit tests pass.  DOES NOT PROVE: anything about the circuit's
+  # soundness, or the paper's timings (those are `cargo run --release --bin
+  # bench`, on the hardware the paper names).
+  ##########################################################################
+  keyrot = rustPlatform.buildRustPackage {
+    pname = "check-keyrot";
+    version = "0.1.0";
+    src = keyrotSrc;
+    cargoRoot = "rust-keyrot";
+    buildAndTestSubdir = "rust-keyrot";
+    cargoLock.lockFile = "${keyrotSrc}/rust-keyrot/Cargo.lock";
+    # plonky2 uses `specialization`; same setting as rust-keyrot/.cargo/config.toml.
+    RUSTC_BOOTSTRAP = "1";
+    doCheck = true;
+    installPhase = ''
+      runHook preInstall
+      echo "OK: rust-keyrot builds and its tests pass" > "$out"
       runHook postInstall
     '';
   };

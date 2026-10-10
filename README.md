@@ -14,6 +14,7 @@ All safety theorems are machine-checked in Lean 4. In addition to classical coun
 - Three-way correspondence:
   - **Rust protocol**: `rust/src/lib.rs` (the standalone validator crate), `Spec/Rust.lean` (extracted from `rust/src/lib.rs` via Charon + Aeneas), and the other files in `Rust/` (`Bridge.lean`, `BridgeK.lean`, `Equiv.lean`, `Properties.lean`, `Results_rust.lean`, `TimedResults_rust.lean`, `Axioms.lean`, `AxiomsTimed.lean`) containing the proofs relating them to the model, including headline theorem `Rust.rust_timed_certified_agreement`.
   - **TypeScript protocol**: `moltPetit.ts`, `tools/thales-reemission/`, `Spec/TS.lean` (emitted from `moltPetit.ts` via Thales (vendored with the deviations in `tools/thales-reemission/`)), and the other files in `MoltPetit/TS/` (`Bridge.lean`, `BridgeK.lean`, `Results.lean`) containing the proofs relating them to the model.
+- `rust-keyrot/` (`molt_petit_keyrot`): The plonky2 certificate prototype and the source of the paper's measurements (Table `tab:bench`). `src/mp_circuit.rs` runs the verified `valid_chain_be` from `rust/` in-circuit; `src/bench.rs` is the benchmark (`cargo run --release --bin bench`), `src/main.rs` the end-to-end demo (`cargo run --release --bin keyrot_demo`). Checked by `nix build .#checks.x86_64-linux.keyrot` (builds and tests; proves nothing about circuit soundness).
 - `nix/`, `flake.nix`, `flake.lock`, `NIX.md`: Hermetic toolchain pins for Charon, Aeneas, and Thales, and faithfulness checks.
 - `docs/review/`: Annotation and wording review records (`PAPER_WORDING_PROPOSED.md`, `ANNOTATION_REVIEW_REPORT.html`).
 - `docs/rollout/`: Planning and verification records for the post-annotation development (`ROLLOUT_PLAN.md`, `ROLLOUT_NOTES.md`, maps, designs, and verdicts).
@@ -48,6 +49,7 @@ To run only the lightweight check subset:
 ```bash
 nix build .#checks.x86_64-linux.tsc \
           .#checks.x86_64-linux.cargo \
+          .#checks.x86_64-linux.keyrot \
           .#checks.x86_64-linux.pin-consistency \
           .#checks.x86_64-linux.ts-golden-digest \
           .#checks.x86_64-linux.ts-deviation-sites \
@@ -70,3 +72,5 @@ cd paper && ./build.sh
 This repository was created as a history-preserving split from `georgeee/mini-consensus-lean` (branch `feature/key-rotation-sound`) starting at base snapshot `3a22bf11bc3fce950a2dab24aa86c886df0854dc`. All replayed commits preserve original authorship, committer metadata, and timestamps, and carry an `Original-commit: georgeee/mini-consensus-lean@<sha>` trailer.
 
 For a complete lookup table of original commit hashes to new commit hashes, see [docs/ORIGINAL-COMMITS.md](docs/ORIGINAL-COMMITS.md).
+
+`rust-keyrot/` was imported later as a file copy of `georgeee/mini-consensus-lean@5c9afbf` `rust-keyrot/` (its history stays in that repository), adapted to this crate's current API (`Block::key_index`, versioned `key_for`) and with a machine-specific linker override dropped.

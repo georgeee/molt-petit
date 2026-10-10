@@ -1595,9 +1595,11 @@ certificates and payload commitments are opaque to the protocol, which is
 also why no assumption about either language's number model reaches any
 theorem.
 
-\paragraph{Measurements.} The prototype pairs the consensus rule with a
-minimal application: a committed key set that changes by signed
-rotations.
+\paragraph{Measurements.} The prototype (\code{rust-keyrot/}) pairs the
+consensus rule with a minimal application: a committed key set that
+changes by signed rotations. Its circuit runs \code{valid\_chain\_be}
+from the verified crate, and the table below is its \code{bench}
+program.
 \begin{itemize}
 \item Proof system: plonky2~\cite{plonky2} over its native 64-bit field
   (Goldilocks), with Poseidon hashing~\cite{poseidon}.
@@ -1829,7 +1831,9 @@ checkout re-checks every theorem cited in this paper that way.
 Separately, the repository's \code{nix flake check} re-checks that the
 vendored translations are exactly what the pinned translators (Charon +
 Aeneas; Thales) produce from \code{rust/src/lib.rs} and
-\code{moltPetit.ts}. It checks faithfulness only, not the proofs. What no
+\code{moltPetit.ts}, and that the circuit prototype \code{rust-keyrot/}
+builds against that crate and passes its tests. It checks faithfulness
+only, not the proofs. What no
 machine re-checks is the trusted base above: the translators and circuit
 gadgets themselves, and the hand-audited corrections.
 

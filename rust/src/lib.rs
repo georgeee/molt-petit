@@ -237,8 +237,8 @@ pub fn valid_chain(n: u64, c: &Chain) -> bool {
 // full chains via `inForcePinned_of_validChainK`), guarded in
 // `Rust/Axioms.lean`. `valid_chain_be` (the circuit backend) is deliberately
 // NOT extended: the `Backend` trait lacks the needed comparisons, and widening
-// it would break the verbatim `Equiv.lean` proof; the in-circuit index rules
-// live in the plonky2 prototype (`georgeee/mini-consensus-lean: rust-keyrot/src/spec.rs`).
+// it would break the verbatim `Equiv.lean` proof; so the circuit in
+// `rust-keyrot/` checks no key indices (the paper's N2 limit, not yet closed).
 // ---------------------------------------------------------------------------
 
 /// Every block of `rest` produced by the same producer as `(n, slot)` declares
@@ -651,8 +651,8 @@ pub fn produce_block_cert<C: Crypto>(
 // The concrete `valid_chain` above is unchanged (and stays the proven
 // reference). `valid_chain_be` is the SAME validity logic written once over an
 // arithmetic/boolean `Backend`: instantiated with the native `U64Backend` here
-// (extracted to Lean, proven equal to `valid_chain`), and with a plonky2 circuit
-// backend in the `molt_petit_keyrot` crate — so the verified validator is the
+// (extracted to Lean, proven sound for the model's chain rule), and with a plonky2
+// circuit backend in `rust-keyrot/` (`molt_petit_keyrot`) — so the verified validator is the
 // one the circuit runs. It is written branch-free (no `if` on backend booleans)
 // so a single source serves both the native and circuit instantiations.
 // ===========================================================================

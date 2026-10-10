@@ -1,0 +1,39 @@
+[package]
+name = "molt_petit_keyrot"
+version = "0.1.0"
+edition = "2021"
+description = "Integration of the Molt Petit consensus with a plonky2 signed key-rotation chain (Lamport-over-Poseidon signatures, Poseidon hashing, plonky2 recursive proofs as certificates)."
+
+[lib]
+name = "molt_petit_keyrot"
+path = "src/lib.rs"
+
+[[bin]]
+name = "keyrot_demo"
+path = "src/main.rs"
+
+[[bin]]
+name = "bench"
+path = "src/bench.rs"
+
+[dependencies]
+molt_petit = { path = "../rust" }
+plonky2 = "1.1.0"
+anyhow = "1"
+rayon = "1"
+# Native big-integer arithmetic for ES256 (ECDSA-P256) witness computation
+# (quotients, modular inverses, limb decomposition). Circuit-build time only.
+num-bigint = "0.4"
+num-traits = "0.2"
+num-integer = "0.1"
+
+[dev-dependencies]
+# Known-good reference for cross-checking the native ES256 implementation.
+p256 = { version = "0.13", features = ["ecdsa", "arithmetic"] }
+ecdsa = { version = "0.16", features = ["signing", "verifying"] }
+rand_core = "0.6"
+sha2 = "0.10"
+
+[profile.dev]
+# Recursive proving is heavy; keep dev builds usable (same as the prototype).
+opt-level = 2
