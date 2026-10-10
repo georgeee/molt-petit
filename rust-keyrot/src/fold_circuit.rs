@@ -550,6 +550,25 @@ pub fn demo_chain(n: usize, len: u64) -> (FoldBlock, Vec<FoldBlock>) {
     (g, bs)
 }
 
+/// The client's view of a certificate state (`stateView` in
+/// `Spec/RustBridge.lean`): tip id, slot, height, and the present tail slots
+/// `s` with `tip_slot + 2 - n <= s`. This is what a decoder hands the client
+/// as its `CertClaim` (tip fields, and tail blocks right in their slots).
+pub fn state_view(n: usize, st: &FoldState) -> ([u64; 4], u64, u64, Vec<u64>) {
+    let lo = (st.tip_slot + 2).saturating_sub(n as u64);
+    let tail = st.tail.iter().filter(|(f, s)| *f == 1 && lo <= *s).map(|(_, s)| *s).collect();
+    (st.tip_id, st.tip_slot, st.tip_height, tail)
+}
+
+/// The view of the claim the model derives from a history
+/// (`claimView (modelClaimOf n G bs)`).
+pub fn history_view(n: usize, g: &FoldBlock, bs: &[FoldBlock]) -> ([u64; 4], u64, u64, Vec<u64>) {
+    let t = bs.last().unwrap_or(g);
+    let lo = (t.slot + 2).saturating_sub(n as u64);
+    let tail = std::iter::once(g).chain(bs).map(|b| b.slot).filter(|s| lo <= *s).collect();
+    (t.id, t.slot, t.height, tail)
+}
+
 /// The state a certificate proof exposes, decoded.
 pub fn exposed_state(n: usize, mode: Mode, proof: &ProofWithPublicInputs<F, C, D>) -> Result<FoldState> {
     let slen = FoldState::len_for(n, mode);
@@ -602,6 +621,8 @@ mod tests {
             let next = native_step(n as u64, mode, &st, b).expect("native fold accepts");
             let (_, p) = fp.step(&st, proof.as_ref(), b, None).expect("circuit step");
             assert_eq!(exposed_state(n, mode, &p).unwrap(), next, "circuit state == native state");
+            let k = bs.iter().position(|x| x.slot == b.slot).unwrap();
+            assert_eq!(state_view(n, &next), history_view(n, &g, &bs[..=k]), "stateView == claimView (modelClaimOf)");
             st = next;
             proof = Some(p);
         }
