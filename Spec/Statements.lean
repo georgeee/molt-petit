@@ -1235,4 +1235,94 @@ def thm_validate_suffix_k_sound : Prop :=
 
 end
 
+section
+open MoltPetit.Model Classical
+
+/-- Paper: cited in sec:liveness. Mode 2's validator does not stop an honest
+producer: if its signature verifies under its registered key at the version it
+states, that version meets the schedule and its own floor, and the windows it
+completes are covered by honest blocks, then its block extends the accepted
+signed chain to an accepted signed chain. -/
+def thm_sched_liveness_produce_block : Prop :=
+  ∀ {n me slot newId : Nat} {contentsHash keyIndex : Nat} {schedule : Nat → Nat}
+    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {sig : Sig}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain Sig} {tip : Block}
+    (hBudget   : ByzantineBounded n bad)
+    (hVal      : validSignedChainSched n schedule ops registry sc = true)
+    (hTipEq    : (stripSigs sc).getLast? = some tip)
+    (hTipLt    : tip.slot < slot)
+    (hMine     : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+      HonestBlocksCover bad record
+        (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hFloor    : keyFloor n (stripSigs sc) me ≤ keyIndex)
+    (hSched    : schedule slot ≤ keyIndex)
+    (hSig      : ops.verify (registry me keyIndex)
+      (nextBlock slot newId contentsHash keyIndex tip) sig = true),
+    produceBlock? n me slot newId contentsHash keyIndex (stripSigs sc)
+      = some (nextBlock slot newId contentsHash keyIndex tip) ∧
+    validSignedChainSched n schedule ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip, sig⟩]) = true
+
+/-- Paper: cited in sec:liveness. Mode 3's validator does not stop an honest
+producer whose version is at least every version on the chain and equals every
+version already stated in its own grid window (`hGen`). `hGen` is where an
+attacker can interfere: a block in the current grid window at another
+generation makes it false, and the honest producer must build around it. -/
+def thm_lockstep_liveness_produce_block : Prop :=
+  ∀ {n me slot newId : Nat} {contentsHash keyIndex : Nat}
+    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {sig : Sig}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain Sig} {tip : Block}
+    (hBudget   : ByzantineBounded n bad)
+    (hVal      : validSignedChainLock n ops registry sc = true)
+    (hTipEq    : (stripSigs sc).getLast? = some tip)
+    (hTipLt    : tip.slot < slot)
+    (hMine     : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+      HonestBlocksCover bad record
+        (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hGen      : ∀ b ∈ stripSigs sc, b.keyIndex ≤ keyIndex ∧
+      (b.slot / n = slot / n → b.keyIndex = keyIndex))
+    (hSig      : ops.verify (registry me keyIndex)
+      (nextBlock slot newId contentsHash keyIndex tip) sig = true),
+    produceBlock? n me slot newId contentsHash keyIndex (stripSigs sc)
+      = some (nextBlock slot newId contentsHash keyIndex tip) ∧
+    validSignedChainLock n ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip, sig⟩]) = true
+
+/-- Paper: cited in sec:rotation. The timed lockstep package gives the
+per-generation one, so every per-generation theorem (unequal heights,
+genesis agreement, certificate and history forms) applies to it. -/
+def LockstepPackageTimed.thm_toGen : Prop :=
+  ∀ {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {Formed : Block → Prop}
+    {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
+    (hP : LockstepPackageTimed n rosterGen ops registry Formed rented stolenAt
+      honestSigned now Δ G R T),
+    LockstepPackageGen n rosterGen ops registry Formed rented (stolenOf stolenAt)
+      honestSigned now Δ G R T
+
+/-- Paper: cited in sec:rotation. The thin package gives the per-generation
+one with no surjectivity: window 0 already bounds every generation from the
+genesis counter on, so only generations below it need their own bound. -/
+def LockstepPackage.thm_toGen_of_low : Prop :=
+  ∀ {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {Formed : Block → Prop}
+    {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
+    (hn : 0 < n)
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen
+      honestSigned now Δ G R T)
+    (hLow : ∀ j, j < rosterGen 0 →
+      ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T),
+    LockstepPackageGen n rosterGen ops registry Formed rented Stolen
+      honestSigned now Δ G R T
+
+end
+
 end MoltPaper
