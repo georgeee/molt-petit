@@ -216,4 +216,64 @@ theorem liveness_produce_signed_blockK {σ sk pk : Type}
   exact liveness_extension_validChainK' hBudget hChainK hTipEq hTipLt hSCorrect hCover
     (by rw [hMine]; exact hFloor)
 
+
+theorem sched_liveness_produce_block
+    {n me slot newId : Nat} {contentsHash keyIndex : Nat} {schedule : Nat → Nat}
+    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {sig : Sig}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain Sig} {tip : Block}
+    (hBudget : ByzantineBounded n bad)
+    (hVal : validSignedChainSched n schedule ops registry sc = true)
+    (hTipEq : (stripSigs sc).getLast? = some tip)
+    (hTipLt : tip.slot < slot)
+    (hMine : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+      HonestBlocksCover bad record
+        (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hFloor : keyFloor n (stripSigs sc) me ≤ keyIndex)
+    (hSched : schedule slot ≤ keyIndex)
+    (hSig : ops.verify (registry me keyIndex)
+      (nextBlock slot newId contentsHash keyIndex tip) sig = true) :
+    produceBlock? n me slot newId contentsHash keyIndex (stripSigs sc)
+      = some (nextBlock slot newId contentsHash keyIndex tip) ∧
+    validSignedChainSched n schedule ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip, sig⟩]) = true := by
+  set b := nextBlock slot newId contentsHash keyIndex tip
+  set sb : SignedBlock Sig := ⟨b, sig⟩
+  rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true] at hVal
+  obtain ⟨⟨hSigs, hChainK⟩, hSchedPin⟩ := hVal
+  obtain ⟨hProd, hExtK'⟩ := liveness_produce_blockK
+    (Δconf := 0) hBudget hChainK hTipEq hTipLt hMine hSCorrect hCover hFloor
+  refine ⟨hProd, ?_⟩
+  have hStrip : stripSigs (sc ++ [sb]) = stripSigs sc ++ [b] := by
+    simp only [stripSigs, List.map_append, List.map_cons, List.map_nil]
+    rfl
+  have hSigOk : sigOk n ops registry sb = true := by
+    rw [sigOk]
+    change ops.verify (registry (producerForSlot n b.slot) b.keyIndex) b sig = true
+    have hbProducer : producerForSlot n b.slot = me := hMine
+    have hbIndex : b.keyIndex = keyIndex := rfl
+    rw [hbProducer, hbIndex]
+    exact hSig
+  have hSigsExt : sigsOk n ops registry (sc ++ [sb]) = true := by
+    rw [sigsOk, List.all_append]
+    rw [sigsOk] at hSigs
+    simp [hSigs, hSigOk]
+  have hChainKExt : validChainK n (stripSigs (sc ++ [sb])) = true := by
+    rw [hStrip]
+    rw [validChainK', Bool.and_eq_true] at hExtK'
+    exact hExtK'.1
+  have hSchedExt : schedPinned schedule (stripSigs (sc ++ [sb])) = true := by
+    rw [hStrip, schedPinned, List.all_append]
+    rw [schedPinned] at hSchedPin
+    simp only [hSchedPin, Bool.true_and]
+    simp only [List.all_cons, List.all_nil, Bool.and_true]
+    have hbSlot : b.slot = slot := rfl
+    have hbKi : b.keyIndex = keyIndex := rfl
+    rw [hbSlot, hbKi]
+    exact decide_eq_true hSched
+  rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true]
+  exact ⟨⟨hSigsExt, hChainKExt⟩, hSchedExt⟩
+
 end MoltPetit.Model
