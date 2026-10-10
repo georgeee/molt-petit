@@ -421,7 +421,8 @@ function validateSuffix(n: bigint, c: CertClaim, suffix: Chain): boolean {
         suffix.prev === c.tipId;
       const links = linksFrom(suffix.slot, suffix.height, suffix.id, suffix.tail);
       const buf = appendChains(c.tail, suffix);
-      const lo = c.tipSlot + 2n - n;
+      const lo0 = c.tipSlot + 2n - n;
+      const lo = lo0 < 0n ? 0n : lo0;
       const tipSlot = tipSlotFrom(suffix.slot, suffix.tail);
       return link && links && maturedDense(buf, lo, tipSlot, n);
     }

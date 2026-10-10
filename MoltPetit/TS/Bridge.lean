@@ -536,7 +536,12 @@ theorem ts_validateSuffix_sound {n : Nat} {cl : CertClaim}
     rw [show (MoltPetit.Chain.cons (s₁.slot : Int) (s₁.height : Int)
         (s₁.prev.map Int.ofNat) (s₁.id : Int) s₁.contentsHash s₁.keyIndex (toTSChain srest)) = toTSChain (s₁ :: srest)
       from rfl, ts_appendChains, ts_tipSlotFrom, getD_getLast_cons Block.slot hTip] at hDense
-    exact ts_maturedDense_sound hDense
+    have hdense := ts_maturedDense_sound hDense
+    intro u hu hmat
+    apply hdense u _ hmat
+    split_ifs with hneg
+    · exact Nat.cast_nonneg u
+    · exact hu
 
 /-! ## Signed chains and certified chains -/
 

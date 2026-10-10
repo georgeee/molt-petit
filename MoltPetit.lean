@@ -27,6 +27,7 @@ import MoltPetit.Model.SchedExposure
 import MoltPetit.Model.KeyStealingBudget
 import MoltPetit.Model.KeyStealingLongRange
 import MoltPetit.TS.BridgeK
+import MoltPetit.TS.Tests
 import MoltPetit.Model.KeyStealingSchedule
 import MoltPetit.Results.KeyStealingScheduleResults
 import MoltPetit.Model.KeyStealingScheduleCert

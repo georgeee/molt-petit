@@ -137,7 +137,8 @@ def validateSuffix (n : Int) (c : CertClaim) (suffix : Chain) : Bool :=
     | .cons slot height prev id contentsHash keyIndex tail => let link := (((height == (c.tipHeight + 1)) && (c.tipSlot < slot)) && (prev == c.tipId))
     let links := (linksFrom slot height id tail)
     let buf := (appendChains c.tail suffix)
-    let lo := ((c.tipSlot + 2) - n)
+    let lo0 := ((c.tipSlot + 2) - n)
+    let lo := if (lo0 < 0) then 0 else lo0
     let tipSlot := (tipSlotFrom slot tail)
     ((link && links) && (maturedDense buf lo tipSlot n))
 

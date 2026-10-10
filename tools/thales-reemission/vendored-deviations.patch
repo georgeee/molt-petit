@@ -73,7 +73,7 @@
      let tipId := (tipIdFrom id tail)
      let extended := (appendChains c ((singletonBlock atSlot ((tipHeight + 1)) tipId newId contentsHash keyIndex)))
      if (validChain n extended) then (.some extended) else .none
-@@ -141,38 +169,6 @@
+@@ -142,38 +170,6 @@
      let tipSlot := (tipSlotFrom slot tail)
      ((link && links) && (maturedDense buf lo tipSlot n))
  
@@ -112,7 +112,7 @@
  def validateSuffixK (n : Int) (c : CertClaim) (fl : FloorList) (suffix : Chain) : Bool :=
    (((validateSuffix n c suffix) && (floorsShapeOk n fl)) && (keyMonoFromTs n fl suffix))
  
-@@ -185,7 +181,6 @@
+@@ -186,7 +182,6 @@
    sign : (RawSecretKey → (Int → (Int → (Hash → (Hash → RawSignature)))))
    verify : (RawPublicKey → (Int → (Int → ((Option Hash) → (Hash → (RawSignature → Bool))))))
    keyFor : (Int → (Int → RawPublicKey))
@@ -120,7 +120,7 @@
  
  def lengthOfSigned (sc : SignedChain) : Int :=
    match sc with
-@@ -227,7 +222,6 @@
+@@ -228,7 +223,6 @@
    verify : (RawCertificate → Bool)
    claim : (RawCertificate → CertClaim)
    certFor : (Hash → RawCertificate)
