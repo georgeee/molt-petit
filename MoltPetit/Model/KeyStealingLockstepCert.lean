@@ -317,9 +317,9 @@ theorem groundedCertLock_gen_unique {n : Nat} (hn : 1 ≤ n) {Signed : Block →
 `groundedCertSched_suffix_history`; the suffix-side rotation check is the
 `lockstepFrom` fold, replacing the default certificate's `keyMonoFrom` against
 a carried floor snapshot and mode 2's `schedPinned`. -/
-theorem groundedCertLock_suffix_history {n : Nat} (hn : 1 ≤ n) {Signed : Block → Prop}
-    {G : Block} {cl : CertClaim} {g : Nat}
-    (hG : GroundedCertLock n Signed G cl g)
+theorem groundedHistoryLock_suffix_history {n : Nat} (_hn : 1 ≤ n) {Signed : Block → Prop}
+    {G : Block} {cl : CertClaim} {g : Nat} {c : Chain}
+    (hist : GroundedHistoryLock n Signed G cl g c)
     {s₁ : Block} {srest : Chain} {sTip : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
@@ -328,15 +328,13 @@ theorem groundedCertLock_suffix_history {n : Nat} (hn : 1 ≤ n) {Signed : Block
       u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
     (hSigned : ∀ B ∈ s₁ :: srest, Signed B) :
-    ∃ c : Chain,
-      validChain n (c ++ s₁ :: srest) = true ∧
-      lockstepOk n (c ++ s₁ :: srest) = true ∧
-      blockAt? (c ++ s₁ :: srest) 0 = some G ∧
-      c.length = cl.tipHeight + 1 ∧
-      (∀ B ∈ c ++ s₁ :: srest, Signed B) ∧
-      (∃ t ∈ c, t.slot = cl.tipSlot ∧ t.keyIndex = g) ∧
-      (∀ B ∈ cl.tail, B ∈ c) := by
-  obtain ⟨c, hist⟩ := groundedCertLock_history hn hG
+    validChain n (c ++ s₁ :: srest) = true ∧
+    lockstepOk n (c ++ s₁ :: srest) = true ∧
+    blockAt? (c ++ s₁ :: srest) 0 = some G ∧
+    c.length = cl.tipHeight + 1 ∧
+    (∀ B ∈ c ++ s₁ :: srest, Signed B) ∧
+    (∃ t ∈ c, t.slot = cl.tipSlot ∧ t.keyIndex = g) ∧
+    (∀ B ∈ cl.tail, B ∈ c) := by
   obtain ⟨t, hTipEq, htId, htSlot, htHeight, htKey⟩ := hist.tip
   have hMat := (validChain_sound hist.valid).2.2.2
   have hStrictC : StrictSlots c := (validChain_sound hist.valid).2.1
@@ -384,7 +382,7 @@ theorem groundedCertLock_suffix_history {n : Nat} (hn : 1 ≤ n) {Signed : Block
     have h' := hTipAt
     unfold blockAt? at h'
     exact List.mem_of_getElem? h'
-  refine ⟨c, ?_, hLockFull, ?_, hist.len_eq, ?_, ⟨t, htmem, htSlot, htKey⟩, ?_⟩
+  refine ⟨?_, hLockFull, ?_, hist.len_eq, ?_, ⟨t, htmem, htSlot, htKey⟩, ?_⟩
   · exact validChain_append_suffix hFullDense (s₁ :: srest) c t rfl
       hist.valid hTipEq hLinksT hSlotsLe
   · have hcLen : 0 < c.length := by
@@ -402,6 +400,28 @@ theorem groundedCertLock_suffix_history {n : Nat} (hn : 1 ≤ n) {Signed : Block
     rw [hist.tail_eq] at hB
     exact (List.mem_filter.mp hB).1
 
+theorem groundedCertLock_suffix_history {n : Nat} (hn : 1 ≤ n) {Signed : Block → Prop}
+    {G : Block} {cl : CertClaim} {g : Nat}
+    (hG : GroundedCertLock n Signed G cl g)
+    {s₁ : Block} {srest : Chain} {sTip : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
+      u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
+    (hSigned : ∀ B ∈ s₁ :: srest, Signed B) :
+    ∃ c : Chain,
+      validChain n (c ++ s₁ :: srest) = true ∧
+      lockstepOk n (c ++ s₁ :: srest) = true ∧
+      blockAt? (c ++ s₁ :: srest) 0 = some G ∧
+      c.length = cl.tipHeight + 1 ∧
+      (∀ B ∈ c ++ s₁ :: srest, Signed B) ∧
+      (∃ t ∈ c, t.slot = cl.tipSlot ∧ t.keyIndex = g) ∧
+      (∀ B ∈ cl.tail, B ∈ c) := by
+  obtain ⟨c, hist⟩ := groundedCertLock_history hn hG
+  exact ⟨c, groundedHistoryLock_suffix_history hn hist hTipS hLink hLinks hDense hLockS hSigned⟩
+
 -- ===========================================================================
 -- (C) Materialisation
 -- ===========================================================================
@@ -410,6 +430,48 @@ theorem groundedCertLock_suffix_history {n : Nat} (hn : 1 ≤ n) {Signed : Block
 from: a `GroundedCertLock` derivation plus a checked suffix yields a full
 `SignedChain` accepted by `validSignedChainLock`, with `keyMonoOk` supplied
 by `keyMonoOk_of_lockstepOk` (no core validator variant needed). -/
+theorem groundedHistoryLock_signedChain {n : Nat} (hn : 1 ≤ n) {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {G : Block} {Formed : Block → Prop}
+    {cl : CertClaim} {g : Nat} {c : Chain}
+    (hc : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl g c)
+    {s₁ : Block} {srest : Chain} {sTip : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
+      u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B) :
+    ∃ (sc : SignedChain Sig),
+      stripSigs sc = c ++ s₁ :: srest ∧
+      validSignedChainLock n ops registry sc = true ∧
+      blockAt? (stripSigs sc) 0 = some G ∧
+      (stripSigs sc).getLast? = some sTip ∧
+      c.length = cl.tipHeight + 1 ∧
+      (∃ t ∈ c, t.slot = cl.tipSlot ∧ t.keyIndex = g) ∧
+      (∀ B ∈ cl.tail ++ s₁ :: srest, B ∈ stripSigs sc) ∧
+      (∀ B ∈ stripSigs sc, B ≠ G → Formed B) := by
+  obtain ⟨hV, hLock, hHead, hLen, hCov, ht, hTail⟩ :=
+    groundedHistoryLock_suffix_history hn hc hTipS hLink hLinks hDense hLockS hSigned
+  obtain ⟨sc, hstrip, hsigs⟩ :=
+    exists_signedChain_of_covered (Sig := Sig) (fun B hB => (hCov B hB).1)
+  refine ⟨sc, hstrip, ?_, ?_, ?_, hLen, ht, ?_, ?_⟩
+  · rw [validSignedChainLock, Bool.and_eq_true, Bool.and_eq_true]
+    refine ⟨⟨hsigs, ?_⟩, ?_⟩
+    · rw [validChainK, Bool.and_eq_true]
+      exact ⟨hstrip ▸ hV, keyMonoOk_of_lockstepOk (hstrip ▸ hLock)⟩
+    · exact hstrip ▸ hLock
+  · rw [hstrip]; exact hHead
+  · rw [hstrip, List.getLast?_append, hTipS]; rfl
+  · intro B hB
+    rw [hstrip]
+    rcases List.mem_append.mp hB with hBtail | hBsuffix
+    · exact List.mem_append_left _ (hTail B hBtail)
+    · exact List.mem_append_right _ hBsuffix
+  · intro B hB _
+    rw [hstrip] at hB
+    exact (hCov B hB).2
+
 theorem groundedCertLock_signedChain {n : Nat} (hn : 1 ≤ n) {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {G : Block} {Formed : Block → Prop}
     {cl : CertClaim} {g : Nat}
@@ -431,26 +493,10 @@ theorem groundedCertLock_signedChain {n : Nat} (hn : 1 ≤ n) {Sig sk pk : Type}
       (∃ t ∈ c, t.slot = cl.tipSlot ∧ t.keyIndex = g) ∧
       (∀ B ∈ cl.tail ++ s₁ :: srest, B ∈ stripSigs sc) ∧
       (∀ B ∈ stripSigs sc, B ≠ G → Formed B) := by
-  obtain ⟨c, hV, hLock, hHead, hLen, hCov, ht, hTail⟩ :=
-    groundedCertLock_suffix_history hn hcl hTipS hLink hLinks hDense hLockS hSigned
-  obtain ⟨sc, hstrip, hsigs⟩ :=
-    exists_signedChain_of_covered (Sig := Sig) (fun B hB => (hCov B hB).1)
-  refine ⟨c, sc, hstrip, ?_, ?_, ?_, hLen, ht, ?_, ?_⟩
-  · rw [validSignedChainLock, Bool.and_eq_true, Bool.and_eq_true]
-    refine ⟨⟨hsigs, ?_⟩, ?_⟩
-    · rw [validChainK, Bool.and_eq_true]
-      exact ⟨hstrip ▸ hV, keyMonoOk_of_lockstepOk (hstrip ▸ hLock)⟩
-    · exact hstrip ▸ hLock
-  · rw [hstrip]; exact hHead
-  · rw [hstrip, List.getLast?_append, hTipS]; rfl
-  · intro B hB
-    rw [hstrip]
-    rcases List.mem_append.mp hB with hBtail | hBsuffix
-    · exact List.mem_append_left _ (hTail B hBtail)
-    · exact List.mem_append_right _ hBsuffix
-  · intro B hB _
-    rw [hstrip] at hB
-    exact (hCov B hB).2
+  obtain ⟨c, hc⟩ := groundedCertLock_history hn hcl
+  obtain ⟨sc, hstrip, hValL, hHead, hfullTip, hLen, ht, hTailMem, hFormed⟩ :=
+    groundedHistoryLock_signedChain hn hc hTipS hLink hLinks hDense hLockS hSigned
+  exact ⟨c, sc, hstrip, hValL, hHead, hfullTip, hLen, ht, hTailMem, hFormed⟩
 
 -- ===========================================================================
 -- (D) Headline
@@ -590,5 +636,64 @@ theorem lockstep_recent_certified_suffix_agreement
     (k := c.length + i) hBfull hB'full
     (by rw [hstrip, List.length_append]; omega)
     (by rw [hstrip', List.length_append]; omega)
+
+/-- Paper: cited in sec:rotation. Like `lockstep_recent_certified_suffix_agreement`,
+but for any histories behind the two certificates: every block at least n below the tip of the
+full chain, certified prefix included. -/
+theorem lockstep_recent_certified_history_agreement
+    {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
+    {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
+    {cl cl' : CertClaim} {g g' : Nat}
+    {c : Chain} (hc : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl g c)
+    {c' : Chain} (hc' : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl' g' c')
+    {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
+    u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
+    (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
+    s₁'.prev = some cl'.tipId)
+    (hLinks' : linksOk (s₁' :: srest') = true)
+    (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
+    u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
+    (hLockS' : lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
+    (hRecent : now ≤ sTip.slot + Δ)
+    (hRecent' : now ≤ sTip'.slot + Δ)
+    {k : Nat}
+    (hDeep : k + n < (c ++ s₁ :: srest).length)
+    (hDeep' : k + n < (c' ++ s₁' :: srest').length) :
+    blockAt? (c ++ s₁ :: srest) k = blockAt? (c' ++ s₁' :: srest') k := by
+  obtain ⟨sc, hstrip, hValL, hHead, hfullTip, hLen, _, _, hFormed⟩ :=
+    groundedHistoryLock_signedChain hn hc hTipS hLink hLinks hDense hLockS hSigned
+  obtain ⟨sc', hstrip', hValL', hHead', hfullTip', hLen', _, _, hFormed'⟩ :=
+    groundedHistoryLock_signedChain hn hc' hTipS' hLink' hLinks' hDense' hLockS' hSigned'
+  have hValS : validSignedChainSched n (lagSched n rosterGen) ops registry sc = true :=
+    lockstep_validSignedChainSched hn hP hValL hHead ⟨sTip, hfullTip, hRecent⟩
+  have hValS' : validSignedChainSched n (lagSched n rosterGen) ops registry sc' = true :=
+    lockstep_validSignedChainSched hn hP hValL' hHead' ⟨sTip', hfullTip', hRecent'⟩
+  have hk : k < (stripSigs sc).length := by rw [hstrip]; omega
+  have hk' : k < (stripSigs sc').length := by rw [hstrip']; omega
+  obtain ⟨B, hB⟩ : ∃ B, blockAt? (stripSigs sc) k = some B :=
+    ⟨(stripSigs sc)[k]'hk, List.getElem?_eq_getElem hk⟩
+  obtain ⟨B', hB'⟩ : ∃ B', blockAt? (stripSigs sc') k = some B' :=
+    ⟨(stripSigs sc')[k]'hk', List.getElem?_eq_getElem hk'⟩
+  have heq : B = B' := sched_deep_block_agreement_of_length hn
+    (schedUnforgeable_of_core hP.toPackageA.unforgeable) hP.hashInj
+    (packageA_byzantine_bounded hP.toPackageA) hValS hValS' hFormed hFormed' hHead hHead'
+    ⟨sTip, hfullTip, hRecent⟩ ⟨sTip', hfullTip', hRecent'⟩
+    (k := k) hB hB'
+    (by rw [hstrip]; exact hDeep)
+    (by rw [hstrip']; exact hDeep')
+  rw [hstrip] at hB
+  rw [hstrip'] at hB'
+  rw [hB, hB', heq]
 
 end MoltPetit.Model
