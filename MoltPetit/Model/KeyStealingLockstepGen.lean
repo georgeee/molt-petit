@@ -285,6 +285,50 @@ theorem LockstepPackage.toGen {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : T
     rw [hcancel]
     exact hW)
 
+/-- **Thin ⇒ gen with bounded low generations.** A `LockstepPackage` delivers a
+`LockstepPackageGen` when generations below `rosterGen 0` satisfy the theft bound `T`.
+Generations `≥ rosterGen 0` are bounded by the lagged schedule at window 0. -/
+theorem LockstepPackage.toGen_of_low {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {Formed : Block → Prop}
+    {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
+    (hn : 0 < n)
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
+    (hLow : ∀ j, j < rosterGen 0 →
+      ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T) :
+    LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T where
+  unforgeable := hP.unforgeable
+  declared := hP.declared
+  hashInj := hP.hashInj
+  rentBound := hP.rentBound
+  budget_le := hP.budget_le
+  genBound := by
+    intro j
+    by_cases hj : j < rosterGen 0
+    · exact hLow j hj
+    · have hle : rosterGen 0 ≤ j := by omega
+      have hsub : (Finset.range n).filter (fun i => Stolen i j) ⊆
+          exposedProducersSched n (lagSched n rosterGen) Stolen 0 := by
+        intro i hi
+        rw [Finset.mem_filter, Finset.mem_range] at hi
+        obtain ⟨hin, hSt⟩ := hi
+        unfold exposedProducersSched
+        refine Finset.mem_image.mpr ⟨i, Finset.mem_filter.mpr ⟨?_, ?_⟩, ?_⟩
+        · rw [Finset.mem_Ico]
+          exact ⟨Nat.zero_le i, by omega⟩
+        · refine ⟨j, ?_, ?_⟩
+          · change lagSched n rosterGen i ≤ j
+            unfold lagSched
+            have : i / n = 0 := Nat.div_eq_of_lt hin
+            rw [this]
+            exact hle
+          · unfold producerForSlot
+            rw [Nat.mod_eq_of_lt hin]
+            exact hSt
+        · unfold producerForSlot
+          exact Nat.mod_eq_of_lt hin
+      exact (Finset.card_le_card hsub).trans (hP.exposedBound 0)
+
 -- ===========================================================================
 -- (4) The non-inductive per-window pinning theorem
 -- ===========================================================================
