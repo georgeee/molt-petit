@@ -1,6 +1,7 @@
 import Rust.Equiv
 import MoltPetit.TS.Bridge
 import Spec.Model
+import Spec.Statements
 
 open Aeneas Std Result
 namespace Rust
@@ -1126,5 +1127,55 @@ theorem tailRepr_genesisState (n : Nat) (G : molt_petit.Block) :
         omega
       simp [hle1, hle2]
       rfl
+
+theorem cert_genesis_ok_be_sound {G : molt_petit.Block}
+    (h : cert_genesis_ok_be UB () (toBlockG G) = ok true) :
+    MoltPetit.Model.genesisOk (toModelBlock G) = true ∧ (toModelBlock G).slot = 0 := by
+  dsimp [cert_genesis_ok_be] at h
+  obtain ⟨ok1, hok1, h⟩ := bind_inv h
+  obtain ⟨t, ht, h⟩ := bind_inv h
+  obtain ⟨s0, hs0, h⟩ := bind_inv h
+  split at h
+  · rename_i hok1_t
+    injection h with h; subst h
+    rw [hok1_t] at hok1
+    have hgen := genesis_ok_be_sound hok1
+    injection ht with ht; subst ht
+    injection hs0 with hs0
+    simp only [decide_eq_true_eq] at hs0
+    have : (toModelBlock G).slot = 0 := by
+      change G.slot.val = 0
+      rw [hs0]
+      rfl
+    exact ⟨hgen, this⟩
+  · injection h with h; contradiction
+
+theorem cert_step_sched_be_sound {n q era : U64} {st : CertStateG U64} {b : molt_petit.Block}
+    (hera : 0 < era.val)
+    (h : cert_step_sched_be UBK () n q era st (toBlockG b) b.key_index = ok true) :
+    cert_step_core_be UBK () n q st (toBlockG b) = ok true ∧
+    (toModelBlock b).slot / era.val ≤ (toModelBlock b).keyIndex := by
+  dsimp [cert_step_sched_be] at h
+  obtain ⟨core, hcore, h⟩ := bind_inv h
+  obtain ⟨gen, hgen, h⟩ := bind_inv h
+  obtain ⟨below, hbelow, h⟩ := bind_inv h
+  obtain ⟨pinned, hpinned, h⟩ := bind_inv h
+  split at h
+  · rename_i hcore_t
+    injection h with h; subst h
+    rw [hcore_t] at hcore
+    have hgen_val := ubk_div_val (by omega) hgen
+    cases below
+    · injection hbelow with hbelow
+      simp only [decide_eq_false_iff_not] at hbelow
+      change ¬ (b.key_index.val < gen.val) at hbelow
+      have hle : gen.val ≤ b.key_index.val := by omega
+      refine ⟨hcore, ?_⟩
+      change b.slot.val / era.val ≤ b.key_index.val
+      rw [← hgen_val]
+      exact hle
+    · injection hpinned with hpinned
+      contradiction
+  · injection h with h; contradiction
 
 end Rust
