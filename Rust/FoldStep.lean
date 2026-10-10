@@ -955,4 +955,176 @@ theorem cert_next_tail_be_repr {n q : U64} {st : CertStateG U64}
     dsimp [stepState]
     exact ⟨⟨b.id, rfl, rfl⟩, rfl, rfl, hlen', hflags', hsuff', hmono', hlast', htail_eq'⟩
 
+
+-- ---------------------------------------------------------------------------
+-- Step 6: Prefix claim and genesis representation
+-- ---------------------------------------------------------------------------
+
+lemma entrySlots_padTail (k : Nat) (t : TailG U64) :
+    entrySlots (padTail k t) = List.replicate k 0 ++ entrySlots t := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    simp only [padTail, entrySlots_cons]
+    change (0#u64 : U64).val :: entrySlots (padTail k t) = 0 :: List.replicate k 0 ++ entrySlots t
+    rw [ih]
+    rfl
+
+lemma tailFlags_padTail (k : Nat) (t : TailG U64) :
+    tailFlags (padTail k t) = List.replicate k 0 ++ tailFlags t := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    simp only [padTail, tailFlags_cons]
+    change (0#u64 : U64).val :: tailFlags (padTail k t) = 0 :: List.replicate k 0 ++ tailFlags t
+    rw [ih]
+    rfl
+
+lemma presentSlots_padTail (k : Nat) (t : TailG U64) :
+    presentSlots (padTail k t) = presentSlots t := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    simp only [padTail, presentSlots_cons]
+    split
+    · rename_i h
+      have : (0#u64 : U64).val = 0 := rfl
+      omega
+    · exact ih
+
+lemma presentSuffix_padTail (k : Nat) (t : TailG U64) :
+    PresentSuffix (padTail k t) ↔ PresentSuffix t := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    simp only [padTail, PresentSuffix]
+    constructor
+    · intro ⟨_, h2⟩; exact ih.mp h2
+    · intro h
+      refine ⟨?_, ih.mpr h⟩
+      intro h1
+      have : (0#u64 : U64).val = 0 := rfl
+      omega
+
+theorem modelClaimOf_nil (n : Nat) (G : MoltPetit.Model.Block) :
+    modelClaimOf n G [] =
+      { tipId := G.id,
+        tipSlot := G.slot,
+        tipHeight := G.height,
+        tail := [G].filter fun x => decide (G.slot + 2 - n ≤ x.slot) } := rfl
+
+theorem modelClaimOf_step (n : Nat) (G : MoltPetit.Model.Block)
+    (pre : List MoltPetit.Model.Block) (b : MoltPetit.Model.Block)
+    (hslot : (modelClaimOf n G pre).tipSlot ≤ b.slot) :
+    modelClaimOf n G (pre ++ [b]) =
+      { tipId := b.id,
+        tipSlot := b.slot,
+        tipHeight := b.height,
+        tail := ((modelClaimOf n G pre).tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) } := by
+  have hlast : (G :: (pre ++ [b])).getLast (List.cons_ne_nil _ _) = b := by
+    change ((G :: pre) ++ [b]).getLast _ = b
+    exact List.getLast_append_singleton (G :: pre)
+  unfold modelClaimOf
+  dsimp only
+  rw [hlast]
+  congr 1
+  have hcons : G :: (pre ++ [b]) = (G :: pre) ++ [b] := rfl
+  rw [hcons, List.filter_append, List.filter_append]
+  congr 1
+  rw [List.filter_filter]
+  apply List.filter_congr
+  intro x _
+  have hle : ((G :: pre).getLast (List.cons_ne_nil G pre)).slot ≤ b.slot := hslot
+  by_cases hb : b.slot + 2 - n ≤ x.slot
+  · simp [hb]
+    omega
+  · simp [hb]
+
+theorem modelClaimOf_step_lt (n : Nat) (G : MoltPetit.Model.Block)
+    (pre : List MoltPetit.Model.Block) (b : MoltPetit.Model.Block)
+    (hslot : (modelClaimOf n G pre).tipSlot < b.slot) :
+    modelClaimOf n G (pre ++ [b]) =
+      { tipId := b.id,
+        tipSlot := b.slot,
+        tipHeight := b.height,
+        tail := ((modelClaimOf n G pre).tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) } :=
+  modelClaimOf_step n G pre b (Nat.le_of_lt hslot)
+
+theorem tailRepr_genesisState (n : Nat) (G : molt_petit.Block) :
+    TailRepr n (genesisState n G) (modelClaimOf n (toModelBlock G) []) := by
+  dsimp [genesisState, modelClaimOf]
+  refine ⟨⟨G.id, rfl, rfl⟩, rfl, rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · -- tail_len
+    by_cases hn : n < 2
+    · unfold initTail
+      simp [hn]
+      omega
+    · unfold initTail
+      simp [hn]
+      rw [entrySlots_padTail]
+      simp only [entrySlots_cons, entrySlots_nil, List.length_append, List.length_replicate, List.length_cons, List.length_nil]
+      omega
+  · -- tail_flags
+    intro f hf
+    by_cases hn : n < 2
+    · unfold initTail at hf
+      simp [hn] at hf
+    · unfold initTail at hf
+      simp [hn] at hf
+      rw [tailFlags_padTail] at hf
+      simp only [tailFlags_cons, tailFlags_nil, List.mem_append, List.mem_replicate, List.mem_cons, List.not_mem_nil, or_false] at hf
+      rcases hf with ⟨_, rfl⟩ | rfl
+      · left; rfl
+      · right; rfl
+  · -- tail_suffix
+    by_cases hn : n < 2
+    · unfold initTail; simp [hn]; trivial
+    · unfold initTail; simp [hn]
+      rw [presentSuffix_padTail]
+      exact ⟨fun _ _ h => by simp at h, trivial⟩
+  · -- tail_mono
+    by_cases hn : n < 2
+    · unfold initTail; simp [hn]
+    · unfold initTail; simp [hn]
+      rw [presentSlots_padTail]
+      simp only [presentSlots_cons, presentSlots_nil]
+      have : (1#u64 : U64).val = 1 := rfl
+      simp [this]
+  · -- tail_last
+    intro hn2
+    have hn : ¬ n < 2 := by omega
+    unfold initTail
+    simp [hn]
+    rw [presentSlots_padTail]
+    simp only [presentSlots_cons, presentSlots_nil]
+    have : (1#u64 : U64).val = 1 := rfl
+    simp only [this, ↓reduceIte, List.getLast?_singleton, Option.some.injEq]
+    rfl
+  · -- tail_eq
+    by_cases hn : n < 2
+    · unfold initTail
+      simp only [hn, ↓reduceIte, presentSlots_nil, List.filter_nil, List.filter_cons]
+      have hnot : ¬ ((toModelBlock G).slot + 2 - n ≤ (toModelBlock G).slot) := by
+        rcases Nat.eq_zero_or_pos n with rfl | hn1
+        · omega
+        · have : n = 1 := by omega
+          subst this
+          omega
+      simp [hnot]
+    · unfold initTail
+      have hnot : ¬ n < 2 := hn
+      simp only [hnot, ↓reduceIte]
+      rw [presentSlots_padTail]
+      simp only [presentSlots_cons, presentSlots_nil]
+      have h1 : (1#u64 : U64).val = 1 := rfl
+      simp only [h1, ↓reduceIte, List.filter_cons, List.filter_nil]
+      have hle1 : (toModelBlock G).slot + 2 - n ≤ G.slot.val := by
+        change G.slot.val + 2 - n ≤ G.slot.val
+        omega
+      have hle2 : (toModelBlock G).slot + 2 - n ≤ (toModelBlock G).slot := by
+        change G.slot.val + 2 - n ≤ G.slot.val
+        omega
+      simp [hle1, hle2]
+      rfl
+
 end Rust
