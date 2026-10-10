@@ -129,6 +129,18 @@ theorem LockstepPackageTimed.toGen {n : Nat} {rosterGen : Nat → Nat} {Sig sk p
   budget_le := hP.budget_le
   genBound := genBound_of_preRetirementBound hP.notAfter hP.preRetirementTheftBound
 
+/-- Variant with pinned binder order (`Formed` before `rented`). -/
+theorem LockstepPackageTimed.toGen'
+    {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {Formed : Block → Prop}
+    {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
+    (hP : LockstepPackageTimed n rosterGen ops registry Formed rented stolenAt honestSigned
+      now Δ G R T) :
+    LockstepPackageGen n rosterGen ops registry Formed rented (stolenOf stolenAt) honestSigned
+      now Δ G R T :=
+  LockstepPackageTimed.toGen hP
+
 /-- **Timed package ⊢ safety, end to end (equal-tip form).** The `PackageBTimed`
 twin for mode 3, except that here `notAfter` is genuinely on the proof path. -/
 theorem lockstepTimed_recent_tip_ancestor_agreement

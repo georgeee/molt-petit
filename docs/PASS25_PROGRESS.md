@@ -1,8 +1,8 @@
 # Pass 25 Progress
 
-In progress: step 1 LockstepPackageTimed.toGen alias
+In progress: (none)
 
-- [ ] step 1 LockstepPackageTimed.toGen alias
+- [x] step 1 LockstepPackageTimed.toGen alias
 - [ ] step 2 LockstepPackage.toGen_of_low
 - [ ] step 3 sched_liveness_produce_block
 - [ ] step 4 lockstep_liveness_produce_block

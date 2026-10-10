@@ -95,6 +95,8 @@ theorem window_shared_prefix : thm_window_shared_prefix :=
   @MoltPetit.Model.window_shared_prefix
 theorem LockstepPackage.toGen : LockstepPackage.thm_toGen :=
   @MoltPetit.Model.LockstepPackage.toGen
+theorem LockstepPackageTimed.toGen : LockstepPackageTimed.thm_toGen :=
+  @MoltPetit.Model.LockstepPackageTimed.toGen'
 theorem genBound_of_preRetirementBound : thm_genBound_of_preRetirementBound :=
   @MoltPetit.Model.genBound_of_preRetirementBound
 theorem lockstepGen_recent_genesis_agreement : thm_lockstepGen_recent_genesis_agreement :=
