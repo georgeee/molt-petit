@@ -280,6 +280,9 @@ mode 3). -/
 alias lockstep_declares_rosterGen :=
   MoltPetit.Model.lockstep_declares_rosterGen
 
+/-- Hash-injectivity domain over formed blocks. -/
+abbrev SignedFormed := @MoltPetit.Model.SignedFormed
+
 /-- **Scheduled safety** (mode 2, paper Theorem 4). Under the scheduled
 validator, a chain-independent budget, and the scheduled unforgeability
 surface: two accepted chains rooted in one genesis with recent equal-height
@@ -289,14 +292,16 @@ theorem scheduled_client_safety
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : SigningLog} {now Δ : Nat} {G : Block}
+    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen
       honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     (hBudget : FaultBounded n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -315,7 +320,7 @@ theorem scheduled_client_safety
     B = B' := by
   rw [validSignedChainSched_eq_core] at hVal hVal'
   exact MoltPetit.Model.sched_recent_tip_ancestor_agreement hn hUnf hHash
-    hBudget hVal hVal' hHead hHead' hTipS hTipS' hRecent hRecent'
+    hBudget hVal hVal' hFormed hFormed' hHead hHead' hTipS hTipS' hRecent hRecent'
     hLong hLong' hTipHeight hB hB'
 
 /-- **Lockstep safety** (mode 3, paper Theorem 5). Under the schedule-free
@@ -326,12 +331,14 @@ theorem lockstep_client_safety
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen
+    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen
       honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -350,7 +357,7 @@ theorem lockstep_client_safety
     B = B' := by
   rw [validSignedChainLock_eq_core] at hVal hVal'
   exact MoltPetit.Model.lockstep_recent_tip_ancestor_agreement hn hP
-    hVal hVal' hHead hHead' hTipS hTipS' hRecent hRecent'
+    hVal hVal' hFormed hFormed' hHead hHead' hTipS hTipS' hRecent hRecent'
     hLong hLong' hTipHeight hB hB'
 
 /-- Not-before: a generation's key cannot be stolen before it is derived
