@@ -85,12 +85,15 @@ theorem sched_deep_block_agreement_of_length
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
     {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     (hBudget : ByzantineBounded n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     (hRecent  : ∃ t,  (stripSigs sc ).getLast? = some t ∧ now ≤ t.slot + Δ)
@@ -107,7 +110,7 @@ theorem sched_deep_block_agreement_of_length
   obtain ⟨D', hD'⟩ : ∃ D', blockAt? (stripSigs sc') (k + n) = some D' := by
     unfold blockAt?
     exact ⟨(stripSigs sc')[k + n]'hLen', List.getElem?_eq_getElem hLen'⟩
-  exact sched_deep_block_agreement hn hUnf hHash hBudget hVal hVal' hHead hHead'
+  exact sched_deep_block_agreement hn hUnf hHash hBudget hVal hVal' hFormed hFormed' hHead hHead'
     hRecent hRecent' hB hB' hD hD' (Nat.le_refl _) (Nat.le_refl _)
 
 -- ===========================================================================
@@ -139,12 +142,15 @@ theorem sched_recent_tip_ancestor_agreement
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
     {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     (hBudget : ByzantineBounded n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -167,7 +173,7 @@ theorem sched_recent_tip_ancestor_agreement
   have hLenEq : (stripSigs sc).length - 1 - n = (stripSigs sc').length - 1 - n := by omega
   -- realign the second ancestor to the common global index
   rw [← hLenEq] at hB'
-  exact sched_deep_block_agreement_of_length hn hUnf hHash hBudget hVal hVal'
+  exact sched_deep_block_agreement_of_length hn hUnf hHash hBudget hVal hVal' hFormed hFormed'
     hHead hHead' ⟨sTip, hTipS, hRecent⟩ ⟨sTip', hTipS', hRecent'⟩ hB hB'
     (by omega) (by omega)
 
@@ -181,12 +187,15 @@ theorem sched_recent_tip_ancestor_mem
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
     {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     (hBudget : ByzantineBounded n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -210,7 +219,7 @@ theorem sched_recent_tip_ancestor_mem
     unfold blockAt?
     exact ⟨(stripSigs sc')[k]'(by omega), List.getElem?_eq_getElem (by omega)⟩
   have hBX : B = X :=
-    sched_deep_block_agreement_of_length hn hUnf hHash hBudget hVal hVal'
+    sched_deep_block_agreement_of_length hn hUnf hHash hBudget hVal hVal' hFormed hFormed'
       hHead hHead' ⟨sTip, hTipS, hRecent⟩ ⟨sTip', hTipS', hRecent'⟩ hB hX
       (by omega) hkn'
   exact ⟨k, hkn', by rw [hBX]; exact hX⟩
