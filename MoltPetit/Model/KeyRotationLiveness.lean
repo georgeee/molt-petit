@@ -1,5 +1,6 @@
 import MoltPetit.Results.Results
 import MoltPetit.Model.KeyStealingCert
+import MoltPetit.Model.KeyStealingLockstepCert
 
 /-!
 # MoltPetit — liveness under the index-pinned validator
@@ -275,5 +276,74 @@ theorem sched_liveness_produce_block
     exact decide_eq_true hSched
   rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true]
   exact ⟨⟨hSigsExt, hChainKExt⟩, hSchedExt⟩
+
+
+theorem lockstep_liveness_produce_block
+    {n me slot newId : Nat} {contentsHash keyIndex : Nat}
+    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {sig : Sig}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain Sig} {tip : Block}
+    (hBudget : ByzantineBounded n bad)
+    (hVal : validSignedChainLock n ops registry sc = true)
+    (hTipEq : (stripSigs sc).getLast? = some tip)
+    (hTipLt : tip.slot < slot)
+    (hMine : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+      HonestBlocksCover bad record
+        (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hGen : ∀ b ∈ stripSigs sc, b.keyIndex ≤ keyIndex ∧
+      (b.slot / n = slot / n → b.keyIndex = keyIndex))
+    (hSig : ops.verify (registry me keyIndex)
+      (nextBlock slot newId contentsHash keyIndex tip) sig = true) :
+    produceBlock? n me slot newId contentsHash keyIndex (stripSigs sc)
+      = some (nextBlock slot newId contentsHash keyIndex tip) ∧
+    validSignedChainLock n ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip, sig⟩]) = true := by
+  set b := nextBlock slot newId contentsHash keyIndex tip
+  set sb : SignedBlock Sig := ⟨b, sig⟩
+  rw [validSignedChainLock, Bool.and_eq_true, Bool.and_eq_true] at hVal
+  obtain ⟨⟨hSigs, hChainK⟩, hLock⟩ := hVal
+  have hFloor : keyFloor n (stripSigs sc) me ≤ keyIndex := by
+    by_cases h0 : 0 < keyFloor n (stripSigs sc) me
+    · obtain ⟨B, hBmem, _, hBk⟩ := exists_keyFloor_witness h0
+      have := (hGen B hBmem).1
+      omega
+    · omega
+  obtain ⟨hProd, hExtK'⟩ := liveness_produce_blockK
+    (Δconf := 0) hBudget hChainK hTipEq hTipLt hMine hSCorrect hCover hFloor
+  refine ⟨hProd, ?_⟩
+  have hStrip : stripSigs (sc ++ [sb]) = stripSigs sc ++ [b] := by
+    simp only [stripSigs, List.map_append, List.map_cons, List.map_nil]
+    rfl
+  have hSigOk : sigOk n ops registry sb = true := by
+    rw [sigOk]
+    change ops.verify (registry (producerForSlot n b.slot) b.keyIndex) b sig = true
+    have hbProducer : producerForSlot n b.slot = me := hMine
+    have hbIndex : b.keyIndex = keyIndex := rfl
+    rw [hbProducer, hbIndex]
+    exact hSig
+  have hSigsExt : sigsOk n ops registry (sc ++ [sb]) = true := by
+    rw [sigsOk, List.all_append]
+    rw [sigsOk] at hSigs
+    simp [hSigs, hSigOk]
+  have hChainKExt : validChainK n (stripSigs (sc ++ [sb])) = true := by
+    rw [hStrip]
+    rw [validChainK', Bool.and_eq_true] at hExtK'
+    exact hExtK'.1
+  have hLockExt : lockstepOk n (stripSigs (sc ++ [sb])) = true := by
+    rw [hStrip]
+    rw [lockstepOk_append_iff]
+    refine ⟨hLock, rfl, ?_⟩
+    intro a ha b' hb'
+    simp only [List.mem_singleton] at hb'
+    subst hb'
+    have hbSlot : b.slot = slot := rfl
+    have hbKi : b.keyIndex = keyIndex := rfl
+    rw [hbSlot, hbKi]
+    have := hGen a ha
+    exact ⟨this.2, this.1⟩
+  rw [validSignedChainLock, Bool.and_eq_true, Bool.and_eq_true]
+  exact ⟨⟨hSigsExt, hChainKExt⟩, hLockExt⟩
 
 end MoltPetit.Model
