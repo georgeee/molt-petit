@@ -170,9 +170,13 @@ def tailSlots : TailG U64 → List Nat
   | .TNil => []
   | .TCons f s tl => if f.val = 1 then s.val :: tailSlots tl else tailSlots tl
 
-/-- What a client reads off the certificate's public state. -/
-def stateView (st : CertStateG U64) : Nat × Nat × Nat × List Nat :=
-  (hashGToNat st.tip_id, st.tip_slot.val, st.tip_height.val, tailSlots st.tail)
+/-- What a client reads off the certificate's public state. The buffer is a
+superset of the claim's tail (it can hold slots below every window still to
+be checked), so the view keeps the slots the claim's tail keeps:
+`tipSlot + 2 - n ≤ s`. -/
+def stateView (n : Nat) (st : CertStateG U64) : Nat × Nat × Nat × List Nat :=
+  (hashGToNat st.tip_id, st.tip_slot.val, st.tip_height.val,
+   (tailSlots st.tail).filter fun s => decide (st.tip_slot.val + 2 - n ≤ s))
 
 /-- `FoldK`, also naming the final state `stO` (the circuit's public state). -/
 def FoldKOut (n q : U64) :

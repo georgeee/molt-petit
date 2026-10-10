@@ -1395,7 +1395,7 @@ def thm_cert_fold_k_client : Prop :=
         (∀ b ∈ bs, Signed (toModelBlock b)) ∧
         FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) bs stO out ∧
         IK.CryptoInst.cert_claim crypto cert = ok cl ∧
-        MoltPetit.Model.claimView (toModelClaim cl) = stateView stO ∧
+        MoltPetit.Model.claimView (toModelClaim cl) = stateView n.val stO ∧
         IK.cert_floors crypto cert = ok fl ∧
         (∀ j : U64, j.val < n.val →
           ∃ f, floor_lookup fl j = ok f ∧ f.val = floorsFun out j.val))
@@ -1434,7 +1434,7 @@ def thm_cert_fold_sched_client : Prop :=
         (∀ b ∈ bs, Signed (toModelBlock b)) ∧
         FoldSchedOut n q era (genesisState n.val G) bs stO ∧
         I.cert_claim crypto cert = ok cl ∧
-        MoltPetit.Model.claimView (toModelClaim cl) = stateView stO)
+        MoltPetit.Model.claimView (toModelClaim cl) = stateView n.val stO)
     {cert : Hash} (hver : I.cert_verify crypto cert = ok true),
     ∃ (cl₀ : MoltPetit.Model.CertClaim) (cl : CertClaim),
       I.cert_claim crypto cert = ok cl ∧
@@ -1455,7 +1455,7 @@ def thm_cert_fold_lock_client : Prop :=
         (∀ b ∈ bs, Signed (toModelBlock b)) ∧
         FoldLockOut n q (genesisState n.val G) G.key_index bs stO gO ∧
         I.cert_claim crypto cert = ok cl ∧
-        MoltPetit.Model.claimView (toModelClaim cl) = stateView stO)
+        MoltPetit.Model.claimView (toModelClaim cl) = stateView n.val stO)
     {cert : Hash} (hver : I.cert_verify crypto cert = ok true),
     ∃ (cl₀ : MoltPetit.Model.CertClaim) (cl : CertClaim) (gO : U64),
       I.cert_claim crypto cert = ok cl ∧

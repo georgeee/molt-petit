@@ -20,8 +20,9 @@ Every client check reads the tail only through `windowCount`, which reads only s
 
 - `Spec/Model.lean`: `claimView`.
 - `Spec/RustBridge.lean`:
-  - `stateView n st : Nat × Nat × Nat × List Nat`: `hashToNat` of the tip id, the slot, the height, and `presentSlots st.tail`.
-  - `floorListOf (fl : FloorsG U64) : molt_petit.FloorList`: entries `(i, fl_i)` for `i = 0..n-1`, which is the canonical shape `floors_shape_ok` wants.
+  - `stateView n st : Nat × Nat × Nat × List Nat`: `hashToNat` of the tip id, the slot, the height, and the present slots `s` of `st.tail` with `tip_slot + 2 - n ≤ s`. The buffer is a superset of the claim's tail, so the view must filter the same way `modelClaimOf` does.
+  - `tailSlots`, `hashGToNat`.
+  - `FoldKOut`, `FoldSchedOut`, `FoldLockOut`: the drivers, also naming the final state, which is the circuit's public state.
 - Rust (`rust/src/lib.rs`, appended):
   - `pub trait CryptoK: Crypto { fn cert_floors(&self, cert: &Hash) -> FloorList; }`
   - `validate_certified_chain_k<C: CryptoK>`: it runs `cert_verify`, `sigs_ok`, and `validate_suffix_k(n, cl, crypto.cert_floors(cert), stripped)`.
@@ -32,12 +33,11 @@ Every client check reads the tail only through `windowCount`, which reads only s
 
 Today `thm_rust_timed_certified_agreement` takes `hUnf`: a verifying certificate's claim is `GroundedCert`. That is a protocol-level property assumed of a cryptographic object. The replacement is the proof system's knowledge soundness, about the fold:
 
-    hFoldK : ∀ cert, I.cert_verify crypto cert = ok true →
-      ∃ bs out cl, (∀ b ∈ bs, Signed (toModelBlock b)) ∧
-        FoldK n q (genesisState n G) (initFloors n G.key_index) bs out ∧
-        I.cert_claim crypto cert = ok cl ∧
-        claimView (toModelClaim cl) = claimView (modelClaimOf n (toModelBlock G) (bs.map toModelBlock)) ∧
-        IK.cert_floors crypto cert = ok (floorListOf out)
+    hFoldK : ∀ cert, cert_verify crypto cert = ok true →
+      ∃ bs stO out cl fl, (∀ b ∈ bs, Signed (toModelBlock b)) ∧
+        FoldKOut n q (genesisState n G) (initFloors n G.key_index) bs stO out ∧
+        cert_claim crypto cert = ok cl ∧ claimView (toModelClaim cl) = stateView n stO ∧
+        cert_floors crypto cert = ok fl ∧ (∀ j < n, floor_lookup fl j = floorsFun out j)
 
 This is exactly what a plonky2 proof of `fold_circuit` attests, given:
 
@@ -47,12 +47,12 @@ This is exactly what a plonky2 proof of `fold_circuit` attests, given:
 
 ## Statements
 
-1. `thm_validate_suffix_k_view`: `validate_suffix_k n cl fl s` depends on `cl` only through `claimView (toModelClaim cl)`. If two claims have the same view, the results are equal. The same holds for `validate_suffix`.
-2. `thm_claimView_modelClaimOf`: under `FoldK`/`FoldSched`/`FoldLock` with the genesis start, `stateView n out_state = claimView (modelClaimOf …)`. This is Stage A's `TailRepr`, read off at the end.
+The three statements below are in `Spec/Statements.lean`. The helper facts (the final state's view is `modelClaimOf`'s; `windowCount` reads only slots) are proof steps, not statements.
+
 3. `thm_cert_fold_k_client`: from `hFoldK` and `validate_certified_chain_k I n crypto (.CC cert suffix) = ok true` there is a claim `cl₀` such that:
-   - `GroundedCertK n Signed G cl₀ (floorsFun out)` holds;
+   - `GroundedCertK n Signed G cl₀ g` holds, and `g` is the certificate's floor list (`floor_lookup (cert_floors cert) j = g j` for `j < n`);
    - `claimView cl₀ = claimView (toModelClaim cl)`;
-   - the conclusions of `thm_validate_suffix_k_sound` hold against `cl₀` with `g = floorsFun out`.
+   - the conclusions of `thm_validate_suffix_k_sound` hold against `cl₀` with that `g`.
 
    These are the premises of the mode-1 certified agreement (`KeyStealingCert`, `hcl` + `hMono`), with the floor now the certificate's. **N2 closed.**
 4. Modes 2 and 3: the same with `FoldSched` / `FoldLock` and `validate_certified_chain`. The result is a `cl₀` with `GroundedCertSched` / `GroundedCertLock` and the same view. That is the hypothesis of the mode-2/3 certified theorems, now from the circuit's knowledge soundness. **N5 closed.**
@@ -65,3 +65,18 @@ This is exactly what a plonky2 proof of `fold_circuit` attests, given:
 - Measurements: one fold step, unsigned and signed, measured on the reference host, with the recursion floor in the same run.
 - New disclosure: the older batch/inline prototype circuits are cost measurements only. They bind neither chain nor signatures.
 - Section "What a deployment must provide": the certificate assumption is now `hFold*`, knowledge soundness of the fold circuit, not `GroundedCert` of the claim.
+
+## Proof steps (Archon, after Stage A; one per turn, in `Rust/FoldStep.lean`)
+
+11. **Final state.** Prove `FoldKOut … → FoldK …`, and the same for Sched and Lock (forget the final state). Then prove that under the genesis start, `TailRepr n stO (modelClaimOf n G bs)` holds, using steps 5 and 6. Then `stateView n.val stO = claimView (modelClaimOf …)`:
+    - `hashGToNat (toHashG h) = hashToNat h`;
+    - `tailSlots = presentSlots`;
+    - the filter equation of `TailRepr`.
+12. **Mode 1 client.** Prove `cert_fold_k_client : MoltPaper.thm_cert_fold_k_client`.
+    - Unfold `validate_certified_chain_k` (`hval`, as `validate_certified_chain` is unfolded in the existing certified proofs) to get `cert_verify`, and `validate_suffix_k n cl fl (.Cons s1 tl) = ok true`.
+    - `hFoldK` gives `bs stO out cl fl`.
+    - Take `cl₀ := modelClaimOf …` and `g := floorsFun out`.
+    - `GroundedCertK` is `cert_fold_k_sound` applied after step 11.
+    - The suffix conclusions come from `validate_suffix_k_sound` against `cl`, rewritten to `cl₀` through `claimView` equality. The tip fields are equal. `windowCount (A ++ s) u n` depends only on `A.map slot`; prove that lemma once.
+13. **Modes 2 and 3.** Prove `cert_fold_sched_client` and `cert_fold_lock_client` the same way. They are shorter, with no suffix part.
+14. **Aliases.** Add the three to `Paper/Proofs.lean`, then run the full check.
