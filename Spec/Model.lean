@@ -990,12 +990,12 @@ noncomputable def preRetirementTheftProducers (n : Nat) (rosterGen : Nat → Nat
   (Finset.range n).filter (fun i => ∃ r, stolenAt i j r ∧ rosterGen (r / n) ≤ j)
 
 /-- **Mode 3 with its temporal content formalized** (the twin of
-`PackageBTimed`): theft is time-stamped, A3 (`notBefore`) and B2
-(`notAfter`) are fields, and the rate is the while-live per-generation
-census. `notAfter` is CONSUMED (`toGen` via `genBound_of_preRetirementBound`);
-`notBefore` is documentary here (consumed only by `theft_in_era_lock`) —
-the exact mirror of mode 2, where `notAfter` is documentary and A3 is
-consumed. -/
+`PackageBTimed`): theft is time-stamped, B2 (`notAfter`, erasure at
+retirement) is a field, and the rate is the while-live per-generation
+census. `notAfter` is consumed (`toGen` via `genBound_of_preRetirementBound`).
+No-premature-theft (`NoPrematureTheftLock`) is not a field: no safety proof
+uses it (only `theft_in_era_lock`, which takes it as its own argument), so
+the package does not ask for it. -/
 structure LockstepPackageTimed (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type}
     (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
     (stolenAt : Nat → Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
@@ -1006,7 +1006,6 @@ structure LockstepPackageTimed (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : 
   declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B →
     B.keyIndex = rosterGen (s / n)
   hashInj : SignedHashInjective (SignedDeclared n ops registry) G
-  notBefore : NoPrematureTheftLock n rosterGen stolenAt
   notAfter : ErasureTimedLock n rosterGen stolenAt
   rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R
   preRetirementTheftBound : ∀ j, (preRetirementTheftProducers n rosterGen stolenAt j).card ≤ T
@@ -1059,4 +1058,36 @@ inductive GroundedCertLock (n : Nat) (Signed : Block → Prop) (G : Block) :
       GroundedCertLock n Signed G
         { tipId := b.id, tipSlot := b.slot, tipHeight := b.height
         , tail := (cl.tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) } b.keyIndex
+
+/-- What a `GroundedCertLock` derivation reconstructs: a `validChain`-accepted,
+`lockstepOk`-passing prefix matching the claim, tip additionally carrying
+`keyIndex = g`, and two invariants (every prefix block's generation ≤ `g`;
+every prefix block in the tip's grid window declares `g`) that make the
+`extend` step purely arithmetic — no positional reasoning about the tip
+inside `c` is ever needed. -/
+structure GroundedHistoryLock (n : Nat) (Signed : Block → Prop) (G : Block)
+    (cl : CertClaim) (g : Nat) (c : Chain) : Prop where
+  valid     : validChain n c = true
+  lock      : lockstepOk n c = true
+  head      : blockAt? c 0 = some G
+  tip       : ∃ t : Block, c.getLast? = some t ∧
+                t.id = cl.tipId ∧ t.slot = cl.tipSlot ∧ t.height = cl.tipHeight ∧
+                t.keyIndex = g
+  tail_eq   : cl.tail = c.filter fun x => decide (cl.tipSlot + 2 - n ≤ x.slot)
+  len_eq    : c.length = cl.tipHeight + 1
+  signed    : ∀ B ∈ c, Signed B
+  gen_max   : ∀ B ∈ c, B.keyIndex ≤ g
+  win_const : ∀ B ∈ c, B.slot / n = cl.tipSlot / n → B.keyIndex = g
+
+/-- The **suffix monotone check**: fold the certificate's per-producer floor
+snapshot through the suffix, gating each block on `floor (producer) ≤ keyIndex`.
+This is the form of the monotone rule a `cert + suffix` verifier can actually
+run — it never consults the history behind the certificate. -/
+def keyMonoFrom (n : Nat) : (Nat → Nat) → Chain → Bool
+  | _, [] => true
+  | fl, b :: rest =>
+      decide (fl (producerForSlot n b.slot) ≤ b.keyIndex) &&
+      keyMonoFrom n
+        (fun i => if producerForSlot n b.slot = i then max (fl i) b.keyIndex else fl i)
+        rest
 end MoltPetit.Model

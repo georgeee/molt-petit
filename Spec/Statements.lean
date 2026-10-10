@@ -717,6 +717,154 @@ def thm_window_shared_prefix : Prop :=
     {k : Nat} {B : Block} (hB : blockAt? c k = some B) (hBu : B.slot < u),
     ∃ P : Block, blockAt? c k = some P ∧ blockAt? c' k = some P
 
+/-- Paper: cited in sec:rotation. Like `lockstep_recent_certified_suffix_agreement`, but for any histories
+behind the two certificates: every block at least n below the tip of the
+full chain, certified prefix included. -/
+def thm_lockstep_recent_certified_history_agreement : Prop :=
+  ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
+    {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
+    {now Δ : Nat} {G : Block} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {cl cl' : CertClaim} {g g' : Nat}
+    {c : Chain} (hc : GroundedHistoryLock n (SignedDeclared n ops registry) G cl g c)
+    {c' : Chain} (hc' : GroundedHistoryLock n (SignedDeclared n ops registry) G cl' g' c')
+    {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
+    u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
+    s₁'.prev = some cl'.tipId)
+    (hLinks' : linksOk (s₁' :: srest') = true)
+    (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
+    u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
+    (hLockS' : lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hRecent : now ≤ sTip.slot + Δ)
+    (hRecent' : now ≤ sTip'.slot + Δ)
+    {k : Nat}
+    (hDeep : k + n < (c ++ s₁ :: srest).length)
+    (hDeep' : k + n < (c' ++ s₁' :: srest').length),
+    blockAt? (c ++ s₁ :: srest) k = blockAt? (c' ++ s₁' :: srest') k
+
+/-- Paper: cited in sec:rotation. Like `lockstepGen_recent_certified_suffix_agreement`, but for any histories
+behind the two certificates: every block at least 2 * n below the tip of the
+full chain, certified prefix included. -/
+def thm_lockstepGen_recent_certified_history_agreement : Prop :=
+  ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
+    {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
+    {now Δ : Nat} {G : Block} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {cl cl' : CertClaim} {g g' : Nat}
+    {c : Chain} (hc : GroundedHistoryLock n (SignedDeclared n ops registry) G cl g c)
+    {c' : Chain} (hc' : GroundedHistoryLock n (SignedDeclared n ops registry) G cl' g' c')
+    {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
+    u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
+    s₁'.prev = some cl'.tipId)
+    (hLinks' : linksOk (s₁' :: srest') = true)
+    (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
+    u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
+    (hLockS' : lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hRecent : now ≤ sTip.slot + Δ)
+    (hRecent' : now ≤ sTip'.slot + Δ)
+    {k : Nat}
+    (hDeep : k + 2 * n < (c ++ s₁ :: srest).length)
+    (hDeep' : k + 2 * n < (c' ++ s₁' :: srest').length),
+    blockAt? (c ++ s₁ :: srest) k = blockAt? (c' ++ s₁' :: srest') k
+
+/-- Paper: cited in sec:rotation. Like `sched_recent_certified_suffix_agreement_horizon`, but for any histories
+behind the two certificates: every block at least n below the tip of the
+full chain, certified prefix included. -/
+def thm_sched_recent_certified_history_agreement_horizon : Prop :=
+  ∀ {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
+    {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
+    {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    (hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
+    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    {H : Nat}
+    (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
+    {cl cl' : CertClaim}
+    {c : Chain} (hc  : GroundedHistorySched n schedule (SignedDeclared n ops registry) G cl c)
+    {c' : Chain} (hc' : GroundedHistorySched n schedule (SignedDeclared n ops registry) G cl' c')
+    {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
+    (hTipS  : (s₁  :: srest ).getLast? = some sTip)
+    (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hLink  : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧
+    s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
+    u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hPinS : schedPinned schedule (s₁ :: srest) = true)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
+    s₁'.prev = some cl'.tipId)
+    (hLinks' : linksOk (s₁' :: srest') = true)
+    (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
+    u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
+    (hPinS' : schedPinned schedule (s₁' :: srest') = true)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hRecent  : now ≤ sTip.slot  + Δ)
+    (hRecent' : now ≤ sTip'.slot + Δ)
+    (hH  : H + n ≤ sTip.slot  + 1)
+    (hH' : H + n ≤ sTip'.slot + 1)
+    {k : Nat}
+    (hDeep : k + n < (c ++ s₁ :: srest).length)
+    (hDeep' : k + n < (c' ++ s₁' :: srest').length),
+    blockAt? (c ++ s₁ :: srest) k = blockAt? (c' ++ s₁' :: srest') k
+
+/-- Paper: cited in sec:assumptions (Assumption ass:cert). A grounded
+certificate has a history: a valid chain from the genesis behind the claim. -/
+def thm_groundedCert_history : Prop :=
+  ∀ {n : Nat} (hn : 1 ≤ n)
+    {Signed : Block → Prop} {G : Block} {cl : CertClaim}
+    (h : GroundedCert n Signed G cl),
+    ∃ c : Chain, GroundedHistory n Signed G cl c
+
+/-- Paper: cited in sec:rotation. The mode-2 twin of `groundedCert_history`. -/
+def thm_groundedCertSched_history : Prop :=
+  ∀ {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
+    {Signed : Block → Prop} {G : Block} {cl : CertClaim}
+    (h : GroundedCertSched n schedule Signed G cl),
+    ∃ c : Chain, GroundedHistorySched n schedule Signed G cl c
+
+/-- Paper: cited in sec:rotation. The mode-3 twin of `groundedCert_history`. -/
+def thm_groundedCertLock_history : Prop :=
+  ∀ {n : Nat} (hn : 1 ≤ n) {Signed : Block → Prop}
+    {G : Block} {cl : CertClaim} {g : Nat}
+    (h : GroundedCertLock n Signed G cl g),
+    ∃ c : Chain, GroundedHistoryLock n Signed G cl g c
+
+/-- Paper: cited in sec:impl. Soundness of the TypeScript key-version check at
+the certificate boundary. -/
+def thm_ts_validateSuffixK_sound : Prop :=
+  ∀ {n : Nat} (hn : 1 ≤ n) {cl : CertClaim}
+    {fl : MoltPetit.FloorList} {g : Nat → Nat}
+    {s₁ : Block} {srest : Chain} {sTip : Block}
+    (hTip : (s₁ :: srest).getLast? = some sTip)
+    (hden : ∀ j : Nat, j < n → MoltPetit.floorLookup fl j = (g j : Int))
+    (h : MoltPetit.validateSuffixK n (toTSClaim cl) fl (toTSChain (s₁ :: srest)) = true),
+    ((s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId) ∧
+     linksOk (s₁ :: srest) = true ∧
+     (∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) → u + n ≤ sTip.slot + 1 →
+       quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)) ∧
+    keyMonoFrom n g (s₁ :: srest) = true
+
 end
 
 section
@@ -1044,6 +1192,26 @@ def thm_valid_chain_be_validChain : Prop :=
     (hq : quorum n = ok q)
     (h : valid_chain_be UB () n q (toChainG c) = ok true),
     MoltPetit.Model.ValidChain n.val (toModelChain c)
+
+/-- Paper: cited in sec:impl. Soundness of the Rust key-version check at the
+certificate boundary (`validate_suffix_k` against a floor snapshot). -/
+def thm_validate_suffix_k_sound : Prop :=
+  ∀ {n : U64} (hn : 1 ≤ n.val)
+    {cl : molt_petit.CertClaim} {fl : molt_petit.FloorList} {g : Nat → Nat}
+    {s1 : molt_petit.Block} {tl : molt_petit.Chain} {sTip : MoltPetit.Model.Block}
+    (hTipS : (toModelBlock s1 :: toModelChain tl).getLast? = some sTip)
+    (hden : ∀ j : U64, j.val < n.val →
+      ∃ f, molt_petit.floor_lookup fl j = ok f ∧ f.val = g j.val)
+    (h : molt_petit.validate_suffix_k n cl fl (.Cons s1 tl) = ok true),
+    (((toModelBlock s1).height = (toModelClaim cl).tipHeight + 1 ∧
+      (toModelClaim cl).tipSlot < (toModelBlock s1).slot ∧
+      (toModelBlock s1).prev = some (toModelClaim cl).tipId) ∧
+     MoltPetit.Model.linksOk (toModelBlock s1 :: toModelChain tl) = true ∧
+     (∀ u : Nat, ((toModelClaim cl).tipSlot : Int) + 2 - n.val ≤ (u : Int) →
+        u + n.val ≤ sTip.slot + 1 →
+        MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
+          ((toModelClaim cl).tail ++ toModelBlock s1 :: toModelChain tl) u n.val)) ∧
+    MoltPetit.Model.keyMonoFrom n.val g (toModelBlock s1 :: toModelChain tl) = true
 
 end
 

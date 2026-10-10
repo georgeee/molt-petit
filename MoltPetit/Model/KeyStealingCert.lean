@@ -153,18 +153,6 @@ theorem validChainK'_of_validChainK {n Δconf : Nat} {c : Chain}
 -- The suffix-side monotone check against a floor snapshot
 -- ---------------------------------------------------------------------------
 
-/-- The **suffix monotone check**: fold the certificate's per-producer floor
-snapshot through the suffix, gating each block on `floor (producer) ≤ keyIndex`.
-This is the form of the monotone rule a `cert + suffix` verifier can actually
-run — it never consults the history behind the certificate. -/
-def keyMonoFrom (n : Nat) : (Nat → Nat) → Chain → Bool
-  | _, [] => true
-  | fl, b :: rest =>
-      decide (fl (producerForSlot n b.slot) ≤ b.keyIndex) &&
-      keyMonoFrom n
-        (fun i => if producerForSlot n b.slot = i then max (fl i) b.keyIndex else fl i)
-        rest
-
 /-- Every suffix block clears any floor at-or-below the snapshot it was
 checked against (floors only grow along the fold). -/
 theorem keyMonoFrom_ge {n : Nat} {fl fl' : Nat → Nat} {s : Chain}

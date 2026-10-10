@@ -146,26 +146,6 @@ theorem lockstepOk_append_of_from {n : Nat} {c s : Chain} {ts g : Nat}
 -- (B) The certificate
 -- ===========================================================================
 
-/-- What a `GroundedCertLock` derivation reconstructs: a `validChain`-accepted,
-`lockstepOk`-passing prefix matching the claim, tip additionally carrying
-`keyIndex = g`, and two invariants (every prefix block's generation ≤ `g`;
-every prefix block in the tip's grid window declares `g`) that make the
-`extend` step purely arithmetic — no positional reasoning about the tip
-inside `c` is ever needed. -/
-structure GroundedHistoryLock (n : Nat) (Signed : Block → Prop) (G : Block)
-    (cl : CertClaim) (g : Nat) (c : Chain) : Prop where
-  valid     : validChain n c = true
-  lock      : lockstepOk n c = true
-  head      : blockAt? c 0 = some G
-  tip       : ∃ t : Block, c.getLast? = some t ∧
-                t.id = cl.tipId ∧ t.slot = cl.tipSlot ∧ t.height = cl.tipHeight ∧
-                t.keyIndex = g
-  tail_eq   : cl.tail = c.filter fun x => decide (cl.tipSlot + 2 - n ≤ x.slot)
-  len_eq    : c.length = cl.tipHeight + 1
-  signed    : ∀ B ∈ c, Signed B
-  gen_max   : ∀ B ∈ c, B.keyIndex ≤ g
-  win_const : ∀ B ∈ c, B.slot / n = cl.tipSlot / n → B.keyIndex = g
-
 /-- **History reconstruction for the lockstep certificate** (mirrors
 `groundedCertSched_history` minus every floor step, plus no-mixing
 propagation via `lockstepOk_append_of_from`). -/
