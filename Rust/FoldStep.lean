@@ -1178,4 +1178,78 @@ theorem cert_step_sched_be_sound {n q era : U64} {st : CertStateG U64} {b : molt
       contradiction
   · injection h with h; contradiction
 
+
+lemma foldSched_sound_aux {n q era : U64} {G : Block}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) (hera : 0 < era.val) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64),
+    (∀ b ∈ bs, Signed (toModelBlock b)) →
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    MoltPetit.Model.GroundedCertSched n.val (fun s => s / era.val) Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    FoldSched n q era st bs →
+    MoltPetit.Model.GroundedCertSched n.val (fun s => s / era.val) Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock)) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st hSig hrep hsched hfold
+    simp only [List.append_nil]
+    exact hsched
+  | cons b rest ih =>
+    intro pre st hSig hrep hsched hfold
+    obtain ⟨hstep, t', ht', hfold_rest⟩ := hfold
+    obtain ⟨hcore, hpin⟩ := cert_step_sched_be_sound hera hstep
+    obtain ⟨hheight, hslot, hprev, hdense⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hSig_b : Signed (toModelBlock b) := hSig b (by simp)
+    have hSig_rest : ∀ x ∈ rest, Signed (toModelBlock x) := fun x hx => hSig x (by simp [hx])
+    let cl := modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)
+    have hsched' := MoltPetit.Model.GroundedCertSched.extend cl (toModelBlock b)
+      hsched hheight hslot hprev hSig_b hpin hdense
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := (cl.tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hsched_step : MoltPetit.Model.GroundedCertSched n.val (fun s => s / era.val) Signed
+        (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hsched'
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hres := ih (pre ++ [b]) (stepState b t') hSig_rest hrep_step hsched_step hfold_rest
+    rw [List.append_assoc, List.singleton_append] at hres
+    exact hres
+
+theorem cert_fold_sched_sound : MoltPaper.thm_cert_fold_sched_sound := by
+  intro n q era G bs Signed hn hq hera hG hSigG hSig hFold
+  have ⟨hgen, hslot0⟩ := cert_genesis_ok_be_sound hG
+  have hbase_sched : MoltPetit.Model.GroundedCertSched n.val (fun s => s / era.val) Signed
+      (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    have hnil := modelClaimOf_nil n.val (toModelBlock G)
+    rw [hnil]
+    apply MoltPetit.Model.GroundedCertSched.genesis
+    · exact hgen
+    · exact hslot0
+    · exact hSigG
+    · dsimp only
+      rw [hslot0]
+      simp only [Nat.zero_div, Nat.zero_le]
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hsound := foldSched_sound_aux hn hq hera bs [] (genesisState n.val G)
+    hSig hbase_rep hbase_sched hFold
+  simp only [List.nil_append] at hsound
+  exact hsound
+
 end Rust
