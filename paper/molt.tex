@@ -1336,13 +1336,11 @@ window is not complete and cannot be used, which is why the depth is
 $2n$: exactly $n + ((t{+}1) \bmod n)$ for lower tip slot $t$
 (\code{lockstepGen\_shared\_prefix\_sharp}).
 
-The first budget gives the second when every generation is some grid
-window's counter, by
-\code{LockstepPackage.toGen}. As stated, that theorem asks for every
-natural number, so the counter must never stop; this is stronger than
-needed. They differ otherwise only for
-generations the counter never uses, so in practice the per-generation
-budget is the weaker requirement.
+The first budget gives the second
+(\code{LockstepPackage.toGen\_of\_low}). Window~$0$ already bounds every
+generation from the genesis counter on, so only generations below it
+need a bound of their own, and those are never used. In practice the
+per-generation budget is therefore the weaker requirement.
 
 \paragraph{Operator duties.} Two, and they are this mode's real price.
 \begin{itemize}
@@ -1355,9 +1353,10 @@ generation is stolen after the roster has moved past it
 (\code{ErasureTimedLock}). That turns the count a deployment attests
 while a generation is live into the per-generation count
 Theorem~\ref{thm:lock-gen} needs (\code{genBound\_of\_preRetirementBound};
-end to end, \code{lockstep\_client\_safety\_timed}, which covers equal
-tip heights only; the unequal-height and certificate forms are not yet
-stated for the timed package). So a deployment
+end to end, \code{lockstep\_client\_safety\_timed}). The timed package
+gives the per-generation one, by
+\code{LockstepPackageTimed.toGen}, so every form of Theorem~\ref{thm:lock-gen} applies to it: unequal heights,
+genesis agreement, and the certificate and history forms. So a deployment
 budgets $T$ validators whose generation-$j$ key is stolen \emph{before $j$
 retires}, per generation, not $T$ over all time. A theft before $j$'s
 first window counts too, as in mode 2; nothing assumes it away. Theft
@@ -1457,12 +1456,26 @@ Section~\ref{sec:opmodel}.
 \label{sec:liveness}
 
 Safety limits what a verifier can be made to accept. Liveness is about
-progress. The theorems below are about the basic chain rules
-(Section~\ref{sec:protocol}) only. Key versions are not in them: no
-theorem says that an honest block passes a rotation pin, the lockstep
-rule, or the signature check. For mode 1 the chain part is proved
-separately (\code{liveness\_produce\_blockK}, unsigned); for modes 2
-and 3 no liveness result exists yet.
+progress. Theorem~\ref{thm:live} is about the basic chain rules
+(Section~\ref{sec:protocol}). Each mode's validator also lets an honest
+producer through:
+\begin{itemize}
+\item mode 1, for the chain rules and the monotone check
+  (\code{liveness\_produce\_blockK}, unsigned);
+\item mode 2, signed: if the producer's signature verifies under its
+  registered key at the version it states, and that version meets the
+  schedule and the producer's own floor, the extended signed chain passes
+  the mode-2 validator (\code{sched\_liveness\_produce\_block});
+\item mode 3, signed: the same, if the stated version is at least every
+  version on the chain and equals every version already stated in the
+  producer's own grid window (\code{lockstep\_liveness\_produce\_block}).
+\end{itemize}
+These conditions are where an attacker can still slow a mode down. A
+stolen key of validator $i$ used at a higher version raises $i$'s floor,
+so $i$ must rotate past it before it can sign again. In mode 3, an
+attacker block in the current grid window at another generation blocks
+every honest producer of that window from building on it; they must
+build around it, as around a missing slot. Neither is a safety issue.
 
 \begin{theorem}[Liveness; Lean \code{production\_liveness},
 \code{global\_liveness}]\label{thm:live}
