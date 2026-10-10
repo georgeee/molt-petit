@@ -1325,4 +1325,51 @@ def LockstepPackage.thm_toGen_of_low : Prop :=
 
 end
 
+
+section
+open Aeneas Std Result Rust molt_petit
+
+/-- Paper: cited in sec:impl. Pass 26 (N2): the mode-1 fold step the
+certificate circuit runs, folded from the genesis over signed blocks, yields
+a `GroundedCertK` claim whose floor is the floors the certificate exposes. -/
+def thm_cert_fold_k_sound : Prop :=
+  ∀ {n q : U64} {G : Block} {bs : List Block} {out : FloorsG U64}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSigG : Signed (toModelBlock G))
+    (hSig : ∀ b ∈ bs, Signed (toModelBlock b))
+    (hFold : FoldK n q (genesisState n.val G) (initFloors n.val G.key_index) bs out),
+    MoltPetit.Model.GroundedCertK n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) (floorsFun out)
+
+/-- Paper: cited in sec:impl, sec:rotation. Pass 26 (N5): the mode-2 fold
+step, under the schedule `slot / era`, yields a `GroundedCertSched` claim. -/
+def thm_cert_fold_sched_sound : Prop :=
+  ∀ {n q era : U64} {G : Block} {bs : List Block}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) (hera : 0 < era.val)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSigG : Signed (toModelBlock G))
+    (hSig : ∀ b ∈ bs, Signed (toModelBlock b))
+    (hFold : FoldSched n q era (genesisState n.val G) bs),
+    MoltPetit.Model.GroundedCertSched n.val (fun s => s / era.val) Signed
+      (toModelBlock G) (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock))
+
+/-- Paper: cited in sec:impl, sec:rotation. Pass 26 (N5): the mode-3 fold
+step yields a `GroundedCertLock` claim at the tip's key index. -/
+def thm_cert_fold_lock_sound : Prop :=
+  ∀ {n q : U64} {G : Block} {bs : List Block}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSigG : Signed (toModelBlock G))
+    (hSig : ∀ b ∈ bs, Signed (toModelBlock b))
+    (hFold : FoldLock n q (genesisState n.val G) G.key_index bs),
+    MoltPetit.Model.GroundedCertLock n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock))
+      ((G :: bs).getLast (List.cons_ne_nil _ _)).key_index.val
+
+end
+
 end MoltPaper

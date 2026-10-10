@@ -1015,4 +1015,352 @@ def valid_chain_be
     let gl ← BackendInst.and be genesis links
     BackendInst.and be gl dense
 
+/-- Trait declaration: [molt_petit::BackendK]
+    Source: 'src/lib.rs', lines 888:0-897:1
+    Visibility: public -/
+structure BackendK (Self : Type) (Self_Clause0_Num : Type) (Self_Clause0_Bool :
+  Type) where
+  BackendInst : Backend Self Self_Clause0_Num Self_Clause0_Bool
+  div : Self → Self_Clause0_Num → Self_Clause0_Num → Result
+    Self_Clause0_Num
+  rem : Self → Self_Clause0_Num → Self_Clause0_Num → Result
+    Self_Clause0_Num
+  select : Self → Self_Clause0_Bool → Self_Clause0_Num → Self_Clause0_Num
+    → Result Self_Clause0_Num
+  monus : Self → Self_Clause0_Num → Self_Clause0_Num → Result
+    Self_Clause0_Num
+
+/-- [molt_petit::{impl molt_petit::BackendK<u64, bool> for molt_petit::U64Backend}::monus]:
+    Source: 'src/lib.rs', lines 903:4-903:76
+    Visibility: public -/
+def U64Backend.Insts.Molt_petitBackendKU64Bool.monus
+  (self : U64Backend) (a : Std.U64) (b : Std.U64) : Result Std.U64 := do
+  if a < b
+  then ok 0#u64
+  else a - b
+
+/-- [molt_petit::{impl molt_petit::BackendK<u64, bool> for molt_petit::U64Backend}::select]:
+    Source: 'src/lib.rs', lines 902:4-902:78
+    Visibility: public -/
+def U64Backend.Insts.Molt_petitBackendKU64Bool.select
+  (self : U64Backend) (c : Bool) (a : Std.U64) (b : Std.U64) :
+  Result Std.U64
+  := do
+  if c
+  then ok a
+  else ok b
+
+/-- [molt_petit::{impl molt_petit::BackendK<u64, bool> for molt_petit::U64Backend}::rem]:
+    Source: 'src/lib.rs', lines 901:4-901:50
+    Visibility: public -/
+def U64Backend.Insts.Molt_petitBackendKU64Bool.rem
+  (self : U64Backend) (a : Std.U64) (d : Std.U64) : Result Std.U64 := do
+  a % d
+
+/-- [molt_petit::{impl molt_petit::BackendK<u64, bool> for molt_petit::U64Backend}::div]:
+    Source: 'src/lib.rs', lines 900:4-900:50
+    Visibility: public -/
+def U64Backend.Insts.Molt_petitBackendKU64Bool.div
+  (self : U64Backend) (a : Std.U64) (d : Std.U64) : Result Std.U64 := do
+  a / d
+
+/-- Trait implementation: [molt_petit::{impl molt_petit::BackendK<u64, bool> for molt_petit::U64Backend}]
+    Source: 'src/lib.rs', lines 899:0-904:1 -/
+@[reducible]
+def U64Backend.Insts.Molt_petitBackendKU64Bool : BackendK U64Backend Std.U64
+  Bool := {
+  BackendInst := U64Backend.Insts.Molt_petitBackendU64Bool
+  div := U64Backend.Insts.Molt_petitBackendKU64Bool.div
+  rem := U64Backend.Insts.Molt_petitBackendKU64Bool.rem
+  select := U64Backend.Insts.Molt_petitBackendKU64Bool.select
+  monus := U64Backend.Insts.Molt_petitBackendKU64Bool.monus
+}
+
+/-- [molt_petit::TailG]
+    Source: 'src/lib.rs', lines 907:0-910:1
+    Visibility: public -/
+@[discriminant isize]
+inductive TailG (N : Type) where
+| TNil : TailG N
+| TCons : N → N → TailG N → TailG N
+
+/-- [molt_petit::FloorsG]
+    Source: 'src/lib.rs', lines 913:0-916:1
+    Visibility: public -/
+@[discriminant isize]
+inductive FloorsG (N : Type) where
+| FNil : FloorsG N
+| FCons : N → FloorsG N → FloorsG N
+
+/-- [molt_petit::CertStateG]
+    Source: 'src/lib.rs', lines 919:0-924:1
+    Visibility: public -/
+structure CertStateG (N : Type) where
+  tip_id : HashG N
+  tip_slot : N
+  tip_height : N
+  tail : TailG N
+
+/-- [molt_petit::tail_count_be]:
+    Source: 'src/lib.rs', lines 927:0-943:1 -/
+def tail_count_be
+  {B : Type} {Clause0_Num : Type} {Clause0_Bool : Type} (BackendInst : Backend
+  B Clause0_Num Clause0_Bool) (be : B) (t : TailG Clause0_Num)
+  (u : Clause0_Num) (len : Clause0_Num) :
+  Result Clause0_Num
+  := do
+  match t with
+  | TailG.TNil => BackendInst.zero be
+  | TailG.TCons f s tl =>
+    let lt_lo ← BackendInst.lt be s u
+    let ge_u ← BackendInst.not be lt_lo
+    let hi ← BackendInst.add be u len
+    let lt_hi ← BackendInst.lt be s hi
+    let inw ← BackendInst.and be ge_u lt_hi
+    let t1 ← BackendInst.one be
+    let present ← BackendInst.eq be f t1
+    let counted ← BackendInst.and be present inw
+    let here ← BackendInst.bool_to_num be counted
+    let rest ← tail_count_be BackendInst be tl u len
+    BackendInst.add be here rest
+partial_fixpoint
+
+/-- [molt_petit::fold_window_ok_be]:
+    Source: 'src/lib.rs', lines 947:0-974:1 -/
+def fold_window_ok_be
+  {B : Type} {Clause0_Num : Type} {Clause0_Bool : Type} (BackendInst : Backend
+  B Clause0_Num Clause0_Bool) (be : B) (tail : TailG Clause0_Num)
+  (tip_slot : Clause0_Num) (slot : Clause0_Num) (u : Clause0_Num)
+  (n : Clause0_Num) (q : Clause0_Num) :
+  Result Clause0_Bool
+  := do
+  let un ← BackendInst.add be u n
+  let t ← BackendInst.one be
+  let t1 ← BackendInst.add be t t
+  let ts2 ← BackendInst.add be tip_slot t1
+  let lt_lo ← BackendInst.lt be un ts2
+  let lo_ok ← BackendInst.not be lt_lo
+  let s1 ← BackendInst.add be slot t
+  let lt_hi ← BackendInst.lt be s1 un
+  let hi_ok ← BackendInst.not be lt_hi
+  let checked ← BackendInst.and be lo_ok hi_ok
+  let in_tail ← tail_count_be BackendInst be tail u n
+  let b_lo ← BackendInst.lt be slot u
+  let b_ge ← BackendInst.not be b_lo
+  let b_hi ← BackendInst.lt be slot un
+  let b_in ← BackendInst.and be b_ge b_hi
+  let t2 ← BackendInst.bool_to_num be b_in
+  let cnt ← BackendInst.add be in_tail t2
+  let short ← BackendInst.lt be cnt q
+  let dense ← BackendInst.not be short
+  let nchecked ← BackendInst.not be checked
+  BackendInst.or be nchecked dense
+
+/-- [molt_petit::fold_anchors_ok_be]:
+    Source: 'src/lib.rs', lines 977:0-995:1 -/
+def fold_anchors_ok_be
+  {B : Type} {Clause0_Num : Type} {Clause0_Bool : Type} (BackendInst : Backend
+  B Clause0_Num Clause0_Bool) (be : B) (all : TailG Clause0_Num)
+  (rest : TailG Clause0_Num) (tip_slot : Clause0_Num) (slot : Clause0_Num)
+  (n : Clause0_Num) (q : Clause0_Num) :
+  Result Clause0_Bool
+  := do
+  match rest with
+  | TailG.TNil => BackendInst.bool_const be true
+  | TailG.TCons _ s tl =>
+    let t ← BackendInst.one be
+    let u ← BackendInst.add be s t
+    let here ← fold_window_ok_be BackendInst be all tip_slot slot u n q
+    let more ← fold_anchors_ok_be BackendInst be all tl tip_slot slot n q
+    BackendInst.and be here more
+partial_fixpoint
+
+/-- [molt_petit::cert_step_core_be]:
+    Source: 'src/lib.rs', lines 1000:0-1019:1
+    Visibility: public -/
+def cert_step_core_be
+  {B : Type} {Clause0_Clause0_Num : Type} {Clause0_Clause0_Bool : Type}
+  (BackendKInst : BackendK B Clause0_Clause0_Num Clause0_Clause0_Bool) 
+  (be : B) (n : Clause0_Clause0_Num) (q : Clause0_Clause0_Num)
+  (st : CertStateG Clause0_Clause0_Num) (b : BlockG Clause0_Clause0_Num) :
+  Result Clause0_Clause0_Bool
+  := do
+  let t ← BackendKInst.BackendInst.one be
+  let succ ← BackendKInst.BackendInst.add be st.tip_height t
+  let h_ok ← BackendKInst.BackendInst.eq be b.height succ
+  let slot_ok ← BackendKInst.BackendInst.lt be st.tip_slot b.slot
+  let prev_eq ← hashg_eq BackendKInst.BackendInst be b.prev st.tip_id
+  let has ← BackendKInst.BackendInst.bool_const be b.has_prev
+  let prev_ok ← BackendKInst.BackendInst.and be has prev_eq
+  let t1 ← BackendKInst.BackendInst.and be h_ok slot_ok
+  let links ← BackendKInst.BackendInst.and be t1 prev_ok
+  let t2 ← BackendKInst.BackendInst.add be t t
+  let ts2 ← BackendKInst.BackendInst.add be st.tip_slot t2
+  let lo ← BackendKInst.monus be ts2 n
+  let base ←
+    fold_window_ok_be BackendKInst.BackendInst be st.tail st.tip_slot 
+      b.slot lo n q
+  let anchors ←
+    fold_anchors_ok_be BackendKInst.BackendInst be st.tail st.tail st.tip_slot
+      b.slot n q
+  let t3 ← BackendKInst.BackendInst.and be base anchors
+  BackendKInst.BackendInst.and be links t3
+
+/-- [molt_petit::floors_ok_be]:
+    Source: 'src/lib.rs', lines 1022:0-1035:1 -/
+def floors_ok_be
+  {B : Type} {Clause0_Clause0_Num : Type} {Clause0_Clause0_Bool : Type}
+  (BackendKInst : BackendK B Clause0_Clause0_Num Clause0_Clause0_Bool) 
+  (be : B) (fl : FloorsG Clause0_Clause0_Num) (i : Clause0_Clause0_Num)
+  (p : Clause0_Clause0_Num) (ki : Clause0_Clause0_Num) :
+  Result Clause0_Clause0_Bool
+  := do
+  match fl with
+  | FloorsG.FNil => BackendKInst.BackendInst.bool_const be true
+  | FloorsG.FCons f tl =>
+    let me ← BackendKInst.BackendInst.eq be i p
+    let below ← BackendKInst.BackendInst.lt be ki f
+    let bad ← BackendKInst.BackendInst.and be me below
+    let ok1 ← BackendKInst.BackendInst.not be bad
+    let t ← BackendKInst.BackendInst.one be
+    let i1 ← BackendKInst.BackendInst.add be i t
+    let more ← floors_ok_be BackendKInst be tl i1 p ki
+    BackendKInst.BackendInst.and be ok1 more
+partial_fixpoint
+
+/-- [molt_petit::floors_bump_be]:
+    Source: 'src/lib.rs', lines 1038:0-1050:1 -/
+def floors_bump_be
+  {B : Type} {Clause0_Clause0_Num : Type} {Clause0_Clause0_Bool : Type}
+  (BackendKInst : BackendK B Clause0_Clause0_Num Clause0_Clause0_Bool) 
+  (be : B) (fl : FloorsG Clause0_Clause0_Num) (i : Clause0_Clause0_Num)
+  (p : Clause0_Clause0_Num) (ki : Clause0_Clause0_Num) :
+  Result (FloorsG Clause0_Clause0_Num)
+  := do
+  match fl with
+  | FloorsG.FNil => ok FloorsG.FNil
+  | FloorsG.FCons f tl =>
+    let me ← BackendKInst.BackendInst.eq be i p
+    let raise ← BackendKInst.BackendInst.lt be f ki
+    let up ← BackendKInst.BackendInst.and be me raise
+    let nf ← BackendKInst.select be up ki f
+    let t ← BackendKInst.BackendInst.one be
+    let i1 ← BackendKInst.BackendInst.add be i t
+    let fg ← floors_bump_be BackendKInst be tl i1 p ki
+    ok (FloorsG.FCons nf fg)
+partial_fixpoint
+
+/-- [molt_petit::cert_step_k_be]:
+    Source: 'src/lib.rs', lines 1053:0-1066:1
+    Visibility: public -/
+def cert_step_k_be
+  {B : Type} {Clause0_Clause0_Num : Type} {Clause0_Clause0_Bool : Type}
+  (BackendKInst : BackendK B Clause0_Clause0_Num Clause0_Clause0_Bool) 
+  (be : B) (n : Clause0_Clause0_Num) (q : Clause0_Clause0_Num)
+  (st : CertStateG Clause0_Clause0_Num) (fl : FloorsG Clause0_Clause0_Num)
+  (b : BlockG Clause0_Clause0_Num) (ki : Clause0_Clause0_Num) :
+  Result Clause0_Clause0_Bool
+  := do
+  let core ← cert_step_core_be BackendKInst be n q st b
+  let p ← BackendKInst.rem be b.slot n
+  let t ← BackendKInst.BackendInst.zero be
+  let fl_ok ← floors_ok_be BackendKInst be fl t p ki
+  BackendKInst.BackendInst.and be core fl_ok
+
+/-- [molt_petit::cert_next_floors_be]:
+    Source: 'src/lib.rs', lines 1069:0-1078:1
+    Visibility: public -/
+def cert_next_floors_be
+  {B : Type} {Clause0_Clause0_Num : Type} {Clause0_Clause0_Bool : Type}
+  (BackendKInst : BackendK B Clause0_Clause0_Num Clause0_Clause0_Bool) 
+  (be : B) (n : Clause0_Clause0_Num) (fl : FloorsG Clause0_Clause0_Num)
+  (b : BlockG Clause0_Clause0_Num) (ki : Clause0_Clause0_Num) :
+  Result (FloorsG Clause0_Clause0_Num)
+  := do
+  let p ← BackendKInst.rem be b.slot n
+  let t ← BackendKInst.BackendInst.zero be
+  floors_bump_be BackendKInst be fl t p ki
+
+/-- [molt_petit::cert_step_sched_be]:
+    Source: 'src/lib.rs', lines 1082:0-1096:1
+    Visibility: public -/
+def cert_step_sched_be
+  {B : Type} {Clause0_Clause0_Num : Type} {Clause0_Clause0_Bool : Type}
+  (BackendKInst : BackendK B Clause0_Clause0_Num Clause0_Clause0_Bool) 
+  (be : B) (n : Clause0_Clause0_Num) (q : Clause0_Clause0_Num)
+  (era : Clause0_Clause0_Num) (st : CertStateG Clause0_Clause0_Num)
+  (b : BlockG Clause0_Clause0_Num) (ki : Clause0_Clause0_Num) :
+  Result Clause0_Clause0_Bool
+  := do
+  let core ← cert_step_core_be BackendKInst be n q st b
+  let gen ← BackendKInst.div be b.slot era
+  let below ← BackendKInst.BackendInst.lt be ki gen
+  let pinned ← BackendKInst.BackendInst.not be below
+  BackendKInst.BackendInst.and be core pinned
+
+/-- [molt_petit::cert_step_lock_be]:
+    Source: 'src/lib.rs', lines 1101:0-1120:1
+    Visibility: public -/
+def cert_step_lock_be
+  {B : Type} {Clause0_Clause0_Num : Type} {Clause0_Clause0_Bool : Type}
+  (BackendKInst : BackendK B Clause0_Clause0_Num Clause0_Clause0_Bool) 
+  (be : B) (n : Clause0_Clause0_Num) (q : Clause0_Clause0_Num)
+  (st : CertStateG Clause0_Clause0_Num) (g : Clause0_Clause0_Num)
+  (b : BlockG Clause0_Clause0_Num) (ki : Clause0_Clause0_Num) :
+  Result Clause0_Clause0_Bool
+  := do
+  let core ← cert_step_core_be BackendKInst be n q st b
+  let below ← BackendKInst.BackendInst.lt be ki g
+  let ge ← BackendKInst.BackendInst.not be below
+  let w_tip ← BackendKInst.div be st.tip_slot n
+  let w_b ← BackendKInst.div be b.slot n
+  let same ← BackendKInst.BackendInst.eq be w_tip w_b
+  let keeps ← BackendKInst.BackendInst.eq be g ki
+  let nsame ← BackendKInst.BackendInst.not be same
+  let mix_ok ← BackendKInst.BackendInst.or be nsame keeps
+  let t ← BackendKInst.BackendInst.and be ge mix_ok
+  BackendKInst.BackendInst.and be core t
+
+/-- [molt_petit::tail_push_be]:
+    Source: 'src/lib.rs', lines 1123:0-1128:1 -/
+def tail_push_be
+  {N : Type} (coremarkerCopyInst : core.marker.Copy N) (t : TailG N) 
+  (f : N) (s : N) :
+  Result (TailG N)
+  := do
+  match t with
+  | TailG.TNil => ok (TailG.TCons f s TailG.TNil)
+  | TailG.TCons f0 s0 tl =>
+    let tg ← tail_push_be coremarkerCopyInst tl f s
+    ok (TailG.TCons f0 s0 tg)
+partial_fixpoint
+
+/-- [molt_petit::cert_next_tail_be]:
+    Source: 'src/lib.rs', lines 1132:0-1137:1
+    Visibility: public -/
+def cert_next_tail_be
+  {B : Type} {Clause0_Num : Type} {Clause0_Bool : Type} (BackendInst : Backend
+  B Clause0_Num Clause0_Bool) (be : B) (t : TailG Clause0_Num)
+  (slot : Clause0_Num) :
+  Result (TailG Clause0_Num)
+  := do
+  match t with
+  | TailG.TNil => ok TailG.TNil
+  | TailG.TCons _ _ tl =>
+    let t1 ← BackendInst.one be
+    tail_push_be BackendInst.coremarkerCopyInst tl t1 slot
+
+/-- [molt_petit::cert_genesis_ok_be]:
+    Source: 'src/lib.rs', lines 1141:0-1145:1
+    Visibility: public -/
+def cert_genesis_ok_be
+  {B : Type} {Clause0_Num : Type} {Clause0_Bool : Type} (BackendInst : Backend
+  B Clause0_Num Clause0_Bool) (be : B) (g : BlockG Clause0_Num) :
+  Result Clause0_Bool
+  := do
+  let ok1 ← genesis_ok_be BackendInst be g
+  let t ← BackendInst.zero be
+  let s0 ← BackendInst.eq be g.slot t
+  BackendInst.and be ok1 s0
+
 end molt_petit

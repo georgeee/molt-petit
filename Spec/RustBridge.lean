@@ -71,3 +71,89 @@ def toChainG : Chain → ChainG U64
 
 abbrev UB : Backend U64Backend U64 Bool := U64Backend.Insts.Molt_petitBackendU64Bool
 end Rust
+
+/-! ### Certificate fold (Pass 26: review items N2, N5)
+
+The fold circuit's state and its driver: the Rust step functions
+(`cert_step_*_be`, `cert_next_*_be`) applied one block at a time from the
+genesis state. `Signed` is not here; the circuit checks it with its signature
+gadget, and the statements take it as a hypothesis per block. -/
+
+open Aeneas Std Result
+namespace Rust
+open molt_petit
+
+abbrev UBK : BackendK U64Backend U64 Bool := U64Backend.Insts.Molt_petitBackendKU64Bool
+
+/-- `k` padding entries `(0, 0)` in front of a buffer. -/
+def padTail : Nat → TailG U64 → TailG U64
+  | 0, t => t
+  | k + 1, t => .TCons 0#u64 0#u64 (padTail k t)
+
+/-- The genesis buffer, length `n - 1`: padding, then the genesis slot
+(empty for `n ≤ 1`). -/
+def initTail (n : Nat) (gslot : U64) : TailG U64 :=
+  if n < 2 then .TNil else padTail (n - 2) (.TCons 1#u64 gslot .TNil)
+
+/-- `k` zero floors. -/
+def zeroFloors : Nat → FloorsG U64
+  | 0 => .FNil
+  | k + 1 => .FCons 0#u64 (zeroFloors k)
+
+/-- The genesis floors, length `n`: the genesis key index for producer 0
+(the genesis slot is 0), zero for the rest. -/
+def initFloors (n : Nat) (gki : U64) : FloorsG U64 :=
+  match n with
+  | 0 => .FNil
+  | k + 1 => .FCons gki (zeroFloors k)
+
+/-- The floors as a function of the producer (0 past the list). -/
+def floorsFun : FloorsG U64 → Nat → Nat
+  | .FNil, _ => 0
+  | .FCons f _, 0 => f.val
+  | .FCons _ tl, i + 1 => floorsFun tl i
+
+/-- The state after the genesis. -/
+def genesisState (n : Nat) (G : Block) : CertStateG U64 :=
+  { tip_id := toHashG G.id, tip_slot := G.slot, tip_height := G.height
+  , tail := initTail n G.slot }
+
+/-- The state after folding in `b`, with the updated buffer `t'`. -/
+def stepState (b : Block) (t' : TailG U64) : CertStateG U64 :=
+  { tip_id := toHashG b.id, tip_slot := b.slot, tip_height := b.height, tail := t' }
+
+/-- Mode 1: every step of `bs` is accepted, threading the floors; `out` is
+the final floors (what the certificate exposes). -/
+def FoldK (n q : U64) : CertStateG U64 → FloorsG U64 → List Block → FloorsG U64 → Prop
+  | _, fl, [], out => out = fl
+  | st, fl, b :: bs, out =>
+      cert_step_k_be UBK () n q st fl (toBlockG b) b.key_index = ok true ∧
+      ∃ t' fl', cert_next_tail_be UB () st.tail b.slot = ok t' ∧
+        cert_next_floors_be UBK () n fl (toBlockG b) b.key_index = ok fl' ∧
+        FoldK n q (stepState b t') fl' bs out
+
+/-- Mode 2: every step of `bs` is accepted under the schedule `slot / era`. -/
+def FoldSched (n q era : U64) : CertStateG U64 → List Block → Prop
+  | _, [] => True
+  | st, b :: bs =>
+      cert_step_sched_be UBK () n q era st (toBlockG b) b.key_index = ok true ∧
+      ∃ t', cert_next_tail_be UB () st.tail b.slot = ok t' ∧
+        FoldSched n q era (stepState b t') bs
+
+/-- Mode 3: every step of `bs` is accepted, threading the generation `g`
+(the previous block's key index). -/
+def FoldLock (n q : U64) : CertStateG U64 → U64 → List Block → Prop
+  | _, _, [] => True
+  | st, g, b :: bs =>
+      cert_step_lock_be UBK () n q st g (toBlockG b) b.key_index = ok true ∧
+      ∃ t', cert_next_tail_be UB () st.tail b.slot = ok t' ∧
+        FoldLock n q (stepState b t') b.key_index bs
+
+/-- The model claim of the history `G :: bs`: its tip, and the blocks at or
+above the tip's density bound `tipSlot + 2 - n`. -/
+def modelClaimOf (n : Nat) (G : MoltPetit.Model.Block) (bs : List MoltPetit.Model.Block) :
+    MoltPetit.Model.CertClaim :=
+  let t := (G :: bs).getLast (List.cons_ne_nil _ _)
+  { tipId := t.id, tipSlot := t.slot, tipHeight := t.height
+  , tail := (G :: bs).filter fun x => decide (t.slot + 2 - n ≤ x.slot) }
+end Rust

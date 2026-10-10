@@ -864,3 +864,282 @@ pub fn valid_chain_be<B: Backend>(be: &B, n: B::Num, q: B::Num, c: &ChainG<B::Nu
         }
     }
 }
+
+// ===========================================================================
+// Certificate fold step (review items N2, N5)
+//
+// One block folded into a certificate state: the checks of the model's
+// `GroundedCertK.extend` (mode 1, per-producer floor), `GroundedCertSched.extend`
+// (mode 2, pin `slot / era <= key_index`) and `GroundedCertLock.extend` (mode 3,
+// threaded generation `g`), minus `Signed b`, which the circuit checks with its
+// signature gadget. Written once over `BackendK`, like `valid_chain_be`: the
+// native `U64Backend` instance is extracted to Lean and proved against the
+// `extend` premises; the plonky2 instance in `rust-keyrot/` is the step of the
+// recursive certificate. `Backend` and `valid_chain_be` above are untouched.
+//
+// The claim's tail is a fixed-length buffer of the last `n - 1` slots, oldest
+// first, each with a presence flag (0 = padding, 1 = a real block). It holds a
+// superset of the model's filtered tail; the extra (older) slots lie below
+// every window the step checks, so window counts agree.
+// ===========================================================================
+
+/// Extra arithmetic for the fold step. In-circuit, `div`/`rem` are witnessed
+/// (`a = q * d + r`, `r < d`) and `select` is `c * (a - b) + b`.
+pub trait BackendK: Backend {
+    /// Floor quotient `a / d`; callers pass `d > 0`.
+    fn div(&self, a: Self::Num, d: Self::Num) -> Self::Num;
+    /// Remainder `a % d`; callers pass `d > 0`.
+    fn rem(&self, a: Self::Num, d: Self::Num) -> Self::Num;
+    /// `if c { a } else { b }`.
+    fn select(&self, c: Self::Bool, a: Self::Num, b: Self::Num) -> Self::Num;
+    /// Truncated subtraction (Lean's `Nat` subtraction).
+    fn monus(&self, a: Self::Num, b: Self::Num) -> Self::Num;
+}
+
+impl BackendK for U64Backend {
+    fn div(&self, a: u64, d: u64) -> u64 { a / d }
+    fn rem(&self, a: u64, d: u64) -> u64 { a % d }
+    fn select(&self, c: bool, a: u64, b: u64) -> u64 { if c { a } else { b } }
+    fn monus(&self, a: u64, b: u64) -> u64 { if a < b { 0 } else { a - b } }
+}
+
+/// The tail buffer: `(flag, slot)` entries, oldest first.
+pub enum TailG<N> {
+    TNil,
+    TCons(N, N, Box<TailG<N>>),
+}
+
+/// Per-producer floors, producer `0` first (mode 1).
+pub enum FloorsG<N> {
+    FNil,
+    FCons(N, Box<FloorsG<N>>),
+}
+
+/// The certificate state a fold step reads (the public claim).
+pub struct CertStateG<N> {
+    pub tip_id: HashG<N>,
+    pub tip_slot: N,
+    pub tip_height: N,
+    pub tail: TailG<N>,
+}
+
+/// Number of present buffer entries, plus the new block, in `[u, u + len)`.
+fn tail_count_be<B: Backend>(be: &B, t: &TailG<B::Num>, u: B::Num, len: B::Num) -> B::Num {
+    match t {
+        TailG::TNil => be.zero(),
+        TailG::TCons(f, s, tl) => {
+            let lt_lo = be.lt(*s, u);
+            let ge_u = be.not(lt_lo);
+            let hi = be.add(u, len);
+            let lt_hi = be.lt(*s, hi);
+            let inw = be.and(ge_u, lt_hi);
+            let present = be.eq(*f, be.one());
+            let counted = be.and(present, inw);
+            let here = be.bool_to_num(counted);
+            let rest = tail_count_be(be, tl, u, len);
+            be.add(here, rest)
+        }
+    }
+}
+
+/// The window `[u, u + n)` is checked by this fold (`tip_slot + 2 <= u + n` and
+/// `u + n <= slot + 1`) and then holds `q` blocks of `tail ++ [b]`.
+fn fold_window_ok_be<B: Backend>(
+    be: &B,
+    tail: &TailG<B::Num>,
+    tip_slot: B::Num,
+    slot: B::Num,
+    u: B::Num,
+    n: B::Num,
+    q: B::Num,
+) -> B::Bool {
+    let un = be.add(u, n);
+    let ts2 = be.add(tip_slot, be.add(be.one(), be.one()));
+    let lt_lo = be.lt(un, ts2);
+    let lo_ok = be.not(lt_lo); // tip_slot + 2 <= u + n
+    let s1 = be.add(slot, be.one());
+    let lt_hi = be.lt(s1, un);
+    let hi_ok = be.not(lt_hi); // u + n <= slot + 1
+    let checked = be.and(lo_ok, hi_ok);
+    let in_tail = tail_count_be(be, tail, u, n);
+    let b_lo = be.lt(slot, u);
+    let b_ge = be.not(b_lo);
+    let b_hi = be.lt(slot, un);
+    let b_in = be.and(b_ge, b_hi);
+    let cnt = be.add(in_tail, be.bool_to_num(b_in));
+    let short = be.lt(cnt, q);
+    let dense = be.not(short);
+    let nchecked = be.not(checked);
+    be.or(nchecked, dense) // checked => dense
+}
+
+/// The window starting just after each buffered slot is dense (when checked).
+fn fold_anchors_ok_be<B: Backend>(
+    be: &B,
+    all: &TailG<B::Num>,
+    rest: &TailG<B::Num>,
+    tip_slot: B::Num,
+    slot: B::Num,
+    n: B::Num,
+    q: B::Num,
+) -> B::Bool {
+    match rest {
+        TailG::TNil => be.bool_const(true),
+        TailG::TCons(_f, s, tl) => {
+            let u = be.add(*s, be.one());
+            let here = fold_window_ok_be(be, all, tip_slot, slot, u, n, q);
+            let more = fold_anchors_ok_be(be, all, tl, tip_slot, slot, n, q);
+            be.and(here, more)
+        }
+    }
+}
+
+/// The mode-independent fold checks: links to the tip and every newly matured
+/// window dense. The minimum count over the checked range is at its lower end
+/// `tip_slot + 2 - n` or just after some buffered slot, so those suffice.
+pub fn cert_step_core_be<B: BackendK>(
+    be: &B,
+    n: B::Num,
+    q: B::Num,
+    st: &CertStateG<B::Num>,
+    b: &BlockG<B::Num>,
+) -> B::Bool {
+    let succ = be.add(st.tip_height, be.one());
+    let h_ok = be.eq(b.height, succ);
+    let slot_ok = be.lt(st.tip_slot, b.slot);
+    let prev_eq = hashg_eq(be, &b.prev, &st.tip_id);
+    let has = be.bool_const(b.has_prev);
+    let prev_ok = be.and(has, prev_eq);
+    let links = be.and(be.and(h_ok, slot_ok), prev_ok);
+    let ts2 = be.add(st.tip_slot, be.add(be.one(), be.one()));
+    let lo = be.monus(ts2, n);
+    let base = fold_window_ok_be(be, &st.tail, st.tip_slot, b.slot, lo, n, q);
+    let anchors = fold_anchors_ok_be(be, &st.tail, &st.tail, st.tip_slot, b.slot, n, q);
+    be.and(links, be.and(base, anchors))
+}
+
+/// Mode 1: the producer's floor is at most the block's key index.
+fn floors_ok_be<B: BackendK>(be: &B, fl: &FloorsG<B::Num>, i: B::Num, p: B::Num, ki: B::Num) -> B::Bool {
+    match fl {
+        FloorsG::FNil => be.bool_const(true),
+        FloorsG::FCons(f, tl) => {
+            let me = be.eq(i, p);
+            let below = be.lt(ki, *f);
+            let bad = be.and(me, below);
+            let ok = be.not(bad);
+            let i1 = be.add(i, be.one());
+            let more = floors_ok_be(be, tl, i1, p, ki);
+            be.and(ok, more)
+        }
+    }
+}
+
+/// Mode 1: raise the producer's floor to the block's key index.
+fn floors_bump_be<B: BackendK>(be: &B, fl: &FloorsG<B::Num>, i: B::Num, p: B::Num, ki: B::Num) -> FloorsG<B::Num> {
+    match fl {
+        FloorsG::FNil => FloorsG::FNil,
+        FloorsG::FCons(f, tl) => {
+            let me = be.eq(i, p);
+            let raise = be.lt(*f, ki);
+            let up = be.and(me, raise);
+            let nf = be.select(up, ki, *f);
+            let i1 = be.add(i, be.one());
+            FloorsG::FCons(nf, Box::new(floors_bump_be(be, tl, i1, p, ki)))
+        }
+    }
+}
+
+/// Mode-1 fold step (`GroundedCertK.extend` without `Signed`).
+pub fn cert_step_k_be<B: BackendK>(
+    be: &B,
+    n: B::Num,
+    q: B::Num,
+    st: &CertStateG<B::Num>,
+    fl: &FloorsG<B::Num>,
+    b: &BlockG<B::Num>,
+    ki: B::Num,
+) -> B::Bool {
+    let core = cert_step_core_be(be, n, q, st, b);
+    let p = be.rem(b.slot, n);
+    let fl_ok = floors_ok_be(be, fl, be.zero(), p, ki);
+    be.and(core, fl_ok)
+}
+
+/// Mode-1 floors after the step.
+pub fn cert_next_floors_be<B: BackendK>(
+    be: &B,
+    n: B::Num,
+    fl: &FloorsG<B::Num>,
+    b: &BlockG<B::Num>,
+    ki: B::Num,
+) -> FloorsG<B::Num> {
+    let p = be.rem(b.slot, n);
+    floors_bump_be(be, fl, be.zero(), p, ki)
+}
+
+/// Mode-2 fold step (`GroundedCertSched.extend` without `Signed`), for the
+/// schedule `slot / era`.
+pub fn cert_step_sched_be<B: BackendK>(
+    be: &B,
+    n: B::Num,
+    q: B::Num,
+    era: B::Num,
+    st: &CertStateG<B::Num>,
+    b: &BlockG<B::Num>,
+    ki: B::Num,
+) -> B::Bool {
+    let core = cert_step_core_be(be, n, q, st, b);
+    let gen = be.div(b.slot, era);
+    let below = be.lt(ki, gen);
+    let pinned = be.not(below);
+    be.and(core, pinned)
+}
+
+/// Mode-3 fold step (`GroundedCertLock.extend` without `Signed`): `g <= ki`, and
+/// a block in the tip's grid window `slot / n` declares `g`. The next state's
+/// generation is `ki`.
+pub fn cert_step_lock_be<B: BackendK>(
+    be: &B,
+    n: B::Num,
+    q: B::Num,
+    st: &CertStateG<B::Num>,
+    g: B::Num,
+    b: &BlockG<B::Num>,
+    ki: B::Num,
+) -> B::Bool {
+    let core = cert_step_core_be(be, n, q, st, b);
+    let below = be.lt(ki, g);
+    let ge = be.not(below);
+    let w_tip = be.div(st.tip_slot, n);
+    let w_b = be.div(b.slot, n);
+    let same = be.eq(w_tip, w_b);
+    let keeps = be.eq(g, ki);
+    let nsame = be.not(same);
+    let mix_ok = be.or(nsame, keeps);
+    be.and(core, be.and(ge, mix_ok))
+}
+
+/// Append `(flag, slot)` at the end of the buffer.
+fn tail_push_be<N: Copy>(t: &TailG<N>, f: N, s: N) -> TailG<N> {
+    match t {
+        TailG::TNil => TailG::TCons(f, s, Box::new(TailG::TNil)),
+        TailG::TCons(f0, s0, tl) => TailG::TCons(*f0, *s0, Box::new(tail_push_be(tl, f, s))),
+    }
+}
+
+/// The buffer after the step: drop the oldest entry, append the new block's
+/// slot (length is preserved; an empty buffer, `n = 1`, stays empty).
+pub fn cert_next_tail_be<B: Backend>(be: &B, t: &TailG<B::Num>, slot: B::Num) -> TailG<B::Num> {
+    match t {
+        TailG::TNil => TailG::TNil,
+        TailG::TCons(_f, _s, tl) => tail_push_be(tl, be.one(), slot),
+    }
+}
+
+/// The genesis claim's check (`GroundedCert*.genesis` without `Signed`):
+/// `genesis_ok` and slot 0.
+pub fn cert_genesis_ok_be<B: Backend>(be: &B, g: &BlockG<B::Num>) -> B::Bool {
+    let ok = genesis_ok_be(be, g);
+    let s0 = be.eq(g.slot, be.zero());
+    be.and(ok, s0)
+}
