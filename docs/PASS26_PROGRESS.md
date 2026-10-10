@@ -12,7 +12,7 @@ In progress: 9. Mode 1 floors + cert_fold_k_sound
 - [x] 6. Prefix claim and genesis repr
 - [x] 7. Mode 2 `cert_fold_sched_sound`
 - [x] 8. Mode 3 `cert_fold_lock_sound`
-- [ ] 9. Mode 1 floors + `cert_fold_k_sound`
+- [x] 9. Mode 1 floors + `cert_fold_k_sound`
 - [ ] 10. Aliases in `Paper/Proofs.lean`, check.sh green
 
 STOP:

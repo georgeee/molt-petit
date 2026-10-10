@@ -20,6 +20,16 @@ theorem ubk_select_val {c : Bool} {a b z : U64} (h : UBK.select () c a b = ok z)
   · injection h with h; subst h; rfl
   · injection h with h; subst h; rfl
 
+theorem ubk_select_val_true (b : U64) {a z : U64} (h : UBK.select () true a b = ok z) :
+    z = a := by
+  dsimp [UBK, BackendK.select, U64Backend.Insts.Molt_petitBackendKU64Bool.select] at h
+  injection h with h; subst h; rfl
+
+theorem ubk_select_val_false (a : U64) {b z : U64} (h : UBK.select () false a b = ok z) :
+    z = b := by
+  dsimp [UBK, BackendK.select, U64Backend.Insts.Molt_petitBackendKU64Bool.select] at h
+  injection h with h; subst h; rfl
+
 /-- `BackendK.div` reduces to Nat division when the divisor is nonzero. -/
 theorem ubk_div (a d : U64) (hd : d.val ≠ 0) :
     ∃ z : U64, UBK.div () a d = ok z ∧ z.val = a.val / d.val := by
@@ -1400,6 +1410,364 @@ theorem cert_fold_lock_sound : MoltPaper.thm_cert_fold_lock_sound := by
     exact tailRepr_genesisState n.val G
   have hsound := foldLock_sound_aux hn hq bs [] (genesisState n.val G) G.key_index
     hSig hbase_rep rfl hbase_lock hFold
+  simp only [List.nil_append] at hsound
+  exact hsound
+
+
+def floorsLen : FloorsG U64 → Nat
+  | .FNil => 0
+  | .FCons _ tl => floorsLen tl + 1
+
+@[simp] lemma floorsLen_nil : floorsLen (.FNil : FloorsG U64) = 0 := rfl
+@[simp] lemma floorsLen_cons (f : U64) (tl : FloorsG U64) :
+    floorsLen (.FCons f tl) = floorsLen tl + 1 := rfl
+
+@[simp] lemma floorsLen_zeroFloors : ∀ k : Nat, floorsLen (zeroFloors k) = k
+  | 0 => rfl
+  | k + 1 => by simp [zeroFloors, floorsLen_zeroFloors k]
+
+lemma floorsLen_initFloors : ∀ (n : Nat) (gki : U64), floorsLen (initFloors n gki) = n
+  | 0, _ => rfl
+  | k + 1, _ => by simp [initFloors, floorsLen_zeroFloors]
+
+lemma floorsFun_zeroFloors : ∀ (k : Nat) (i : Nat), floorsFun (zeroFloors k) i = 0
+  | 0, _ => rfl
+  | k + 1, 0 => rfl
+  | k + 1, i + 1 => by simp [zeroFloors, floorsFun, floorsFun_zeroFloors k i]
+
+lemma floorsFun_initFloors (n : Nat) (hn : 1 ≤ n) (gki : U64) :
+    floorsFun (initFloors n gki) = fun i => if i = 0 then gki.val else 0 := by
+  funext i
+  cases n with
+  | zero => contradiction
+  | succ k =>
+    cases i with
+    | zero =>
+      simp [initFloors, floorsFun]
+    | succ m =>
+      simp [initFloors, floorsFun, floorsFun_zeroFloors]
+
+theorem floors_ok_be_corr : ∀ (fl : FloorsG U64) (i p ki : U64),
+    floors_ok_be UBK () fl i p ki = ok true →
+    ∀ (k : Nat), p.val = i.val + k → floorsFun fl k ≤ ki.val := by
+  intro fl
+  induction fl with
+  | FNil =>
+    intro i p ki _ k _
+    cases k <;> simp [floorsFun]
+  | FCons f tl ih =>
+    intro i p ki h k hk
+    simp only [floors_ok_be, UBK] at h
+    obtain ⟨me, hme, h⟩ := bind_inv h
+    obtain ⟨below, hbelow, h⟩ := bind_inv h
+    obtain ⟨bad, hbad, h⟩ := bind_inv h
+    obtain ⟨ok1, hok1, h⟩ := bind_inv h
+    obtain ⟨t, ht, h⟩ := bind_inv h
+    obtain ⟨i1, hi1, h⟩ := bind_inv h
+    obtain ⟨more, hmore, h⟩ := bind_inv h
+    cases ok1 with
+    | false =>
+      dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.and] at h
+      injection h with h
+      contradiction
+    | true =>
+      dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.and] at h
+      injection h with h; subst h
+      injection ht with ht; subst ht
+      have hi1_val : i1.val = i.val + 1 := by
+        have hadd := UScalar.add_equiv i 1#u64
+        simp only [U64Backend.Insts.Molt_petitBackendU64Bool.add] at hi1
+        simp only [hi1] at hadd
+        exact hadd.2.1
+      dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.not] at hok1
+      injection hok1 with hok1
+      cases bad
+      · dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.and] at hbad
+        dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.eq] at hme
+        dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.lt] at hbelow
+        cases k with
+        | zero =>
+          simp only [Nat.add_zero] at hk
+          have hp_eq_i : p = i := UScalar.eq_of_val_eq hk
+          have hi_eq_p : i = p := hp_eq_i.symm
+          subst hi_eq_p
+          simp only [decide_true] at hme
+          injection hme with hme; subst hme
+          simp only [if_true] at hbad
+          injection hbad with hbad; subst hbad
+          injection hbelow with hbelow
+          simp only [decide_eq_false_iff_not] at hbelow
+          change ¬ (ki.val < f.val) at hbelow
+          change f.val ≤ ki.val
+          omega
+        | succ m =>
+          change floorsFun tl m ≤ ki.val
+          apply ih i1 p ki hmore m
+          rw [hi1_val]
+          omega
+      · contradiction
+
+lemma floors_bump_be_corr : ∀ (fl : FloorsG U64) (i p ki : U64) (fl' : FloorsG U64),
+    floors_bump_be UBK () fl i p ki = ok fl' →
+    floorsLen fl' = floorsLen fl ∧
+    ∀ (k : Nat), floorsFun fl' k =
+      if p.val = i.val + k ∧ k < floorsLen fl then
+        max (floorsFun fl k) ki.val
+      else
+        floorsFun fl k := by
+  intro fl
+  induction fl with
+  | FNil =>
+    intro i p ki fl' h
+    simp only [floors_bump_be, UBK] at h
+    injection h with h; subst h
+    simp [floorsLen]
+  | FCons f tl ih =>
+    intro i p ki fl' h
+    simp only [floors_bump_be, UBK] at h
+    obtain ⟨me, hme, h⟩ := bind_inv h
+    obtain ⟨raise, hraise, h⟩ := bind_inv h
+    obtain ⟨up, hup, h⟩ := bind_inv h
+    obtain ⟨nf, hnf, h⟩ := bind_inv h
+    obtain ⟨t, ht, h⟩ := bind_inv h
+    obtain ⟨i1, hi1, h⟩ := bind_inv h
+    obtain ⟨fg, hfg, h⟩ := bind_inv h
+    injection h with h; subst h
+    injection ht with ht; subst ht
+    have hi1_val : i1.val = i.val + 1 := by
+      have hadd := UScalar.add_equiv i 1#u64
+      simp only [U64Backend.Insts.Molt_petitBackendU64Bool.add] at hi1
+      simp only [hi1] at hadd
+      exact hadd.2.1
+    have ⟨hlen_fg, ih_fg⟩ := ih i1 p ki fg hfg
+    have hlen_cons : floorsLen (FloorsG.FCons nf fg) = floorsLen (FloorsG.FCons f tl) := by
+      simp [floorsLen, hlen_fg]
+    refine ⟨hlen_cons, ?_⟩
+    intro k
+    have hnf_val := ubk_select_val hnf
+    dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.eq] at hme
+    injection hme with hme; subst hme
+    dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.lt] at hraise
+    injection hraise with hraise; subst hraise
+    dsimp [U64Backend.Insts.Molt_petitBackendU64Bool.and] at hup
+    have hnf_cases : nf.val = if p.val = i.val then max f.val ki.val else f.val := by
+      by_cases hpi : p.val = i.val
+      · rw [if_pos hpi]
+        have hp_eq : p = i := UScalar.eq_of_val_eq hpi
+        have hi_eq : i = p := hp_eq.symm
+        subst hi_eq
+        simp only [decide_true, if_true] at hup
+        injection hup with hup; subst hup
+        by_cases hfk : f.val < ki.val
+        · have hdec : decide (f < ki) = true := by
+            simp only [decide_eq_true_eq]
+            exact hfk
+          rw [hdec] at hnf
+          have hval := ubk_select_val_true f hnf
+          subst hval
+          omega
+        · have hdec : decide (f < ki) = false := by
+            simp only [decide_eq_false_iff_not]
+            exact hfk
+          rw [hdec] at hnf
+          have hval := ubk_select_val_false ki hnf
+          subst hval
+          omega
+      · rw [if_neg hpi]
+        have hne : ¬ (i = p) := fun h => hpi (by rw [h])
+        have : decide (i = p) = false := by simp [hne]
+        rw [this] at hup
+        injection hup with hup; subst hup
+        have hval := ubk_select_val_false ki hnf
+        subst hval
+        rfl
+    cases k with
+    | zero =>
+      change nf.val = if p.val = i.val + 0 ∧ 0 < floorsLen tl + 1 then
+        max f.val ki.val else f.val
+      rw [hnf_cases]
+      have : 0 < floorsLen tl + 1 := by omega
+      simp only [this, and_true, Nat.add_zero]
+    | succ m =>
+      change floorsFun fg m =
+        if p.val = i.val + (m + 1) ∧ m + 1 < floorsLen tl + 1 then
+          max (floorsFun tl m) ki.val
+        else
+          floorsFun tl m
+      rw [ih_fg m]
+      have hcond : (p.val = i1.val + m ∧ m < floorsLen tl) ↔
+          (p.val = i.val + (m + 1) ∧ m + 1 < floorsLen tl + 1) := by
+        rw [hi1_val]
+        omega
+      by_cases hp : (p.val = i1.val + m ∧ m < floorsLen tl)
+      · have hp2 : (p.val = i.val + (m + 1) ∧ m + 1 < floorsLen tl + 1) := hcond.mp hp
+        rw [if_pos hp, if_pos hp2]
+      · have hp2 : ¬ (p.val = i.val + (m + 1) ∧ m + 1 < floorsLen tl + 1) :=
+          fun h => hp (hcond.mpr h)
+        rw [if_neg hp, if_neg hp2]
+
+lemma cert_next_floors_be_sound {n : U64} (hn : 1 ≤ n.val)
+    {fl : FloorsG U64} {b : molt_petit.Block} {fl' : FloorsG U64}
+    (hlen : floorsLen fl = n.val)
+    (h : cert_next_floors_be UBK () n fl (toBlockG b) b.key_index = ok fl') :
+    floorsLen fl' = n.val ∧
+    floorsFun fl' = (fun i =>
+      if MoltPetit.Model.producerForSlot n.val (toModelBlock b).slot = i then
+        max (floorsFun fl i) (toModelBlock b).keyIndex
+      else
+        floorsFun fl i) := by
+  dsimp [cert_next_floors_be] at h
+  obtain ⟨p, hp, h⟩ := bind_inv h
+  obtain ⟨t, ht, h⟩ := bind_inv h
+  injection ht with ht; subst ht
+  have hpv := ubk_rem_val (by omega) hp
+  have ⟨hlen', hbump⟩ := floors_bump_be_corr fl 0#u64 p b.key_index fl' h
+  rw [hlen] at hlen' hbump
+  refine ⟨hlen', ?_⟩
+  funext i
+  rw [hbump i]
+  have hprod : MoltPetit.Model.producerForSlot n.val (toModelBlock b).slot = p.val := by
+    dsimp [MoltPetit.Model.producerForSlot]
+    rw [hpv]
+    rfl
+  have hki : (toModelBlock b).keyIndex = b.key_index.val := rfl
+  rw [hprod, hki]
+  have hplt : p.val < n.val := by
+    rw [hpv]
+    exact Nat.mod_lt _ (by omega)
+  have h0 : (0#u64 : U64).val = 0 := rfl
+  rw [h0, Nat.zero_add]
+  by_cases hpi : p.val = i
+  · have hi : i < n.val := by omega
+    have hcond : (p.val = i ∧ i < n.val) := ⟨hpi, hi⟩
+    rw [if_pos hcond, if_pos hpi]
+  · have hcond : ¬ (p.val = i ∧ i < n.val) := fun h => hpi h.1
+    rw [if_neg hcond, if_neg hpi]
+
+theorem cert_step_k_be_sound {n q : U64} {st : CertStateG U64} {fl : FloorsG U64}
+    {b : molt_petit.Block} (hn : 1 ≤ n.val)
+    (h : cert_step_k_be UBK () n q st fl (toBlockG b) b.key_index = ok true) :
+    cert_step_core_be UBK () n q st (toBlockG b) = ok true ∧
+    floorsFun fl (MoltPetit.Model.producerForSlot n.val (toModelBlock b).slot) ≤
+      (toModelBlock b).keyIndex := by
+  dsimp [cert_step_k_be] at h
+  obtain ⟨core, hcore, h⟩ := bind_inv h
+  obtain ⟨p, hp, h⟩ := bind_inv h
+  obtain ⟨t, ht, h⟩ := bind_inv h
+  obtain ⟨fl_ok, hfl_ok, h⟩ := bind_inv h
+  split at h
+  · rename_i hcore_t
+    injection h with h; subst h
+    rw [hcore_t] at hcore
+    injection ht with ht; subst ht
+    have hpv := ubk_rem_val (by omega) hp
+    have h0 : (0#u64 : U64).val = 0 := rfl
+    have hcorr := floors_ok_be_corr fl 0#u64 p b.key_index hfl_ok p.val (by rw [h0, Nat.zero_add])
+    have hprod : MoltPetit.Model.producerForSlot n.val (toModelBlock b).slot = p.val := by
+      dsimp [MoltPetit.Model.producerForSlot]
+      rw [hpv]
+      rfl
+    have hki : (toModelBlock b).keyIndex = b.key_index.val := rfl
+    rw [hprod, hki]
+    exact ⟨hcore, hcorr⟩
+  · injection h with h; contradiction
+
+lemma foldK_sound_aux {n q : U64} {G : Block}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64)
+      (fl : FloorsG U64) (out : FloorsG U64),
+    (∀ b ∈ bs, Signed (toModelBlock b)) →
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    floorsLen fl = n.val →
+    MoltPetit.Model.GroundedCertK n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) (floorsFun fl) →
+    FoldK n q st fl bs out →
+    MoltPetit.Model.GroundedCertK n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock)) (floorsFun out) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st fl out hSig hrep hlen hK hfold
+    simp only [List.append_nil]
+    dsimp [FoldK] at hfold
+    subst hfold
+    exact hK
+  | cons b rest ih =>
+    intro pre st fl out hSig hrep hlen hK hfold
+    obtain ⟨hstep, t', fl', ht', hfl', hfold_rest⟩ := hfold
+    obtain ⟨hcore, hle⟩ := cert_step_k_be_sound hn hstep
+    obtain ⟨hheight, hslot, hprev, hdense⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hSig_b : Signed (toModelBlock b) := hSig b (by simp)
+    have hSig_rest : ∀ x ∈ rest, Signed (toModelBlock x) :=
+      fun x hx => hSig x (by simp [hx])
+    let cl := modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)
+    have hK' := MoltPetit.Model.GroundedCertK.extend cl (floorsFun fl) (toModelBlock b)
+      hK hheight hslot hprev hSig_b hle hdense
+    have ⟨hlen', hfun'⟩ := cert_next_floors_be_sound hn hlen hfl'
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := (cl.tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hK_step : MoltPetit.Model.GroundedCertK n.val Signed
+        (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock))
+        (floorsFun fl') := by
+      rw [hmap_app, hcl_eq, hfun']
+      exact hK'
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hres := ih (pre ++ [b]) (stepState b t') fl' out hSig_rest
+      hrep_step hlen' hK_step hfold_rest
+    rw [List.append_assoc, List.singleton_append] at hres
+    exact hres
+
+theorem cert_fold_k_sound : MoltPaper.thm_cert_fold_k_sound := by
+  intro n q G bs out Signed hn hq hG hSigG hSig hFold
+  have ⟨hgen, hslot0⟩ := cert_genesis_ok_be_sound hG
+  have hbase_K : MoltPetit.Model.GroundedCertK n.val Signed
+      (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock))
+      (floorsFun (initFloors n.val G.key_index)) := by
+    simp only [List.map_nil]
+    have hnil := modelClaimOf_nil n.val (toModelBlock G)
+    rw [hnil]
+    have hfun := floorsFun_initFloors n.val hn G.key_index
+    rw [hfun]
+    have hslot0_m : (toModelBlock G).slot = 0 := hslot0
+    have hprod0 : MoltPetit.Model.producerForSlot n.val (toModelBlock G).slot = 0 := by
+      dsimp [MoltPetit.Model.producerForSlot]
+      rw [hslot0_m]
+      exact Nat.zero_mod n.val
+    have hfun_eq : (fun i => if i = 0 then G.key_index.val else 0) =
+        (fun i => if MoltPetit.Model.producerForSlot n.val (toModelBlock G).slot = i then
+          max 0 (toModelBlock G).keyIndex else 0) := by
+      funext i
+      rw [hprod0]
+      have hki : (toModelBlock G).keyIndex = G.key_index.val := rfl
+      rw [hki]
+      have hmax : max 0 G.key_index.val = G.key_index.val := by omega
+      rw [hmax]
+      by_cases hi : i = 0
+      · subst hi; simp
+      · have : ¬ (0 = i) := fun hc => hi hc.symm
+        simp [hi, this]
+    rw [hfun_eq]
+    exact MoltPetit.Model.GroundedCertK.genesis hgen hslot0 hSigG
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hlen0 : floorsLen (initFloors n.val G.key_index) = n.val :=
+    floorsLen_initFloors n.val G.key_index
+  have hsound := foldK_sound_aux hn hq bs [] (genesisState n.val G)
+    (initFloors n.val G.key_index) out hSig hbase_rep hlen0 hbase_K hFold
   simp only [List.nil_append] at hsound
   exact hsound
 
