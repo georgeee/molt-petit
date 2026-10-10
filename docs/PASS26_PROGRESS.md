@@ -2,7 +2,7 @@
 
 Scaffold commit: 7a5fe4e. Pinned: `git diff 7a5fe4e -- Spec/ rust/` must stay empty.
 
-In progress: 8. Mode 3 cert_fold_lock_sound
+In progress: 9. Mode 1 floors + cert_fold_k_sound
 
 - [x] 1. Skeleton and primitives
 - [x] 2. Counting (`tail_count_be_corr`)
