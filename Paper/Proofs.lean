@@ -34,6 +34,12 @@ theorem groundedCertLock_gen_of_tail : thm_groundedCertLock_gen_of_tail :=
   @MoltPetit.Model.groundedCertLock_gen_of_tail
 theorem groundedCertLock_gen_unique : thm_groundedCertLock_gen_unique :=
   @MoltPetit.Model.groundedCertLock_gen_unique
+theorem groundedCertLock_history : thm_groundedCertLock_history :=
+  @MoltPetit.Model.groundedCertLock_history
+theorem groundedCertSched_history : thm_groundedCertSched_history :=
+  @MoltPetit.Model.groundedCertSched_history
+theorem groundedCert_history : thm_groundedCert_history :=
+  @MoltPetit.Model.groundedCert_history
 theorem keyrot_loss_agreement : thm_keyrot_loss_agreement :=
   @MoltPetit.Model.keyrot_loss_agreement
 theorem liveness_produce_blockK : thm_liveness_produce_blockK :=
@@ -83,6 +89,8 @@ theorem sched_recent_tip_ancestor_mem_horizon : thm_sched_recent_tip_ancestor_me
   @MoltPetit.Model.sched_recent_tip_ancestor_mem_horizon
 theorem ts_timed_certified_agreement : thm_ts_timed_certified_agreement :=
   @MoltPetit.Model.ts_timed_certified_agreement
+theorem ts_validateSuffixK_sound : thm_ts_validateSuffixK_sound :=
+  @MoltPetit.Model.ts_validateSuffixK_sound
 theorem window_shared_prefix : thm_window_shared_prefix :=
   @MoltPetit.Model.window_shared_prefix
 theorem LockstepPackage.toGen : LockstepPackage.thm_toGen :=
@@ -121,5 +129,7 @@ theorem rust_valid_chain_sound : thm_rust_valid_chain_sound :=
   @Rust.rust_valid_chain_sound
 theorem valid_chain_be_validChain : thm_valid_chain_be_validChain :=
   @Rust.valid_chain_be_validChain
+theorem validate_suffix_k_sound : thm_validate_suffix_k_sound :=
+  @Rust.validate_suffix_k_sound
 
 end MoltPaper
