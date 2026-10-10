@@ -191,9 +191,10 @@ its producer's key signed it. A node holds a constant-size certificate
 plus a tail of recent signed blocks. A verifier accepts a chain only if
 it is valid, its tail holds at least one block, and its newest block is
 recent, at most $b$ slots old on the verifier's own clock. It then
-trusts everything $n$ blocks deep. In mode 3 the certificate theorems
-need a tail of more than $n$ blocks, or $2n$ under the per-generation
-budget (Section~\ref{sec:rotation}).
+trusts everything $n$ blocks deep, or $2n$ deep in mode 3 under the
+per-generation budget. In mode 3 the certificate theorems need a tail of
+more than $n$ blocks, or $2n$ under the per-generation budget
+(Section~\ref{sec:rotation}).
 
 Key rotation is built in. A deployment picks one of three rotation
 \emph{modes}. The modes differ in one rule, the \emph{pin}: the lowest
@@ -289,7 +290,7 @@ no theft, any mode & any of the three &
   \code{sched\_exposure\_certified\_agreement} \\
 \addlinespace
 3 lockstep & the roster's counter &
-  genesis + clock (clock only: Thm.~\ref{thm:lock-gen}) & yes &
+  genesis + clock (clock only: Thm.~\ref{thm:lock-gen}, depth $2n$) & yes &
   Thm.~\ref{thm:lock-gen}: \code{lockstep\_client\_safety\_gen};
   Thm.~\ref{thm:lock} (theft budget is lifetime):
   \code{lockstep\_client\_safety} \\
@@ -529,23 +530,30 @@ chain only if:
   down (\code{keyMonoOk}), and every block meets the deployment's
   rotation pin. This is the only check that depends on the mode.
 \end{enumerate}
-The key-version checks are stated for full chains
-(\code{validSignedChainK$'$} and its mode 2 and 3 variants). For modes 2
+Check~5 is not part of \code{validCertifiedChain}, which runs checks 1
+to~4 only. The key-version checks are stated for full chains
+(\code{validSignedChainK$'$} and its mode 2 and 3 variants), and appear
+in the certificate theorems as hypotheses on the tail. At a certificate
+boundary, mode 1's check needs each validator's version floor, which the
+shipped certificate does not carry (Section~\ref{sec:rotation}). For modes 2
 and 3 they are also proved at the certificate level
 (\code{sched\_exposure\_certified\_agreement},
 \code{lockstepGen\_recent\_certified\_suffix\_agreement}).
 
 The model re-checks density from the genesis (\code{validChain}). A
 running node checks only the windows that complete with each new block.
-The two are equivalent, since earlier windows were checked when the
-parent was accepted.
+The two agree, since earlier windows were checked when the parent was
+accepted; that is an argument, not a Lean statement.
 
 \paragraph{Produce} (\code{produceBlock?}). Only in its own slot, a
 validator builds the next block on its current tip, signs it and appends
 it. It ships the result only if it passes the same \code{validSuffix}
-check every other node runs. So nothing on the production path has to be
-trusted for safety: anything malformed it could emit is rejected
-everywhere.
+check every other node runs. So nothing malformed that production could
+emit needs to be trusted: it is rejected everywhere. The node's signing
+discipline is another matter. Signing at most once per slot, a clock at
+most $\sigma$ ahead, and a signing record that survives restarts are
+assumed by every safety theorem (Assumption~\ref{ass:sig}(c)); a node
+that breaks them is charged to the budget, like a stolen key.
 
 \paragraph{Select} (\code{selectChain}). Switch to a candidate chain only
 if it is valid and its newest block is strictly higher. Selection never
@@ -562,8 +570,12 @@ until it catches up.
 
 Certificates arrive in batches, so compaction looks for the newest cut
 point for which it holds a verified certificate whose claim matches. The
-compacted chain must pass \code{validCertifiedChain} like any other.
-Like production, compaction needs no trust.
+compacted chain must pass \code{validCertifiedChain} like any other, so
+a bad cut is rejected, and safety needs no trust in compaction. The
+match is checked on slot, height, parent and id; the contents hash and
+key version are bound through the id. That compaction always finds a
+certificate for a valid extension is a liveness question, and it is not
+proved.
 
 \section{What a deployment must provide}
 \label{sec:assumptions}
