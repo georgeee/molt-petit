@@ -38,6 +38,9 @@ theorem keyrot_loss_agreement : thm_keyrot_loss_agreement :=
   @MoltPetit.Model.keyrot_loss_agreement
 theorem liveness_produce_blockK : thm_liveness_produce_blockK :=
   @MoltPetit.Model.liveness_produce_blockK
+theorem lockstepGen_recent_certified_history_agreement :
+    thm_lockstepGen_recent_certified_history_agreement :=
+  @MoltPetit.Model.lockstepGen_recent_certified_history_agreement
 theorem lockstepGen_recent_certified_suffix_agreement : thm_lockstepGen_recent_certified_suffix_agreement :=
   @MoltPetit.Model.lockstepGen_recent_certified_suffix_agreement
 theorem lockstep_cert_gen_pinned : thm_lockstep_cert_gen_pinned :=
@@ -46,6 +49,9 @@ theorem lockstep_declares_rosterGen : thm_lockstep_declares_rosterGen :=
   @MoltPetit.Model.lockstep_declares_rosterGen
 theorem lockstep_loss_agreement : thm_lockstep_loss_agreement :=
   @MoltPetit.Model.lockstep_loss_agreement
+theorem lockstep_recent_certified_history_agreement :
+    thm_lockstep_recent_certified_history_agreement :=
+  @MoltPetit.Model.lockstep_recent_certified_history_agreement
 theorem lockstep_recent_certified_suffix_agreement : thm_lockstep_recent_certified_suffix_agreement :=
   @MoltPetit.Model.lockstep_recent_certified_suffix_agreement
 theorem lockstep_recent_tip_ancestor_mem : thm_lockstep_recent_tip_ancestor_mem :=
@@ -64,6 +70,9 @@ theorem sched_loss_agreement : thm_sched_loss_agreement :=
   @MoltPetit.Model.sched_loss_agreement
 theorem sched_oldkey_fork_stale : thm_sched_oldkey_fork_stale :=
   @MoltPetit.Model.sched_oldkey_fork_stale
+theorem sched_recent_certified_history_agreement_horizon :
+    thm_sched_recent_certified_history_agreement_horizon :=
+  @MoltPetit.Model.sched_recent_certified_history_agreement_horizon
 theorem sched_recent_certified_suffix_agreement_horizon : thm_sched_recent_certified_suffix_agreement_horizon :=
   @MoltPetit.Model.sched_recent_certified_suffix_agreement_horizon
 theorem sched_recent_genesis_agreement_horizon : thm_sched_recent_genesis_agreement_horizon :=
