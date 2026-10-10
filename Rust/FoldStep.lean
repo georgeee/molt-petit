@@ -202,4 +202,117 @@ theorem tail_count_be_corr : ∀ (t : TailG U64) (u len : U64) {w : U64},
         simp only [hcond_false, Bool.false_eq_true, if_false]
       · rfl
 
+/-- All entry slots of a buffer, present or not. -/
+def entrySlots : TailG U64 → List Nat
+  | .TNil => []
+  | .TCons _ s tl => s.val :: entrySlots tl
+
+@[simp] theorem entrySlots_nil : entrySlots (.TNil : TailG U64) = [] := rfl
+
+@[simp] theorem entrySlots_cons (f s : U64) (tl : TailG U64) :
+    entrySlots (.TCons f s tl) = s.val :: entrySlots tl := rfl
+
+theorem mem_entrySlots_of_mem_presentSlots {t : TailG U64} {s : Nat}
+    (h : s ∈ presentSlots t) : s ∈ entrySlots t := by
+  induction t with
+  | TNil => simp at h
+  | TCons f s' tl ih =>
+    simp only [presentSlots_cons] at h
+    simp only [entrySlots_cons]
+    split at h
+    · rcases List.mem_cons.mp h with rfl | htl
+      · exact .head _
+      · exact .tail _ (ih htl)
+    · exact .tail _ (ih h)
+
+
+theorem fold_window_ok_be_sound {tail : TailG U64} {tip_slot slot u n q : U64}
+    (h : fold_window_ok_be UB () tail tip_slot slot u n q = ok true)
+    (hlo : tip_slot.val + 2 ≤ u.val + n.val)
+    (hhi : u.val + n.val ≤ slot.val + 1) :
+    q.val ≤ ((presentSlots tail).filter (fun s => u.val ≤ s ∧ s < u.val + n.val)).length +
+      (if u.val ≤ slot.val ∧ slot.val < u.val + n.val then 1 else 0) := by
+  simp only [fold_window_ok_be, UB] at h
+  simp at h
+  obtain ⟨un, hun, h⟩ := bind_inv h
+  obtain ⟨t1, ht1, h⟩ := bind_inv h
+  obtain ⟨ts2, hts2, h⟩ := bind_inv h
+  obtain ⟨s1, hs1, h⟩ := bind_inv h
+  obtain ⟨checked, hchecked, h⟩ := bind_inv h
+  obtain ⟨in_tail, hin_tail, h⟩ := bind_inv h
+  obtain ⟨b_in, hb_in, h⟩ := bind_inv h
+  obtain ⟨t2, ht2, h⟩ := bind_inv h
+  obtain ⟨cnt, hcnt, h⟩ := bind_inv h
+  have hunv : un.val = u.val + n.val := by
+    have := UScalar.add_equiv u n; simp only [hun] at this; exact this.2.1
+  have ht1v : t1.val = 2 := by
+    have := UScalar.add_equiv 1#u64 1#u64; simp only [ht1] at this; exact this.2.1
+  have hts2v : ts2.val = tip_slot.val + 2 := by
+    have := UScalar.add_equiv tip_slot t1; simp only [hts2] at this; omega
+  have hs1v : s1.val = slot.val + 1 := by
+    have := UScalar.add_equiv slot 1#u64; simp only [hs1] at this; exact this.2.1
+  have hchecked_true : checked = true := by
+    split at hchecked
+    · rename_i hle
+      injection hchecked with hchecked
+      subst checked
+      simp only [Bool.not_eq_true', decide_eq_false_iff_not, Nat.not_lt]
+      omega
+    · rename_i hnle
+      exfalso
+      have : ↑ts2 ≤ ↑un := by
+        change ts2.val ≤ un.val
+        omega
+      exact hnle this
+  subst hchecked_true
+  simp only [Bool.true_eq_false, if_false] at h
+  injection h with h
+  have hqle : q.val ≤ cnt.val := by
+    simp only [Bool.not_eq_true', decide_eq_false_iff_not, Nat.not_lt] at h
+    exact h
+  have hcntv : cnt.val = in_tail.val + t2.val := by
+    have := UScalar.add_equiv in_tail t2; simp only [hcnt] at this; exact this.2.1
+  have hintv : in_tail.val = ((presentSlots tail).filter (fun s => u.val ≤ s ∧ s < u.val + n.val)).length :=
+    tail_count_be_corr tail u n hin_tail
+  have ht2v : t2.val = if u.val ≤ slot.val ∧ slot.val < u.val + n.val then 1 else 0 := by
+    split at hb_in
+    · rename_i hle
+      injection hb_in with hb_in
+      subst b_in
+      cases hbin : decide (slot.val < un.val) with
+      | true =>
+        simp only [hbin, if_true] at ht2
+        injection ht2 with ht2
+        subst t2
+        have : (1#u64 : U64).val = 1 := rfl
+        rw [this]
+        have h1 : u.val ≤ slot.val := by change u.val ≤ slot.val at hle; exact hle
+        have h2 : slot.val < u.val + n.val := by
+          simp only [decide_eq_true_eq] at hbin
+          omega
+        simp only [h1, h2, and_self, if_true]
+      | false =>
+        simp only [hbin, Bool.false_eq_true, if_false] at ht2
+        injection ht2 with ht2
+        subst t2
+        have : (0#u64 : U64).val = 0 := rfl
+        rw [this]
+        simp only [decide_eq_false_iff_not] at hbin
+        have : ¬ (slot.val < u.val + n.val) := by omega
+        simp only [this, and_false, if_false]
+    · rename_i hnle
+      injection hb_in with hb_in
+      subst b_in
+      simp only [Bool.false_eq_true, if_false] at ht2
+      injection ht2 with ht2
+      subst t2
+      have : (0#u64 : U64).val = 0 := rfl
+      rw [this]
+      have : ¬ (u.val ≤ slot.val) := by
+        intro hu
+        have : ↑u ≤ ↑slot := hu
+        exact hnle this
+      simp only [this, false_and, if_false]
+  omega
+
 end Rust
