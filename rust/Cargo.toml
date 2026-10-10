@@ -6,3 +6,8 @@ edition = "2021"
 [lib]
 name = "molt_petit"
 path = "src/lib.rs"
+
+# The Lean translation (Charon + Aeneas) fails on overflow; build the
+# crate the same way in release too.
+[profile.release]
+overflow-checks = true

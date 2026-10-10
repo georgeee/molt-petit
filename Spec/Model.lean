@@ -656,6 +656,15 @@ def SignedDeclared {Sig sk pk : Type} (n : Nat) (ops : SigOps Sig sk pk)
     (registry : KeyRegistry pk) (B : Block) : Prop :=
   ∃ sig : Sig,
     ops.verify (registry (producerForSlot n B.slot) B.keyIndex) B sig = true
+
+/-- A block that verifies under the key version it states **and** whose id
+was formed by the deployment's hashing layer (`Formed`, abstract here, as in
+the timed theorems). Hash injectivity is only assumed over this domain: over
+`SignedDeclared` alone it is false as soon as one key is stolen (sign two
+blocks with different contents and the same copied id). -/
+def SignedFormed {Sig sk pk : Type} (n : Nat) (ops : SigOps Sig sk pk)
+    (registry : KeyRegistry pk) (Formed : Block → Prop) (B : Block) : Prop :=
+  SignedDeclared n ops registry B ∧ Formed B
 end MoltPetit.Model
 
 /-! ### From `MoltPetit.Model.KeyStealingSchedule` -/
@@ -865,7 +874,8 @@ Honest accounting: assumption-wise this is `PackageA` at `lagSched` plus the
 behavioural `rosterGen` fields; what is *bought* is that the validator the
 deployment runs is schedule-free. -/
 structure LockstepPackage (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
+    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (Formed : Block → Prop)
+    (rented : ByzantineSlots)
     (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
     (now Δ : Nat) (G : Block) (R T : Nat) : Prop where
   mono : ∀ ⦃w w' : Nat⦄, w ≤ w' → rosterGen w ≤ rosterGen w'
@@ -873,7 +883,7 @@ structure LockstepPackage (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type}
     SchedCoreUnforgeable n (fun _ => 0) ops registry rented Stolen honestSigned now Δ
   declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B →
     B.keyIndex = rosterGen (s / n)
-  hashInj : SignedHashInjective (SignedDeclared n ops registry) G
+  hashInj : SignedHashInjective (SignedFormed n ops registry Formed) G
   genesis_gen : G.keyIndex = rosterGen (G.slot / n)
   rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R
   exposedBound : ∀ u, (exposedProducersSched n (lagSched n rosterGen) Stolen u).card ≤ T
@@ -923,14 +933,15 @@ unconsumed field. Incomparable with `LockstepPackage` in general;
 `LockstepPackage.toGen` gives thin ⇒ gen when `rosterGen` is surjective
 (skips no generation). -/
 structure LockstepPackageGen (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
+    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (Formed : Block → Prop)
+    (rented : ByzantineSlots)
     (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
     (now Δ : Nat) (G : Block) (R T : Nat) : Prop where
   unforgeable :
     SchedCoreUnforgeable n (fun _ => 0) ops registry rented Stolen honestSigned now Δ
   declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B →
     B.keyIndex = rosterGen (s / n)
-  hashInj : SignedHashInjective (SignedDeclared n ops registry) G
+  hashInj : SignedHashInjective (SignedFormed n ops registry Formed) G
   rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R
   genBound : ∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T
   budget_le : R + T ≤ maxByzantine n
@@ -997,7 +1008,8 @@ No-premature-theft (`NoPrematureTheftLock`) is not a field: no safety proof
 uses it (only `theft_in_era_lock`, which takes it as its own argument), so
 the package does not ask for it. -/
 structure LockstepPackageTimed (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
+    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (Formed : Block → Prop)
+    (rented : ByzantineSlots)
     (stolenAt : Nat → Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
     (now Δ : Nat) (G : Block) (R T : Nat) : Prop where
   unforgeable :
@@ -1005,7 +1017,7 @@ structure LockstepPackageTimed (n : Nat) (rosterGen : Nat → Nat) {Sig sk pk : 
       honestSigned now Δ
   declared : ∀ ⦃i s : Nat⦄ ⦃B : Block⦄, honestSigned i s = some B →
     B.keyIndex = rosterGen (s / n)
-  hashInj : SignedHashInjective (SignedDeclared n ops registry) G
+  hashInj : SignedHashInjective (SignedFormed n ops registry Formed) G
   notAfter : ErasureTimedLock n rosterGen stolenAt
   rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R
   preRetirementTheftBound : ∀ j, (preRetirementTheftProducers n rosterGen stolenAt j).card ≤ T

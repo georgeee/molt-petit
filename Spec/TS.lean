@@ -26,7 +26,8 @@ Deviations from the raw emitter output:
      wrong — match-binder shadowing in `monoAgainst` (binder named `slot'`
      here; the emitter's `slot` captures the parameter and collapses the
      producer test to a tautology) and in `produceBlock` (`keyIndex'`
-     here), and a non-elaborating union-literal projection in `floorBump`
+     and `contentsHash'` here; the `contentsHash` capture was found by
+     the 2026-10-10 review), and a non-elaborating union-literal projection in `floorBump`
      (`.fcons fl.producer …` emitted; the binder is used here). This file
      carries the TS-faithful forms; the bridge lemmas in `TSBridge.lean` /
      `TSBridgeK.lean` (`ts_keyMonoOk`, `ts_validChainK_sound`,
@@ -200,7 +201,7 @@ def singletonBlock (slot : Int) (height : Int) (prev : Hash) (id : Hash) (conten
 def produceBlock (n : Int) (me : Int) (atSlot : Int) (newId : Hash) (contentsHash : Hash) (keyIndex : Int) (c : Chain) : (Option Chain) :=
   if ((producerForSlot n atSlot) != me) then .none else match c with
     | .nil => .none
-    | .cons slot height prev id contentsHash keyIndex' tail => let tipHeight := (tipHeightFrom height tail)
+    | .cons slot height prev id contentsHash' keyIndex' tail => let tipHeight := (tipHeightFrom height tail)
     let tipId := (tipIdFrom id tail)
     let extended := (appendChains c ((singletonBlock atSlot ((tipHeight + 1)) tipId newId contentsHash keyIndex)))
     if (validChain n extended) then (.some extended) else .none

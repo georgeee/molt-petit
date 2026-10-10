@@ -22,11 +22,29 @@ c.tipSlot + 2 - n` is an `Int` and goes negative, and `maturedDense` then counts
 starting at a negative slot. For example, n = 7, the genesis certificate plus a one-block
 suffix at slot 1 is rejected.
 
+A second review pass (2026-10-10) adds two more:
+
+6. **Hash injectivity over a domain a thief can fill (N1).** `LockstepPackage*.hashInj` and
+   the five mode-2 horizon theorems' `hHash` were `SignedHashInjective (SignedDeclared …) G`.
+   One stolen key falsifies that: sign two blocks with different contents and the same copied
+   id. The timed theorems already restrict to `SignedDeclared ∧ Formed`. The scaffold now does
+   the same everywhere: `Spec/Model.lean` defines `SignedFormed n ops registry Formed B :=
+   SignedDeclared n ops registry B ∧ Formed B`; the three lockstep packages take a new
+   explicit parameter `(Formed : Block → Prop)` right after `registry`, with
+   `hashInj : SignedHashInjective (SignedFormed n ops registry Formed) G`; the 20 affected
+   statements bind `{Formed : Block → Prop}`, use `SignedFormed` for every certificate/history
+   `Signed` argument and every `hSigned`, and the two-chain ones gain
+   `(hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)` (and `hFormed'` for `sc'`).
+7. **`Spec/TS.lean` `produceBlock` shadowed `contentsHash` (N3).** The match binder captured
+   the parameter, so the new block got the head block's payload commitment. `moltPetit.ts` is
+   correct; the hand-mirrored Lean was not. The scaffold renames the binder `contentsHash'`
+   (same fix as `keyIndex'`) and updates `vendored-deviations.patch` to match.
+
 ## Pinned goals (reviewer-written, DO NOT EDIT)
 
 `Spec/Statements.lean` and `Spec/Model.lean` are pinned for this pass. At the end,
 `git diff <scaffold commit> -- Spec/Statements.lean Spec/Model.lean` must be empty, except
-for task (d), which may change `Spec/TS.lean` only as described there.
+for task (d), which may change `Spec/TS.lean` only as described there (keeping the task-(f) binder).
 
 New statements in `Spec/Statements.lean`:
 
@@ -89,6 +107,23 @@ n = 7 the genesis certificate followed by one block at slot 1 (height 1, `prev` 
 genesis id, a correct key index, and a floor snapshot that accepts it) is accepted by
 `validateSuffix`. If the emitter cannot express the clamp, or `lean-from-ts` cannot be built
 on this host, still make the three sources agree by hand and say so in the progress file.
+
+**(e) N1: hash injectivity over formed blocks.** Make every proof go through with the
+pinned N1 statements (item 6). The development lemmas already used by the timed route take
+a generic `Signed`/`Adm` predicate, so most changes are instantiating them at
+`SignedFormed n ops registry Formed` instead of `SignedDeclared n ops registry`, and
+supplying `Formed` for chain blocks from `hFormed`/`hFormed'` (genesis is in the injective
+domain by `B = G ∨ …`). Unforgeability fields still speak about `SignedDeclared`; get it from
+`.1` of `SignedFormed`. Change the development packages (`PackageA` etc.) the same way where a
+proof needs it. If a pinned N1 statement is not provable as written (e.g. a single-chain
+statement whose proof needs `Formed` on its chain), STOP and report the statement and the
+missing fact in `docs/PASS24_PROGRESS.md`; do not add hypotheses yourself.
+
+**(f) N3 binder.** The `produceBlock` binder rename in `Spec/TS.lean` (item 7) is done in the
+scaffold. Keep it when you mirror task (d), confirm `nix flake check`'s
+`ts-vendored-deviations` still passes (or, if you cannot run it, that
+`tools/thales-reemission/vendored-deviations.patch` applies to the emitted file and yields
+`Spec/TS.lean`'s body), and repair any TS proof that unfolds `produceBlock`.
 
 ## Done when
 

@@ -221,11 +221,11 @@ def thm_lockstepGen_recent_certified_suffix_agreement : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {cl cl' : CertClaim} {g g' : Nat}
-    (hcl : GroundedCertLock n (SignedDeclared n ops registry) G cl g)
-    (hcl' : GroundedCertLock n (SignedDeclared n ops registry) G cl' g')
+    (hcl : GroundedCertLock n (SignedFormed n ops registry Formed) G cl g)
+    (hcl' : GroundedCertLock n (SignedFormed n ops registry Formed) G cl' g')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -234,14 +234,14 @@ def thm_lockstepGen_recent_certified_suffix_agreement : Prop :=
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
     s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hLockS' : lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent : now ≤ sTip.slot + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     {i i' : Nat} {B B' : Block}
@@ -257,17 +257,17 @@ def thm_lockstep_cert_gen_pinned : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {cl : CertClaim} {g : Nat}
-    (hcl : GroundedCertLock n (SignedDeclared n ops registry) G cl g)
+    (hcl : GroundedCertLock n (SignedFormed n ops registry Formed) G cl g)
     {s₁ : Block} {srest : Chain} {sTip : Block} (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
     (hLinks : linksOk (s₁ :: srest) = true)
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hRecent : now ≤ sTip.slot + Δ)
     (hMat : ∃ D ∈ s₁ :: srest, (cl.tipSlot / n) * n + n ≤ D.slot + 1),
     g = rosterGen (cl.tipSlot / n)
@@ -277,8 +277,8 @@ def thm_lockstep_declares_rosterGen : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hHead : blockAt? (stripSigs sc) 0 = some G)
@@ -321,11 +321,11 @@ def thm_lockstep_recent_certified_suffix_agreement : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {cl cl' : CertClaim} {g g' : Nat}
-    (hcl : GroundedCertLock n (SignedDeclared n ops registry) G cl g)
-    (hcl' : GroundedCertLock n (SignedDeclared n ops registry) G cl' g')
+    (hcl : GroundedCertLock n (SignedFormed n ops registry Formed) G cl g)
+    (hcl' : GroundedCertLock n (SignedFormed n ops registry Formed) G cl' g')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -334,14 +334,14 @@ def thm_lockstep_recent_certified_suffix_agreement : Prop :=
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
     s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hLockS' : lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent : now ≤ sTip.slot + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     {i i' : Nat} {B B' : Block}
@@ -357,11 +357,13 @@ def thm_lockstep_recent_tip_ancestor_mem : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -542,14 +544,14 @@ def thm_sched_recent_certified_suffix_agreement_horizon : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     (hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     {cl cl' : CertClaim}
-    (hcl  : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl)
-    (hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl')
+    (hcl  : GroundedCertSched n schedule (SignedFormed n ops registry Formed) G cl)
+    (hcl' : GroundedCertSched n schedule (SignedFormed n ops registry Formed) G cl')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS  : (s₁  :: srest ).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -559,14 +561,14 @@ def thm_sched_recent_certified_suffix_agreement_horizon : Prop :=
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hPinS : schedPinned schedule (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
     s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hPinS' : schedPinned schedule (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent  : now ≤ sTip.slot  + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     (hH  : H + n ≤ sTip.slot  + 1)
@@ -584,14 +586,16 @@ def thm_sched_recent_genesis_agreement_horizon : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -609,14 +613,16 @@ def thm_sched_recent_tip_ancestor_agreement_horizon : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -637,14 +643,16 @@ def thm_sched_recent_tip_ancestor_mem_horizon : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -724,11 +732,11 @@ def thm_lockstep_recent_certified_history_agreement : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {cl cl' : CertClaim} {g g' : Nat}
-    {c : Chain} (hc : GroundedHistoryLock n (SignedDeclared n ops registry) G cl g c)
-    {c' : Chain} (hc' : GroundedHistoryLock n (SignedDeclared n ops registry) G cl' g' c')
+    {c : Chain} (hc : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl g c)
+    {c' : Chain} (hc' : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl' g' c')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -737,14 +745,14 @@ def thm_lockstep_recent_certified_history_agreement : Prop :=
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
     s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hLockS' : lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent : now ≤ sTip.slot + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     {k : Nat}
@@ -759,11 +767,11 @@ def thm_lockstepGen_recent_certified_history_agreement : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {cl cl' : CertClaim} {g g' : Nat}
-    {c : Chain} (hc : GroundedHistoryLock n (SignedDeclared n ops registry) G cl g c)
-    {c' : Chain} (hc' : GroundedHistoryLock n (SignedDeclared n ops registry) G cl' g' c')
+    {c : Chain} (hc : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl g c)
+    {c' : Chain} (hc' : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl' g' c')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS : (s₁ :: srest).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -772,14 +780,14 @@ def thm_lockstepGen_recent_certified_history_agreement : Prop :=
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
     s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hLockS' : lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent : now ≤ sTip.slot + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     {k : Nat}
@@ -794,14 +802,14 @@ def thm_sched_recent_certified_history_agreement_horizon : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     (hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     {cl cl' : CertClaim}
-    {c : Chain} (hc  : GroundedHistorySched n schedule (SignedDeclared n ops registry) G cl c)
-    {c' : Chain} (hc' : GroundedHistorySched n schedule (SignedDeclared n ops registry) G cl' c')
+    {c : Chain} (hc  : GroundedHistorySched n schedule (SignedFormed n ops registry Formed) G cl c)
+    {c' : Chain} (hc' : GroundedHistorySched n schedule (SignedFormed n ops registry Formed) G cl' c')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS  : (s₁  :: srest ).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -811,14 +819,14 @@ def thm_sched_recent_certified_history_agreement_horizon : Prop :=
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hPinS : schedPinned schedule (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
     s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
     u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hPinS' : schedPinned schedule (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent  : now ≤ sTip.slot  + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     (hH  : H + n ≤ sTip.slot  + 1)
@@ -875,10 +883,10 @@ def LockstepPackage.thm_toGen : Prop :=
   ∀ {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat} (hn : 0 < n)
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat} (hn : 0 < n)
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     (hSurj : ∀ j, ∃ W, rosterGen W = j),
-    LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T
+    LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T
 
 /-- Paper: cited in sec:rotation. -/
 def thm_genBound_of_preRetirementBound : Prop :=
@@ -893,11 +901,13 @@ def thm_lockstepGen_recent_genesis_agreement : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -909,11 +919,13 @@ def thm_lockstepGen_recent_tip_ancestor_mem : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -927,11 +939,13 @@ def thm_lockstepGen_shared_prefix_sharp : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -945,8 +959,8 @@ def thm_lockstep_window_declares_rosterGen : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc : SignedChain Sig} (hVal : validSignedChainLock n ops registry sc = true)
     (hRecent : ∃ t, (stripSigs sc).getLast? = some t ∧ now ≤ t.slot + Δ)
     (W : Nat) (hMat : ∃ D ∈ stripSigs sc, W * n + n ≤ D.slot + 1)
@@ -999,12 +1013,14 @@ def thm_lockstep_client_safety : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen
+    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen
     honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -1027,12 +1043,14 @@ def thm_lockstep_client_safety_gen : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen
+    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen
     honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -1053,12 +1071,14 @@ def thm_lockstep_client_safety_timed : Prop :=
   ∀ {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop}
-    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageTimed n rosterGen ops registry rented stolenAt
+    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageTimed n rosterGen ops registry Formed rented stolenAt
     honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')

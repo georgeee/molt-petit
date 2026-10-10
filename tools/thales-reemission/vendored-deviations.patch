@@ -69,7 +69,7 @@
    if ((producerForSlot n atSlot) != me) then .none else match c with
      | .nil => .none
 -    | .cons slot height prev id contentsHash keyIndex tail => let tipHeight := (tipHeightFrom height tail)
-+    | .cons slot height prev id contentsHash keyIndex' tail => let tipHeight := (tipHeightFrom height tail)
++    | .cons slot height prev id contentsHash' keyIndex' tail => let tipHeight := (tipHeightFrom height tail)
      let tipId := (tipIdFrom id tail)
      let extended := (appendChains c ((singletonBlock atSlot ((tipHeight + 1)) tipId newId contentsHash keyIndex)))
      if (validChain n extended) then (.some extended) else .none
