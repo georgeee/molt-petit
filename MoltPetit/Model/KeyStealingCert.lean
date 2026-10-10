@@ -280,41 +280,8 @@ theorem keyMonoFrom_congr_lt {n : Nat} (hn : 1 ≤ n) {f g : Nat → Nat}
 -- Grounded certificates for the index-pinned validator
 -- ---------------------------------------------------------------------------
 
-/-- A certificate claim is **grounded-K in genesis `G`** when it arose from the
-genesis claim by folding in one signed block at a time, each fold checking the
-protocol rules **including the monotone key-index rule** against a threaded
-per-producer floor `fl` (constant-size state: only the `n` producers matter).
-The fold checks are exactly computable from `(claim, floor, block)` — no chain
-is consulted — so this models what a recursive circuit can attest per fold.
-
-Beyond `GroundedCert`: the genesis is itself `Signed` (the signed pinned
-validator's `sigsOk` has no genesis exemption), each fold gates
-`fl (producer b) ≤ b.keyIndex` (the monotone rule; on the reconstructed full
-chain this *implies* the `≤`-pin, `inForcePinned_of_validChainK`), and the
-floor is stepped to `max (fl i) b.keyIndex` at the block's producer. -/
-inductive GroundedCertK (n : Nat) (Signed : Block → Prop) (G : Block) :
-    CertClaim → (Nat → Nat) → Prop
-  | genesis :
-      genesisOk G = true →
-      G.slot = 0 →
-      Signed G →
-      GroundedCertK n Signed G
-        { tipId := G.id, tipSlot := G.slot, tipHeight := G.height
-        , tail := [G].filter fun x => decide (G.slot + 2 - n ≤ x.slot) }
-        (fun i => if producerForSlot n G.slot = i then max 0 G.keyIndex else 0)
-  | extend (cl : CertClaim) (fl : Nat → Nat) (b : Block) :
-      GroundedCertK n Signed G cl fl →
-      b.height = cl.tipHeight + 1 →
-      cl.tipSlot < b.slot →
-      b.prev = some cl.tipId →
-      Signed b →
-      fl (producerForSlot n b.slot) ≤ b.keyIndex →
-      (∀ u : Nat, cl.tipSlot + 2 ≤ u + n → u + n ≤ b.slot + 1 →
-        quorum n ≤ windowCount (cl.tail ++ [b]) u n) →
-      GroundedCertK n Signed G
-        { tipId := b.id, tipSlot := b.slot, tipHeight := b.height
-        , tail := (cl.tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) }
-        (fun i => if producerForSlot n b.slot = i then max (fl i) b.keyIndex else fl i)
+-- `GroundedCertK` is defined in `Spec/Model.lean` (cited by the paper's
+-- fold-circuit statements).
 
 /-- What the grounded-K derivation reconstructs: a `validChainK`-accepted
 prefix (structure + density + **monotone index**) matching the claim, the
