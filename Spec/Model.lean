@@ -195,6 +195,11 @@ structure CertClaim where
   tail      : List Block   -- boundary buffer: stripped prefix blocks near the tip
   deriving Repr, DecidableEq
 
+/-- What a client can read off a claim without the tail blocks' other fields:
+the tip, and the tail's slots. Every density window reads only slots. -/
+def claimView (cl : CertClaim) : Nat × Nat × Nat × List Nat :=
+  (cl.tipId, cl.tipSlot, cl.tipHeight, cl.tail.map (·.slot))
+
 /-- Abstract certificate operations over certificate type `α`. -/
 structure CertOps (α : Type) where
   /-- Extract the claim embedded in the certificate. -/

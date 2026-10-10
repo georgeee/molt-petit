@@ -156,4 +156,47 @@ def modelClaimOf (n : Nat) (G : MoltPetit.Model.Block) (bs : List MoltPetit.Mode
   let t := (G :: bs).getLast (List.cons_ne_nil _ _)
   { tipId := t.id, tipSlot := t.slot, tipHeight := t.height
   , tail := (G :: bs).filter fun x => decide (t.slot + 2 - n ≤ x.slot) }
+
+/-! ### The certificate's public state (Pass 26, stage C)
+
+The fold circuit exposes the final state; these drivers name it. -/
+
+/-- A 4-limb hash as a number (`hashToNat` through `toHashG`). -/
+def hashGToNat (h : HashG U64) : Nat :=
+  h.a.val + h.b.val * 2 ^ 64 + h.c.val * 2 ^ 128 + h.d.val * 2 ^ 192
+
+/-- The slots of the buffer's present entries (flag `1`), oldest first. -/
+def tailSlots : TailG U64 → List Nat
+  | .TNil => []
+  | .TCons f s tl => if f.val = 1 then s.val :: tailSlots tl else tailSlots tl
+
+/-- What a client reads off the certificate's public state. -/
+def stateView (st : CertStateG U64) : Nat × Nat × Nat × List Nat :=
+  (hashGToNat st.tip_id, st.tip_slot.val, st.tip_height.val, tailSlots st.tail)
+
+/-- `FoldK`, also naming the final state `stO` (the circuit's public state). -/
+def FoldKOut (n q : U64) :
+    CertStateG U64 → FloorsG U64 → List Block → CertStateG U64 → FloorsG U64 → Prop
+  | st, fl, [], stO, out => stO = st ∧ out = fl
+  | st, fl, b :: bs, stO, out =>
+      cert_step_k_be UBK () n q st fl (toBlockG b) b.key_index = ok true ∧
+      ∃ t' fl', cert_next_tail_be UB () st.tail b.slot = ok t' ∧
+        cert_next_floors_be UBK () n fl (toBlockG b) b.key_index = ok fl' ∧
+        FoldKOut n q (stepState b t') fl' bs stO out
+
+/-- `FoldSched`, also naming the final state. -/
+def FoldSchedOut (n q era : U64) : CertStateG U64 → List Block → CertStateG U64 → Prop
+  | st, [], stO => stO = st
+  | st, b :: bs, stO =>
+      cert_step_sched_be UBK () n q era st (toBlockG b) b.key_index = ok true ∧
+      ∃ t', cert_next_tail_be UB () st.tail b.slot = ok t' ∧
+        FoldSchedOut n q era (stepState b t') bs stO
+
+/-- `FoldLock`, also naming the final state and generation. -/
+def FoldLockOut (n q : U64) : CertStateG U64 → U64 → List Block → CertStateG U64 → U64 → Prop
+  | st, g, [], stO, gO => stO = st ∧ gO = g
+  | st, g, b :: bs, stO, gO =>
+      cert_step_lock_be UBK () n q st g (toBlockG b) b.key_index = ok true ∧
+      ∃ t', cert_next_tail_be UB () st.tail b.slot = ok t' ∧
+        FoldLockOut n q (stepState b t') b.key_index bs stO gO
 end Rust

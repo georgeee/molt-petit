@@ -1143,3 +1143,30 @@ pub fn cert_genesis_ok_be<B: Backend>(be: &B, g: &BlockG<B::Num>) -> B::Bool {
     let s0 = be.eq(g.slot, be.zero());
     be.and(ok, s0)
 }
+
+// ---------------------------------------------------------------------------
+// Pass 26, stage C: the certificate's floors reach the client
+// ---------------------------------------------------------------------------
+
+/// A crypto dictionary whose certificates also expose the per-producer key
+/// floors the fold certificate threads (`cert_next_floors_be`), decoded from
+/// the proof's public inputs like `cert_claim`.
+pub trait CryptoK: Crypto {
+    /// The floor list a certificate attests: `(i, floor_i)` for `i = 0..n-1`.
+    fn cert_floors(&self, cert: &Hash) -> FloorList;
+}
+
+/// Mode 1's verifier rule at a certificate boundary: verify the certificate,
+/// the suffix signatures, and the suffix against the claim, with the key
+/// floors taken from the certificate (never from the caller).
+pub fn validate_certified_chain_k<C: CryptoK>(n: u64, crypto: &C, cc: &CertifiedChain) -> bool {
+    match cc {
+        CertifiedChain::Invalid => false,
+        CertifiedChain::CC(cert, suffix) => {
+            let cl = crypto.cert_claim(cert);
+            let fl = crypto.cert_floors(cert);
+            let stripped = strip_sigs(suffix);
+            crypto.cert_verify(cert) && sigs_ok(n, crypto, suffix) && validate_suffix_k(n, &cl, &fl, &stripped)
+        }
+    }
+}

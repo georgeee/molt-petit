@@ -1363,4 +1363,34 @@ def cert_genesis_ok_be
   let s0 ← BackendInst.eq be g.slot t
   BackendInst.and be ok1 s0
 
+/-- Trait declaration: [molt_petit::CryptoK]
+    Source: 'src/lib.rs', lines 1154:0-1157:1
+    Visibility: public -/
+structure CryptoK (Self : Type) where
+  CryptoInst : Crypto Self
+  cert_floors : Self → Hash → Result FloorList
+
+/-- [molt_petit::validate_certified_chain_k]:
+    Source: 'src/lib.rs', lines 1162:0-1172:1
+    Visibility: public -/
+def validate_certified_chain_k
+  {C : Type} (CryptoKInst : CryptoK C) (n : Std.U64) (crypto : C)
+  (cc : CertifiedChain) :
+  Result Bool
+  := do
+  match cc with
+  | CertifiedChain.Invalid => ok false
+  | CertifiedChain.CC cert suffix =>
+    let cl ← CryptoKInst.CryptoInst.cert_claim crypto cert
+    let fl ← CryptoKInst.cert_floors crypto cert
+    let stripped ← strip_sigs suffix
+    let b ← CryptoKInst.CryptoInst.cert_verify crypto cert
+    if b
+    then
+      let b1 ← sigs_ok CryptoKInst.CryptoInst n crypto suffix
+      if b1
+      then validate_suffix_k n cl fl stripped
+      else ok false
+    else ok false
+
 end molt_petit

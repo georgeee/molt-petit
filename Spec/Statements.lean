@@ -1372,4 +1372,96 @@ def thm_cert_fold_lock_sound : Prop :=
 
 end
 
+section
+open Aeneas Std Result Rust molt_petit
+
+/-- Paper: cited in sec:impl, sec:rotation. Pass 26, stage C (N2): mode 1's
+certificate boundary with the floors the certificate exposes. `hFoldK` is what
+a verifying fold certificate attests (the circuit's knowledge soundness, with
+`cert_claim` / `cert_floors` decoding its public state): some signed history
+folds from the genesis to the exposed state and floors. Then the client's
+claim agrees in view with a `GroundedCertK` claim whose floor is the
+certificate's, and the suffix the client accepted satisfies the boundary
+conditions and the monotone key rule against that claim and that floor. -/
+def thm_cert_fold_k_client : Prop :=
+  ∀ {n q : U64} {G : Block} {Signed : MoltPetit.Model.Block → Prop}
+    {C} (IK : CryptoK C) (crypto : C)
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSigG : Signed (toModelBlock G))
+    (hFoldK : ∀ cert : Hash, IK.CryptoInst.cert_verify crypto cert = ok true →
+      ∃ (bs : List Block) (stO : CertStateG U64) (out : FloorsG U64)
+        (cl : CertClaim) (fl : FloorList),
+        (∀ b ∈ bs, Signed (toModelBlock b)) ∧
+        FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) bs stO out ∧
+        IK.CryptoInst.cert_claim crypto cert = ok cl ∧
+        MoltPetit.Model.claimView (toModelClaim cl) = stateView stO ∧
+        IK.cert_floors crypto cert = ok fl ∧
+        (∀ j : U64, j.val < n.val →
+          ∃ f, floor_lookup fl j = ok f ∧ f.val = floorsFun out j.val))
+    {cert : Hash} {suffix : SignedChain} {s1 : Block} {tl : Chain}
+    {sTip : MoltPetit.Model.Block}
+    (hval : validate_certified_chain_k IK n crypto (.CC cert suffix) = ok true)
+    (hstr : strip_sigs suffix = ok (.Cons s1 tl))
+    (hTipS : (toModelBlock s1 :: toModelChain tl).getLast? = some sTip),
+    ∃ (cl₀ : MoltPetit.Model.CertClaim) (g : Nat → Nat) (cl : CertClaim) (fl : FloorList),
+      IK.CryptoInst.cert_claim crypto cert = ok cl ∧
+      IK.cert_floors crypto cert = ok fl ∧
+      (∀ j : U64, j.val < n.val → ∃ f, floor_lookup fl j = ok f ∧ f.val = g j.val) ∧
+      MoltPetit.Model.GroundedCertK n.val Signed (toModelBlock G) cl₀ g ∧
+      MoltPetit.Model.claimView cl₀ = MoltPetit.Model.claimView (toModelClaim cl) ∧
+      (((toModelBlock s1).height = cl₀.tipHeight + 1 ∧
+        cl₀.tipSlot < (toModelBlock s1).slot ∧
+        (toModelBlock s1).prev = some cl₀.tipId) ∧
+       MoltPetit.Model.linksOk (toModelBlock s1 :: toModelChain tl) = true ∧
+       (∀ u : Nat, (cl₀.tipSlot : Int) + 2 - n.val ≤ (u : Int) →
+          u + n.val ≤ sTip.slot + 1 →
+          MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
+            (cl₀.tail ++ toModelBlock s1 :: toModelChain tl) u n.val)) ∧
+      MoltPetit.Model.keyMonoFrom n.val g (toModelBlock s1 :: toModelChain tl) = true
+
+/-- Paper: cited in sec:impl, sec:rotation. Pass 26, stage C (N5): a
+verifying mode-2 fold certificate's claim agrees in view with a
+`GroundedCertSched` claim. -/
+def thm_cert_fold_sched_client : Prop :=
+  ∀ {n q era : U64} {G : Block} {Signed : MoltPetit.Model.Block → Prop}
+    {C} (I : Crypto C) (crypto : C)
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) (hera : 0 < era.val)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSigG : Signed (toModelBlock G))
+    (hFold : ∀ cert : Hash, I.cert_verify crypto cert = ok true →
+      ∃ (bs : List Block) (stO : CertStateG U64) (cl : CertClaim),
+        (∀ b ∈ bs, Signed (toModelBlock b)) ∧
+        FoldSchedOut n q era (genesisState n.val G) bs stO ∧
+        I.cert_claim crypto cert = ok cl ∧
+        MoltPetit.Model.claimView (toModelClaim cl) = stateView stO)
+    {cert : Hash} (hver : I.cert_verify crypto cert = ok true),
+    ∃ (cl₀ : MoltPetit.Model.CertClaim) (cl : CertClaim),
+      I.cert_claim crypto cert = ok cl ∧
+      MoltPetit.Model.GroundedCertSched n.val (fun s => s / era.val) Signed (toModelBlock G) cl₀ ∧
+      MoltPetit.Model.claimView cl₀ = MoltPetit.Model.claimView (toModelClaim cl)
+
+/-- Paper: cited in sec:impl, sec:rotation. Pass 26, stage C (N5): a
+verifying mode-3 fold certificate's claim agrees in view with a
+`GroundedCertLock` claim at the generation the certificate exposes. -/
+def thm_cert_fold_lock_client : Prop :=
+  ∀ {n q : U64} {G : Block} {Signed : MoltPetit.Model.Block → Prop}
+    {C} (I : Crypto C) (crypto : C)
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSigG : Signed (toModelBlock G))
+    (hFold : ∀ cert : Hash, I.cert_verify crypto cert = ok true →
+      ∃ (bs : List Block) (stO : CertStateG U64) (gO : U64) (cl : CertClaim),
+        (∀ b ∈ bs, Signed (toModelBlock b)) ∧
+        FoldLockOut n q (genesisState n.val G) G.key_index bs stO gO ∧
+        I.cert_claim crypto cert = ok cl ∧
+        MoltPetit.Model.claimView (toModelClaim cl) = stateView stO)
+    {cert : Hash} (hver : I.cert_verify crypto cert = ok true),
+    ∃ (cl₀ : MoltPetit.Model.CertClaim) (cl : CertClaim) (gO : U64),
+      I.cert_claim crypto cert = ok cl ∧
+      MoltPetit.Model.GroundedCertLock n.val Signed (toModelBlock G) cl₀ gO.val ∧
+      MoltPetit.Model.claimView cl₀ = MoltPetit.Model.claimView (toModelClaim cl)
+
+end
+
 end MoltPaper
