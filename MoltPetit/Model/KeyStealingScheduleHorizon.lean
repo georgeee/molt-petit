@@ -243,14 +243,16 @@ theorem sched_recent_tip_ancestor_agreement_horizon
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -267,10 +269,16 @@ theorem sched_recent_tip_ancestor_agreement_horizon
     B = B' := by
   have hVc  : ValidChain n (stripSigs sc)  := validChain_of_validSignedChainSched hVal
   have hVc' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSched hVal'
-  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_sched hVal  hb)
-  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_sched hVal' hb)
+  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_sched hVal hb, hFormed b hb h⟩
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_sched hVal' hb, hFormed' b hb h⟩
   -- height = list index, so equal tip heights ⇒ equal lengths ⇒ one global k
   have hTipIdx  : sTip.height  = (stripSigs sc ).length - 1 := hVc.1  (blockAt_getLast hTipS)
   have hTipIdx' : sTip'.height = (stripSigs sc').length - 1 := hVc'.1 (blockAt_getLast hTipS')
@@ -304,14 +312,16 @@ theorem sched_recent_tip_ancestor_mem_horizon
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -326,10 +336,16 @@ theorem sched_recent_tip_ancestor_mem_horizon
     ∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B := by
   have hVc  : ValidChain n (stripSigs sc)  := validChain_of_validSignedChainSched hVal
   have hVc' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSched hVal'
-  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_sched hVal  hb)
-  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_sched hVal' hb)
+  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_sched hVal hb, hFormed b hb h⟩
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_sched hVal' hb, hFormed' b hb h⟩
   have hTipIdx  : sTip.height  = (stripSigs sc ).length - 1 := hVc.1  (blockAt_getLast hTipS)
   have hTipIdx' : sTip'.height = (stripSigs sc').length - 1 := hVc'.1 (blockAt_getLast hTipS')
   set k : Nat := (stripSigs sc).length - 1 - n with hk
@@ -361,14 +377,16 @@ theorem sched_recent_genesis_agreement_horizon
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -382,10 +400,16 @@ theorem sched_recent_genesis_agreement_horizon
       blockAt? (stripSigs sc') 0 = some P := by
   have hVc  : ValidChain n (stripSigs sc)  := validChain_of_validSignedChainSched hVal
   have hVc' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSched hVal'
-  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_sched hVal  hb)
-  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_sched hVal' hb)
+  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_sched hVal hb, hFormed b hb h⟩
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_sched hVal' hb, hFormed' b hb h⟩
   rcases Nat.le_total sTip.slot sTip'.slot with hle | hle
   · have hId : IdInjective (chainUnionRecord sc sc') := idInjective_keyrot hHash hSig hSig'
     have hUniq := honestSlotsUnique_sched hUnf hVal hVal'
@@ -410,14 +434,16 @@ theorem sched_recent_tip_ancestor_agreement_horizon_core
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSchedCore n schedule ops registry sc  = true)
     (hVal' : validSignedChainSchedCore n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -434,10 +460,16 @@ theorem sched_recent_tip_ancestor_agreement_horizon_core
     B = B' := by
   have hVc  : ValidChain n (stripSigs sc)  := validChain_of_validSignedChainSchedCore hVal
   have hVc' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSchedCore hVal'
-  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_schedCore hVal  hb)
-  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_schedCore hVal' hb)
+  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_schedCore hVal hb, hFormed b hb h⟩
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_schedCore hVal' hb, hFormed' b hb h⟩
   have hTipIdx  : sTip.height  = (stripSigs sc ).length - 1 := hVc.1  (blockAt_getLast hTipS)
   have hTipIdx' : sTip'.height = (stripSigs sc').length - 1 := hVc'.1 (blockAt_getLast hTipS')
   have hLenEq : (stripSigs sc).length - 1 - n = (stripSigs sc').length - 1 - n := by omega
@@ -467,14 +499,16 @@ theorem sched_recent_tip_ancestor_mem_horizon_core
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSchedCore n schedule ops registry sc  = true)
     (hVal' : validSignedChainSchedCore n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -489,10 +523,16 @@ theorem sched_recent_tip_ancestor_mem_horizon_core
     ∃ i', i' + n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B := by
   have hVc  : ValidChain n (stripSigs sc)  := validChain_of_validSignedChainSchedCore hVal
   have hVc' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSchedCore hVal'
-  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_schedCore hVal  hb)
-  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_schedCore hVal' hb)
+  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_schedCore hVal hb, hFormed b hb h⟩
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_schedCore hVal' hb, hFormed' b hb h⟩
   have hTipIdx  : sTip.height  = (stripSigs sc ).length - 1 := hVc.1  (blockAt_getLast hTipS)
   have hTipIdx' : sTip'.height = (stripSigs sc').length - 1 := hVc'.1 (blockAt_getLast hTipS')
   set k : Nat := (stripSigs sc).length - 1 - n with hk
