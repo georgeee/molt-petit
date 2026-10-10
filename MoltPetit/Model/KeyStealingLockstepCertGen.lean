@@ -81,4 +81,72 @@ theorem lockstepGen_recent_certified_suffix_agreement
     rw [hB'full] at hPc'
     rw [Option.some.inj hPc, Option.some.inj hPc']
 
+/-- Paper: cited in sec:rotation. Like `lockstepGen_recent_certified_suffix_agreement`,
+but for any histories behind the two certificates: every block at least 2 * n
+below the tip of the full chain, certified prefix included. -/
+theorem lockstepGen_recent_certified_history_agreement
+    {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
+    {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
+    {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
+    {cl cl' : CertClaim} {g g' : Nat}
+    {c : Chain} (hc : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl g c)
+    {c' : Chain} (hc' : GroundedHistoryLock n (SignedFormed n ops registry Formed) G cl' g' c')
+    {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
+    (hTipS : (s₁ :: srest).getLast? = some sTip)
+    (hTipS' : (s₁' :: srest').getLast? = some sTip')
+    (hLink : s₁.height = cl.tipHeight + 1 ∧ cl.tipSlot < s₁.slot ∧ s₁.prev = some cl.tipId)
+    (hLinks : linksOk (s₁ :: srest) = true)
+    (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
+      u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
+    (hLockS : lockstepFrom n cl.tipSlot g (s₁ :: srest) = true)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
+    (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
+        s₁'.prev = some cl'.tipId)
+    (hLinks' : linksOk (s₁' :: srest') = true)
+    (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
+      u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
+    (hLockS' : lockstepFrom n cl'.tipSlot g' (s₁' :: srest') = true)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
+    (hRecent : now ≤ sTip.slot + Δ)
+    (hRecent' : now ≤ sTip'.slot + Δ)
+    {k : Nat}
+    (hDeep : k + 2 * n < (c ++ s₁ :: srest).length)
+    (hDeep' : k + 2 * n < (c' ++ s₁' :: srest').length) :
+    blockAt? (c ++ s₁ :: srest) k = blockAt? (c' ++ s₁' :: srest') k := by
+  obtain ⟨sc, hstrip, hValL, hHead, hfullTip, hLen, _, _, hFormed⟩ :=
+    groundedHistoryLock_signedChain hn hc hTipS hLink hLinks hDense hLockS hSigned
+  obtain ⟨sc', hstrip', hValL', hHead', hfullTip', hLen', _, _, hFormed'⟩ :=
+    groundedHistoryLock_signedChain hn hc' hTipS' hLink' hLinks' hDense' hLockS' hSigned'
+  have hk : k < (stripSigs sc).length := by rw [hstrip]; omega
+  have hk' : k < (stripSigs sc').length := by rw [hstrip']; omega
+  obtain ⟨B, hB⟩ : ∃ B, blockAt? (stripSigs sc) k = some B :=
+    ⟨(stripSigs sc)[k]'hk, List.getElem?_eq_getElem hk⟩
+  obtain ⟨B', hB'⟩ : ∃ B', blockAt? (stripSigs sc') k = some B' :=
+    ⟨(stripSigs sc')[k]'hk', List.getElem?_eq_getElem hk'⟩
+  have heq : B = B' := by
+    rcases Nat.le_total sTip.slot sTip'.slot with hle | hle
+    · obtain ⟨P, hPc, hPc'⟩ :=
+        lockstepGen_shared_prefix_deep hn hP hValL hValL' hFormed hFormed' hfullTip hfullTip'
+          hRecent hRecent' hle hB (k := k)
+          (by rw [hstrip]; exact hDeep)
+      rw [hB] at hPc
+      rw [hB'] at hPc'
+      obtain rfl := Option.some.inj hPc
+      obtain rfl := Option.some.inj hPc'
+      rfl
+    · obtain ⟨P, hPc', hPc⟩ :=
+        lockstepGen_shared_prefix_deep hn hP hValL' hValL hFormed' hFormed hfullTip' hfullTip
+          hRecent' hRecent hle hB' (k := k)
+          (by rw [hstrip']; exact hDeep')
+      rw [hB] at hPc
+      rw [hB'] at hPc'
+      obtain rfl := Option.some.inj hPc
+      obtain rfl := Option.some.inj hPc'
+      rfl
+  rw [hstrip] at hB
+  rw [hstrip'] at hB'
+  rw [hB, hB', heq]
+
 end MoltPetit.Model
