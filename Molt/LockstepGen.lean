@@ -35,12 +35,14 @@ theorem lockstep_client_safety_gen
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageGen n rosterGen ops registry rented Stolen
+    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageGen n rosterGen ops registry Formed rented Stolen
       honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -57,7 +59,7 @@ theorem lockstep_client_safety_gen
     B = B' := by
   rw [validSignedChainLock_eq_core] at hVal hVal'
   exact MoltPetit.Model.lockstepGen_recent_tip_ancestor_agreement hn hP
-    hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
+    hVal hVal' hFormed hFormed' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
 
 /-- **Lockstep safety, timed form** (mode 3, paper Theorem 5′ with real-time
 theft): under the timed per-generation package — theft time-stamped, erasure
@@ -66,12 +68,14 @@ theorem lockstep_client_safety_timed
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop}
-    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageTimed n rosterGen ops registry rented stolenAt
+    {honestSigned : SigningLog} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageTimed n rosterGen ops registry Formed rented stolenAt
       honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -88,7 +92,7 @@ theorem lockstep_client_safety_timed
     B = B' := by
   rw [validSignedChainLock_eq_core] at hVal hVal'
   exact MoltPetit.Model.lockstepTimed_recent_tip_ancestor_agreement hn hP
-    hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
+    hVal hVal' hFormed hFormed' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
 
 /-- Operator erasure turns while-live theft into timeless per-generation theft
 (paper §6.3, mode 3). -/
