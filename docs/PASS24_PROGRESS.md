@@ -4,7 +4,7 @@
 - [ ] Task (b): Aliases in `Paper/Proofs.lean` for the 5 existing theorems in table
 - [ ] Task (c): `notBefore` field removal confirmation and comment updates
 - [ ] Task (d): TS clamp in `moltPetit.ts`, `MoltPetit.emitted.lean`, `Spec/TS.lean`, `nix/checks.nix`, TS soundness proofs, and #guard test
-- [ ] Task (e): N1: hash injectivity over formed blocks across development proofs and packages
+- [x] Task (e): N1: hash injectivity over formed blocks across development proofs and packages
 - [ ] Task (f): N3 binder preserved in TS emit / mirror
 
 ## Task (e) steps (recipe: docs/PASS24_N1_PLAN.md)
