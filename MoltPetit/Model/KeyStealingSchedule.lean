@@ -169,12 +169,15 @@ theorem sched_deep_block_agreement
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
     {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop}
     {sc sc' : SignedChain Sig}
     (hUnf : SchedUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     (hBudget : ByzantineBounded n (badSched n schedule rented Stolen))
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     (hRecent  : ∃ t,  (stripSigs sc ).getLast? = some t ∧ now ≤ t.slot + Δ)
@@ -186,10 +189,16 @@ theorem sched_deep_block_agreement
     B = B' := by
   have hVc  : ValidChain n (stripSigs sc)  := validChain_of_validSignedChainSched hVal
   have hVc' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSched hVal'
-  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_sched hVal  hb)
-  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_sched hVal' hb)
+  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_sched hVal hb, hFormed b hb h⟩
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedFormed n ops registry Formed b :=
+    fun b hb => by
+      by_cases h : b = G
+      · exact Or.inl h
+      · exact Or.inr ⟨signedDeclared_of_mem_sched hVal' hb, hFormed' b hb h⟩
   have hId : IdInjective (chainUnionRecord sc sc') := idInjective_keyrot hHash hSig hSig'
   have hUniq : HonestSlotsUnique (badSched n schedule rented Stolen) (chainUnionRecord sc sc') :=
     honestSlotsUnique_sched hUnf hVal hVal' hRecent hRecent'
