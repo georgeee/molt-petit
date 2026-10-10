@@ -214,9 +214,9 @@ theorem LockstepPackage.toPackageA
     {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T) :
-    PackageA n (lagSched n rosterGen) ops registry rented Stolen honestSigned
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T) :
+    PackageA n (lagSched n rosterGen) ops registry Formed rented Stolen honestSigned
       now Δ G R T where
   unforgeable := schedCoreUnforgeable_mono (fun _ => Nat.zero_le _) hP.unforgeable
   hashInj := hP.hashInj
@@ -244,8 +244,8 @@ theorem lockstep_declares_rosterGen
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hHead : blockAt? (stripSigs sc) 0 = some G)
@@ -419,8 +419,8 @@ theorem lockstep_validSignedChainSched
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hHead : blockAt? (stripSigs sc) 0 = some G)
@@ -500,11 +500,13 @@ theorem lockstep_recent_tip_ancestor_agreement
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -522,6 +524,7 @@ theorem lockstep_recent_tip_ancestor_agreement
   packageA_recent_tip_ancestor_agreement hn hP.toPackageA
     (lockstep_validSignedChainSched hn hP hVal  hHead  ⟨sTip,  hTipS,  hRecent⟩)
     (lockstep_validSignedChainSched hn hP hVal' hHead' ⟨sTip', hTipS', hRecent'⟩)
+    hFormed hFormed'
     hHead hHead' hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
 
 /-- **Free-cadence lockstep, membership form.** The `n`-deep ancestor of the
@@ -531,11 +534,13 @@ theorem lockstep_recent_tip_ancestor_mem
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackage n rosterGen ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackage n rosterGen ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainLock n ops registry sc  = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -553,6 +558,7 @@ theorem lockstep_recent_tip_ancestor_mem
     hP.hashInj (packageA_byzantine_bounded hP.toPackageA)
     (lockstep_validSignedChainSched hn hP hVal  hHead  ⟨sTip,  hTipS,  hRecent⟩)
     (lockstep_validSignedChainSched hn hP hVal' hHead' ⟨sTip', hTipS', hRecent'⟩)
+    hFormed hFormed'
     hHead hHead' hTipS hTipS' hRecent hRecent' hLong hLe hB
 
 end MoltPetit.Model

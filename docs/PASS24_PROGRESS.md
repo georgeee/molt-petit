@@ -9,14 +9,14 @@
 
 ## Task (e) steps (recipe: docs/PASS24_N1_PLAN.md)
 
-In progress: step 5 MoltPetit.Model.KeyStealingLockstep
+In progress: (none)
 
 Modules fixed:
 - [x] step 1
 - [x] step 2
 - [x] step 3
 - [x] step 4
-- [ ] step 5
+- [x] step 5
 - [ ] step 6
 - [ ] step 7
 - [ ] step 8
