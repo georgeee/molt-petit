@@ -139,5 +139,11 @@ theorem valid_chain_be_validChain : thm_valid_chain_be_validChain :=
   @Rust.valid_chain_be_validChain
 theorem validate_suffix_k_sound : thm_validate_suffix_k_sound :=
   @Rust.validate_suffix_k_sound
+theorem cert_fold_k_sound : thm_cert_fold_k_sound :=
+  @Rust.cert_fold_k_sound
+theorem cert_fold_sched_sound : thm_cert_fold_sched_sound :=
+  @Rust.cert_fold_sched_sound
+theorem cert_fold_lock_sound : thm_cert_fold_lock_sound :=
+  @Rust.cert_fold_lock_sound
 
 end MoltPaper
