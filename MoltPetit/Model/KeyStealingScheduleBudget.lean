@@ -188,12 +188,13 @@ root) are the instantiation-level justifications of `exposedBound` — named
 here, formalized nowhere (the §10.4 temporal seam, same as the default
 model's `H-IND`). -/
 structure PackageA (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
-    (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
-    (now Δ : Nat) (G : Block) (R T : Nat) : Prop where
+    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (Formed : Block → Prop)
+    (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop)
+    (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (R T : Nat) :
+    Prop where
   unforgeable :
     SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ
-  hashInj : SignedHashInjective (SignedDeclared n ops registry) G
+  hashInj : SignedHashInjective (SignedFormed n ops registry Formed) G
   rentBound : ∀ u, (badSlotsIn rented u n).card ≤ R
   exposedBound : ∀ u, (exposedProducersSched n schedule Stolen u).card ≤ T
   budget_le : R + T ≤ maxByzantine n
@@ -202,8 +203,9 @@ structure PackageA (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type}
 theorem packageA_byzantine_bounded {n : Nat} {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hA : PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T) :
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop} {R T : Nat}
+    (hA : PackageA n schedule ops registry Formed rented Stolen honestSigned now Δ G R T) :
     ByzantineBounded n (badSched n schedule rented Stolen) :=
   induced_byzantine_bounded_sched hA.rentBound hA.exposedBound hA.budget_le
 
@@ -215,11 +217,14 @@ theorem packageA_recent_tip_ancestor_agreement
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hA : PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop} {R T : Nat}
+    (hA : PackageA n schedule ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -235,7 +240,7 @@ theorem packageA_recent_tip_ancestor_agreement
     (hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B') :
     B = B' :=
   sched_recent_tip_ancestor_agreement hn (schedUnforgeable_of_core hA.unforgeable)
-    hA.hashInj (packageA_byzantine_bounded hA) hVal hVal' hHead hHead'
+    hA.hashInj (packageA_byzantine_bounded hA) hVal hVal' hFormed hFormed' hHead hHead'
     hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
 
 /-- **Package A ⊢ anchor-free light-client safety (certificate form).** Under
@@ -246,11 +251,12 @@ theorem packageA_recent_certified_suffix_agreement
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hA : PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop} {R T : Nat}
+    (hA : PackageA n schedule ops registry Formed rented Stolen honestSigned now Δ G R T)
     {cl cl' : CertClaim}
-    (hcl  : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl)
-    (hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl')
+    (hcl  : GroundedCertSched n schedule (SignedFormed n ops registry Formed) G cl)
+    (hcl' : GroundedCertSched n schedule (SignedFormed n ops registry Formed) G cl')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS  : (s₁  :: srest ).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -260,14 +266,14 @@ theorem packageA_recent_certified_suffix_agreement
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
         u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hPinS : schedPinned schedule (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
         s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
         u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hPinS' : schedPinned schedule (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent  : now ≤ sTip.slot  + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     {i i' : Nat} {B B' : Block}
@@ -315,10 +321,10 @@ horizon-scoped one — the §10.4 seam. Both packages, like the default model,
 assume the budget in its cumulative reading. B3/B0 are as A3/A0: prose-level
 instantiation justifications. -/
 structure PackageB (n : Nat) (schedule : Nat → Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (rented : ByzantineSlots)
-    (Stolen : Nat → Nat → Prop) (honestSigned : Nat → Nat → Option Block)
-    (now Δ : Nat) (G : Block) (R T : Nat)
-    extends PackageA n schedule ops registry rented Stolen honestSigned now Δ G R T :
+    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (Formed : Block → Prop)
+    (rented : ByzantineSlots) (Stolen : Nat → Nat → Prop)
+    (honestSigned : Nat → Nat → Option Block) (now Δ : Nat) (G : Block) (R T : Nat)
+    extends PackageA n schedule ops registry Formed rented Stolen honestSigned now Δ G R T :
     Prop where
   erasure_freeze : ∀ j : Nat, ((Finset.range n).filter (fun i => Stolen i j)).card ≤ T
 
@@ -382,8 +388,9 @@ theorem erasure_freeze_of_exposedBound {n : Nat} {schedule : Nat → Nat}
 theorem packageB_byzantine_bounded {n : Nat} {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hPB : PackageB n schedule ops registry rented Stolen honestSigned now Δ G R T) :
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop} {R T : Nat}
+    (hPB : PackageB n schedule ops registry Formed rented Stolen honestSigned now Δ G R T) :
     ByzantineBounded n (badSched n schedule rented Stolen) :=
   packageA_byzantine_bounded hPB.toPackageA
 
@@ -393,11 +400,14 @@ theorem packageB_recent_tip_ancestor_agreement
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hPB : PackageB n schedule ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop} {R T : Nat}
+    (hPB : PackageB n schedule ops registry Formed rented Stolen honestSigned now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainSched n schedule ops registry sc  = true)
     (hVal' : validSignedChainSched n schedule ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     (hHead  : blockAt? (stripSigs sc ) 0 = some G)
     (hHead' : blockAt? (stripSigs sc') 0 = some G)
     {sTip sTip' : Block}
@@ -412,7 +422,7 @@ theorem packageB_recent_tip_ancestor_agreement
     (hB  : blockAt? (stripSigs sc ) ((stripSigs sc ).length - 1 - n) = some B)
     (hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B') :
     B = B' :=
-  packageA_recent_tip_ancestor_agreement hn hPB.toPackageA hVal hVal' hHead hHead'
+  packageA_recent_tip_ancestor_agreement hn hPB.toPackageA hVal hVal' hFormed hFormed' hHead hHead'
     hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
 
 /-- **Package B ⊢ anchor-free light-client safety (certificate form)** —
@@ -421,11 +431,12 @@ theorem packageB_recent_certified_suffix_agreement
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {R T : Nat}
-    (hPB : PackageB n schedule ops registry rented Stolen honestSigned now Δ G R T)
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {Formed : Block → Prop} {R T : Nat}
+    (hPB : PackageB n schedule ops registry Formed rented Stolen honestSigned now Δ G R T)
     {cl cl' : CertClaim}
-    (hcl  : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl)
-    (hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl')
+    (hcl  : GroundedCertSched n schedule (SignedFormed n ops registry Formed) G cl)
+    (hcl' : GroundedCertSched n schedule (SignedFormed n ops registry Formed) G cl')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS  : (s₁  :: srest ).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -435,14 +446,14 @@ theorem packageB_recent_certified_suffix_agreement
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
         u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hPinS : schedPinned schedule (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
         s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
         u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hPinS' : schedPinned schedule (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent  : now ≤ sTip.slot  + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     {i i' : Nat} {B B' : Block}
