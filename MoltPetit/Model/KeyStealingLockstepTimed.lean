@@ -117,10 +117,10 @@ theorem genBound_of_preRetirementBound {n : Nat} {rosterGen : Nat → Nat}
 theorem LockstepPackageTimed.toGen {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {stolenAt : Nat → Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageTimed n rosterGen ops registry rented stolenAt honestSigned
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageTimed n rosterGen ops registry Formed rented stolenAt honestSigned
       now Δ G R T) :
-    LockstepPackageGen n rosterGen ops registry rented (stolenOf stolenAt) honestSigned
+    LockstepPackageGen n rosterGen ops registry Formed rented (stolenOf stolenAt) honestSigned
       now Δ G R T where
   unforgeable := hP.unforgeable
   declared := hP.declared
@@ -135,12 +135,14 @@ theorem lockstepTimed_recent_tip_ancestor_agreement
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {stolenAt : Nat → Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageTimed n rosterGen ops registry rented stolenAt honestSigned
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageTimed n rosterGen ops registry Formed rented stolenAt honestSigned
       now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -150,20 +152,22 @@ theorem lockstepTimed_recent_tip_ancestor_agreement
     (hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - 2 * n) = some B)
     (hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - 2 * n) = some B') :
     B = B' :=
-  lockstepGen_recent_tip_ancestor_agreement hn hP.toGen hVal hVal' hTipS hTipS'
-    hRecent hRecent' hLong hLong' hTipHeight hB hB'
+  lockstepGen_recent_tip_ancestor_agreement hn hP.toGen hVal hVal' hFormed hFormed'
+    hTipS hTipS' hRecent hRecent' hLong hLong' hTipHeight hB hB'
 
 /-- **Timed package ⊢ safety, end to end (membership form).** -/
 theorem lockstepTimed_recent_tip_ancestor_mem
     {n : Nat} (hn : 1 ≤ n) {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
     {stolenAt : Nat → Nat → Nat → Prop} {honestSigned : Nat → Nat → Option Block}
-    {now Δ : Nat} {G : Block} {R T : Nat}
-    (hP : LockstepPackageTimed n rosterGen ops registry rented stolenAt honestSigned
+    {now Δ : Nat} {G : Block} {Formed : Block → Prop} {R T : Nat}
+    (hP : LockstepPackageTimed n rosterGen ops registry Formed rented stolenAt honestSigned
       now Δ G R T)
     {sc sc' : SignedChain Sig}
     (hVal : validSignedChainLock n ops registry sc = true)
     (hVal' : validSignedChainLock n ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block} (hTipS : (stripSigs sc).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
     (hRecent : now ≤ sTip.slot + Δ) (hRecent' : now ≤ sTip'.slot + Δ)
@@ -171,7 +175,7 @@ theorem lockstepTimed_recent_tip_ancestor_mem
     (hLe : sTip.height ≤ sTip'.height)
     {B : Block} (hB : blockAt? (stripSigs sc) ((stripSigs sc).length - 1 - 2 * n) = some B) :
     ∃ i', i' + 2 * n < (stripSigs sc').length ∧ blockAt? (stripSigs sc') i' = some B :=
-  lockstepGen_recent_tip_ancestor_mem hn hP.toGen hVal hVal' hTipS hTipS'
-    hRecent hRecent' hLong hLe hB
+  lockstepGen_recent_tip_ancestor_mem hn hP.toGen hVal hVal' hFormed hFormed'
+    hTipS hTipS' hRecent hRecent' hLong hLe hB
 
 end MoltPetit.Model
