@@ -2,7 +2,7 @@
 
 Scaffold commit: 7a5fe4e. Pinned: `git diff 7a5fe4e -- Spec/ rust/` must stay empty.
 
-In progress: 6. Prefix claim and genesis repr
+In progress: 7. Mode 2 cert_fold_sched_sound
 
 - [x] 1. Skeleton and primitives
 - [x] 2. Counting (`tail_count_be_corr`)
