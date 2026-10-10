@@ -1337,9 +1337,10 @@ $2n$: exactly $n + ((t{+}1) \bmod n)$ for lower tip slot $t$
 (\code{lockstepGen\_shared\_prefix\_sharp}).
 
 The first budget gives the second when every generation is some grid
-window's counter (\code{LockstepPackage.toGen}; the Lean asks for every
-natural number, so as stated it needs a counter that never stops, which
-is stronger than needed). They differ otherwise only for
+window's counter, by
+\code{LockstepPackage.toGen}. As stated, that theorem asks for every
+natural number, so the counter must never stop; this is stronger than
+needed. They differ otherwise only for
 generations the counter never uses, so in practice the per-generation
 budget is the weaker requirement.
 
