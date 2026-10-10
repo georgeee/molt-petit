@@ -274,3 +274,12 @@ model-level only (Rust validator implements mode 1), mode 3's per-key operationa
 multi-chain network model, circuit-backend faithfulness and id formation as named seams.
 
 STATUS: COMPLETE
+
+### Pass 24 (2026-10-10, reviewer): what the peer review needs from the Lean
+- Source: outside peer review of the 900e93a bundle (findings F5.2, F1.2, F4.2, F5.3, F6.7).
+- Scaffold f514517: three full-history agreement statements, three history-existence
+  statements, Rust/TS certificate-boundary key-check soundness statements; `notBefore`
+  removed from `LockstepPackageTimed`. Spec docs/PASS24_SPEC.md (tasks a-d).
+- Paper edits are the reviewer's, on a separate branch; not part of this pass.
+
+STATUS: IN PROGRESS (Pass 24)
