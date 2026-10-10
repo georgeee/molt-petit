@@ -1553,8 +1553,9 @@ what carries Theorem~\ref{thm:lc} to the shipped code
 its backend (\code{valid\_chain\_be}). Run over plonky2, it is the
 certificate's circuit. It is a different function from the native
 validator \code{validate\_certified\_chain}, written in the same file;
-its Lean translation is proved equal to the model's links-and-density
-rule, for every $n < 2^{63} - 1$ (\code{valid\_chain\_be\_validChain}).
+its Lean translation is proved sound for the model's links-and-density
+rule, for every $n < 2^{63} - 1$: a chain it accepts satisfies that rule
+(\code{valid\_chain\_be\_validChain}); the converse is not proved.
 The circuit sees neither a block's key version nor its contents hash.
 Those are bound only through the id, which hashes them, so the
 certificate checks no key-version rule; the per-step checks of modes 2
