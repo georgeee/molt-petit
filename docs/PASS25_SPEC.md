@@ -17,7 +17,7 @@ There are four new statements, appended to `Spec/Statements.lean` in the scaffol
 | `LockstepPackageTimed.thm_toGen` | existing `LockstepPackageTimed.toGen` |
 | `LockstepPackage.thm_toGen_of_low` | new |
 
-At the end, `git diff <scaffold> -- Spec/` must be empty.
+At the end, `git diff 2b290b4 -- Spec/` must be empty.
 
 ## Proof plans
 
