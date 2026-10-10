@@ -9,7 +9,7 @@
 
 ## Task (e) steps (recipe: docs/PASS24_N1_PLAN.md)
 
-In progress: step 7
+In progress: (none)
 
 Modules fixed:
 - [x] step 1
@@ -18,7 +18,7 @@ Modules fixed:
 - [x] step 4
 - [x] step 5
 - [x] step 6
-- [ ] step 7
+- [x] step 7
 - [ ] step 8
 - [ ] step 9
 - [ ] step 10

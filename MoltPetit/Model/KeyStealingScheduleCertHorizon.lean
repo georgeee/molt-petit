@@ -18,14 +18,14 @@ theorem sched_recent_certified_suffix_agreement_horizon
     {n : Nat} (hn : 1 ≤ n) {schedule : Nat → Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
     {rented : ByzantineSlots} {Stolen : Nat → Nat → Prop}
-    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
+    {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block} {Formed : Block → Prop}
     (hUnf : SchedCoreUnforgeable n schedule ops registry rented Stolen honestSigned now Δ)
-    (hHash : SignedHashInjective (SignedDeclared n ops registry) G)
+    (hHash : SignedHashInjective (SignedFormed n ops registry Formed) G)
     {H : Nat}
     (hBudget : ByzantineBoundedFrom H n (badSched n schedule rented Stolen))
     {cl cl' : CertClaim}
-    (hcl  : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl)
-    (hcl' : GroundedCertSched n schedule (SignedDeclared n ops registry) G cl')
+    (hcl  : GroundedCertSched n schedule (SignedFormed n ops registry Formed) G cl)
+    (hcl' : GroundedCertSched n schedule (SignedFormed n ops registry Formed) G cl')
     {s₁ s₁' : Block} {srest srest' : Chain} {sTip sTip' : Block}
     (hTipS  : (s₁  :: srest ).getLast? = some sTip)
     (hTipS' : (s₁' :: srest').getLast? = some sTip')
@@ -35,14 +35,14 @@ theorem sched_recent_certified_suffix_agreement_horizon
     (hDense : ∀ u : Nat, (cl.tipSlot : Int) + 2 - n ≤ (u : Int) →
         u + n ≤ sTip.slot + 1 → quorum n ≤ windowCount (cl.tail ++ s₁ :: srest) u n)
     (hPinS : schedPinned schedule (s₁ :: srest) = true)
-    (hSigned : ∀ B ∈ s₁ :: srest, SignedDeclared n ops registry B)
+    (hSigned : ∀ B ∈ s₁ :: srest, SignedFormed n ops registry Formed B)
     (hLink' : s₁'.height = cl'.tipHeight + 1 ∧ cl'.tipSlot < s₁'.slot ∧
         s₁'.prev = some cl'.tipId)
     (hLinks' : linksOk (s₁' :: srest') = true)
     (hDense' : ∀ u : Nat, (cl'.tipSlot : Int) + 2 - n ≤ (u : Int) →
         u + n ≤ sTip'.slot + 1 → quorum n ≤ windowCount (cl'.tail ++ s₁' :: srest') u n)
     (hPinS' : schedPinned schedule (s₁' :: srest') = true)
-    (hSigned' : ∀ B ∈ s₁' :: srest', SignedDeclared n ops registry B)
+    (hSigned' : ∀ B ∈ s₁' :: srest', SignedFormed n ops registry Formed B)
     (hRecent  : now ≤ sTip.slot  + Δ)
     (hRecent' : now ≤ sTip'.slot + Δ)
     (hH  : H + n ≤ sTip.slot  + 1)
@@ -61,9 +61,9 @@ theorem sched_recent_certified_suffix_agreement_horizon
     groundedCertSched_suffix_history hn hcl' hTipS' hLink' hLinks' hDense' hPinS' hSigned'
   -- materialize the signed chains
   obtain ⟨sc, hstrip, hsigs⟩ :=
-    exists_signedChain_of_covered (Sig := Sig) fun B hB => hCov B hB
+    exists_signedChain_of_covered (Sig := Sig) fun B hB => (hCov B hB).1
   obtain ⟨sc', hstrip', hsigs'⟩ :=
-    exists_signedChain_of_covered (Sig := Sig) fun B hB => hCov' B hB
+    exists_signedChain_of_covered (Sig := Sig) fun B hB => (hCov' B hB).1
   have hVal : validSignedChainSchedCore n schedule ops registry sc = true := by
     rw [validSignedChainSchedCore, Bool.and_eq_true, Bool.and_eq_true]
     exact ⟨⟨hsigs, by rw [hstrip]; exact hV⟩, by rw [hstrip]; exact hPin⟩
@@ -92,10 +92,10 @@ theorem sched_recent_certified_suffix_agreement_horizon
   rw [hkEq] at hB'full
   have hVc  : ValidChain n (stripSigs sc)  := validChain_of_validSignedChainSchedCore hVal
   have hVc' : ValidChain n (stripSigs sc') := validChain_of_validSignedChainSchedCore hVal'
-  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_schedCore hVal  hb)
-  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedDeclared n ops registry b :=
-    fun b hb => Or.inr (signedDeclared_of_mem_schedCore hVal' hb)
+  have hSig  : ∀ b ∈ stripSigs sc,  b = G ∨ SignedFormed n ops registry Formed b := by
+    rw [hstrip]; exact fun b hb => Or.inr (hCov b hb)
+  have hSig' : ∀ b ∈ stripSigs sc', b = G ∨ SignedFormed n ops registry Formed b := by
+    rw [hstrip']; exact fun b hb => Or.inr (hCov' b hb)
   rcases Nat.le_total sTip.slot sTip'.slot with hle | hle
   · have hId : IdInjective (chainUnionRecord sc sc') := idInjective_keyrot hHash hSig hSig'
     have hUniq := honestSlotsUnique_schedCore hUnf hVal hVal'
