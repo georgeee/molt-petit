@@ -311,13 +311,13 @@ so its rate is still a bound across the execution's future (module doc,
 honest scope). A0 (cold root) stays the instantiation-level justification
 of `notBefore` and of the surface. -/
 structure PackageATimed (n R H : Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk)
+    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (Formed : Block → Prop)
     (rented : ByzantineSlots) (stolenAt : Nat → Nat → Nat → Prop)
     (honestSigned : Nat → Nat → Option Block)
     (now Δ : Nat) (G : Block) (Rrent T : Nat) : Prop where
   unforgeable : SchedCoreUnforgeable n (fun s => s / R) ops registry rented
       (stolenOf stolenAt) honestSigned now Δ
-  hashInj : SignedHashInjective (SignedDeclared n ops registry) G
+  hashInj : SignedHashInjective (SignedFormed n ops registry Formed) G
   notBefore : NoPrematureTheft R stolenAt
   rentBound : ∀ u, H ≤ u → (badSlotsIn rented u n).card ≤ Rrent
   recentTheftBound : ∀ u, H ≤ u → (recentTheftProducers n R stolenAt u).card ≤ T
@@ -326,10 +326,11 @@ structure PackageATimed (n R H : Nat) {Sig sk pk : Type}
 /-- Package A (timed) delivers the horizon budget. -/
 theorem packageATimed_horizon_budget {n R H : Nat} (hn : 0 < n) (hR : 0 < R)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
+    {Formed : Block → Prop}
     {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop}
     {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
     {Rrent T : Nat}
-    (hA : PackageATimed n R H ops registry rented stolenAt honestSigned
+    (hA : PackageATimed n R H ops registry Formed rented stolenAt honestSigned
       now Δ G Rrent T) :
     ByzantineBoundedFrom H n
       (badSched n (fun s => s / R) rented (stolenOf stolenAt)) :=
@@ -345,14 +346,17 @@ one implication (the residuals are exactly the named fields — module doc). -/
 theorem packageATimed_recent_tip_ancestor_agreement
     {n R H : Nat} (hn : 1 ≤ n) (hR : 0 < R)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
+    {Formed : Block → Prop}
     {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop}
     {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
     {Rrent T : Nat}
-    (hA : PackageATimed n R H ops registry rented stolenAt honestSigned
+    (hA : PackageATimed n R H ops registry Formed rented stolenAt honestSigned
       now Δ G Rrent T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainSched n (fun s => s / R) ops registry sc  = true)
     (hVal' : validSignedChainSched n (fun s => s / R) ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -370,7 +374,7 @@ theorem packageATimed_recent_tip_ancestor_agreement
   sched_recent_tip_ancestor_agreement_horizon hn
     (schedUnforgeable_of_core hA.unforgeable) hA.hashInj
     (packageATimed_horizon_budget (by omega) hR hA)
-    hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hH hH'
+    hVal hVal' hFormed hFormed' hTipS hTipS' hRecent hRecent' hLong hLong' hH hH'
     hTipHeight hB hB'
 
 /-- **Package B, timed** (§10.2 with its temporal content formalized):
@@ -382,11 +386,11 @@ the erasure field is documentary for the safety chain (which A's fields
 already deliver) and is what a deployment's per-era compromise accounting
 instantiates. -/
 structure PackageBTimed (n R H : Nat) {Sig sk pk : Type}
-    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk)
+    (ops : SigOps Sig sk pk) (registry : KeyRegistry pk) (Formed : Block → Prop)
     (rented : ByzantineSlots) (stolenAt : Nat → Nat → Nat → Prop)
     (honestSigned : Nat → Nat → Option Block)
     (now Δ : Nat) (G : Block) (Rrent T : Nat)
-    extends PackageATimed n R H ops registry rented stolenAt honestSigned
+    extends PackageATimed n R H ops registry Formed rented stolenAt honestSigned
       now Δ G Rrent T : Prop where
   notAfter : ErasureTimed R stolenAt
 
@@ -395,14 +399,17 @@ Package-A core. -/
 theorem packageBTimed_recent_tip_ancestor_agreement
     {n R H : Nat} (hn : 1 ≤ n) (hR : 0 < R)
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk}
+    {Formed : Block → Prop}
     {rented : ByzantineSlots} {stolenAt : Nat → Nat → Nat → Prop}
     {honestSigned : Nat → Nat → Option Block} {now Δ : Nat} {G : Block}
     {Rrent T : Nat}
-    (hPB : PackageBTimed n R H ops registry rented stolenAt honestSigned
+    (hPB : PackageBTimed n R H ops registry Formed rented stolenAt honestSigned
       now Δ G Rrent T)
     {sc sc' : SignedChain Sig}
     (hVal  : validSignedChainSched n (fun s => s / R) ops registry sc  = true)
     (hVal' : validSignedChainSched n (fun s => s / R) ops registry sc' = true)
+    (hFormed : ∀ B ∈ stripSigs sc, B ≠ G → Formed B)
+    (hFormed' : ∀ B ∈ stripSigs sc', B ≠ G → Formed B)
     {sTip sTip' : Block}
     (hTipS  : (stripSigs sc ).getLast? = some sTip)
     (hTipS' : (stripSigs sc').getLast? = some sTip')
@@ -418,7 +425,7 @@ theorem packageBTimed_recent_tip_ancestor_agreement
     (hB' : blockAt? (stripSigs sc') ((stripSigs sc').length - 1 - n) = some B') :
     B = B' :=
   packageATimed_recent_tip_ancestor_agreement hn hR hPB.toPackageATimed
-    hVal hVal' hTipS hTipS' hRecent hRecent' hLong hLong' hH hH'
+    hVal hVal' hFormed hFormed' hTipS hTipS' hRecent hRecent' hLong hLong' hH hH'
     hTipHeight hB hB'
 
 end MoltPetit.Model
