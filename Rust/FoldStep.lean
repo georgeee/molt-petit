@@ -352,4 +352,223 @@ theorem fold_anchors_ok_be_sound {all rest : TailG U64} {tip_slot slot n q : U64
       · exact ih hmore s htl hlo hhi
     · simp at h
 
+
+
+
+/-- All entry flags of a buffer. -/
+def tailFlags : TailG U64 → List Nat
+  | .TNil => []
+  | .TCons f _ tl => f.val :: tailFlags tl
+
+@[simp] theorem tailFlags_nil : tailFlags (.TNil : TailG U64) = [] := rfl
+
+@[simp] theorem tailFlags_cons (f s : U64) (tl : TailG U64) :
+    tailFlags (.TCons f s tl) = f.val :: tailFlags tl := rfl
+
+/-- Present entries form a suffix: once a flag is 1, all subsequent flags are 1. -/
+def PresentSuffix : TailG U64 → Prop
+  | .TNil => True
+  | .TCons f _ tl => (f.val = 1 → ∀ f' ∈ tailFlags tl, f' = 1) ∧ PresentSuffix tl
+
+/-- The buffer representation relation `TailRepr n st cl`. -/
+structure TailRepr (n : Nat) (st : CertStateG U64) (cl : MoltPetit.Model.CertClaim) : Prop where
+  tip_id : ∃ h : molt_petit.Hash, st.tip_id = toHashG h ∧ hashToNat h = cl.tipId
+  tip_slot : st.tip_slot.val = cl.tipSlot
+  tip_height : st.tip_height.val = cl.tipHeight
+  tail_len : (entrySlots st.tail).length = n - 1
+  tail_flags : ∀ f ∈ tailFlags st.tail, f = 0 ∨ f = 1
+  tail_suffix : PresentSuffix st.tail
+  tail_mono : (presentSlots st.tail).Pairwise (· < ·)
+  tail_last : 2 ≤ n → (presentSlots st.tail).getLast? = some cl.tipSlot
+  tail_eq : (presentSlots st.tail).filter (cl.tipSlot + 2 - n ≤ ·) = cl.tail.map (·.slot)
+
+theorem windowCount_append (a b : MoltPetit.Model.Chain) (u len : Nat) :
+    MoltPetit.Model.windowCount (a ++ b) u len =
+      MoltPetit.Model.windowCount a u len + MoltPetit.Model.windowCount b u len := by
+  simp [MoltPetit.Model.windowCount, List.filter_append]
+
+theorem windowCount_map_slot (c : MoltPetit.Model.Chain) (u n : Nat) :
+    MoltPetit.Model.windowCount c u n =
+      ((c.map (·.slot)).filter (fun s => u ≤ s ∧ s < u + n)).length := by
+  induction c with
+  | nil => rfl
+  | cons b tl ih =>
+    simp only [MoltPetit.Model.windowCount, MoltPetit.Model.blockInWindow,
+      List.filter_cons, List.map_cons]
+    unfold MoltPetit.Model.windowCount at ih
+    simp only [Bool.decide_and] at *
+    by_cases h : u ≤ b.slot ∧ b.slot < u + n <;> simp [h, ih]
+
+theorem filter_presentSlots_of_tailRepr {n : Nat} {st : CertStateG U64}
+    {cl : MoltPetit.Model.CertClaim} (hrep : TailRepr n st cl) {u : Nat}
+    (hu : cl.tipSlot + 2 - n ≤ u) (len : Nat) :
+    ((presentSlots st.tail).filter (fun s => u ≤ s ∧ s < u + len)) =
+      ((cl.tail.map (·.slot)).filter (fun s => u ≤ s ∧ s < u + len)) := by
+  have heq := hrep.tail_eq
+  have hsub : ∀ s, u ≤ s ∧ s < u + len → cl.tipSlot + 2 - n ≤ s := by
+    intro s hs; omega
+  conv_rhs => rw [← heq]
+  rw [List.filter_filter]
+  apply List.filter_congr
+  intro x _
+  by_cases hx : u ≤ x ∧ x < u + len
+  · simp [hx, hsub x hx]
+  · simp [hx]
+
+theorem windowCount_eq_presentSlots {n : Nat} {st : CertStateG U64}
+    {cl : MoltPetit.Model.CertClaim} (hrep : TailRepr n st cl) {u : Nat}
+    (hu : cl.tipSlot + 2 - n ≤ u) (len : Nat) :
+    MoltPetit.Model.windowCount cl.tail u len =
+      ((presentSlots st.tail).filter (fun s => u ≤ s ∧ s < u + len)).length := by
+  rw [windowCount_map_slot, filter_presentSlots_of_tailRepr hrep hu]
+
+theorem windowCount_extend_eq {n : Nat} {st : CertStateG U64}
+    {cl : MoltPetit.Model.CertClaim} (hrep : TailRepr n st cl) (b : molt_petit.Block)
+    {u : Nat} (hu : cl.tipSlot + 2 - n ≤ u) (len : Nat) :
+    MoltPetit.Model.windowCount (cl.tail ++ [toModelBlock b]) u len =
+      ((presentSlots st.tail).filter (fun s => u ≤ s ∧ s < u + len)).length +
+        (if u ≤ b.slot.val ∧ b.slot.val < u + len then 1 else 0) := by
+  rw [windowCount_append, windowCount_eq_presentSlots hrep hu]
+  congr 1
+  simp only [MoltPetit.Model.windowCount, MoltPetit.Model.blockInWindow, toModelBlock,
+    List.filter_cons, List.filter_nil]
+  by_cases h : u ≤ b.slot.val ∧ b.slot.val < u + len <;> simp [h]
+
+
+/-- Soundness of `cert_step_core_be`: the four non-`Signed` premises of
+`GroundedCert*.extend` hold for `cl` and `toModelBlock b`. -/
+theorem cert_step_core_be_sound {n q : U64} {st : CertStateG U64}
+    {cl : MoltPetit.Model.CertClaim} (b : molt_petit.Block)
+    (hq : molt_petit.quorum n = ok q)
+    (hn : 1 ≤ n.val)
+    (hrep : TailRepr n.val st cl)
+    (h : cert_step_core_be UBK () n q st (toBlockG b) = ok true) :
+    (toModelBlock b).height = cl.tipHeight + 1 ∧
+    cl.tipSlot < (toModelBlock b).slot ∧
+    (toModelBlock b).prev = some cl.tipId ∧
+    (∀ u : Nat, cl.tipSlot + 2 ≤ u + n.val → u + n.val ≤ (toModelBlock b).slot + 1 →
+      MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (cl.tail ++ [toModelBlock b]) u n.val) := by
+  dsimp [cert_step_core_be] at h
+  obtain ⟨t, ht, h⟩ := bind_inv h
+  obtain ⟨succ, hsucc, h⟩ := bind_inv h
+  obtain ⟨h_ok, hh_ok, h⟩ := bind_inv h
+  obtain ⟨slot_ok, hslot_ok, h⟩ := bind_inv h
+  obtain ⟨prev_eq, hprev_eq, h⟩ := bind_inv h
+  obtain ⟨has, hhas, h⟩ := bind_inv h
+  obtain ⟨prev_ok, hprev_ok, h⟩ := bind_inv h
+  obtain ⟨t1, ht1, h⟩ := bind_inv h
+  obtain ⟨links, hlinks, h⟩ := bind_inv h
+  obtain ⟨t2, ht2, h⟩ := bind_inv h
+  obtain ⟨ts2, hts2, h⟩ := bind_inv h
+  obtain ⟨lo, hlo, h⟩ := bind_inv h
+  obtain ⟨base, hbase, h⟩ := bind_inv h
+  obtain ⟨anchors, hanchors, h⟩ := bind_inv h
+  obtain ⟨t3, ht3, h⟩ := bind_inv h
+  split at h
+  · rename_i hlinks_t
+    injection h with h; subst h
+    subst hlinks_t
+    split at ht3
+    · rename_i hbase_t
+      injection ht3 with ht3; subst ht3
+      subst hbase_t
+      split at hlinks
+      · rename_i ht1_t
+        injection hlinks with hlinks; subst hlinks
+        subst ht1_t
+        split at ht1
+        · rename_i hh_ok_t
+          injection ht1 with ht1; subst ht1
+          subst hh_ok_t
+          split at hprev_ok
+          · rename_i hhas_t
+            injection hprev_ok with hprev_ok; subst hprev_ok
+            subst hhas_t
+            have hts := hrep.tip_slot
+            have hsuccv : succ.val = st.tip_height.val + 1 := by
+              have htv : t.val = 1 := by injection ht with ht; subst ht; rfl
+              have := UScalar.add_equiv st.tip_height t; simp only [hsucc] at this
+              omega
+            injection hh_ok with hh_ok
+            simp only [decide_eq_true_eq] at hh_ok
+            have hheight : (toModelBlock b).height = cl.tipHeight + 1 := by
+              dsimp [toModelBlock, toBlockG] at hh_ok ⊢
+              rw [hh_ok, hsuccv, hrep.tip_height]
+            injection hslot_ok with hslot_ok
+            have hslot : cl.tipSlot < (toModelBlock b).slot := by
+              dsimp [toModelBlock, toBlockG] at hslot_ok ⊢
+              have : st.tip_slot.val < b.slot.val := by simpa using hslot_ok
+              omega
+            injection hhas with hhas
+            cases hp : b.prev with
+            | none =>
+              dsimp [toBlockG] at hhas
+              rw [hp] at hhas
+              simp at hhas
+            | some p =>
+              obtain ⟨h_tip, hst_id, hhash_id⟩ := hrep.tip_id
+              dsimp [toBlockG] at hprev_eq
+              rw [hp, hst_id] at hprev_eq
+              rw [hashg_eq_eq] at hprev_eq
+              have hpeq := hash_eq_sound hprev_eq
+              have hprev : (toModelBlock b).prev = some cl.tipId := by
+                dsimp [toModelBlock]
+                rw [hp]
+                simp [hpeq, hhash_id]
+              have hqv : q.val = MoltPetit.Model.quorum n.val := quorum_val_of_ok hq
+              have ht2v : t2.val = 2 := by
+                have htv : t.val = 1 := by injection ht with ht; subst ht; rfl
+                have := UScalar.add_equiv t t; simp only [ht2] at this; omega
+              have hts2v : ts2.val = st.tip_slot.val + 2 := by
+                have := UScalar.add_equiv st.tip_slot t2; simp only [hts2] at this; omega
+              have hlov : lo.val = cl.tipSlot + 2 - n.val := by
+                have := ubk_monus_val hlo
+                rw [this, hts2v, hts]
+              have hbase_dense : lo.val + n.val ≤ b.slot.val + 1 →
+                  MoltPetit.Model.quorum n.val ≤
+                    MoltPetit.Model.windowCount (cl.tail ++ [toModelBlock b]) lo.val n.val := by
+                intro hhi
+                have hsound := fold_window_ok_be_sound hbase (by omega) hhi
+                have hext := windowCount_extend_eq hrep b (u := lo.val) (by omega) n.val
+                rw [hqv] at hsound
+                rw [hext]
+                exact hsound
+              have hanchor_dense : ∀ b' ∈ cl.tail ++ [toModelBlock b],
+                  lo.val ≤ b'.slot + 1 → b'.slot + 1 + n.val ≤ b.slot.val + 1 →
+                  MoltPetit.Model.quorum n.val ≤
+                    MoltPetit.Model.windowCount (cl.tail ++ [toModelBlock b]) (b'.slot + 1) n.val := by
+                intro b' hb' hlo' hhi'
+                rw [List.mem_append] at hb'
+                rcases hb' with htail | hb_new
+                · have hslot_mem : b'.slot ∈ cl.tail.map (·.slot) := List.mem_map.mpr ⟨b', htail, rfl⟩
+                  rw [← hrep.tail_eq] at hslot_mem
+                  have hpres : b'.slot ∈ presentSlots st.tail := List.mem_of_mem_filter hslot_mem
+                  have hent : b'.slot ∈ entrySlots st.tail := mem_entrySlots_of_mem_presentSlots hpres
+                  have hsound := fold_anchors_ok_be_sound hanchors b'.slot hent (by omega) hhi'
+                  have hext := windowCount_extend_eq hrep b (u := b'.slot + 1) (by omega) n.val
+                  rw [hqv] at hsound
+                  rw [hext]
+                  exact hsound
+                · simp only [List.mem_singleton] at hb_new
+                  subst hb_new
+                  dsimp [toModelBlock] at hhi'
+                  omega
+              have hdense := MoltPetit.Model.anchored_density_sound (c := cl.tail ++ [toModelBlock b])
+                (lo := lo.val) (t := b.slot.val) (n := n.val) hbase_dense hanchor_dense
+              have hdensity : ∀ u : Nat, cl.tipSlot + 2 ≤ u + n.val → u + n.val ≤ (toModelBlock b).slot + 1 →
+                  MoltPetit.Model.quorum n.val ≤
+                    MoltPetit.Model.windowCount (cl.tail ++ [toModelBlock b]) u n.val := by
+                intro u hu1 hu2
+                have hlu : lo.val ≤ u := by omega
+                have hmat : u + n.val ≤ b.slot.val + 1 := by
+                  change u + n.val ≤ (toModelBlock b).slot + 1 at hu2
+                  exact hu2
+                exact hdense u hlu hmat
+              exact ⟨hheight, hslot, hprev, hdensity⟩
+          · simp at hprev_ok
+        · simp at ht1
+      · simp at hlinks
+    · simp at ht3
+  · simp at h
+
 end Rust
