@@ -1252,4 +1252,65 @@ theorem cert_fold_sched_sound : MoltPaper.thm_cert_fold_sched_sound := by
   simp only [List.nil_append] at hsound
   exact hsound
 
+theorem cert_step_lock_be_sound {n q : U64} {st : CertStateG U64} {g : U64} {b : molt_petit.Block}
+    (hn : 1 ≤ n.val)
+    (h : cert_step_lock_be UBK () n q st g (toBlockG b) b.key_index = ok true) :
+    cert_step_core_be UBK () n q st (toBlockG b) = ok true ∧
+    g.val ≤ (toModelBlock b).keyIndex ∧
+    (st.tip_slot.val / n.val = (toModelBlock b).slot / n.val → g.val = (toModelBlock b).keyIndex) := by
+  dsimp [cert_step_lock_be] at h
+  obtain ⟨core, hcore, h⟩ := bind_inv h
+  obtain ⟨below, hbelow, h⟩ := bind_inv h
+  obtain ⟨ge, hge, h⟩ := bind_inv h
+  obtain ⟨w_tip, hw_tip, h⟩ := bind_inv h
+  obtain ⟨w_b, hw_b, h⟩ := bind_inv h
+  obtain ⟨same, hsame, h⟩ := bind_inv h
+  obtain ⟨keeps, hkeeps, h⟩ := bind_inv h
+  obtain ⟨nsame, hnsame, h⟩ := bind_inv h
+  obtain ⟨mix_ok, hmix_ok, h⟩ := bind_inv h
+  obtain ⟨t, ht, h⟩ := bind_inv h
+  split at h
+  · rename_i hcore_t
+    injection h with h; subst h
+    rw [hcore_t] at hcore
+    split at ht
+    · rename_i hge_t
+      injection ht with ht; subst ht
+      injection hge with hge
+      have hnot_below : below = false := by
+        cases below <;> simp_all
+      rw [hnot_below] at hbelow
+      injection hbelow with hbelow
+      simp only [decide_eq_false_iff_not] at hbelow
+      change ¬ (b.key_index.val < g.val) at hbelow
+      have hle : g.val ≤ b.key_index.val := by omega
+      have hw_tip_val := ubk_div_val (by omega) hw_tip
+      have hw_b_val := ubk_div_val (by omega) hw_b
+      split at hmix_ok
+      · rename_i hnsame_t
+        injection hnsame with hnsame
+        have hsame_f : same = false := by
+          cases same <;> simp_all
+        rw [hsame_f] at hsame
+        injection hsame with hsame
+        simp only [decide_eq_false_iff_not] at hsame
+        refine ⟨hcore, hle, ?_⟩
+        intro hdiv
+        exfalso
+        apply hsame
+        apply UScalar.eq_of_val_eq
+        rw [hw_tip_val, hw_b_val, hdiv]
+        rfl
+      · rename_i hnsame_f
+        injection hmix_ok with hmix_ok
+        rw [hmix_ok] at hkeeps
+        injection hkeeps with hkeeps
+        simp only [decide_eq_true_eq] at hkeeps
+        refine ⟨hcore, hle, ?_⟩
+        intro _
+        rw [hkeeps]
+        rfl
+    · injection ht with ht; contradiction
+  · injection h with h; contradiction
+
 end Rust
