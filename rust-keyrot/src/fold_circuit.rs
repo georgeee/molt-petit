@@ -11,10 +11,12 @@
 //! circuit (or, at step 1, starts from the genesis state, a circuit constant),
 //! runs the verified step on one block, and exposes the next state.
 //!
-//! `n`, `q = quorum(n)` and `era` are circuit constants. Signatures are NOT
-//! checked here yet: the statements take `Signed` per block as the signature
-//! gadget's guarantee, and wiring a signature subproof into the step is the
-//! next increment.
+//! `n`, `q = quorum(n)` and `era` are circuit constants. With a
+//! [`SigBinding`], each step also verifies the block's signature subproof (a
+//! proof of the signature circuit, a constant), requires its digest to be the
+//! block id, and requires its public key to be the leaf of
+//! `(slot % n, key_index)` in a committed key registry (the root, a constant).
+//! That is the `Signed b` premise of the fold statements.
 //!
 //! [`MpCircuit`] records witness values while it builds, so every step
 //! rebuilds the circuit. The structure never depends on the values, and
@@ -23,6 +25,10 @@
 use anyhow::{bail, ensure, Result};
 use plonky2::field::types::{Field, PrimeField64};
 use plonky2::gates::noop::NoopGate;
+use plonky2::hash::hash_types::HashOut;
+use plonky2::hash::merkle_proofs::{MerkleProof, MerkleProofTarget};
+use plonky2::hash::merkle_tree::MerkleTree;
+use plonky2::hash::poseidon::PoseidonHash;
 use plonky2::iop::target::{BoolTarget, Target};
 use plonky2::iop::witness::{PartialWitness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
@@ -39,6 +45,7 @@ use molt_petit::{
 
 use crate::backend::CMP_BITS;
 use crate::mp_circuit::{MNum, MpCircuit};
+use molt_petit::BackendK as MpBackendK;
 use crate::types::{C, D, F};
 
 /// Which fold step the certificate runs.
@@ -200,8 +207,63 @@ fn common_data_for_recursion(bits: usize) -> CommonCircuitData<F, D> {
     builder.build::<C>().common
 }
 
+/// The key registry: a Poseidon Merkle tree whose leaf at
+/// `producer << kbits | key_index` is that key's public key (the signature
+/// circuit's `pk` public input). Its root is a circuit constant, so the
+/// certificate is about this registry and no other.
+pub struct KeyRegistry {
+    pub tree: MerkleTree<F, PoseidonHash>,
+    pub pbits: usize,
+    pub kbits: usize,
+}
+
+impl KeyRegistry {
+    /// `pk(p, ki)` for every producer `p < n` and key index `ki < 2^kbits`;
+    /// the unused leaves (`p >= n`) are unreachable, since the step proves
+    /// `p = slot % n < n`.
+    pub fn new(n: usize, kbits: usize, n_fe: usize, pk: impl Fn(usize, u64) -> Vec<F>) -> Self {
+        let pbits = (usize::BITS - (n.max(2) - 1).leading_zeros()) as usize;
+        let leaves = (0..1usize << (pbits + kbits))
+            .map(|i| {
+                let (p, ki) = (i >> kbits, (i & ((1 << kbits) - 1)) as u64);
+                if p < n { pk(p, ki) } else { vec![F::ZERO; n_fe] }
+            })
+            .collect();
+        Self { tree: MerkleTree::new(leaves, 0), pbits, kbits }
+    }
+
+    pub fn root(&self) -> HashOut<F> {
+        self.tree.cap.0[0]
+    }
+
+    pub fn path(&self, p: usize, ki: u64) -> MerkleProof<F, PoseidonHash> {
+        self.tree.prove((p << self.kbits) | ki as usize)
+    }
+}
+
+/// What binds a step to a signature: the signature circuit (public inputs
+/// `pk` then the 4-limb digest), its verifier data (a constant), and the
+/// registry root.
+pub struct SigBinding {
+    pub verifier: CircuitData<F, C, D>,
+    pub n_fe: usize,
+    pub root: HashOut<F>,
+    pub pbits: usize,
+    pub kbits: usize,
+}
+
+/// One block's signature evidence: a proof of the signature circuit on
+/// `(pk, block id)`, and `pk`'s registry path.
+pub struct BlockSig {
+    pub proof: ProofWithPublicInputs<F, C, D>,
+    pub path: MerkleProof<F, PoseidonHash>,
+}
+
 /// Drives the cyclic certificate: genesis, then one proof per block.
 pub struct FoldProver {
+    /// `None` only for structure tests: such a certificate says nothing about
+    /// who signed.
+    pub sig: Option<SigBinding>,
     pub n: usize,
     pub mode: Mode,
     genesis: FoldState,
@@ -219,8 +281,9 @@ impl FoldProver {
     /// the step circuit's own, and the step circuit contains the verifier for
     /// that shape. Start from a padded recursive verifier and rebuild until
     /// the shape is a fixed point.
-    pub fn new(n: usize, mode: Mode, genesis_block: &FoldBlock, bits: usize) -> Result<Self> {
+    pub fn new(n: usize, mode: Mode, genesis_block: &FoldBlock, bits: usize, sig: Option<SigBinding>) -> Result<Self> {
         let mut fp = Self {
+            sig,
             n,
             mode,
             genesis: FoldState::genesis(n, mode, genesis_block),
@@ -233,7 +296,7 @@ impl FoldProver {
         let g = fp.genesis.clone();
         let probe = FoldBlock { slot: g.tip_slot + 1, height: g.tip_height + 1, prev: g.tip_id, id: [0; 4], key_index: 0 };
         for _ in 0..8 {
-            let built = fp.build(&fp.common, &g, &probe)?;
+            let built = fp.build(&fp.common, &g, &probe, None)?;
             fp.step_gates = built.gates;
             if built.success {
                 return Ok(fp);
@@ -255,9 +318,11 @@ impl FoldProver {
         prev: &FoldState,
         inner: Option<&ProofWithPublicInputs<F, C, D>>,
         b: &FoldBlock,
+        sig: Option<&BlockSig>,
     ) -> Result<(CircuitData<F, C, D>, ProofWithPublicInputs<F, C, D>)> {
+        ensure!(self.sig.is_some() == sig.is_some(), "signature evidence must match the binding");
         let t = std::time::Instant::now();
-        let Built { data, pw, vd_t, cond, inner_t, success, .. } = self.build(&self.common, prev, b)?;
+        let Built { data, pw, vd_t, cond, inner_t, success, .. } = self.build(&self.common, prev, b, sig)?;
         self.last_build = t.elapsed();
         ensure!(success, "step circuit does not have the recursion shape");
         let gen_f = self.genesis.to_fields();
@@ -296,7 +361,15 @@ impl FoldProver {
     }
 
     /// Build the step circuit for `(prev, b)` against the inner shape `common`.
-    fn build(&self, common: &CommonCircuitData<F, D>, prev: &FoldState, b: &FoldBlock) -> Result<Built> {
+    /// With a binding, `sig` is the witness (`None` while fixing the shape:
+    /// targets only, never proved).
+    fn build(
+        &self,
+        common: &CommonCircuitData<F, D>,
+        prev: &FoldState,
+        b: &FoldBlock,
+        sig: Option<&BlockSig>,
+    ) -> Result<Built> {
         let mut common = common.clone();
         let n = self.n;
         let mode = self.mode;
@@ -365,6 +438,38 @@ impl FoldProver {
         }
         let n_m = be.constant(F::from_canonical_u64(n as u64));
         let q_m = be.constant(F::from_canonical_u64(molt_petit::quorum(n as u64)));
+
+        // (3b) The block's signature: a proof of the signature circuit whose
+        // digest is the block id and whose pk is the registry leaf of
+        // (slot % n, key_index).
+        if let Some(sb) = &self.sig {
+            let p = MpBackendK::rem(&be, bg.slot, n_m);
+            let mut bl = be.b.borrow_mut();
+            let st = bl.add_virtual_proof_with_pis(&sb.verifier.common);
+            let vd = bl.constant_verifier_data(&sb.verifier.verifier_only);
+            bl.verify_proof::<C>(&st, &vd, &sb.verifier.common);
+            let pk = st.public_inputs[..sb.n_fe].to_vec();
+            for (i, x) in [&bg.id.a, &bg.id.b, &bg.id.c, &bg.id.d].into_iter().enumerate() {
+                bl.connect(st.public_inputs[sb.n_fe + i], MpCircuit::target(x));
+            }
+            bl.range_check(MpCircuit::target(&ki), sb.kbits);
+            let shift = bl.constant(F::from_canonical_u64(1 << sb.kbits));
+            let idx = bl.mul_add(MpCircuit::target(&p), shift, MpCircuit::target(&ki));
+            let bits = bl.split_le(idx, sb.pbits + sb.kbits);
+            let path = MerkleProofTarget {
+                siblings: (0..sb.pbits + sb.kbits).map(|_| bl.add_virtual_hash()).collect(),
+            };
+            let root = bl.constant_hash(sb.root);
+            bl.verify_merkle_proof::<PoseidonHash>(pk, &bits, root, &path);
+            if let Some(w) = sig {
+                let mut pw = be.pw.borrow_mut();
+                pw.set_proof_with_pis_target(&st, &w.proof)?;
+                ensure!(w.path.siblings.len() == path.siblings.len(), "registry path length");
+                for (t, h) in path.siblings.iter().zip(&w.path.siblings) {
+                    pw.set_hash_target(*t, *h)?;
+                }
+            }
+        }
 
         // (4) The verified step, executed as a circuit; then the next state.
         let mut next_extra: Vec<MNum> = vec![];
@@ -490,12 +595,12 @@ mod tests {
 
     fn run(n: usize, mode: Mode, kis: &[u64]) {
         let (g, bs) = chain(kis);
-        let mut fp = FoldProver::new(n, mode, &g, BITS).unwrap();
+        let mut fp = FoldProver::new(n, mode, &g, BITS, None).unwrap();
         let mut st = fp.genesis_state().clone();
         let mut proof = None;
         for b in &bs {
             let next = native_step(n as u64, mode, &st, b).expect("native fold accepts");
-            let (_, p) = fp.step(&st, proof.as_ref(), b).expect("circuit step");
+            let (_, p) = fp.step(&st, proof.as_ref(), b, None).expect("circuit step");
             assert_eq!(exposed_state(n, mode, &p).unwrap(), next, "circuit state == native state");
             st = next;
             proof = Some(p);
@@ -531,29 +636,100 @@ mod tests {
     fn rejected_block_has_no_proof() {
         let (g, bs) = chain(&[0, 1]);
         let mode = Mode::Lock;
-        let mut fp = FoldProver::new(3, mode, &g, BITS).unwrap();
+        let mut fp = FoldProver::new(3, mode, &g, BITS, None).unwrap();
         let st0 = fp.genesis_state().clone();
         // Key index 0 then 1 inside one n-era breaks lock-step (slots 1, 2 < 3).
         let st1 = native_step(3, mode, &st0, &bs[0]).unwrap();
         assert!(native_step(3, mode, &st1, &bs[1]).is_none());
-        let (_, p1) = fp.step(&st0, None, &bs[0]).unwrap();
-        assert!(fails(|| fp.step(&st1, Some(&p1), &bs[1])));
+        let (_, p1) = fp.step(&st0, None, &bs[0], None).unwrap();
+        assert!(fails(|| fp.step(&st1, Some(&p1), &bs[1], None)));
     }
 
     #[test]
     fn forged_previous_state_has_no_proof() {
         let (g, bs) = chain(&[0, 0]);
         let mode = Mode::Sched { era: 4 };
-        let mut fp = FoldProver::new(3, mode, &g, BITS).unwrap();
+        let mut fp = FoldProver::new(3, mode, &g, BITS, None).unwrap();
         let st0 = fp.genesis_state().clone();
         let st1 = native_step(3, mode, &st0, &bs[0]).unwrap();
-        let (_, p1) = fp.step(&st0, None, &bs[0]).unwrap();
+        let (_, p1) = fp.step(&st0, None, &bs[0], None).unwrap();
         // Claim a different previous tip height than the inner proof exposes.
         let mut forged = st1.clone();
         forged.tip_height += 1;
         let mut b = bs[1];
         b.height += 1;
         assert!(native_step(3, mode, &forged, &b).is_some());
-        assert!(fails(|| fp.step(&forged, Some(&p1), &b)));
+        assert!(fails(|| fp.step(&forged, Some(&p1), &b, None)));
+    }
+
+    /// XMSS keys for every (producer, key index): small trees, one leaf per
+    /// signed block (each key signs one block in `demo_chain`).
+    struct Keys {
+        keys: Vec<Vec<crate::xmss::Key>>,
+        vc: crate::xmss::VerifierCircuit,
+        reg: KeyRegistry,
+    }
+
+    fn keys(n: usize, kbits: usize) -> Keys {
+        let p = crate::sphincs::Params::xmss("t", 2, 3);
+        let keys: Vec<Vec<_>> = (0..n)
+            .map(|pr| (0..1u64 << kbits).map(|ki| crate::xmss::Key::keygen(p.clone(), 1000 * pr as u64 + ki)).collect())
+            .collect();
+        let reg = KeyRegistry::new(n, kbits, 2, |pr, ki| keys[pr][ki as usize].public_key());
+        let vc = crate::xmss::VerifierCircuit::build(p);
+        Keys { keys, vc, reg }
+    }
+
+    fn dig(id: [u64; 4]) -> [F; 4] {
+        id.map(F::from_canonical_u64)
+    }
+
+    /// Signature evidence for `b`, signed by key `(pr, ki)` over `msg`.
+    fn evidence(k: &Keys, pr: usize, ki: u64, msg: [u64; 4]) -> BlockSig {
+        let key = &k.keys[pr][ki as usize];
+        let sig = key.sign(&dig(msg), 0);
+        BlockSig { proof: k.vc.prove(&key.public_key(), &dig(msg), &sig).unwrap(), path: k.reg.path(pr, ki) }
+    }
+
+    #[test]
+    fn signed_fold_binds_signer_and_block() {
+        let (n, kbits) = (3usize, 2usize);
+        let k = keys(n, kbits);
+        let mode = Mode::Sched { era: 3 };
+        let (g, bs) = demo_chain(n, 4);
+        let binding = |k: &Keys| SigBinding {
+            verifier: crate::xmss::VerifierCircuit::build(crate::sphincs::Params::xmss("t", 2, 3)).data,
+            n_fe: 2,
+            root: k.reg.root(),
+            pbits: k.reg.pbits,
+            kbits,
+        };
+        let mut fp = FoldProver::new(n, mode, &g, BITS, Some(binding(&k))).unwrap();
+        let mut st = fp.genesis_state().clone();
+        let mut proof = None;
+        for b in &bs[..3] {
+            let pr = (b.slot % n as u64) as usize;
+            let next = native_step(n as u64, mode, &st, b).unwrap();
+            let ev = evidence(&k, pr, b.key_index, b.id);
+            let (_, p) = fp.step(&st, proof.as_ref(), b, Some(&ev)).expect("signed step");
+            assert_eq!(exposed_state(n, mode, &p).unwrap(), next);
+            st = next;
+            proof = Some(p);
+        }
+        let b = bs[3];
+        let pr = (b.slot % n as u64) as usize;
+        assert!(native_step(n as u64, mode, &st, &b).is_some());
+        // Signed by the producer's key at another index: no proof.
+        let wrong_key = evidence(&k, pr, b.key_index + 1, b.id);
+        assert!(fails(|| fp.step(&st, proof.as_ref(), &b, Some(&wrong_key))));
+        // Signed by another producer's key at the right index: no proof.
+        let wrong_prod = evidence(&k, (pr + 1) % n, b.key_index, b.id);
+        assert!(fails(|| fp.step(&st, proof.as_ref(), &b, Some(&wrong_prod))));
+        // The right key, over another message: no proof.
+        let wrong_msg = evidence(&k, pr, b.key_index, [9, 9, 9, 9]);
+        assert!(fails(|| fp.step(&st, proof.as_ref(), &b, Some(&wrong_msg))));
+        // The right evidence: proof.
+        let ok = evidence(&k, pr, b.key_index, b.id);
+        fp.step(&st, proof.as_ref(), &b, Some(&ok)).expect("signed step");
     }
 }

@@ -333,7 +333,7 @@ fn fold_bench() -> Result<()> {
     for (label, mode) in [("mode 1 (K)", Mode::K), ("mode 2 (Sched, era = n)", Mode::Sched { era: N as u64 }), ("mode 3 (Lock)", Mode::Lock)] {
         let (g, bs) = demo_chain(N, steps);
         let t = Instant::now();
-        let mut fp = FoldProver::new(N, mode, &g, 12)?;
+        let mut fp = FoldProver::new(N, mode, &g, 12, None)?;
         let shape = t.elapsed();
         let mut st = fp.genesis_state().clone();
         let mut proof: Option<Pf> = None;
@@ -341,7 +341,7 @@ fn fold_bench() -> Result<()> {
         let mut degree = 0;
         for blk in &bs {
             let next = native_step(N as u64, mode, &st, blk).expect("native accepts");
-            let (data, p) = fp.step(&st, proof.as_ref(), blk)?;
+            let (data, p) = fp.step(&st, proof.as_ref(), blk, None)?;
             tb.push(fp.last_build);
             tp.push(fp.last_prove);
             let t = Instant::now();
@@ -362,6 +362,64 @@ fn fold_bench() -> Result<()> {
             median(tb).as_secs_f64(),
             ms(median(tv)),
             bytes / 1024
+        );
+    }
+    // Signed: each step also verifies the block's SPHINCS+-128s subproof and
+    // its registry path (the table's signature).
+    {
+        use molt_petit_keyrot::fold_circuit::{BlockSig, KeyRegistry, SigBinding};
+        let p = Params::s128s();
+        let kbits = 2;
+        let blocks = 8u64;
+        let (g, bs) = demo_chain(N, blocks);
+        let used: std::collections::HashMap<(usize, u64), Key> = bs
+            .iter()
+            .map(|b| {
+                let k = ((b.slot % N as u64) as usize, b.key_index);
+                (k, Key::keygen(p.clone(), 1000 * k.0 as u64 + k.1))
+            })
+            .collect();
+        let reg = KeyRegistry::new(N, kbits, p.n_fe, |pr, ki| {
+            used.get(&(pr, ki)).map(|k| k.public_key()).unwrap_or_else(|| vec![F::ZERO; p.n_fe])
+        });
+        let vc = VerifierCircuit::build(p.clone());
+        let binding = SigBinding {
+            verifier: VerifierCircuit::build(p.clone()).data,
+            n_fe: p.n_fe,
+            root: reg.root(),
+            pbits: reg.pbits,
+            kbits,
+        };
+        let mode = Mode::Sched { era: N as u64 };
+        let mut fp = FoldProver::new(N, mode, &g, 13, Some(binding))?;
+        let mut st = fp.genesis_state().clone();
+        let mut proof: Option<Pf> = None;
+        let (mut ts, mut tp) = (vec![], vec![]);
+        let mut degree = 0;
+        for blk in &bs {
+            let pr = (blk.slot % N as u64) as usize;
+            let key = &used[&(pr, blk.key_index)];
+            let d = blk.id.map(F::from_canonical_u64);
+            let t = Instant::now();
+            let sig = key.sign(&d);
+            let sp = vc.prove(&key.public_key(), &d, &sig)?;
+            ts.push(t.elapsed());
+            let ev = BlockSig { proof: sp, path: reg.path(pr, blk.key_index) };
+            let next = native_step(N as u64, mode, &st, blk).expect("native accepts");
+            let (data, pf) = fp.step(&st, proof.as_ref(), blk, Some(&ev))?;
+            tp.push(fp.last_prove);
+            degree = data.common.degree_bits();
+            assert_eq!(exposed_state(N, mode, &pf)?, next);
+            st = next;
+            proof = Some(pf);
+        }
+        println!(
+            "   signed, mode 2: n = {N}, {blocks} blocks, SPHINCS+-128s subproof per block + registry path (2^{} leaves); \
+             step circuit {} gates -> degree 2^{degree}; per block: signer sign+subproof {:.2} s, fold step PROVE {:.2} s (median)",
+            reg.pbits + kbits,
+            fp.step_gates,
+            median(ts).as_secs_f64(),
+            median(tp).as_secs_f64()
         );
     }
     Ok(())
