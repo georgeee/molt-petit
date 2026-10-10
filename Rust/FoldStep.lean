@@ -1313,4 +1313,94 @@ theorem cert_step_lock_be_sound {n q : U64} {st : CertStateG U64} {g : U64} {b :
     · injection ht with ht; contradiction
   · injection h with h; contradiction
 
+
+
+lemma list_getLast_congr {α : Type} {l1 l2 : List α} (h : l1 = l2) (h1 : l1 ≠ []) (h2 : l2 ≠ []) :
+    l1.getLast h1 = l2.getLast h2 := by
+  subst h; rfl
+
+lemma foldLock_sound_aux {n q : U64} {G : Block}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64) (g : U64),
+    (∀ b ∈ bs, Signed (toModelBlock b)) →
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    g = ((G :: pre).getLast (List.cons_ne_nil _ _)).key_index →
+    MoltPetit.Model.GroundedCertLock n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) g.val →
+    FoldLock n q st g bs →
+    MoltPetit.Model.GroundedCertLock n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock))
+      (((G :: pre ++ bs).getLast (List.cons_ne_nil _ _)).key_index.val) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st g hSig hrep hg hlock hfold
+    simp only [List.append_nil]
+    rw [← hg]
+    exact hlock
+  | cons b rest ih =>
+    intro pre st g hSig hrep hg hlock hfold
+    obtain ⟨hstep, t', ht', hfold_rest⟩ := hfold
+    obtain ⟨hcore, hle, hkeeps⟩ := cert_step_lock_be_sound hn hstep
+    obtain ⟨hheight, hslot, hprev, hdense⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hSig_b : Signed (toModelBlock b) := hSig b (by simp)
+    have hSig_rest : ∀ x ∈ rest, Signed (toModelBlock x) := fun x hx => hSig x (by simp [hx])
+    let cl := modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)
+    have hkeeps_cl : cl.tipSlot / n.val = (toModelBlock b).slot / n.val → g.val = (toModelBlock b).keyIndex := by
+      intro hdiv
+      rw [← hrep.tip_slot] at hdiv
+      exact hkeeps hdiv
+    have hlock' := MoltPetit.Model.GroundedCertLock.extend cl g.val (toModelBlock b)
+      hlock hheight hslot hprev hSig_b hle hkeeps_cl hdense
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := (cl.tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hlock_step : MoltPetit.Model.GroundedCertLock n.val Signed
+        (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock))
+        b.key_index.val := by
+      rw [hmap_app, hcl_eq]
+      exact hlock'
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hlast_b : (G :: (pre ++ [b])).getLast (List.cons_ne_nil _ _) = b := by
+      change ((G :: pre) ++ [b]).getLast _ = b
+      exact List.getLast_append_singleton (G :: pre)
+    have hg_step : b.key_index = ((G :: (pre ++ [b])).getLast (List.cons_ne_nil _ _)).key_index := by
+      rw [hlast_b]
+    have hres := ih (pre ++ [b]) (stepState b t') b.key_index hSig_rest hrep_step hg_step hlock_step hfold_rest
+    rw [List.append_assoc, List.singleton_append] at hres
+    have hcons_eq : (G :: (pre ++ [b]) ++ rest) = (G :: pre ++ (b :: rest)) := by simp
+    have hlast_eq := list_getLast_congr hcons_eq (List.cons_ne_nil _ _) (List.cons_ne_nil _ _)
+    rw [hlast_eq] at hres
+    exact hres
+
+theorem cert_fold_lock_sound : MoltPaper.thm_cert_fold_lock_sound := by
+  intro n q G bs Signed hn hq hG hSigG hSig hFold
+  have ⟨hgen, hslot0⟩ := cert_genesis_ok_be_sound hG
+  have hbase_lock : MoltPetit.Model.GroundedCertLock n.val Signed
+      (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock))
+      G.key_index.val := by
+    simp only [List.map_nil]
+    have hnil := modelClaimOf_nil n.val (toModelBlock G)
+    rw [hnil]
+    exact MoltPetit.Model.GroundedCertLock.genesis hgen hslot0 hSigG
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hsound := foldLock_sound_aux hn hq bs [] (genesisState n.val G) G.key_index
+    hSig hbase_rep rfl hbase_lock hFold
+  simp only [List.nil_append] at hsound
+  exact hsound
+
 end Rust
