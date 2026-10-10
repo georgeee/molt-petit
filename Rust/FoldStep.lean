@@ -315,4 +315,41 @@ theorem fold_window_ok_be_sound {tail : TailG U64} {tip_slot slot u n q : U64}
       simp only [this, false_and, if_false]
   omega
 
+
+theorem fold_anchors_ok_be_sound {all rest : TailG U64} {tip_slot slot n q : U64}
+    (h : fold_anchors_ok_be UB () all rest tip_slot slot n q = ok true) :
+    ∀ s ∈ entrySlots rest,
+      tip_slot.val + 2 ≤ (s + 1) + n.val →
+      (s + 1) + n.val ≤ slot.val + 1 →
+      q.val ≤ ((presentSlots all).filter (fun x => s + 1 ≤ x ∧ x < (s + 1) + n.val)).length +
+        (if s + 1 ≤ slot.val ∧ slot.val < (s + 1) + n.val then 1 else 0) := by
+  induction rest with
+  | TNil =>
+    intro s hs
+    simp only [entrySlots_nil, List.not_mem_nil] at hs
+  | TCons f s' tl ih =>
+    intro s hs hlo hhi
+    simp only [fold_anchors_ok_be, UB] at h
+    simp at h
+    obtain ⟨u, hu, h⟩ := bind_inv h
+    obtain ⟨here, hhere, h⟩ := bind_inv h
+    obtain ⟨more, hmore, h⟩ := bind_inv h
+    split at h
+    · rename_i hheret
+      injection h with h
+      subst h
+      have huv : u.val = s'.val + 1 := by
+        have := UScalar.add_equiv s' 1#u64
+        simp only [hu] at this
+        exact this.2.1
+      simp only [entrySlots_cons, List.mem_cons] at hs
+      rcases hs with rfl | htl
+      · have h1 : tip_slot.val + 2 ≤ u.val + n.val := by omega
+        have h2 : u.val + n.val ≤ slot.val + 1 := by omega
+        rw [hheret] at hhere
+        have hsound := fold_window_ok_be_sound hhere h1 h2
+        simpa [huv] using hsound
+      · exact ih hmore s htl hlo hhi
+    · simp at h
+
 end Rust

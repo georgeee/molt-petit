@@ -6,7 +6,7 @@ In progress: 3. Window checks
 
 - [x] 1. Skeleton and primitives
 - [x] 2. Counting (`tail_count_be_corr`)
-- [ ] 3. Window checks
+- [x] 3. Window checks
 - [ ] 4. `TailRepr` and `cert_step_core_be_sound`
 - [ ] 5. `cert_next_tail_be_repr`
 - [ ] 6. Prefix claim and genesis repr
