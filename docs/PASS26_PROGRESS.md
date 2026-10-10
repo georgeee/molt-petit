@@ -5,7 +5,7 @@ Scaffold commit: 7a5fe4e. Pinned: `git diff 7a5fe4e -- Spec/ rust/` must stay em
 In progress: 2. Counting (`tail_count_be_corr`)
 
 - [x] 1. Skeleton and primitives
-- [ ] 2. Counting (`tail_count_be_corr`)
+- [x] 2. Counting (`tail_count_be_corr`)
 - [ ] 3. Window checks
 - [ ] 4. `TailRepr` and `cert_step_core_be_sound`
 - [ ] 5. `cert_next_tail_be_repr`
