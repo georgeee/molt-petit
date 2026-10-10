@@ -53,6 +53,8 @@ theorem lockstep_cert_gen_pinned : thm_lockstep_cert_gen_pinned :=
   @MoltPetit.Model.lockstep_cert_gen_pinned
 theorem lockstep_declares_rosterGen : thm_lockstep_declares_rosterGen :=
   @MoltPetit.Model.lockstep_declares_rosterGen
+theorem lockstep_liveness_produce_block : thm_lockstep_liveness_produce_block :=
+  @MoltPetit.Model.lockstep_liveness_produce_block
 theorem lockstep_loss_agreement : thm_lockstep_loss_agreement :=
   @MoltPetit.Model.lockstep_loss_agreement
 theorem lockstep_recent_certified_history_agreement :
