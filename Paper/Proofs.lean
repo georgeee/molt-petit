@@ -145,5 +145,11 @@ theorem cert_fold_sched_sound : thm_cert_fold_sched_sound :=
   @Rust.cert_fold_sched_sound
 theorem cert_fold_lock_sound : thm_cert_fold_lock_sound :=
   @Rust.cert_fold_lock_sound
+theorem cert_fold_k_client : thm_cert_fold_k_client :=
+  @Rust.cert_fold_k_client
+theorem cert_fold_sched_client : thm_cert_fold_sched_client :=
+  @Rust.cert_fold_sched_client
+theorem cert_fold_lock_client : thm_cert_fold_lock_client :=
+  @Rust.cert_fold_lock_client
 
 end MoltPaper
