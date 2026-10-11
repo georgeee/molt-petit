@@ -1675,6 +1675,20 @@ hardware grows linearly.}
 \label{tab:bench}
 \end{table}
 
+The fold certificate (\code{BENCH\_FOLD=1}, $n = 7$, all three modes) was
+measured later on a different, shared machine (AMD Ryzen~5 5600X, loaded
+by other jobs), so we report it against the recursion floor measured in
+the same run, not as rows of the table. One fold step without the
+signature is $2^{13}$ rows and proves in about $2\times$ the recursion
+floor. With the block's SPHINCS+ \code{128s} subproof and its registry
+path verified inside it, the step is $2^{14}$ rows and between $2\times$
+and $4\times$ the floor across two runs. A fold proof verifies in about
+5\,ms and is 130\,KiB, whatever the chain length. Per block, a
+certificate therefore costs the signer's subproof plus one step. Scaled
+by the floor in Table~\ref{tab:bench}, that is about $0.4$ to
+$0.8$\,s per step on the reference machine, plus the $0.36$\,s subproof.
+That is an estimate, not a measurement on that machine.
+
 Two points matter for deployment.
 \begin{itemize}
 \item \emph{Consensus is nearly free.} The verified validator adds almost
