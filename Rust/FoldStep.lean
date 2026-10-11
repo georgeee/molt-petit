@@ -2119,4 +2119,65 @@ theorem cert_fold_k_client : MoltPaper.thm_cert_fold_k_client := by
     · injection hval with hval_contra; contradiction
   · injection hval with hval_contra; contradiction
 
+
+/-- Mode 2 client soundness: an accepted certificate verifies against a
+`GroundedCertSched` claim that matches the certificate in view. -/
+theorem cert_fold_sched_client : MoltPaper.thm_cert_fold_sched_client := by
+  intro n q era G Signed C I crypto hn hq hera hG hSigG hFold cert hver
+  obtain ⟨bs, stO, cl, hbs_sig, hfold_out, hcl, hview⟩ := hFold cert hver
+  let cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)
+  refine ⟨cl₀, cl, hcl, ?_, ?_⟩
+  · exact cert_fold_sched_sound hn hq hera hG hSigG hbs_sig (foldSchedOut_foldSched hfold_out)
+  · have hview_stO := stateView_of_foldSchedOut hn hq hera hG hfold_out
+    rw [← hview_stO, ← hview]
+
+lemma foldLockOut_gO_aux {n q : U64} {G : Block} :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64) (g : U64) (stO : CertStateG U64) (gO : U64),
+    g = ((G :: pre).getLast (List.cons_ne_nil _ _)).key_index →
+    FoldLockOut n q st g bs stO gO →
+    gO = ((G :: pre ++ bs).getLast (List.cons_ne_nil _ _)).key_index := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st g stO gO hg hfold
+    dsimp [FoldLockOut] at hfold
+    rw [hfold.2]
+    simp only [List.append_nil]
+    exact hg
+  | cons b rest ih =>
+    intro pre st g stO gO hg hfold
+    dsimp [FoldLockOut] at hfold
+    rcases hfold with ⟨_, t', _, hfold_rest⟩
+    have hlast_b : (G :: (pre ++ [b])).getLast (List.cons_ne_nil _ _) = b := by
+      change ((G :: pre) ++ [b]).getLast _ = b
+      exact List.getLast_append_singleton (G :: pre)
+    have hg_step : b.key_index = ((G :: (pre ++ [b])).getLast (List.cons_ne_nil _ _)).key_index := by
+      rw [hlast_b]
+    have hres := ih (pre ++ [b]) (stepState b t') b.key_index stO gO hg_step hfold_rest
+    have hcons_eq : (G :: (pre ++ [b]) ++ rest) = (G :: pre ++ (b :: rest)) := by simp
+    have hlast_eq := list_getLast_congr hcons_eq (List.cons_ne_nil _ _) (List.cons_ne_nil _ _)
+    rw [hlast_eq] at hres
+    exact hres
+
+theorem foldLockOut_gO {n q : U64} {G : Block} {bs : List Block} {stO : CertStateG U64} {gO : U64}
+    (hFold : FoldLockOut n q (genesisState n.val G) G.key_index bs stO gO) :
+    gO = ((G :: bs).getLast (List.cons_ne_nil _ _)).key_index := by
+  have h := foldLockOut_gO_aux bs [] (genesisState n.val G) G.key_index stO gO rfl hFold
+  simp only [List.nil_append] at h
+  exact h
+
+/-- Mode 3 client soundness: an accepted certificate verifies against a
+`GroundedCertLock` claim that matches the certificate in view. -/
+theorem cert_fold_lock_client : MoltPaper.thm_cert_fold_lock_client := by
+  intro n q G Signed C I crypto hn hq hG hSigG hFold cert hver
+  obtain ⟨bs, stO, gO, cl, hbs_sig, hfold_out, hcl, hview⟩ := hFold cert hver
+  let cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)
+  refine ⟨cl₀, cl, gO, hcl, ?_, ?_⟩
+  · have h_sound := cert_fold_lock_sound hn hq hG hSigG hbs_sig (foldLockOut_foldLock hfold_out)
+    have h_gO := foldLockOut_gO hfold_out
+    rw [h_gO]
+    exact h_sound
+  · have hview_stO := stateView_of_foldLockOut hn hq hG hfold_out
+    rw [← hview_stO, ← hview]
+
 end Rust
