@@ -1,4 +1,5 @@
 import Rust.Equiv
+import Rust.BridgeK
 import MoltPetit.TS.Bridge
 import Spec.Model
 import Spec.Statements
@@ -2035,5 +2036,87 @@ theorem stateView_of_foldLockOut {n q : U64} {G : Block}
     {g bs stO gO} (hFold : FoldLockOut n q (genesisState n.val G) g bs stO gO) :
     stateView n.val stO = MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) :=
   stateView_eq_claimView_of_tailRepr (tailRepr_of_foldLockOut hn hq hG hFold)
+
+
+
+lemma filter_blockInWindow_length (c : List MoltPetit.Model.Block) (u len : Nat) :
+    (c.filter (MoltPetit.Model.blockInWindow u len)).length =
+    ((c.map (·.slot)).filter (fun s => decide (u ≤ s ∧ s < u + len))).length := by
+  induction c with
+  | nil => rfl
+  | cons b c ih =>
+    rw [List.filter_cons, List.map_cons, List.filter_cons]
+    dsimp [MoltPetit.Model.blockInWindow]
+    by_cases h : decide (u ≤ b.slot ∧ b.slot < u + len) = true
+    · rw [if_pos h, if_pos h, List.length_cons, List.length_cons, ih]
+    · rw [if_neg h, if_neg h, ih]
+
+lemma windowCount_eq_of_map_slot {c1 c2 : List MoltPetit.Model.Block}
+    (h : c1.map (·.slot) = c2.map (·.slot)) (u len : Nat) :
+    MoltPetit.Model.windowCount c1 u len = MoltPetit.Model.windowCount c2 u len := by
+  dsimp [MoltPetit.Model.windowCount]
+  rw [filter_blockInWindow_length, filter_blockInWindow_length, h]
+
+lemma windowCount_append_eq_of_map_slot {A1 A2 s : List MoltPetit.Model.Block}
+    (h : A1.map (·.slot) = A2.map (·.slot)) (u len : Nat) :
+    MoltPetit.Model.windowCount (A1 ++ s) u len = MoltPetit.Model.windowCount (A2 ++ s) u len := by
+  apply windowCount_eq_of_map_slot
+  simp only [List.map_append, h]
+
+/-- Mode 1 client soundness: an accepted certificate verifies against a
+`GroundedCertK` claim that matches the certificate in view. -/
+theorem cert_fold_k_client : MoltPaper.thm_cert_fold_k_client := by
+  intro n q G Signed C IK crypto hn hq hG hSigG hFoldK cert suffix s1 tl sTip hval hstr hTipS
+  rw [validate_certified_chain_k] at hval
+  obtain ⟨cl1, hcl1, hval⟩ := bind_inv hval
+  obtain ⟨fl1, hfl1, hval⟩ := bind_inv hval
+  obtain ⟨stripped, hstrip, hval⟩ := bind_inv hval
+  obtain ⟨b, hb, hval⟩ := bind_inv hval
+  split at hval
+  · rename_i hbt
+    rw [hbt] at hb
+    obtain ⟨b1, hb1, hval⟩ := bind_inv hval
+    split at hval
+    · rename_i hb1t
+      rw [hb1t] at hb1
+      rw [hstr] at hstrip
+      injection hstrip with hstrip_eq
+      subst hstrip_eq
+      obtain ⟨bs, stO, out, cl2, fl2, hbs_sig, hfold_out, hcl2, hview2, hfl2, hden2⟩ :=
+        hFoldK cert hb
+      rw [hcl1] at hcl2
+      injection hcl2 with hcl_eq
+      subst hcl_eq
+      rw [hfl1] at hfl2
+      injection hfl2 with hfl_eq
+      subst hfl_eq
+      let cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)
+      let g := floorsFun out
+      refine ⟨cl₀, g, cl1, fl1, hcl1, hfl1, hden2, ?_, ?_, ?_, ?_⟩
+      · exact cert_fold_k_sound hn hq hG hSigG hbs_sig (foldKOut_foldK hfold_out)
+      · have hview_stO := stateView_of_foldKOut hn hq hG hfold_out
+        rw [← hview_stO, ← hview2]
+      · have hview_stO := stateView_of_foldKOut hn hq hG hfold_out
+        have hcv : MoltPetit.Model.claimView cl₀ = MoltPetit.Model.claimView (toModelClaim cl1) := by
+          rw [← hview_stO, ← hview2]
+        have h_tipId : cl₀.tipId = (toModelClaim cl1).tipId := congrArg (fun v => v.1) hcv
+        have h_tipSlot : cl₀.tipSlot = (toModelClaim cl1).tipSlot := congrArg (fun v => v.2.1) hcv
+        have h_tipHeight : cl₀.tipHeight = (toModelClaim cl1).tipHeight := congrArg (fun v => v.2.2.1) hcv
+        have h_tail : cl₀.tail.map (·.slot) = (toModelClaim cl1).tail.map (·.slot) := congrArg (fun v => v.2.2.2) hcv
+        have hsfx_sound := validate_suffix_k_sound hn hTipS hden2 hval
+        obtain ⟨⟨⟨hh, hs, hp⟩, hlinks, hwin⟩, hkm⟩ := hsfx_sound
+        refine ⟨⟨?_, ?_, ?_⟩, hlinks, ?_⟩
+        · rw [h_tipHeight]; exact hh
+        · rw [h_tipSlot]; exact hs
+        · rw [h_tipId]; exact hp
+        · intro u hu1 hu2
+          rw [h_tipSlot] at hu1
+          have hq_le := hwin u hu1 hu2
+          rw [windowCount_append_eq_of_map_slot h_tail]
+          exact hq_le
+      · have hsfx_sound := validate_suffix_k_sound hn hTipS hden2 hval
+        exact hsfx_sound.2
+    · injection hval with hval_contra; contradiction
+  · injection hval with hval_contra; contradiction
 
 end Rust
