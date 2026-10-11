@@ -1771,4 +1771,269 @@ theorem cert_fold_k_sound : MoltPaper.thm_cert_fold_k_sound := by
   simp only [List.nil_append] at hsound
   exact hsound
 
+
+-- ---------------------------------------------------------------------------
+-- Step 11: Final state (Pass 26 Stage C)
+-- ---------------------------------------------------------------------------
+
+/-- `FoldKOut` implies `FoldK`, forgetting the final public state. -/
+theorem foldKOut_foldK {n q : U64} :
+    ∀ {st fl bs stO out}, FoldKOut n q st fl bs stO out → FoldK n q st fl bs out := by
+  intro st fl bs
+  induction bs generalizing st fl with
+  | nil =>
+    intro stO out h
+    dsimp [FoldKOut] at h
+    dsimp [FoldK]
+    exact h.2
+  | cons b bs ih =>
+    intro stO out h
+    dsimp [FoldKOut] at h
+    rcases h with ⟨hstep, t', fl', ht', hfl', hrest⟩
+    dsimp [FoldK]
+    exact ⟨hstep, t', fl', ht', hfl', ih hrest⟩
+
+/-- `FoldSchedOut` implies `FoldSched`, forgetting the final public state. -/
+theorem foldSchedOut_foldSched {n q era : U64} :
+    ∀ {st bs stO}, FoldSchedOut n q era st bs stO → FoldSched n q era st bs := by
+  intro st bs
+  induction bs generalizing st with
+  | nil =>
+    intro stO h
+    trivial
+  | cons b bs ih =>
+    intro stO h
+    dsimp [FoldSchedOut] at h
+    rcases h with ⟨hstep, t', ht', hrest⟩
+    dsimp [FoldSched]
+    exact ⟨hstep, t', ht', ih hrest⟩
+
+/-- `FoldLockOut` implies `FoldLock`, forgetting the final public state. -/
+theorem foldLockOut_foldLock {n q : U64} :
+    ∀ {st g bs stO gO}, FoldLockOut n q st g bs stO gO → FoldLock n q st g bs := by
+  intro st g bs
+  induction bs generalizing st g with
+  | nil =>
+    intro stO gO h
+    trivial
+  | cons b bs ih =>
+    intro stO gO h
+    dsimp [FoldLockOut] at h
+    rcases h with ⟨hstep, t', ht', hrest⟩
+    dsimp [FoldLock]
+    exact ⟨hstep, t', ht', ih hrest⟩
+
+@[simp] theorem hashGToNat_toHashG (h : molt_petit.Hash) :
+    hashGToNat (toHashG h) = hashToNat h := rfl
+
+theorem tailSlots_eq_presentSlots (t : TailG U64) :
+    tailSlots t = presentSlots t := by
+  induction t with
+  | TNil => rfl
+  | TCons f s tl ih =>
+    dsimp [tailSlots, presentSlots]
+    rw [ih]
+
+/-- A state satisfying `TailRepr` exposes a `stateView` equal to the claim's `claimView`. -/
+theorem stateView_eq_claimView_of_tailRepr {n : Nat} {st : CertStateG U64}
+    {cl : MoltPetit.Model.CertClaim} (hrep : TailRepr n st cl) :
+    stateView n st = MoltPetit.Model.claimView cl := by
+  dsimp [stateView, MoltPetit.Model.claimView]
+  obtain ⟨h, hst_id, hhash⟩ := hrep.tip_id
+  have hslots : tailSlots st.tail = presentSlots st.tail := tailSlots_eq_presentSlots st.tail
+  rw [hst_id, hrep.tip_slot, hrep.tip_height, hslots]
+  have hhash_nat : hashGToNat (toHashG h) = cl.tipId := by
+    dsimp [hashGToNat, toHashG, hashToNat] at *
+    exact hhash
+  rw [hhash_nat]
+  have htail := hrep.tail_eq
+  exact congrArg (fun x => (cl.tipId, cl.tipSlot, cl.tipHeight, x)) htail
+
+lemma foldKOut_tailRepr_aux {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64)
+      (fl : FloorsG U64) (stO : CertStateG U64) (out : FloorsG U64),
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    FoldKOut n q st fl bs stO out →
+    TailRepr n.val stO (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock)) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st fl stO out hrep hfold
+    dsimp [FoldKOut] at hfold
+    rw [hfold.1]
+    simp only [List.append_nil]
+    exact hrep
+  | cons b bs ih =>
+    intro pre st fl stO out hrep hfold
+    dsimp [FoldKOut] at hfold
+    obtain ⟨hstep, t', fl', ht', hfl', hfold_rest⟩ := hfold
+    obtain ⟨hcore, _⟩ := cert_step_k_be_sound hn hstep
+    have ⟨_, hslot, _, _⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := ((modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)).tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hres := ih (pre ++ [b]) (stepState b t') fl' stO out hrep_step hfold_rest
+    rw [List.append_assoc, List.singleton_append] at hres
+    exact hres
+
+/-- The final state of `FoldKOut` represents the folded chain's claim. -/
+theorem tailRepr_of_foldKOut {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true) :
+    ∀ {bs stO out}, FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) bs stO out →
+      TailRepr n.val stO (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) := by
+  intro bs stO out hFold
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hres := foldKOut_tailRepr_aux hn hq bs [] (genesisState n.val G)
+    (initFloors n.val G.key_index) stO out hbase_rep hFold
+  simp only [List.nil_append] at hres
+  exact hres
+
+lemma foldSchedOut_tailRepr_aux {n q era : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) (hera : 0 < era.val) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64)
+      (stO : CertStateG U64),
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    FoldSchedOut n q era st bs stO →
+    TailRepr n.val stO (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock)) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st stO hrep hfold
+    dsimp [FoldSchedOut] at hfold
+    subst hfold
+    simp only [List.append_nil]
+    exact hrep
+  | cons b bs ih =>
+    intro pre st stO hrep hfold
+    dsimp [FoldSchedOut] at hfold
+    obtain ⟨hstep, t', ht', hfold_rest⟩ := hfold
+    obtain ⟨hcore, _⟩ := cert_step_sched_be_sound hera hstep
+    have ⟨_, hslot, _, _⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := ((modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)).tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hres := ih (pre ++ [b]) (stepState b t') stO hrep_step hfold_rest
+    rw [List.append_assoc, List.singleton_append] at hres
+    exact hres
+
+/-- The final state of `FoldSchedOut` represents the folded chain's claim. -/
+theorem tailRepr_of_foldSchedOut {n q era : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) (hera : 0 < era.val)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true) :
+    ∀ {bs stO}, FoldSchedOut n q era (genesisState n.val G) bs stO →
+      TailRepr n.val stO (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) := by
+  intro bs stO hFold
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hres := foldSchedOut_tailRepr_aux hn hq hera bs [] (genesisState n.val G) stO hbase_rep hFold
+  simp only [List.nil_append] at hres
+  exact hres
+
+lemma foldLockOut_tailRepr_aux {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64) (g : U64)
+      (stO : CertStateG U64) (gO : U64),
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    FoldLockOut n q st g bs stO gO →
+    TailRepr n.val stO (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock)) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st g stO gO hrep hfold
+    dsimp [FoldLockOut] at hfold
+    rw [hfold.1]
+    simp only [List.append_nil]
+    exact hrep
+  | cons b bs ih =>
+    intro pre st g stO gO hrep hfold
+    dsimp [FoldLockOut] at hfold
+    obtain ⟨hstep, t', ht', hfold_rest⟩ := hfold
+    obtain ⟨hcore, _, _⟩ := cert_step_lock_be_sound hn hstep
+    have ⟨_, hslot, _, _⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := ((modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)).tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hres := ih (pre ++ [b]) (stepState b t') b.key_index stO gO hrep_step hfold_rest
+    rw [List.append_assoc, List.singleton_append] at hres
+    exact hres
+
+/-- The final state of `FoldLockOut` represents the folded chain's claim. -/
+theorem tailRepr_of_foldLockOut {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true) :
+    ∀ {g bs stO gO}, FoldLockOut n q (genesisState n.val G) g bs stO gO →
+      TailRepr n.val stO (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) := by
+  intro g bs stO gO hFold
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hres := foldLockOut_tailRepr_aux hn hq bs [] (genesisState n.val G) g stO gO hbase_rep hFold
+  simp only [List.nil_append] at hres
+  exact hres
+
+/-- Public state view of `FoldKOut` agrees with `modelClaimOf`'s view. -/
+theorem stateView_of_foldKOut {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    {bs stO out} (hFold : FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) bs stO out) :
+    stateView n.val stO = MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) :=
+  stateView_eq_claimView_of_tailRepr (tailRepr_of_foldKOut hn hq hG hFold)
+
+/-- Public state view of `FoldSchedOut` agrees with `modelClaimOf`'s view. -/
+theorem stateView_of_foldSchedOut {n q era : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) (hera : 0 < era.val)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    {bs stO} (hFold : FoldSchedOut n q era (genesisState n.val G) bs stO) :
+    stateView n.val stO = MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) :=
+  stateView_eq_claimView_of_tailRepr (tailRepr_of_foldSchedOut hn hq hera hG hFold)
+
+/-- Public state view of `FoldLockOut` agrees with `modelClaimOf`'s view. -/
+theorem stateView_of_foldLockOut {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    {g bs stO gO} (hFold : FoldLockOut n q (genesisState n.val G) g bs stO gO) :
+    stateView n.val stO = MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) :=
+  stateView_eq_claimView_of_tailRepr (tailRepr_of_foldLockOut hn hq hG hFold)
+
 end Rust
