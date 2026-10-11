@@ -680,6 +680,16 @@ each step (Section~\ref{sec:rotation}).
 \code{GroundedCertLock}.)}
 \end{assumption}
 
+For the key-version modes this is no longer only an assumption about an
+opaque object. The prototype's fold certificate (Section~\ref{sec:impl})
+runs one verified step per block, and the step is proved to build exactly
+these claims (\code{cert\_fold\_k\_sound}, \code{cert\_fold\_sched\_sound},
+\code{cert\_fold\_lock\_sound}). What remains assumed is what any proof
+system asks: a verifying proof means a run of the circuit exists
+(knowledge soundness), the circuit's gadgets compute what the verified
+code computes, and the client decodes the public state as specified
+(\code{cert\_fold\_k\_client} and its mode-2 and mode-3 twins).
+
 This assumption does not assume a valid chain behind the certificate. A
 proved lemma rebuilds that chain from the steps (\code{groundedCert\_history},
 with \code{groundedCertSched\_history} and \code{groundedCertLock\_history}
@@ -1005,14 +1015,16 @@ a validator to state less than any version it used earlier, so every
 chain that passes \code{keyMonoOk} passes the pin, for every
 $\Delta_{\mathrm{conf}}$. The theorems below hold for any
 $\Delta_{\mathrm{conf}}$. At a certificate boundary the verifier has no
-history, and the certificate does not supply one: the shipped certificate
-claim carries no version floors, and the certificate does not vouch for
-any. Both implementations can check a tail against a floor list
-(\code{keyMonoFrom}), and that check is proved sound for the floor it is
-given (Section~\ref{sec:impl}). But a floor the verifier takes from a
-peer proves nothing, so with today's certificate format a certificate
-client cannot enforce that a retired key is dead. Adding the floors to
-the certificate claim, checked at each step, is future work. No agreement
+history, so the certificate must supply the floors. The fold certificate
+does: each step checks the new block's key version against its
+producer's floor, raises the floor, and exposes all $n$ floors as public
+inputs. The Rust client \code{validate\_certified\_chain\_k} reads the
+floors from the certificate, never from a peer, and checks the tail
+against them (\code{keyMonoFrom}, proved sound for the floor it is given:
+\code{validate\_suffix\_k\_sound}). Together
+(\code{cert\_fold\_k\_client}): the floor the client enforces is the
+floor of a history the certificate attests (\code{GroundedCertK}), so a
+certificate client does enforce that a retired key is dead. No agreement
 theorem relies on the check, since Theorem~\ref{thm:lc} needs no
 key-version rule. We take
 $\Delta_{\mathrm{conf}} = n$ slots, so at the prototype's settings a
@@ -1234,9 +1246,9 @@ supersedes it.
   whatever happened while the wallet slept. A certificate client gets the
   same (\code{sched\_exposure\_certified\_agreement}), from a certificate
   that checks the schedule pin at each step (\code{GroundedCertSched}).
-  The prototype's certificate does not: its circuit never sees a key
-  version (Section~\ref{sec:impl}). So today this route is in the model
-  only; it needs a certificate that folds the pin in.
+  The prototype's fold certificate checks it (Section~\ref{sec:impl}),
+  and a verifying one yields such a claim
+  (\code{cert\_fold\_sched\_client}).
 \end{itemize}
 
 \subsubsection*{Mode 3: rotate together, at any time}
@@ -1425,8 +1437,9 @@ flash storage, which does not erase by overwriting, is not.
   completes (\code{lockstep\_cert\_gen\_pinned}); no such lemma is
   stated for the per-generation package. These certificate theorems need
   a certificate that carries the generation and checks the lockstep rule
-  at each step (\code{GroundedCertLock}). The prototype's certificate
-  does neither, so today they are about the model only.
+  at each step (\code{GroundedCertLock}). The prototype's fold
+  certificate does both, and a verifying one yields such a claim
+  (\code{cert\_fold\_lock\_client}).
 \end{itemize}
 
 The modes and their main theorems are summarised in
@@ -1541,27 +1554,52 @@ what carries Theorem~\ref{thm:lc} to the shipped code
   check, both on a full chain (\code{rust\_valid\_chain\_k\_sound}) and
   at a certificate boundary (\code{validate\_suffix\_k\_sound}, with the
   TypeScript twin \code{ts\_validateSuffixK\_sound}). The boundary check
-  is sound relative to the floor list it is given, which the certificate
-  neither carries nor vouches for (Section~\ref{sec:rotation}). The validator in
+  is sound relative to the floor list it is given. The fold certificate
+  carries the floors, and \code{validate\_certified\_chain\_k} takes them
+  from it (\code{cert\_fold\_k\_client}, Section~\ref{sec:rotation}). The validator in
   \code{rust\_timed\_certified\_agreement},
   \code{validate\_certified\_chain}, runs no key-version check, and
-  Theorem~\ref{thm:lc} needs none. The three rotation pins of
-  Section~\ref{sec:rotation} are, today, checked in the model only.
+  Theorem~\ref{thm:lc} needs none. The fold certificate checks each
+  mode's per-step rule of Section~\ref{sec:rotation} (the monotone key
+  rule, the schedule pin, lockstep); a full-chain Rust validator with a
+  key-version rule exists for mode 1 only.
 \end{itemize}
 
-\emph{The circuit.} The same source has a validator that is generic over
-its backend (\code{valid\_chain\_be}). Run over plonky2, it is the
-certificate's circuit. It is a different function from the native
+\emph{The circuits.} The same source has a validator that is generic over
+its backend (\code{valid\_chain\_be}); run over plonky2, it checks a
+whole chain at once. It is a different function from the native
 validator \code{validate\_certified\_chain}, written in the same file;
 its Lean translation is proved sound for the model's links-and-density
 rule, for every $n < 2^{63} - 1$: a chain it accepts satisfies that rule
-(\code{valid\_chain\_be\_validChain}); the converse is not proved.
-The circuit sees neither a block's key version nor its contents hash.
-Those are bound only through the id, which hashes them, so the
-certificate checks no key-version rule; the per-step checks of modes 2
-and 3 (Section~\ref{sec:rotation}) are not in it. That each circuit
-gadget is faithful is the one remaining trust assumption; it is stated,
-not proved.
+(\code{valid\_chain\_be\_validChain}); the converse is not proved. It
+sees no key version, so it checks no key-version rule.
+
+The \emph{fold certificate} (\code{rust-keyrot/src/fold\_circuit.rs}) is
+the one a client relies on. It is recursive: each proof verifies the
+previous proof of the same circuit, or starts from the genesis, a circuit
+constant, and then runs one generic step from the verified crate on one
+block (\code{cert\_step\_k\_be}, \code{cert\_step\_sched\_be},
+\code{cert\_step\_lock\_be}). The step checks the links, the density
+windows that the new block completes (against a fixed buffer of the last
+$n-1$ slots), and the mode's key-version rule. The same proof verifies
+the block's signature subproof, requires its message to be the block id,
+and requires its key to be the registry's key for the slot's producer at
+the stated version, under a committed registry root. The public inputs
+are the fold state: the tip, the slot buffer, and the floors (mode 1) or
+generation (mode 3). The steps' Lean translations are proved to build
+exactly the model's certificate claims (\code{cert\_fold\_k\_sound} and
+its twins), and the client theorems connect a verifying certificate to
+them (\code{cert\_fold\_k\_client} and twins). Tests check the circuit's
+state against the native fold at every block, and that a rejected
+block, a forged previous state, and a signature by the wrong key or over
+the wrong block have no proof.
+
+The older whole-chain circuits in \code{rust-keyrot/}, which the
+measurements below use, connect nothing: their signature subproofs are
+not tied to blocks or keys, and $n$ and the quorum are prover inputs.
+They measure cost only. That each circuit gadget is faithful (including
+the fold step's witnessed division and remainder) is the one remaining
+trust assumption; it is stated, not proved.
 
 \emph{A TypeScript twin.} \code{moltPetit.ts} reaches Lean through an
 independent compiler, Thales, with its own soundness bridge carrying
