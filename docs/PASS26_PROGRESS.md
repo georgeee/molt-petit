@@ -2,7 +2,7 @@
 
 Stage A scaffold: 7a5fe4e (done). Stage C scaffold: 9a6b2c7, spec `docs/PASS26_STAGE_C.md` ("Proof steps" 11-14). Pinned: `git diff 9a6b2c7 -- Spec/ rust/ rust-keyrot/` must stay empty.
 
-In progress: 12. Mode 1 client `cert_fold_k_client`
+In progress: (none)
 
 - [x] 1. Skeleton and primitives
 - [x] 2. Counting (`tail_count_be_corr`)
@@ -15,7 +15,7 @@ In progress: 12. Mode 1 client `cert_fold_k_client`
 - [x] 9. Mode 1 floors + `cert_fold_k_sound`
 - [x] 10. Aliases in `Paper/Proofs.lean`, check.sh green
 - [x] 11. Final state: `Fold*Out → Fold*`, `TailRepr` of the final state, `stateView n stO = claimView (modelClaimOf …)`
-- [ ] 12. Mode 1 client `cert_fold_k_client`
+- [x] 12. Mode 1 client `cert_fold_k_client`
 - [ ] 13. Modes 2 and 3 clients `cert_fold_sched_client`, `cert_fold_lock_client`
 - [ ] 14. Aliases in `Paper/Proofs.lean`, check.sh green
 
