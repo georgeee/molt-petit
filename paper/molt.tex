@@ -69,7 +69,9 @@ in the same source and proved sound for the model's chain rule (we trust
 the proof system to run it faithfully). Block ids
 are checked by the hashing layer around the validator, an assumption we
 name. The
-key-rotation results are proved for the protocol model.
+key-rotation results are proved for the protocol model; at a certificate
+boundary, the recursive certificate's verified step builds the
+certificate claims they assume, version floors included.
 
 The attacker may obtain validators' signing keys at any time --- by
 theft or by a temporary break-in --- and sign anything with them. Safety
@@ -158,8 +160,11 @@ functionality (Section~\ref{sec:assumptions}). Block ids are checked outside it,
 hashing layer; that is a named assumption. The key-rotation results are proved for the model today
 (Section~\ref{sec:impl}). The same Rust source also holds the circuit
 of the recursive proof, a separate function proved sound for the model's
-links-and-density rule (what it accepts satisfies the rule); it checks no key versions. We trust the proof
-system to run that code faithfully. A separate
+links-and-density rule (what it accepts satisfies the rule). A second,
+recursive circuit runs a verified step per block that also checks the
+mode's key-version rule and exposes the version floors, and the step is
+proved to build the certificate claims the key-rotation theorems assume.
+We trust the proof system to run that code faithfully. A separate
 TypeScript implementation is proved sound against the same model, which
 keeps the model independent of any one implementation. The build checks
 that no theorem assumes anything beyond classical logic.
@@ -535,7 +540,8 @@ to~4 only. The key-version checks are stated for full chains
 (\code{validSignedChainK$'$} and its mode 2 and 3 variants), and appear
 in the certificate theorems as hypotheses on the tail. At a certificate
 boundary, mode 1's check needs each validator's version floor, which the
-shipped certificate does not carry (Section~\ref{sec:rotation}). For modes 2
+fold certificate carries and the Rust client takes from it
+(Section~\ref{sec:rotation}). For modes 2
 and 3 they are also proved at the certificate level
 (\code{sched\_exposure\_certified\_agreement},
 \code{lockstepGen\_recent\_certified\_suffix\_agreement}).
