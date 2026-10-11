@@ -2,7 +2,7 @@
 
 Stage A scaffold: 7a5fe4e (done). Stage C scaffold: 9a6b2c7, spec `docs/PASS26_STAGE_C.md` ("Proof steps" 11-14). Pinned: `git diff 9a6b2c7 -- Spec/ rust/ rust-keyrot/` must stay empty.
 
-In progress: (none)
+In progress: 12. Mode 1 client `cert_fold_k_client`
 
 - [x] 1. Skeleton and primitives
 - [x] 2. Counting (`tail_count_be_corr`)
