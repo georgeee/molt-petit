@@ -49,6 +49,15 @@ Charon + Aeneas extraction is certified to introduce no axioms of its own.
 /-- info: 'Rust.cert_fold_lock_sound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms Rust.cert_fold_lock_sound
+/-- info: 'Rust.cert_fold_k_client' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Rust.cert_fold_k_client
+/-- info: 'Rust.cert_fold_sched_client' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Rust.cert_fold_sched_client
+/-- info: 'Rust.cert_fold_lock_client' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms Rust.cert_fold_lock_client
 -- The indexed validator, re-extracted and bridged: Rust valid_chain_k acceptance
 -- projects to the model's ValidChain ∧ KeyIndexMonotone (the ≤ in-force pin follows
 -- on full chains) — no Aeneas Std `sorry` reaches the closure.
