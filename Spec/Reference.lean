@@ -291,8 +291,8 @@ def keyMonoOk (n : Nat) : Chain → Bool
       && keyMonoOk n rest
 
 /-- The indexed validator: structural validity plus the monotone rule.
-This — with signatures and a per-mode pin — is the one protocol of the
-paper; there is no rotation-free variant. -/
+The monotone rule is mode 1's; modes 2 and 3 use their own pins instead,
+and `validCertifiedChain` (the rule Theorem 1 uses) checks no key version. -/
 def validChainK (n : Nat) (c : Chain) : Bool :=
   validChain n c && keyMonoOk n c
 

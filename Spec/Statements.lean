@@ -878,7 +878,7 @@ end
 section
 open MoltPetit.Model Classical
 
-/-- Paper: cited in sec:rotation. -/
+/-- Not cited in the paper (the paper cites `toGen_of_low` and the timed `toGen`). -/
 def LockstepPackage.thm_toGen : Prop :=
   ∀ {n : Nat} {rosterGen : Nat → Nat} {Sig sk pk : Type}
     {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {rented : ByzantineSlots}
