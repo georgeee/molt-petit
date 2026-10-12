@@ -129,8 +129,7 @@ block $n$ deep is final; finality is a fixed depth, not a probability.
 Fork choice matters only for liveness: a node simply follows the highest
 valid tip. A node never stores history. It holds a recursive proof that
 the chain so far is valid, plus a tail of signed blocks
-(Section~\ref{sec:rules}); in mode 3 the tail must hold more than $n$
-blocks (Section~\ref{sec:rotation}).
+(Section~\ref{sec:rules}).
 
 \paragraph{Recent certificates matter.} Over a deployment's lifetime,
 keys leak: machines are broken into and later cleaned, keys are stolen.
@@ -164,6 +163,9 @@ links-and-density rule (what it accepts satisfies the rule). A second,
 recursive circuit runs a verified step per block that also checks the
 mode's key-version rule and exposes the version floors, and the step is
 proved to build the certificate claims the key-rotation theorems assume.
+That a verifying certificate's decoded claim is such a claim is proved
+only in view (its tip and its tail's slots), and no stated theorem
+composes this with the agreement theorems (Section~\ref{sec:impl}).
 We trust the proof system to run that code faithfully. A separate
 TypeScript implementation is proved sound against the same model, which
 keeps the model independent of any one implementation. The build checks
@@ -197,8 +199,9 @@ plus a tail of recent signed blocks. A verifier accepts a chain only if
 it is valid, its tail holds at least one block, and its newest block is
 recent, at most $b$ slots old on the verifier's own clock. It then
 trusts everything $n$ blocks deep, or $2n$ deep in mode 3 under the
-per-generation budget. In mode 3 the certificate theorems need a tail of
-more than $n$ blocks, or $2n$ under the per-generation budget
+per-generation budget, counted in the history the certificate attests
+followed by the tail. Only the suffix-only forms of the certificate
+theorems, which rebuild no history, need the tail itself to be that long
 (Section~\ref{sec:rotation}).
 
 Key rotation is built in. A deployment picks one of three rotation
@@ -313,8 +316,11 @@ trusts roster coordination and physical key destruction.
 Lean names appear in \code{typewriter}. A cited theorem \code{xxx} is
 proved as \code{MoltPaper.xxx} in the file \code{Paper/Proofs.lean}. Its
 exact statement is \code{thm\_xxx}, in the file
-\code{Spec/Statements.lean}. All results assume a non-empty roster,
-$n \ge 1$. Every cited
+\code{Spec/Statements.lean}. Unless stated otherwise, results assume a
+non-empty roster, $n \ge 1$; the liveness and sanity statements, the
+full-chain soundness statements of the Rust validator and the lockstep
+package conversions need no roster hypothesis, and
+\code{groundedCertLock\_gen\_of\_tail} needs $n \ge 2$. Every cited
 definition is in \code{Spec/}: a few files that hold the definitions and
 statements only, and that the rest of the development imports. The
 precise forms live there; this paper explains them.
@@ -348,6 +354,8 @@ $\quorum = \lceil 2n/3 \rceil$ & blocks needed per window & \S\ref{sec:protocol}
 $\fmax = \lfloor (n{-}1)/3 \rfloor$ & fault budget per window & Asm.~\ref{ass:budget} \\
 $\tau$ & slot length (seconds) & \S\ref{sec:impl} \\
 $b$ & recency bound: accept a tip at most $b$ slots old & \S\ref{sec:verifier-rule} \\
+$\Delta$ & the recency bound $b$, as written in the untimed rotation theorems & \S\ref{sec:rotation} \\
+$\Delta_{\mathrm{conf}}$ & mode 1's confirmation lag (a different parameter) & \S\ref{sec:rotation} \\
 $\delta$, $\varphi = b + \delta$ & verifier clock error; tip age bound in real time & \S\ref{sec:verifier-rule} \\
 $\ell$, $\sigma$ & how far back the budget looks; how far honest clocks may run ahead & Asm.~\ref{ass:budget}--\ref{ass:clock} \\
 $\mathit{keyFor}(i,j)$, \code{keyIndex} & validator $i$'s public key at
@@ -421,9 +429,11 @@ signatures, certificates and key rotation layered on top.
 One more rule uses \code{keyIndex}: along a chain, a validator's key
 version never goes down (\code{keyMonoOk}). Rotation only moves forward,
 and the chain's order is the agreed order of rotations. Structure,
-density and this rule together are \code{validChainK}, the chain
-validity of this paper. A deployment completes the protocol by choosing
-a rotation mode (Section~\ref{sec:rotation}).
+density and this rule together are \code{validChainK}. This monotone
+rule belongs to mode 1; modes 2 and 3 replace it with their own pins,
+and Theorem~\ref{thm:lc} and the shipped validators use no key-version
+rule at all. A deployment completes the protocol by choosing a rotation
+mode (Section~\ref{sec:rotation}).
 
 \subsection{What a node holds}
 
@@ -481,9 +491,11 @@ and only if:
   density, and key versions under the deployment's mode
   (\code{validCertifiedChain} plus the mode's key checks); and
 \item it has a \emph{tail}: at least one signed block follows the
-  certificate; in mode 3, and for the untimed mode-2 certificate
-  theorem, more than $n$ ($2n$ under mode 3's per-generation budget);
-  and
+  certificate. In mode 3, and for the untimed mode-2 certificate
+  theorems, the block trusted must lie $n$ deep ($2n$ under mode 3's
+  per-generation budget) counted in the history the certificate attests
+  followed by the tail; only the suffix-only forms need the tail itself
+  to be that long; and
 \item it is \emph{recent}: its newest block is at most $b$ slots old on
   the verifier's clock.
 \end{enumerate}
@@ -495,7 +507,13 @@ them. In Lean the rule appears as explicit hypotheses on each tail:
 it links to the certificate's newest block (\code{hLink}) and block to
 block (\code{hLinks}), its windows are dense (\code{hDense}), its blocks
 are signed (\code{hSigned}), it meets the mode's key-version checks, and
-its newest block is recent (\code{hRecent}).
+its newest block is recent (\code{hRecent}). The rules of
+Section~\ref{sec:rules} are also written out as reference code in
+\code{Spec/Reference.lean} (\code{validCertifiedChain}, the certified
+\code{produceBlock?}, \code{selectChain}); no theorem is about that
+reference code itself. The proved validators are the Rust and TypeScript
+ones of Section~\ref{sec:impl}, and the liveness theorems use the
+model's full-chain producer, also named \code{produceBlock?}.
 
 If the verifier's clock is off by at most $\delta$ slots, the newest block
 is at most $\varphi = b + \delta$ slots old in real time. This clock
@@ -531,9 +549,11 @@ chain only if:
   block's id), and so does each following block;
 \item every window that completes inside the tail is dense, counting the
   certificate's boundary blocks plus the tail (\code{validSuffix});
-\item key versions follow the rules: a validator's version never goes
-  down (\code{keyMonoOk}), and every block meets the deployment's
-  rotation pin. This is the only check that depends on the mode.
+\item key versions follow the mode's rule: in mode 1 a validator's
+  version never goes down (\code{keyMonoOk}) and every block meets the
+  pin read from the chain; mode 2 checks the schedule pin instead, and
+  mode 3 the lockstep rule. This is the only check that depends on the
+  mode, and Theorem~\ref{thm:lc} uses none of it.
 \end{enumerate}
 Check~5 is not part of \code{validCertifiedChain}, which runs checks 1
 to~4 only. The key-version checks are stated for full chains
