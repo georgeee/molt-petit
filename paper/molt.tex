@@ -718,15 +718,22 @@ each step (Section~\ref{sec:rotation}).
 \code{GroundedCertLock}.)}
 \end{assumption}
 
-For the key-version modes this is no longer only an assumption about an
-opaque object. The prototype's fold certificate (Section~\ref{sec:impl})
-runs one verified step per block, and the step is proved to build exactly
+For the key-version modes the producer side of this assumption is
+proved. The prototype's fold certificate (Section~\ref{sec:impl}) runs
+one verified step per block, and the step is proved to build exactly
 these claims (\code{cert\_fold\_k\_sound}, \code{cert\_fold\_sched\_sound},
-\code{cert\_fold\_lock\_sound}). What remains assumed is what any proof
-system asks: a verifying proof means a run of the circuit exists
-(knowledge soundness), the circuit's gadgets compute what the verified
-code computes, and the client decodes the public state as specified
-(\code{cert\_fold\_k\_client} and its mode-2 and mode-3 twins).
+\code{cert\_fold\_lock\_sound}). The consumer side is proved only in
+part: given that a verifying proof means a run of the circuit exists
+(knowledge soundness), that the circuit's gadgets compute what the
+verified code computes, that the circuit routes each witness as the fold
+relation says (in particular, the key version the step checks is the one
+the signature was verified under), and that the client decodes the
+public state as specified, the decoded claim agrees in view (its tip and
+its tail's slots) with a claim the derivation reaches
+(\code{cert\_fold\_k\_client} and its mode-2 and mode-3 twins). The
+agreement theorems take the derivation of the decoded claim itself, and
+no stated theorem composes the two, so for them this assumption stands
+in every mode.
 
 This assumption does not assume a valid chain behind the certificate. A
 proved lemma rebuilds that chain from the steps (\code{groundedCert\_history},
@@ -735,8 +742,8 @@ for modes 2 and 3). The certificate theorems are stated for any such
 chain: they conclude about the rebuilt history followed by the tail.
 
 The genesis needs no signature in Theorem~\ref{thm:lc}'s certificate. The
-full-chain validators of every mode, and the certificate steps of modes 2
-and 3, check it like any other block: it must be signed by validator~0
+full-chain validators of every mode, and the certificate derivations and
+fold steps of modes 1, 2 and 3, check it like any other block: it must be signed by validator~0
 under the key version it states, and in mode 2's certificate form its id
 must count as formed. That signature is part of the id of every height-1
 block, so a deployment fixes it once, with the genesis. Every certificate
