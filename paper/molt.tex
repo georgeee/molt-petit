@@ -799,8 +799,10 @@ also carried to both implementations by their soundness bridges (Section~\ref{se
 \code{ts\_timed\_certified\_agreement} for the TypeScript one. Theorem~\ref{thm:lc}
 needs no key-version rule, and the validator it is proved for
 (\code{validate\_certified\_chain}) runs none. The key-version check at a
-certificate boundary is proved sound separately, relative to a version
-floor the caller supplies (Section~\ref{sec:impl}).
+certificate boundary is proved sound separately, relative to the version
+floors it is given; in \code{validate\_certified\_chain\_k} those floors
+come from the fold certificate (\code{cert\_fold\_k\_client},
+Section~\ref{sec:impl}).
 The other results are, today, proved for the model only.
 
 \paragraph{Where to check.} Each result the paper cites as \code{xxx} is
@@ -1490,10 +1492,15 @@ Section~\ref{sec:opmodel}.
   validator carries mode 1's monotone check, for full chains
   (\code{rust\_valid\_chain\_k\_sound}) and at a certificate boundary
   against a supplied floor (\code{validate\_suffix\_k\_sound}), but
-  neither the schedule pin nor the lockstep rule. No agreement theorem
-  uses the monotone check. The certificate-based results of modes 2 and 3
-  assume certificates that check the pin or the lockstep rule at each
-  step; the prototype circuit checks neither.
+  neither the schedule pin nor the lockstep rule on the suffix. No
+  agreement theorem about the Rust validator uses the monotone check. On
+  the certificate side, the fold circuit runs the mode-2 and mode-3 step
+  functions, which check the pin and the lockstep rule at each step, and
+  a verifying fold certificate's claim agrees in view with a claim the
+  model's grounded derivation reaches (\code{cert\_fold\_sched\_client},
+  \code{cert\_fold\_lock\_client}), given the circuit's knowledge
+  soundness. The suffix-side checks of modes 2 and 3 are proved for the
+  model's validators only.
 \item Mode 3 and the untimed form of mode 2 rest on
   Assumption~\ref{ass:rotation-honest}, which is assumed, not derived:
   by the definition of the count, one safe key does not make a safe slot
