@@ -91,8 +91,16 @@ pub fn block_id(slot: u64, height: u64, prev: Option<&Hash>, contents: &Hash) ->
     digest_to_hash(poseidon4(&xs))
 }
 
-/// Deterministic Poseidon block id for a fold block over 12 canonical Goldilocks field elements:
-/// `[slot, height, has_prev as 0/1, prev[0..4], contents_hash[0..4], key_index]`.
+fn u64_halves(x: u64) -> [F; 2] {
+    [
+        F::from_canonical_u64(x & 0xffff_ffff),
+        F::from_canonical_u64(x >> 32),
+    ]
+}
+
+/// Deterministic Poseidon block id for a fold block over 23 canonical Goldilocks field elements:
+/// each u64 input as two 32-bit halves (lo, hi):
+/// `[slot (lo, hi), height (lo, hi), has_prev as 0/1, prev[0..4] (lo, hi each), contents_hash[0..4] (lo, hi each), key_index (lo, hi)]`.
 pub fn fold_block_id(
     slot: u64,
     height: u64,
@@ -101,20 +109,17 @@ pub fn fold_block_id(
     contents_hash: [u64; 4],
     key_index: u64,
 ) -> [u64; 4] {
-    let inputs = [
-        F::from_canonical_u64(slot),
-        F::from_canonical_u64(height),
-        F::from_canonical_u64(if has_prev { 1 } else { 0 }),
-        F::from_canonical_u64(prev[0]),
-        F::from_canonical_u64(prev[1]),
-        F::from_canonical_u64(prev[2]),
-        F::from_canonical_u64(prev[3]),
-        F::from_canonical_u64(contents_hash[0]),
-        F::from_canonical_u64(contents_hash[1]),
-        F::from_canonical_u64(contents_hash[2]),
-        F::from_canonical_u64(contents_hash[3]),
-        F::from_canonical_u64(key_index),
-    ];
+    let mut inputs = Vec::with_capacity(23);
+    inputs.extend_from_slice(&u64_halves(slot));
+    inputs.extend_from_slice(&u64_halves(height));
+    inputs.push(F::from_canonical_u64(if has_prev { 1 } else { 0 }));
+    for limb in prev {
+        inputs.extend_from_slice(&u64_halves(limb));
+    }
+    for limb in contents_hash {
+        inputs.extend_from_slice(&u64_halves(limb));
+    }
+    inputs.extend_from_slice(&u64_halves(key_index));
     let digest = PoseidonHash::hash_no_pad(&inputs).elements;
     [
         digest[0].to_canonical_u64(),
@@ -136,4 +141,21 @@ pub fn block_signing_digest(b: &Block) -> [F; 4] {
     xs.extend_from_slice(&hash_to_digest(&b.contents_hash));
     poseidon4(&xs)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fold_block_id_limb_wrapping_soundness() {
+        let p = 0xFFFF_FFFF_0000_0001u64;
+        let x = 5u64;
+        let ch0 = [x, 0, 0, 0];
+        let ch1 = [x + p, 0, 0, 0];
+        let id0 = fold_block_id(1, 1, true, [0; 4], ch0, 0);
+        let id1 = fold_block_id(1, 1, true, [0; 4], ch1, 0);
+        assert_ne!(id0, id1, "x and x+p must not collide in fold_block_id");
+    }
+}
+
 
