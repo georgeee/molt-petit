@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: (none)
+In progress: 4. lockstepGen_recent_certified_history_agreement_two_readings and sched_recent_certified_history_agreement_horizon_two_readings
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
