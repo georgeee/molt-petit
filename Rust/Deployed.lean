@@ -526,4 +526,91 @@ theorem valid_chain_be_complete : MoltPaper.thm_valid_chain_be_complete := by
       bind_tc_ok, hgenesis_be, hlinks_be', htip_be, hdense_be']
     rfl
 
+
+theorem presentSlots_filter_cons (f s : U64) (tl : TailG U64) (p : Nat → Prop) [DecidablePred p] :
+    ((presentSlots (.TCons f s tl)).filter p) =
+      (if f.val = 1 ∧ p s.val then [s.val] else []) ++ (presentSlots tl).filter p := by
+  dsimp [presentSlots]
+  by_cases h1 : f.val = 1
+  · simp only [h1, if_true, List.filter_cons]
+    by_cases hp : p s.val
+    · simp [h1, hp]
+    · simp [h1, hp]
+  · simp only [h1, if_false]
+    have : ¬(f.val = 1 ∧ p s.val) := fun h => h1 h.1
+    simp [this]
+
+theorem presentSlots_filter_length_cons (f s : U64) (tl : TailG U64) (p : Nat → Prop) [DecidablePred p] :
+    ((presentSlots (.TCons f s tl)).filter p).length =
+      (if f.val = 1 ∧ p s.val then 1 else 0) + ((presentSlots tl).filter p).length := by
+  rw [presentSlots_filter_cons]
+  simp only [List.length_append]
+  split_ifs <;> rfl
+
+theorem tail_count_be_complete : ∀ (t : TailG U64) (u len : U64),
+    u.val + len.val < 2 ^ 64 →
+    ((presentSlots t).filter (fun s => u.val ≤ s ∧ s < u.val + len.val)).length < 2 ^ 64 →
+    ∃ w : U64, tail_count_be UB () t u len = ok w ∧
+      w.val = ((presentSlots t).filter (fun s => u.val ≤ s ∧ s < u.val + len.val)).length := by
+  intro t
+  induction t with
+  | TNil =>
+    intro u len _ _
+    simp only [tail_count_be, UB, U64Backend.Insts.Molt_petitBackendU64Bool.zero]
+    refine ⟨0#u64, rfl, ?_⟩
+    simp [presentSlots]
+  | TCons f s tl ih =>
+    intro u len hun hlen
+    rw [presentSlots_filter_length_cons] at hlen
+    have hlen_tl : ((presentSlots tl).filter (fun s' => u.val ≤ s' ∧ s' < u.val + len.val)).length < 2 ^ 64 := by omega
+    obtain ⟨rest, hrest, hrest_val⟩ := ih u len hun hlen_tl
+    obtain ⟨hi, hhi, hhi_val⟩ := u64_add_ok hun
+    set inw : Bool := (!decide (s < u)) && decide (s < hi)
+    have hinw_eq : inw = decide (u.val ≤ s.val ∧ s.val < u.val + len.val) := by
+      dsimp [inw]
+      apply Bool.eq_iff_iff.mpr
+      simp only [Bool.and_eq_true, Bool.not_eq_true', decide_eq_true_eq, decide_eq_false_iff_not]
+      constructor
+      · rintro ⟨h1, h2⟩
+        have h1' : u.val ≤ s.val := by scalar_tac
+        have h2' : s.val < hi.val := by scalar_tac
+        have : s.val < u.val + len.val := by omega
+        exact ⟨h1', this⟩
+      · rintro ⟨h1, h2⟩
+        have h2' : s.val < hi.val := by omega
+        refine ⟨by scalar_tac, by scalar_tac⟩
+    have hhere_cond : ((decide (f = 1#u64) && inw) = true) ↔ (f.val = 1 ∧ (u.val ≤ s.val ∧ s.val < u.val + len.val)) := by
+      simp only [Bool.and_eq_true, decide_eq_true_eq, hinw_eq, decide_eq_true_eq]
+      constructor
+      · rintro ⟨h1, h2⟩
+        subst h1
+        exact ⟨rfl, h2⟩
+      · rintro ⟨h1, h2⟩
+        have : f = 1#u64 := UScalar.val_eq_imp _ _ (by rw [h1]; rfl)
+        exact ⟨this, h2⟩
+    set here : U64 := if decide (f = 1#u64) && inw then 1#u64 else 0#u64
+    have hhere_val : here.val = if f.val = 1 ∧ (u.val ≤ s.val ∧ s.val < u.val + len.val) then 1 else 0 := by
+      dsimp [here]
+      by_cases hc : (decide (f = 1#u64) && inw) = true
+      · have hc' := hhere_cond.mp hc
+        simp [hc, hc']
+      · have hc' := mt hhere_cond.mpr hc
+        simp [hc, hc']
+    have hsum : here.val + rest.val < 2 ^ 64 := by
+      rw [hhere_val, hrest_val]
+      exact hlen
+    obtain ⟨w, hw, hw_val⟩ := u64_add_ok hsum
+    refine ⟨w, ?_, ?_⟩
+    · simp only [tail_count_be, UB,
+        U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+        u64_backend_not,
+        U64Backend.Insts.Molt_petitBackendU64Bool.add,
+        u64_backend_and,
+        U64Backend.Insts.Molt_petitBackendU64Bool.one,
+        U64Backend.Insts.Molt_petitBackendU64Bool.eq,
+        u64_backend_bool_to_num,
+        bind_tc_ok, hhi, hrest]
+      change here + rest = ok w
+      exact hw
+    · rw [hw_val, hhere_val, hrest_val, presentSlots_filter_length_cons]
 end Rust
