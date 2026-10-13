@@ -703,4 +703,48 @@ theorem fold_window_ok_be_complete {tail : TailG U64} {tip_slot slot u n q : U64
   rw [hcnt_eq]
   exact congrArg ok hcheck_result
 
+theorem fold_anchors_ok_be_complete {all rest : TailG U64} {tip_slot slot n q : U64}
+    (hrest_bound : ∀ s ∈ entrySlots rest, s < 2 ^ 62)
+    (hts : tip_slot.val + 2 < 2 ^ 64)
+    (hs : slot.val + 1 < 2 ^ 64)
+    (hn : n.val < 2 ^ 62)
+    (hlen : ∀ u, ((presentSlots all).filter (fun s => u ≤ s ∧ s < u + n.val)).length + 1 < 2 ^ 64)
+    (hdense : ∀ s ∈ entrySlots rest,
+      tip_slot.val + 2 ≤ (s + 1) + n.val →
+      (s + 1) + n.val ≤ slot.val + 1 →
+      q.val ≤ ((presentSlots all).filter (fun x => s + 1 ≤ x ∧ x < (s + 1) + n.val)).length +
+        (if s + 1 ≤ slot.val ∧ slot.val < (s + 1) + n.val then 1 else 0)) :
+    fold_anchors_ok_be UB () all rest tip_slot slot n q = ok true := by
+  induction rest with
+  | TNil =>
+    simp only [fold_anchors_ok_be, UB, U64Backend.Insts.Molt_petitBackendU64Bool.bool_const]
+  | TCons f s tl ih =>
+    have hs_bound : s.val < 2 ^ 62 := hrest_bound s.val (by simp [entrySlots])
+    have htl_bound : ∀ s' ∈ entrySlots tl, s' < 2 ^ 62 := by
+      intro s' hs'
+      exact hrest_bound s' (by simp [entrySlots, hs'])
+    have h1_ok : s.val + (1#u64 : U64).val < 2 ^ 64 := by
+      have : (1#u64 : U64).val = 1 := rfl
+      omega
+    obtain ⟨u, hu_eq, hu_val⟩ := u64_add_ok h1_ok
+    have hu_val' : u.val = s.val + 1 := by
+      have : (1#u64 : U64).val = 1 := rfl
+      rw [hu_val, this]
+    have hun : u.val + n.val < 2 ^ 64 := by omega
+    have hhere := fold_window_ok_be_complete (tail := all) (q := q) hun hts hs (hlen u.val) ?_
+    · have hmore := ih htl_bound ?_
+      · simp only [fold_anchors_ok_be, UB,
+          U64Backend.Insts.Molt_petitBackendU64Bool.one,
+          U64Backend.Insts.Molt_petitBackendU64Bool.add,
+          u64_backend_and,
+          bind_tc_ok, hu_eq, hhere, hmore]
+        rfl
+      · intro s' hs'
+        exact hdense s' (by simp [entrySlots, hs'])
+    · intro hlo hhi
+      rw [hu_val'] at hlo hhi
+      have hd := hdense s.val (by simp [entrySlots]) hlo hhi
+      rw [hu_val']
+      exact hd
+
 end Rust
