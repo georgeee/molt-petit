@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: (none)
+In progress: 3. exposure_certified_agreement_ever_on
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
