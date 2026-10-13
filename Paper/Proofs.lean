@@ -1,3 +1,4 @@
+import MoltPetit.Model.Pass28
 import Spec.Statements
 import Molt
 import Rust
@@ -151,5 +152,9 @@ theorem cert_fold_sched_client : thm_cert_fold_sched_client :=
   @Rust.cert_fold_sched_client
 theorem cert_fold_lock_client : thm_cert_fold_lock_client :=
   @Rust.cert_fold_lock_client
+
+
+theorem validChain_snoc : thm_validChain_snoc :=
+  @MoltPetit.Model.validChain_snoc
 
 end MoltPaper
