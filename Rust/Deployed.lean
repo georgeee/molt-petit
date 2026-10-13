@@ -613,4 +613,94 @@ theorem tail_count_be_complete : ∀ (t : TailG U64) (u len : U64),
       change here + rest = ok w
       exact hw
     · rw [hw_val, hhere_val, hrest_val, presentSlots_filter_length_cons]
+theorem fold_window_ok_be_complete {tail : TailG U64} {tip_slot slot u n q : U64}
+    (hun : u.val + n.val < 2 ^ 64)
+    (hts : tip_slot.val + 2 < 2 ^ 64)
+    (hs : slot.val + 1 < 2 ^ 64)
+    (hlen : ((presentSlots tail).filter (fun s => u.val ≤ s ∧ s < u.val + n.val)).length + 1 < 2 ^ 64)
+    (hdense : tip_slot.val + 2 ≤ u.val + n.val → u.val + n.val ≤ slot.val + 1 →
+      q.val ≤ ((presentSlots tail).filter (fun s => u.val ≤ s ∧ s < u.val + n.val)).length +
+        (if u.val ≤ slot.val ∧ slot.val < u.val + n.val then 1 else 0)) :
+    fold_window_ok_be UB () tail tip_slot slot u n q = ok true := by
+  obtain ⟨un, hun_eq, hun_val⟩ := u64_add_ok hun
+  have h1 : (1#u64 : U64).val = 1 := rfl
+  have ht1_ok : (1#u64 : U64).val + (1#u64 : U64).val < 2 ^ 64 := by decide
+  obtain ⟨t1, ht1_eq, ht1_val⟩ := u64_add_ok ht1_ok
+  have hts2_ok : tip_slot.val + t1.val < 2 ^ 64 := by rw [ht1_val]; exact hts
+  obtain ⟨ts2, hts2_eq, hts2_val⟩ := u64_add_ok hts2_ok
+  have hs1_ok : slot.val + (1#u64 : U64).val < 2 ^ 64 := by rw [h1]; exact hs
+  obtain ⟨s1, hs1_eq, hs1_val⟩ := u64_add_ok hs1_ok
+  have hlen_tl : ((presentSlots tail).filter (fun s => u.val ≤ s ∧ s < u.val + n.val)).length < 2 ^ 64 := by omega
+  obtain ⟨in_tail, hin_tail_eq, hin_tail_val⟩ := tail_count_be_complete tail u n hun hlen_tl
+  set bin : Bool := (!decide (slot < u)) && decide (slot < un)
+  have hbin_eq : bin = decide (u.val ≤ slot.val ∧ slot.val < u.val + n.val) := by
+    dsimp [bin]
+    apply Bool.eq_iff_iff.mpr
+    simp only [Bool.and_eq_true, Bool.not_eq_true', decide_eq_true_eq, decide_eq_false_iff_not]
+    constructor
+    · rintro ⟨h1', h2'⟩
+      have h1'' : u.val ≤ slot.val := by scalar_tac
+      have h2'' : slot.val < un.val := by scalar_tac
+      rw [hun_val] at h2''
+      exact ⟨h1'', h2''⟩
+    · rintro ⟨h1', h2'⟩
+      have h2'' : slot.val < un.val := by rw [hun_val]; exact h2'
+      refine ⟨by scalar_tac, by scalar_tac⟩
+  set t2 : U64 := if bin then 1#u64 else 0#u64
+  have ht2_val : t2.val = if u.val ≤ slot.val ∧ slot.val < u.val + n.val then 1 else 0 := by
+    dsimp [t2]
+    by_cases hc : bin = true
+    · rw [hc]
+      have hc' : u.val ≤ slot.val ∧ slot.val < u.val + n.val := by
+        rw [hbin_eq] at hc; exact of_decide_eq_true hc
+      simp [hc']
+    · have hcf : bin = false := by revert hc; cases bin <;> decide
+      rw [hcf]
+      have hc' : ¬(u.val ≤ slot.val ∧ slot.val < u.val + n.val) := by
+        rw [hbin_eq] at hcf; exact of_decide_eq_false hcf
+      simp [hc']
+  have ht2_le1 : t2.val ≤ 1 := by
+    rw [ht2_val]
+    split_ifs <;> omega
+  have hcnt_ok : in_tail.val + t2.val < 2 ^ 64 := by
+    rw [hin_tail_val]
+    omega
+  obtain ⟨cnt, hcnt_eq, hcnt_val⟩ := u64_add_ok hcnt_ok
+  set checked : Bool := (!decide (un < ts2)) && (!decide (s1 < un))
+  have hcheck_result : (!checked || !decide (cnt < q)) = true := by
+    by_cases hck : checked = true
+    · dsimp [checked] at hck
+      simp only [Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not] at hck
+      obtain ⟨hlo, hhi⟩ := hck
+      have hlo' : ts2.val ≤ un.val := by scalar_tac
+      have hhi' : un.val ≤ s1.val := by scalar_tac
+      rw [hun_val, hts2_val, ht1_val] at hlo'
+      rw [hun_val, hs1_val, h1] at hhi'
+      have hqle := hdense hlo' hhi'
+      rw [← hin_tail_val, ← ht2_val] at hqle
+      have hcnt_ge : q.val ≤ cnt.val := by rw [hcnt_val]; exact hqle
+      have hnot_short : decide (cnt < q) = false := by
+        apply decide_eq_false
+        intro hc
+        have : cnt.val < q.val := by scalar_tac
+        omega
+      rw [hnot_short]
+      simp
+    · cases hc : checked
+      · rfl
+      · contradiction
+  simp only [fold_window_ok_be, UB,
+    U64Backend.Insts.Molt_petitBackendU64Bool.add,
+    U64Backend.Insts.Molt_petitBackendU64Bool.one,
+    U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+    u64_backend_not,
+    u64_backend_and,
+    u64_backend_bool_to_num,
+    u64_backend_or,
+    bind_tc_ok,
+    hun_eq, ht1_eq, hts2_eq, hs1_eq, hin_tail_eq]
+  change (in_tail + t2 >>= fun cnt => ok (!checked || !decide (cnt < q))) = ok true
+  rw [hcnt_eq]
+  exact congrArg ok hcheck_result
+
 end Rust
