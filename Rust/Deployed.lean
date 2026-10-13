@@ -182,4 +182,94 @@ theorem tip_slot_from_be_complete : ∀ (c : Chain) (cur : U64),
       simp only [List.getLast?_cons_cons]
       exact hval
 
+
+theorem u64_backend_not (a : Bool) :
+    U64Backend.Insts.Molt_petitBackendU64Bool.not () a = ok (!a) := by
+  cases a <;> rfl
+
+theorem u64_backend_and (a b : Bool) :
+    U64Backend.Insts.Molt_petitBackendU64Bool.and () a b = ok (a && b) := by
+  cases a <;> rfl
+
+theorem u64_backend_or (a b : Bool) :
+    U64Backend.Insts.Molt_petitBackendU64Bool.or () a b = ok (a || b) := by
+  cases a <;> rfl
+
+theorem u64_backend_bool_to_num (b : Bool) :
+    U64Backend.Insts.Molt_petitBackendU64Bool.bool_to_num () b = ok (if b then 1#u64 else 0#u64) := by
+  cases b <;> rfl
+
+theorem window_count_be_complete : ∀ (c : Chain) (u len : U64),
+    u.val + len.val < 2 ^ 64 →
+    MoltPetit.Model.windowCount (toModelChain c) u.val len.val < 2 ^ 64 →
+    ∃ w : U64, window_count_be UB () (toChainG c) u len = ok w ∧
+      w.val = MoltPetit.Model.windowCount (toModelChain c) u.val len.val := by
+  intro c
+  induction c with
+  | Nil =>
+    intro u len _ _
+    simp only [toChainG_nil, window_count_be, UB,
+      U64Backend.Insts.Molt_petitBackendU64Bool.zero]
+    refine ⟨0#u64, rfl, ?_⟩
+    simp [toModelChain, MoltPetit.Model.windowCount]
+  | Cons b tl ih =>
+    intro u len hun hwc
+    rw [toModelChain_cons, model_windowCount_cons] at hwc
+    have hwc_tl : MoltPetit.Model.windowCount (toModelChain tl) u.val len.val < 2 ^ 64 := by omega
+    obtain ⟨rest, hrest, hrest_val⟩ := ih u len hun hwc_tl
+    obtain ⟨hi, hhi, hhi_val⟩ := u64_add_ok hun
+    set inw : Bool := (!decide (b.slot < u)) && decide (b.slot < hi)
+    set here : U64 := if inw then 1#u64 else 0#u64
+    have hinw_eq : inw = MoltPetit.Model.blockInWindow u.val len.val (toModelBlock b) := by
+      dsimp [inw, MoltPetit.Model.blockInWindow, toModelBlock]
+      apply Bool.eq_iff_iff.mpr
+      simp only [Bool.and_eq_true, Bool.not_eq_true', decide_eq_true_eq, decide_eq_false_iff_not]
+      constructor
+      · rintro ⟨h1, h2⟩
+        have h1' : u.val ≤ b.slot.val := by scalar_tac
+        have h2' : b.slot.val < hi.val := by scalar_tac
+        have : b.slot.val < u.val + len.val := by omega
+        exact ⟨h1', this⟩
+      · rintro ⟨h1, h2⟩
+        have h2' : b.slot.val < hi.val := by omega
+        refine ⟨by scalar_tac, by scalar_tac⟩
+    have hhere_val : here.val = if MoltPetit.Model.blockInWindow u.val len.val (toModelBlock b) then 1 else 0 := by
+      rw [← hinw_eq]
+      dsimp [here]
+      cases inw <;> rfl
+    have hsum : here.val + rest.val < 2 ^ 64 := by
+      rw [hhere_val, hrest_val]
+      exact hwc
+    obtain ⟨w, hw, hw_val⟩ := u64_add_ok hsum
+    refine ⟨w, ?_, ?_⟩
+    · simp only [toChainG_cons, window_count_be, toBlockG_slot, UB,
+        U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+        u64_backend_not,
+        U64Backend.Insts.Molt_petitBackendU64Bool.add,
+        u64_backend_and, u64_backend_bool_to_num,
+        bind_tc_ok, hhi, hrest]
+      change here + rest = ok w
+      exact hw
+    · rw [hw_val, hhere_val, hrest_val, toModelChain_cons, model_windowCount_cons]
+
+theorem window_dense_be_ok {c : Chain} {u n q : U64}
+    (h_u_n : u.val + n.val < 2 ^ 64)
+    (h_wc : MoltPetit.Model.windowCount (toModelChain c) u.val n.val < 2 ^ 64)
+    (hq : quorum n = ok q) :
+    ∃ d : Bool, window_dense_be UB () q (toChainG c) u n = ok d ∧
+      (d = true ↔ MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain c) u.val n.val) := by
+  obtain ⟨w, hw, hw_val⟩ := window_count_be_complete c u n h_u_n h_wc
+  have hqv := quorum_val_of_ok hq
+  simp only [window_dense_be, UB,
+    U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+    u64_backend_not,
+    bind_tc_ok, hw]
+  refine ⟨!decide (w < q), rfl, ?_⟩
+  simp only [Bool.not_eq_true', decide_eq_false_iff_not]
+  have hnot_lt : (¬ w < q) ↔ q.val ≤ w.val := by
+    constructor
+    · intro h; scalar_tac
+    · intro h; scalar_tac
+  rw [hnot_lt, hw_val, hqv]
+
 end Rust
