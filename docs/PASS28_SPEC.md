@@ -38,7 +38,8 @@ Out of scope, by George's decision of 10-13:
 
 | Method | What it returns |
 |---|---|
-| `block_id(slot, height, prev, contents_hash, key_index)` | the deployment's id hash |
+| `block_id(slot, height, prev, parent_sig, contents_hash, key_index)` | the deployment's id hash; the parent's signature is in the preimage, which is what makes `chain_order` true |
+| `cert_tip_sig(cert)` | the signature of the certificate's tip block, which the fold certificate exposes |
 | `cert_state(cert)` | the fold certificate's public claim state, `CertStateG<u64>` |
 | `cert_floors_state(cert)` | mode 1's floors, `FloorsG<u64>` |
 | `cert_gen(cert)` | mode 3's generation |
@@ -47,7 +48,7 @@ Verified functions:
 
 | Function | What it does |
 |---|---|
-| `ids_ok` | every tail block's id is `block_id` of its other fields |
+| `ids_ok parent_sig suffix` | every tail block's id is `block_id` of its other fields and its parent's signature: `cert_tip_sig` for the first block, then the previous block's signature |
 | `recent_ok now delta tip` | `now ≤ tip + delta`, written without overflow |
 | `claim_of_state n st` | decodes the public state into a `CertClaim`: the tip, plus the present buffer entries at or above `suffix_lo n tip_slot` as slot-only blocks. This is the verified replacement for the opaque `cert_claim` (B4). |
 | `floors_of_state`, `sched_pin_ok era`, `lockstep_from n ts g` | the per-mode helpers (`lockstep_from` mirrors the model's `lockstepFrom`) |
@@ -59,7 +60,7 @@ Verified functions:
 
 ## Bridge definitions (reviewer-written, `Spec/RustBridge.lean`)
 
-- `RustFormed I crypto B`: some Rust block `b` with `toModelBlock b = B` has `block_id` of its fields equal to `b.id`. This is `Formed`, now computed by the validator.
+- `RustFormed I crypto B`: some Rust block `b` with `toModelBlock b = B`, and some parent signature, have `block_id` equal to `b.id`. This is `Formed`, now computed by the validator.
 - `DSigned I crypto n B := RustSigned I.toCrypto crypto n B ∧ RustFormed I crypto B`. This is the per-block test every deployed theorem uses.
 - `rustOps I crypto : SigOps Hash Hash Hash` and `rustRegistry I crypto : KeyRegistry Hash`. These are the Rust signature check as a model `SigOps` and versioned registry, for the mode-3 packages. They are classical: `verify pk B sig := decide (∃ b, toModelBlock b = B ∧ I.verify crypto pk b sig = ok true)`.
 - `AttestsK n q G stO out bs`: every block of `bs` is `DSigned`, and `FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) bs stO out`. The twins are `AttestsSched` and `AttestsLock`.

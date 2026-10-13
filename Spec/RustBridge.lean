@@ -218,10 +218,11 @@ namespace Rust
 open molt_petit
 
 /-- A model block is **formed** when it is the projection of a Rust block
-whose id is the deployment's hash of its other fields (`ids_ok`). -/
+whose id is the deployment's hash of its other fields and some parent
+signature (`ids_ok` checks it with the actual parent's signature). -/
 def RustFormed {C} (I : CryptoD C) (crypto : C) (B : MoltPetit.Model.Block) : Prop :=
-  ∃ b : Block, toModelBlock b = B ∧
-    I.block_id crypto b.slot b.height b.prev b.contents_hash b.key_index = ok b.id
+  ∃ (b : Block) (ps : Option Hash), toModelBlock b = B ∧
+    I.block_id crypto b.slot b.height b.prev ps b.contents_hash b.key_index = ok b.id
 
 /-- Signed under the slot producer's key at the stated version, and formed. -/
 def DSigned {C} (I : CryptoD C) (crypto : C) (n : U64) (B : MoltPetit.Model.Block) : Prop :=

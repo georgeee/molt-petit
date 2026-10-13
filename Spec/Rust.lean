@@ -1394,37 +1394,48 @@ def validate_certified_chain_k
     else ok false
 
 /-- Trait declaration: [molt_petit::CryptoD]
-    Source: 'src/lib.rs', lines 1186:0-1195:1
+    Source: 'src/lib.rs', lines 1186:0-1206:1
     Visibility: public -/
 structure CryptoD (Self : Type) where
   CryptoInst : Crypto Self
-  block_id : Self → Std.U64 → Std.U64 → Option Hash → Hash → Std.U64
-    → Result Hash
+  block_id : Self → Std.U64 → Std.U64 → Option Hash → Option Hash →
+    Hash → Std.U64 → Result Hash
+  cert_tip_sig : Self → Hash → Result Hash
   cert_state : Self → Hash → Result (CertStateG Std.U64)
   cert_floors_state : Self → Hash → Result (FloorsG Std.U64)
   cert_gen : Self → Hash → Result Std.U64
 
 /-- [molt_petit::ids_ok]:
-    Source: 'src/lib.rs', lines 1198:0-1206:1
+    Source: 'src/lib.rs', lines 1211:0-1219:1
     Visibility: public -/
 def ids_ok
-  {C : Type} (CryptoDInst : CryptoD C) (crypto : C) (c : Chain) :
+  {C : Type} (CryptoDInst : CryptoD C) (crypto : C) (parent_sig : Option Hash)
+  (sc : SignedChain) :
   Result Bool
   := do
-  match c with
-  | Chain.Nil => ok true
-  | Chain.Cons b tl =>
+  match sc with
+  | SignedChain.SNil => ok true
+  | SignedChain.SCons b s tl =>
     let id ←
-      CryptoDInst.block_id crypto b.slot b.height b.prev b.contents_hash
-        b.key_index
+      CryptoDInst.block_id crypto b.slot b.height b.prev parent_sig
+        b.contents_hash b.key_index
     let b1 ← hash_eq id b.id
     if b1
-    then ids_ok CryptoDInst crypto tl
+    then ids_ok CryptoDInst crypto (some s) tl
     else ok false
 partial_fixpoint
 
+/-- [molt_petit::signed_tip_sig_from]:
+    Source: 'src/lib.rs', lines 1222:0-1227:1
+    Visibility: public -/
+def signed_tip_sig_from (cur : Hash) (sc : SignedChain) : Result Hash := do
+  match sc with
+  | SignedChain.SNil => ok cur
+  | SignedChain.SCons _ s tl => signed_tip_sig_from s tl
+partial_fixpoint
+
 /-- [molt_petit::recent_ok]:
-    Source: 'src/lib.rs', lines 1209:0-1215:1
+    Source: 'src/lib.rs', lines 1230:0-1236:1
     Visibility: public -/
 def recent_ok
   (now : Std.U64) (delta : Std.U64) (tip : Std.U64) : Result Bool := do
@@ -1434,7 +1445,7 @@ def recent_ok
        ok (i <= delta)
 
 /-- [molt_petit::tail_of_buffer]:
-    Source: 'src/lib.rs', lines 1219:0-1240:1 -/
+    Source: 'src/lib.rs', lines 1240:0-1261:1 -/
 def tail_of_buffer (t : TailG Std.U64) (lo : Std.U64) : Result Chain := do
   match t with
   | TailG.TNil => ok Chain.Nil
@@ -1458,7 +1469,7 @@ def tail_of_buffer (t : TailG Std.U64) (lo : Std.U64) : Result Chain := do
 partial_fixpoint
 
 /-- [molt_petit::claim_of_state]:
-    Source: 'src/lib.rs', lines 1243:0-1252:1
+    Source: 'src/lib.rs', lines 1264:0-1273:1
     Visibility: public -/
 def claim_of_state
   (n : Std.U64) (st : CertStateG Std.U64) : Result CertClaim := do
@@ -1479,7 +1490,7 @@ def claim_of_state
     }
 
 /-- [molt_petit::floors_of_state]:
-    Source: 'src/lib.rs', lines 1255:0-1260:1 -/
+    Source: 'src/lib.rs', lines 1276:0-1281:1 -/
 def floors_of_state
   (i : Std.U64) (fl : FloorsG Std.U64) : Result FloorList := do
   match fl with
@@ -1491,7 +1502,7 @@ def floors_of_state
 partial_fixpoint
 
 /-- [molt_petit::sched_pin_ok]:
-    Source: 'src/lib.rs', lines 1263:0-1268:1
+    Source: 'src/lib.rs', lines 1284:0-1289:1
     Visibility: public -/
 def sched_pin_ok (era : Std.U64) (c : Chain) : Result Bool := do
   match c with
@@ -1507,7 +1518,7 @@ def sched_pin_ok (era : Std.U64) (c : Chain) : Result Bool := do
 partial_fixpoint
 
 /-- [molt_petit::lockstep_from]:
-    Source: 'src/lib.rs', lines 1273:0-1282:1
+    Source: 'src/lib.rs', lines 1294:0-1303:1
     Visibility: public -/
 def lockstep_from
   (n : Std.U64) (ts : Std.U64) (g : Std.U64) (c : Chain) : Result Bool := do
@@ -1528,7 +1539,7 @@ def lockstep_from
 partial_fixpoint
 
 /-- [molt_petit::validate_deployed]:
-    Source: 'src/lib.rs', lines 1287:0-1299:1
+    Source: 'src/lib.rs', lines 1308:0-1320:1
     Visibility: public -/
 def validate_deployed
   {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (now : Std.U64)
@@ -1548,7 +1559,8 @@ def validate_deployed
       let b2 ← sigs_ok CryptoDInst.CryptoInst n crypto suffix
       if b2
       then
-        let b3 ← ids_ok CryptoDInst crypto stripped
+        let h ← CryptoDInst.cert_tip_sig crypto cert
+        let b3 ← ids_ok CryptoDInst crypto (some h) suffix
         if b3
         then
           let b4 ← validate_suffix n cl stripped
@@ -1561,7 +1573,7 @@ def validate_deployed
   else ok false
 
 /-- [molt_petit::validate_deployed_k]:
-    Source: 'src/lib.rs', lines 1303:0-1309:1
+    Source: 'src/lib.rs', lines 1324:0-1330:1
     Visibility: public -/
 def validate_deployed_k
   {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (now : Std.U64)
@@ -1581,7 +1593,7 @@ def validate_deployed_k
   else ok false
 
 /-- [molt_petit::validate_deployed_sched]:
-    Source: 'src/lib.rs', lines 1312:0-1315:1
+    Source: 'src/lib.rs', lines 1333:0-1336:1
     Visibility: public -/
 def validate_deployed_sched
   {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (era : Std.U64)
@@ -1596,7 +1608,7 @@ def validate_deployed_sched
   else ok false
 
 /-- [molt_petit::validate_deployed_lock]:
-    Source: 'src/lib.rs', lines 1319:0-1324:1
+    Source: 'src/lib.rs', lines 1340:0-1345:1
     Visibility: public -/
 def validate_deployed_lock
   {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (now : Std.U64)
@@ -1612,7 +1624,7 @@ def validate_deployed_lock
   else ok false
 
 /-- [molt_petit::produce_block_deployed]:
-    Source: 'src/lib.rs', lines 1329:0-1364:1
+    Source: 'src/lib.rs', lines 1350:0-1386:1
     Visibility: public -/
 def produce_block_deployed
   {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (me : Std.U64)
@@ -1629,10 +1641,12 @@ def produce_block_deployed
     let cl ← claim_of_state n csg
     let tip_h ← signed_tip_height_from cl.tip_height suffix
     let tip_i ← signed_tip_id_from cl.tip_id suffix
+    let h ← CryptoDInst.cert_tip_sig crypto cert
+    let h1 ← signed_tip_sig_from h suffix
     let i1 ← tip_h + 1#u64
     let id ←
-      CryptoDInst.block_id crypto at_slot i1 (some tip_i) contents_hash
-        key_index
+      CryptoDInst.block_id crypto at_slot i1 (some tip_i) (some h1)
+        contents_hash key_index
     let sig ←
       CryptoDInst.CryptoInst.sign crypto sk
         {

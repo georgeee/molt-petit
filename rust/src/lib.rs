@@ -1184,8 +1184,19 @@ pub fn validate_certified_chain_k<C: CryptoK>(n: u64, crypto: &C, cc: &Certified
 /// What a deployed client needs beyond `Crypto`: the deployment's block-id
 /// hash, and the fold certificate's public state (the proof's public inputs).
 pub trait CryptoD: Crypto {
-    /// The id the hashing layer gives a block with these other fields.
-    fn block_id(&self, slot: u64, height: u64, prev: Option<Hash>, contents_hash: &Hash, key_index: u64) -> Hash;
+    /// The id the hashing layer gives a block with these other fields and
+    /// its parent's signature (`None` for the genesis).
+    fn block_id(
+        &self,
+        slot: u64,
+        height: u64,
+        prev: Option<Hash>,
+        parent_sig: Option<Hash>,
+        contents_hash: &Hash,
+        key_index: u64,
+    ) -> Hash;
+    /// The signature of the certificate's tip block, which it exposes.
+    fn cert_tip_sig(&self, cert: &Hash) -> Hash;
     /// The claim state the fold certificate exposes.
     fn cert_state(&self, cert: &Hash) -> CertStateG<u64>;
     /// Mode 1: the per-producer floors it exposes, producer 0 first.
@@ -1194,14 +1205,24 @@ pub trait CryptoD: Crypto {
     fn cert_gen(&self, cert: &Hash) -> u64;
 }
 
-/// Every block's id is the deployment's hash of its other fields.
-pub fn ids_ok<C: CryptoD>(crypto: &C, c: &Chain) -> bool {
-    match c {
-        Chain::Nil => true,
-        Chain::Cons(b, tl) => {
-            let id = crypto.block_id(b.slot, b.height, b.prev, &b.contents_hash, b.key_index);
-            hash_eq(&id, &b.id) && ids_ok(crypto, tl)
+/// Every block's id is the deployment's hash of its other fields and its
+/// parent's signature: `parent_sig` for the first block, then each block's
+/// own signature for the next.
+pub fn ids_ok<C: CryptoD>(crypto: &C, parent_sig: Option<Hash>, sc: &SignedChain) -> bool {
+    match sc {
+        SignedChain::SNil => true,
+        SignedChain::SCons(b, s, tl) => {
+            let id = crypto.block_id(b.slot, b.height, b.prev, parent_sig, &b.contents_hash, b.key_index);
+            hash_eq(&id, &b.id) && ids_ok(crypto, Some(*s), tl)
         }
+    }
+}
+
+/// The signature of the newest block of a signed tail, or `cur` if it is empty.
+pub fn signed_tip_sig_from(cur: Hash, sc: &SignedChain) -> Hash {
+    match sc {
+        SignedChain::SNil => cur,
+        SignedChain::SCons(_, s, tl) => signed_tip_sig_from(*s, tl),
     }
 }
 
@@ -1293,7 +1314,7 @@ pub fn validate_deployed<C: CryptoD>(n: u64, now: u64, delta: u64, crypto: &C, c
     crypto.cert_verify(cert)
         && nonempty
         && sigs_ok(n, crypto, suffix)
-        && ids_ok(crypto, &stripped)
+        && ids_ok(crypto, Some(crypto.cert_tip_sig(cert)), suffix)
         && validate_suffix(n, &cl, &stripped)
         && recent_ok(now, delta, tip)
 }
@@ -1345,7 +1366,8 @@ pub fn produce_block_deployed<C: CryptoD>(
     let tip_h = signed_tip_height_from(cl.tip_height, &suffix);
     let tip_i = signed_tip_id_from(cl.tip_id, &suffix);
     let prev = Some(tip_i);
-    let id = crypto.block_id(at_slot, tip_h + 1, prev, &contents_hash, key_index);
+    let parent_sig = Some(signed_tip_sig_from(crypto.cert_tip_sig(&cert), &suffix));
+    let id = crypto.block_id(at_slot, tip_h + 1, prev, parent_sig, &contents_hash, key_index);
     let nb = Block {
         slot: at_slot,
         height: tip_h + 1,

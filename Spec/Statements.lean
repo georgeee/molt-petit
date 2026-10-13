@@ -1637,14 +1637,15 @@ tail plus its block. -/
 def thm_rust_produce_block_deployed_live : Prop :=
   ∀ {n me at_slot Δ key_index : U64} {contents sk cert : Hash} {suffix : SignedChain}
     {C} (I : CryptoD C) (crypto : C)
-    {st : CertStateG U64} {cl : CertClaim} {tl : Chain} {tipS tipH : U64}
+    {st : CertStateG U64} {cl : CertClaim} {tl : Chain} {tipS tipH : U64} {ts : Hash}
     (hn : 1 ≤ n.val)
     (hst : I.cert_state crypto cert = ok st)
+    (hts : I.cert_tip_sig crypto cert = ok ts)
     (hcl : claim_of_state n st = ok cl)
     (hcv : I.CryptoInst.cert_verify crypto cert = ok true)
     (hstr : strip_sigs suffix = ok tl)
     (hsig : sigs_ok I.CryptoInst n crypto suffix = ok true)
-    (hids : ids_ok I crypto tl = ok true)
+    (hids : ids_ok I crypto (some ts) suffix = ok true)
     (hsuf : validate_suffix n cl tl = ok true)
     (hMine : producer_for_slot n at_slot = ok me)
     (htipS : tip_slot_from cl.tip_slot tl = ok tipS)
@@ -1653,7 +1654,7 @@ def thm_rust_produce_block_deployed_live : Prop :=
     (hH : tipH.val + 1 < 2 ^ 64)
     (hSign : ∀ b : Block, ∃ key s, I.CryptoInst.key_for crypto me key_index = ok key ∧
       I.CryptoInst.sign crypto sk b = ok s ∧ I.CryptoInst.verify crypto key b s = ok true)
-    (hId : ∀ s h p c k, ∃ id, I.block_id crypto s h p c k = ok id)
+    (hId : ∀ s h p ps c k, ∃ id, I.block_id crypto s h p ps c k = ok id)
     (hDense : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
       MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
         ((toModelClaim cl).tail ++ toModelChain tl ++
