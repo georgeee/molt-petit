@@ -2,6 +2,8 @@ import Spec.Statements
 import MoltPetit.Model.Definitions
 import MoltPetit.Model.Liveness
 import MoltPetit.Model.Grounded
+import MoltPetit.Model.ExposureSafety
+import MoltPetit.Model.ExposureCert
 
 namespace MoltPetit.Model
 
@@ -218,5 +220,68 @@ theorem reference_eq_model : MoltPaper.thm_reference_eq_model := by
           rfl, rfl, rfl, keyMonoOk_eq, validChainK_eq, rfl, rfl, rfl, rfl,
           validChainK'_eq, validSignedChainK'_eq, validSignedChainSched_eq,
           validSignedChainLock_eq, rfl, rfl⟩
+
+theorem exposure_certified_agreement_ever_on : MoltPaper.thm_exposure_certified_agreement_ever_on := by
+  intro n φ hn Signed exposed log G hexec hBudget R hbridge cl cl' hcl hcl'     s₁ s₁' srest srest' sTip sTip' hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'     hSigned hSigned' hRecent hRecent' c c' hc hc' h hDeep hDeep'
+  classical
+  set full : Chain := c ++ s₁ :: srest with hfull
+  set full' : Chain := c' ++ s₁' :: srest' with hfull'
+  have hVS : ValidChain n full :=
+    validChain_sound (grounded_suffix_history_of hc hTipS hLink hLinks hDense)
+  have hVS' : ValidChain n full' :=
+    validChain_sound (grounded_suffix_history_of hc' hTipS' hLink' hLinks' hDense')
+  have hcLen : 0 < c.length := by
+    have := hc.len_eq
+    omega
+  have hcLen' : 0 < c'.length := by
+    have := hc'.len_eq
+    omega
+  have hHead : blockAt? full 0 = some G := by
+    unfold blockAt?
+    rw [hfull, List.getElem?_append_left hcLen]
+    exact hc.head
+  have hHead' : blockAt? full' 0 = some G := by
+    unfold blockAt?
+    rw [hfull', List.getElem?_append_left hcLen']
+    exact hc'.head
+  have hTip : full.getLast? = some sTip := by
+    rw [hfull, List.getLast?_append, hTipS]
+    rfl
+  have hTip' : full'.getLast? = some sTip' := by
+    rw [hfull', List.getLast?_append, hTipS']
+    rfl
+  have hAdm : ∀ B ∈ full, B ≠ G → Signed B := by
+    intro B hB hBG
+    rcases List.mem_append.mp hB with hBc | hBs
+    · rcases hc.signed B hBc with rfl | hSig
+      · contradiction
+      · exact hSig
+    · exact hSigned B hBs
+  have hAdm' : ∀ B ∈ full', B ≠ G → Signed B := by
+    intro B hB hBG
+    rcases List.mem_append.mp hB with hBc' | hBs'
+    · rcases hc'.signed B hBc' with rfl | hSig
+      · contradiction
+      · exact hSig
+    · exact hSigned' B hBs'
+  have hAvail : ∀ B ∈ full, AvailableAt log G B R := by
+    intro B hB
+    rcases List.mem_append.mp (by exact hB) with hBc | hBs
+    · rcases hc.signed B hBc with rfl | hSig
+      · exact Or.inl rfl
+      · obtain ⟨r, hrR, hrLog⟩ := hbridge hSig
+        exact Or.inr ⟨r, hrR, hrLog⟩
+    · obtain ⟨r, hrR, hrLog⟩ := hbridge (hSigned B hBs)
+      exact Or.inr ⟨r, hrR, hrLog⟩
+  have hAvail' : ∀ B ∈ full', AvailableAt log G B R := by
+    intro B hB
+    rcases List.mem_append.mp (by exact hB) with hBc' | hBs'
+    · rcases hc'.signed B hBc' with rfl | hSig
+      · exact Or.inl rfl
+      · obtain ⟨r, hrR, hrLog⟩ := hbridge hSig
+        exact Or.inr ⟨r, hrR, hrLog⟩
+    · obtain ⟨r, hrR, hrLog⟩ := hbridge (hSigned' B hBs')
+      exact Or.inr ⟨r, hrR, hrLog⟩
+  exact exposure_agreement_ever_on hn hexec hBudget hVS hVS'     hHead hHead' hAdm hAdm' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
 
 end MoltPetit.Model

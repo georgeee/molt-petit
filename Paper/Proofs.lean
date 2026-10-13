@@ -158,5 +158,7 @@ theorem validChain_snoc : thm_validChain_snoc :=
   @MoltPetit.Model.validChain_snoc
 theorem reference_eq_model : thm_reference_eq_model :=
   @MoltPetit.Model.reference_eq_model
+theorem exposure_certified_agreement_ever_on : thm_exposure_certified_agreement_ever_on :=
+  @MoltPetit.Model.exposure_certified_agreement_ever_on
 
 end MoltPaper
