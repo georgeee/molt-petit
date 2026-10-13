@@ -18,6 +18,12 @@
 //! `(slot % n, key_index)` in a committed key registry (the root, a constant).
 //! That is the `Signed b` premise of the fold statements.
 //!
+//! The block id is computed in-circuit via Poseidon hash from the block's
+//! fields: slot, height, constant 1 for has_prev, the four prev limbs, four
+//! contents_hash witness targets, and the key_index target. Connecting the
+//! computed digest to the block id wire ensures that what the signature signs
+//! is bound to the key version wire used in the step and registry lookup.
+//!
 //! [`MpCircuit`] records witness values while it builds, so every step
 //! rebuilds the circuit. The structure never depends on the values, and
 //! [`FoldProver::step`] asserts that every rebuild has the same circuit digest.
@@ -43,6 +49,7 @@ use molt_petit::{
     BlockG, CertStateG, FloorsG, HashG, TailG, U64Backend,
 };
 
+pub use crate::poseidon_util::fold_block_id;
 use crate::backend::CMP_BITS;
 use crate::mp_circuit::{MNum, MpCircuit};
 use molt_petit::BackendK as MpBackendK;
@@ -66,6 +73,7 @@ pub struct FoldBlock {
     pub height: u64,
     pub prev: [u64; 4],
     pub id: [u64; 4],
+    pub contents_hash: [u64; 4],
     pub key_index: u64,
 }
 
@@ -294,7 +302,16 @@ impl FoldProver {
             last_prove: Default::default(),
         };
         let g = fp.genesis.clone();
-        let probe = FoldBlock { slot: g.tip_slot + 1, height: g.tip_height + 1, prev: g.tip_id, id: [0; 4], key_index: 0 };
+        let probe_ch = [0u64; 4];
+        let probe_id = fold_block_id(g.tip_slot + 1, g.tip_height + 1, true, g.tip_id, probe_ch, 0);
+        let probe = FoldBlock {
+            slot: g.tip_slot + 1,
+            height: g.tip_height + 1,
+            prev: g.tip_id,
+            id: probe_id,
+            contents_hash: probe_ch,
+            key_index: 0,
+        };
         for _ in 0..8 {
             let built = fp.build(&fp.common, &g, &probe, None)?;
             fp.step_gates = built.gates;
@@ -426,6 +443,12 @@ impl FoldProver {
             id: HashG { a: inp(b.id[0]), b: inp(b.id[1]), c: inp(b.id[2]), d: inp(b.id[3]) },
         };
         let ki = inp(b.key_index);
+        let ch = [
+            inp(b.contents_hash[0]),
+            inp(b.contents_hash[1]),
+            inp(b.contents_hash[2]),
+            inp(b.contents_hash[3]),
+        ];
         // `lt` and `divmod` are sound below 2^CMP_BITS. Every number in the
         // step is built from these three, the hash limbs (compared only by
         // `eq`), small constants, and the previous step's outputs, which were
@@ -435,6 +458,26 @@ impl FoldProver {
             for x in [&bg.slot, &bg.height, &ki] {
                 bl.range_check(MpCircuit::target(x), CMP_BITS);
             }
+            let one_t = bl.one();
+            let hash_targets = vec![
+                MpCircuit::target(&bg.slot),
+                MpCircuit::target(&bg.height),
+                one_t,
+                MpCircuit::target(&bg.prev.a),
+                MpCircuit::target(&bg.prev.b),
+                MpCircuit::target(&bg.prev.c),
+                MpCircuit::target(&bg.prev.d),
+                MpCircuit::target(&ch[0]),
+                MpCircuit::target(&ch[1]),
+                MpCircuit::target(&ch[2]),
+                MpCircuit::target(&ch[3]),
+                MpCircuit::target(&ki),
+            ];
+            let computed_id = bl.hash_n_to_hash_no_pad::<PoseidonHash>(hash_targets);
+            bl.connect(computed_id.elements[0], MpCircuit::target(&bg.id.a));
+            bl.connect(computed_id.elements[1], MpCircuit::target(&bg.id.b));
+            bl.connect(computed_id.elements[2], MpCircuit::target(&bg.id.c));
+            bl.connect(computed_id.elements[3], MpCircuit::target(&bg.id.d));
         }
         let n_m = be.constant(F::from_canonical_u64(n as u64));
         let q_m = be.constant(F::from_canonical_u64(molt_petit::quorum(n as u64)));
@@ -540,13 +583,33 @@ struct Built {
 
 /// A demo chain: genesis at slot 0, then `len` blocks at slots 1, 2, ...,
 /// each by key index `slot / n` (accepted by all three modes, with
-/// `era = n` in mode 2). Ids are opaque to the fold step.
+/// `era = n` in mode 2). Ids are computed natively with `fold_block_id`.
 pub fn demo_chain(n: usize, len: u64) -> (FoldBlock, Vec<FoldBlock>) {
-    let id = |slot: u64| [slot * 7 + 1, slot + 11, 0xabc, 0xdef];
-    let g = FoldBlock { slot: 0, height: 0, prev: [0; 4], id: id(0), key_index: 0 };
-    let bs = (1..=len)
-        .map(|s| FoldBlock { slot: s, height: s, prev: id(s - 1), id: id(s), key_index: s / n as u64 })
-        .collect();
+    let contents_hash = [0u64; 4];
+    let g = FoldBlock {
+        slot: 0,
+        height: 0,
+        prev: [0; 4],
+        id: fold_block_id(0, 0, false, [0; 4], contents_hash, 0),
+        contents_hash,
+        key_index: 0,
+    };
+    let mut bs = Vec::with_capacity(len as usize);
+    let mut prev = g.id;
+    for s in 1..=len {
+        let ki = s / n as u64;
+        let id = fold_block_id(s, s, true, prev, contents_hash, ki);
+        let b = FoldBlock {
+            slot: s,
+            height: s,
+            prev,
+            id,
+            contents_hash,
+            key_index: ki,
+        };
+        prev = id;
+        bs.push(b);
+    }
     (g, bs)
 }
 
@@ -594,8 +657,10 @@ mod tests {
     pub const BITS: usize = 13;
 
     fn blk(slot: u64, height: u64, prev: [u64; 4], key_index: u64) -> FoldBlock {
-        let id = [slot * 7 + 1, height + 11, key_index + 3, 0xabc];
-        FoldBlock { slot, height, prev, id, key_index }
+        let contents_hash = [slot * 7 + 1, height + 11, key_index + 3, 0xabc];
+        let has_prev = slot > 0;
+        let id = fold_block_id(slot, height, has_prev, prev, contents_hash, key_index);
+        FoldBlock { slot, height, prev, id, contents_hash, key_index }
     }
 
     /// A chain of `len` blocks after genesis, slots 1, 2, ..., with key
@@ -679,6 +744,7 @@ mod tests {
         forged.tip_height += 1;
         let mut b = bs[1];
         b.height += 1;
+        b.id = fold_block_id(b.slot, b.height, true, b.prev, b.contents_hash, b.key_index);
         assert!(native_step(3, mode, &forged, &b).is_some());
         assert!(fails(|| fp.step(&forged, Some(&p1), &b, None)));
     }
@@ -752,5 +818,68 @@ mod tests {
         // The right evidence: proof.
         let ok = evidence(&k, pr, b.key_index, b.id);
         fp.step(&st, proof.as_ref(), &b, Some(&ok)).expect("signed step");
+    }
+
+    #[test]
+    fn fold_block_ids_bound() {
+        let (g, bs) = chain(&[0]);
+        let mode = Mode::K;
+        let mut fp = FoldProver::new(3, mode, &g, BITS, None).unwrap();
+        let st0 = fp.genesis_state().clone();
+        let mut bad_b = bs[0];
+        bad_b.id[0] ^= 1;
+        assert!(fails(|| fp.step(&st0, None, &bad_b, None)));
+    }
+
+    #[test]
+    fn fold_key_index_bound() {
+        let (n, kbits) = (3usize, 2usize);
+        let k = keys(n, kbits);
+        let mode = Mode::Sched { era: 3 };
+        let (g, bs) = demo_chain(n, 4);
+        let binding = |k: &Keys| SigBinding {
+            verifier: crate::xmss::VerifierCircuit::build(crate::sphincs::Params::xmss("t", 2, 3)).data,
+            n_fe: 2,
+            root: k.reg.root(),
+            pbits: k.reg.pbits,
+            kbits,
+        };
+        let mut fp = FoldProver::new(n, mode, &g, BITS, Some(binding(&k))).unwrap();
+        let st0 = fp.genesis_state().clone();
+
+        let b = bs[0];
+        let pr = (b.slot % n as u64) as usize;
+        let honest_ki = b.key_index;
+        let forged_ki = honest_ki + 1;
+
+        // Block whose id was hashed with honest_ki, but step ki is forged_ki
+        let forged_b = FoldBlock {
+            slot: b.slot,
+            height: b.height,
+            prev: b.prev,
+            id: b.id,
+            contents_hash: b.contents_hash,
+            key_index: forged_ki,
+        };
+        let forged_ev = evidence(&k, pr, forged_ki, forged_b.id);
+        assert!(fails(|| fp.step(&st0, None, &forged_b, Some(&forged_ev))));
+
+        // Honest block proves
+        let honest_ev = evidence(&k, pr, honest_ki, b.id);
+        fp.step(&st0, None, &b, Some(&honest_ev)).expect("honest signed step proves");
+    }
+
+    #[test]
+    fn native_block_id_matches_circuit() {
+        let (g, bs) = chain(&[0]);
+        let mode = Mode::K;
+        let mut fp = FoldProver::new(3, mode, &g, BITS, None).unwrap();
+        let st0 = fp.genesis_state().clone();
+        let b = bs[0];
+        let (_, p) = fp.step(&st0, None, &b, None).unwrap();
+        let state = exposed_state(3, mode, &p).unwrap();
+        let expected_id = fold_block_id(b.slot, b.height, true, b.prev, b.contents_hash, b.key_index);
+        assert_eq!(state.tip_id, expected_id, "circuit tip_id matches native fold_block_id");
+        assert_eq!(state.tip_id, b.id, "circuit tip_id matches block id");
     }
 }

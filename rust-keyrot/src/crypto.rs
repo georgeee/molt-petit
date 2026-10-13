@@ -23,7 +23,9 @@ use plonky2::field::types::{Field, PrimeField64};
 use plonky2::plonk::circuit_data::VerifierCircuitData;
 use plonky2::plonk::proof::ProofWithPublicInputs;
 
-use molt_petit::{Block, CertClaim, Chain, Crypto, Hash};
+use molt_petit::{
+    Block, CertClaim, CertStateG, Chain, Crypto, CryptoD, FloorsG, Hash, HashG, TailG,
+};
 
 use crate::pok::{self, PokSig};
 use crate::poseidon_util::*;
@@ -227,3 +229,50 @@ impl KeyRotCrypto {
         self.n
     }
 }
+
+impl CryptoD for KeyRotCrypto {
+    fn block_id(
+        &self,
+        slot: u64,
+        height: u64,
+        prev: Option<Hash>,
+        contents_hash: &Hash,
+        key_index: u64,
+    ) -> Hash {
+        let prev_raw = match prev {
+            Some(p) => [p.a, p.b, p.c, p.d],
+            None => [0; 4],
+        };
+        let ch_raw = [
+            contents_hash.a,
+            contents_hash.b,
+            contents_hash.c,
+            contents_hash.d,
+        ];
+        let id_raw = fold_block_id(slot, height, prev.is_some(), prev_raw, ch_raw, key_index);
+        Hash {
+            a: id_raw[0],
+            b: id_raw[1],
+            c: id_raw[2],
+            d: id_raw[3],
+        }
+    }
+
+    fn cert_state(&self, _cert: &Hash) -> CertStateG<u64> {
+        CertStateG {
+            tip_id: HashG { a: 0, b: 0, c: 0, d: 0 },
+            tip_slot: 0,
+            tip_height: 0,
+            tail: TailG::TNil,
+        }
+    }
+
+    fn cert_floors_state(&self, _cert: &Hash) -> FloorsG<u64> {
+        FloorsG::FNil
+    }
+
+    fn cert_gen(&self, _cert: &Hash) -> u64 {
+        0
+    }
+}
+

@@ -91,6 +91,39 @@ pub fn block_id(slot: u64, height: u64, prev: Option<&Hash>, contents: &Hash) ->
     digest_to_hash(poseidon4(&xs))
 }
 
+/// Deterministic Poseidon block id for a fold block over 12 canonical Goldilocks field elements:
+/// `[slot, height, has_prev as 0/1, prev[0..4], contents_hash[0..4], key_index]`.
+pub fn fold_block_id(
+    slot: u64,
+    height: u64,
+    has_prev: bool,
+    prev: [u64; 4],
+    contents_hash: [u64; 4],
+    key_index: u64,
+) -> [u64; 4] {
+    let inputs = [
+        F::from_canonical_u64(slot),
+        F::from_canonical_u64(height),
+        F::from_canonical_u64(if has_prev { 1 } else { 0 }),
+        F::from_canonical_u64(prev[0]),
+        F::from_canonical_u64(prev[1]),
+        F::from_canonical_u64(prev[2]),
+        F::from_canonical_u64(prev[3]),
+        F::from_canonical_u64(contents_hash[0]),
+        F::from_canonical_u64(contents_hash[1]),
+        F::from_canonical_u64(contents_hash[2]),
+        F::from_canonical_u64(contents_hash[3]),
+        F::from_canonical_u64(key_index),
+    ];
+    let digest = PoseidonHash::hash_no_pad(&inputs).elements;
+    [
+        digest[0].to_canonical_u64(),
+        digest[1].to_canonical_u64(),
+        digest[2].to_canonical_u64(),
+        digest[3].to_canonical_u64(),
+    ]
+}
+
 /// The 256-bit message a block-producer signature commits to: a Poseidon digest
 /// over the block's slot, height, id and payload commitment. Deterministic from
 /// the block, so the verifier recomputes the same message.
@@ -103,3 +136,4 @@ pub fn block_signing_digest(b: &Block) -> [F; 4] {
     xs.extend_from_slice(&hash_to_digest(&b.contents_hash));
     poseidon4(&xs)
 }
+
