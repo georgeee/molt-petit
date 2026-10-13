@@ -66,7 +66,7 @@ let
   # DIGEST-PIN goldenEmitted — rewritten by `nix run .#update-extracted`.
   # Keep this line's shape (two spaces, name, ` = "`, 64 hex, `";`): the app
   # rewrites it with sed and verifies that the rewrite took.
-  goldenDigest = "d26979f87c8f1137dbb781ad6d4901290f76ea156a198ae2820a5b8123b86c1d";
+  goldenDigest = "ced9e59a6d7ba936163e6ac9709598899203a6132ed7c7e521f64e1dafe50741";
 
   # DIGEST-PIN thalesFixesPatch — hand-maintained; nothing regenerates it.
   # This patch DEFINES what "faithful" means for the TypeScript path: it is

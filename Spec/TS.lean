@@ -239,6 +239,7 @@ structure SigOps where
   sign : (RawSecretKey → (Int → (Int → (Hash → (Hash → RawSignature)))))
   verify : (RawPublicKey → (Int → (Int → ((Option Hash) → (Hash → (RawSignature → Bool))))))
   keyFor : (Int → (Int → RawPublicKey))
+  blockId : (Int → (Int → ((Option Hash) → (RawSignature → (Hash → (Int → Hash))))))
 
 def lengthOfSigned (sc : SignedChain) : Int :=
   match sc with
@@ -280,6 +281,7 @@ structure CertOps where
   verify : (RawCertificate → Bool)
   claim : (RawCertificate → CertClaim)
   certFor : (Hash → RawCertificate)
+  tipSig : (RawCertificate → RawSignature)
 
 inductive CertifiedChain where
   | invalid
@@ -323,6 +325,22 @@ def validateCertifiedChain (n : Int) (sigOps : SigOps) (certOps : CertOps) (cc :
   match cc with
     | .invalid => false
     | .cc cert suffix => (((certOps.verify cert) && (sigsOk n sigOps suffix)) && (validateSuffix n ((certOps.claim cert)) ((stripSigs suffix))))
+
+def idsOk (sigOps : SigOps) (parentSig : RawSignature) (sc : SignedChain) : Bool :=
+  match sc with
+    | .nil => true
+    | .cons slot height prev id contentsHash keyIndex sig tail => let ok := ((sigOps.blockId slot height prev parentSig contentsHash keyIndex) == id)
+    (ok && (idsOk sigOps sig tail))
+
+def recentOk (now : Int) (delta : Int) (tip : Int) : Bool :=
+  (now <= (tip + delta))
+
+def validateDeployed (n : Int) (now : Int) (delta : Int) (sigOps : SigOps) (certOps : CertOps) (cc : CertifiedChain) : Bool :=
+  match cc with
+    | .invalid => false
+    | .cc cert suffix => let stripped := (stripSigs suffix)
+    let cl := (certOps.claim cert)
+    ((((validateCertifiedChain n sigOps certOps cc) && (0 < (lengthOfSigned suffix))) && (idsOk sigOps ((certOps.tipSig cert)) suffix)) && (recentOk now delta ((tipSlotFrom cl.tipSlot stripped))))
 
 def ccIf (ok : Bool) (cert : RawCertificate) (suffix : SignedChain) : CertifiedChain :=
   if ok then (.cc cert suffix) else .invalid

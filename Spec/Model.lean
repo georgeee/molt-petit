@@ -318,6 +318,12 @@ def TSSigned (n : Nat) (sigOps : MoltPetit.SigOps) (B : Block) : Prop :=
     sigOps.verify (sigOps.keyFor (producerForSlot n B.slot) B.keyIndex)
       B.slot B.height (B.prev.map Int.ofNat) B.id sig = true
 
+/-- Block `B`'s id is the TS dictionary's id hash of its fields and some
+parent signature: the per-block residue of a passing `idsOk` run. -/
+def TSFormed (sigOps : MoltPetit.SigOps) (B : Block) : Prop :=
+  ∃ ps : MoltPetit.RawSignature,
+    sigOps.blockId B.slot B.height (B.prev.map Int.ofNat) ps B.contentsHash B.keyIndex = B.id
+
 /--
 A certificate claim is **grounded in genesis `G`** when it arose from the
 genesis claim by folding in one **signed** block at a time, each fold

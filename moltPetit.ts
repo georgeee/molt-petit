@@ -556,6 +556,10 @@ interface SigOps {
   sign: (sk: RawSecretKey, slot: bigint, height: bigint, prev: Hash, id: Hash) => RawSignature;
   verify: (pk: RawPublicKey, slot: bigint, height: bigint, prev: Hash | null, id: Hash, sig: RawSignature) => boolean;
   keyFor: (i: bigint, j: bigint) => RawPublicKey;
+  // The deployment's id hash over a block's fields and its parent's
+  // signature. Hashing the parent's signature makes a block's id, and so its
+  // signature, possible only after the parent was signed.
+  blockId: (slot: bigint, height: bigint, prev: Hash | null, parentSig: RawSignature, contentsHash: Hash, keyIndex: bigint) => Hash;
 }
 
 /** @total */
@@ -640,6 +644,8 @@ interface CertOps {
   verify: (cert: RawCertificate) => boolean;
   claim: (cert: RawCertificate) => CertClaim;
   certFor: (id: Hash) => RawCertificate;
+  // The signature of the block the certificate ends at.
+  tipSig: (cert: RawCertificate) => RawSignature;
 }
 
 // A certified chain: a certificate for the prefix plus a signed suffix of
@@ -742,6 +748,47 @@ function validateCertifiedChain(n: bigint, sigOps: SigOps, certOps: CertOps, cc:
       return false;
     case 'cc':
       return certOps.verify(cc.cert) && sigsOk(n, sigOps, cc.suffix) && validateSuffix(n, certOps.claim(cc.cert), stripSigs(cc.suffix));
+  }
+}
+
+/**
+ * Every block's id is the id hash of its fields and its parent's signature,
+ * starting from `parentSig` for the first block.
+ * @total
+ */
+function idsOk(sigOps: SigOps, parentSig: RawSignature, sc: SignedChain): boolean {
+  switch (sc.kind) {
+    case 'nil':
+      return true;
+    case 'cons': {
+      const ok = sigOps.blockId(sc.slot, sc.height, sc.prev, parentSig, sc.contentsHash, sc.keyIndex) === sc.id;
+      return ok && idsOk(sigOps, sc.sig, sc.tail);
+    }
+  }
+}
+
+/**
+ * The newest block is at most `delta` slots old at the reading `now`.
+ * @total
+ */
+function recentOk(now: bigint, delta: bigint, tip: bigint): boolean {
+  return now <= tip + delta;
+}
+
+/**
+ * The deployed client: the certified-chain checks, a non-empty suffix,
+ * recomputed block ids and recency of the newest block.
+ * @total
+ */
+function validateDeployed(n: bigint, now: bigint, delta: bigint, sigOps: SigOps, certOps: CertOps, cc: CertifiedChain): boolean {
+  switch (cc.kind) {
+    case 'invalid':
+      return false;
+    case 'cc': {
+      const stripped = stripSigs(cc.suffix);
+      const cl = certOps.claim(cc.cert);
+      return validateCertifiedChain(n, sigOps, certOps, cc) && 0n < lengthOfSigned(cc.suffix) && idsOk(sigOps, certOps.tipSig(cc.cert), cc.suffix) && recentOk(now, delta, tipSlotFrom(cl.tipSlot, stripped));
+    }
   }
 }
 

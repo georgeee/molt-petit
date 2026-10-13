@@ -1710,6 +1710,51 @@ def thm_cert_fold_lock_complete : Prop :=
 end
 
 
+section
+open MoltPetit.Model
+
+/-- Paper: Theorem thm:lc for the TypeScript deployed client. As
+`ts_timed_certified_agreement`, with `validateDeployed`, which recomputes the
+tail's ids (threading parent signatures from the certificate's tip signature)
+and checks recency at the client's reading `now`: neither the tail's id
+formation nor its recency is a hypothesis. -/
+def thm_ts_deployed_agreement : Prop :=
+  ∀ {σ ℓ φ δ : Nat}
+    {n : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
+    {sigOps : MoltPetit.SigOps}
+    (hexec : SigningExecutionOn (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) exposed log G)
+    (hClock : HonestClockOn (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
+    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → TSFormed sigOps B → ∃ r ≤ R, B ∈ log r)
+    {Δ now now' : Int} (hφ : Δ + δ ≤ φ)
+    (hNow : (R : Int) ≤ now + δ) (hNow' : (R : Int) ≤ now' + δ)
+    {certOps certOps' : MoltPetit.CertOps}
+    (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
+    ∃ cl : CertClaim, certOps.claim hc = toTSClaim cl ∧
+    GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) G cl)
+    (hUnf' : ∀ hc : MoltPetit.RawCertificate, certOps'.verify hc = true →
+    ∃ cl : CertClaim, certOps'.claim hc = toTSClaim cl ∧
+    GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) G cl)
+    {h h' : MoltPetit.RawCertificate} {sc sc' : SignedChain MoltPetit.RawSignature}
+    (hval : MoltPetit.validateDeployed n now Δ sigOps certOps
+    (.cc h (toTSSigned sc)) = true)
+    (hval' : MoltPetit.validateDeployed n now' Δ sigOps certOps'
+    (.cc h' (toTSSigned sc')) = true)
+    {cl cl' : CertClaim}
+    (hcl : certOps.claim h = toTSClaim cl)
+    (hcl' : certOps'.claim h' = toTSClaim cl')
+    {c c' : Chain}
+    (hc : GroundedHistory n (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) G cl c)
+    (hc' : GroundedHistory n (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) G cl' c')
+    {k : Nat}
+    (hDeep : k + n < (c ++ stripSigs sc).length)
+    (hDeep' : k + n < (c' ++ stripSigs sc').length),
+    blockAt? (c ++ stripSigs sc) k = blockAt? (c' ++ stripSigs sc') k
+
+end
+
 /-! ## Pass 28: model statements -/
 
 section

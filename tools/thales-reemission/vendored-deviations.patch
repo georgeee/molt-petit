@@ -112,18 +112,18 @@
  def validateSuffixK (n : Int) (c : CertClaim) (fl : FloorList) (suffix : Chain) : Bool :=
    (((validateSuffix n c suffix) && (floorsShapeOk n fl)) && (keyMonoFromTs n fl suffix))
  
-@@ -186,7 +182,6 @@
-   sign : (RawSecretKey → (Int → (Int → (Hash → (Hash → RawSignature)))))
+@@ -187,7 +183,6 @@
    verify : (RawPublicKey → (Int → (Int → ((Option Hash) → (Hash → (RawSignature → Bool))))))
    keyFor : (Int → (Int → RawPublicKey))
+   blockId : (Int → (Int → ((Option Hash) → (RawSignature → (Hash → (Int → Hash))))))
 -  deriving Repr, BEq
  
  def lengthOfSigned (sc : SignedChain) : Int :=
    match sc with
-@@ -228,7 +223,6 @@
-   verify : (RawCertificate → Bool)
+@@ -230,7 +225,6 @@
    claim : (RawCertificate → CertClaim)
    certFor : (Hash → RawCertificate)
+   tipSig : (RawCertificate → RawSignature)
 -  deriving Repr, BEq
  
  inductive CertifiedChain where

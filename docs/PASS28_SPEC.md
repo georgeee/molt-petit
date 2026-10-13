@@ -151,5 +151,5 @@ Tests: a block whose stated id differs from the hash, or whose step `ki` differs
 - **B (Archon).** Items 9–13 and 7–8. They are independent of each other.
 - **C (Archon).** Items 1–6.
 - **D (worker).** Circuit B1 plus tests.
-- **E.** TypeScript twin: recompute ids in `validateCertifiedChain` (C4 via C2), re-emit, and discharge `hFormedS` in the TypeScript theorem.
+- **E.** TypeScript twin (C4 via C2). `moltPetit.ts` gains `idsOk` (threading parent signatures), `recentOk` and `validateDeployed`; `SigOps.blockId` and `CertOps.tipSig` join the dictionaries (no new emitter deviation sites). Statement `thm_ts_deployed_agreement`: as `thm_ts_timed_certified_agreement` with `Formed := TSFormed sigOps`, `validateDeployed`, and clock readings, with no `hFormedS` and no `hRecent`.
 - **F (reviewer).** Paper.
