@@ -111,4 +111,112 @@ theorem validChain_snoc : MoltPaper.thm_validChain_snoc := by
     · have huT2 : t.slot + 2 ≤ u + n := by omega
       exact hNewDense u huT2 huB
 
+
+theorem linksOk_eq : @Molt.linksOk = @MoltPetit.Model.linksOk := by
+  ext c
+  induction c with
+  | nil => rfl
+  | cons a xs ih =>
+    cases xs with
+    | nil => rfl
+    | cons b rest =>
+      change (Molt.childOk a b && Molt.linksOk (b :: rest)) =
+        (MoltPetit.Model.childOk a b && MoltPetit.Model.linksOk (b :: rest))
+      rw [ih]
+      rfl
+
+theorem denseSoFar_eq_maturedWindowsDense :
+    @Molt.denseSoFar = @MoltPetit.Model.maturedWindowsDense := rfl
+
+theorem validChain_eq : @Molt.validChain = @MoltPetit.Model.validChain := by
+  ext n c
+  cases c with
+  | nil => rfl
+  | cons g rest =>
+    dsimp [Molt.validChain, MoltPetit.Model.validChain]
+    rw [linksOk_eq]
+    rfl
+
+theorem keyMonoOk_eq : @Molt.keyMonoOk = @MoltPetit.Model.keyMonoOk := by
+  ext n c
+  induction c with
+  | nil => rfl
+  | cons b rest ih =>
+    dsimp [Molt.keyMonoOk, MoltPetit.Model.keyMonoOk]
+    rw [ih]
+    rfl
+
+theorem validChainK_eq : @Molt.validChainK = @MoltPetit.Model.validChainK := by
+  ext n c
+  change (Molt.validChain n c && Molt.keyMonoOk n c) =
+    (MoltPetit.Model.validChain n c && MoltPetit.Model.keyMonoOk n c)
+  rw [validChain_eq, keyMonoOk_eq]
+
+theorem keyFloor_eq : @Molt.keyFloor = @MoltPetit.Model.keyFloor := rfl
+
+theorem confirmedPrefix_eq : @Molt.confirmedPrefix = @MoltPetit.Model.confirmedPrefix := rfl
+
+theorem inForce_eq : @Molt.inForce = @MoltPetit.Model.inForce := rfl
+
+theorem inForcePinned_eq : @Molt.inForcePinned = @MoltPetit.Model.inForcePinned := rfl
+
+theorem validChainK'_eq : @Molt.validChainK' = @MoltPetit.Model.validChainK' := by
+  ext n Δconf c
+  change (Molt.validChainK n c && Molt.inForcePinned n Δconf c) =
+    (MoltPetit.Model.validChainK n c && MoltPetit.Model.inForcePinned n Δconf c)
+  rw [validChainK_eq]
+  rfl
+
+theorem stripSigs_eq : @Molt.stripSigs = @MoltPetit.Model.stripSigs := rfl
+
+theorem sigOk_eq : @Molt.sigOk = @MoltPetit.Model.sigOk := rfl
+
+theorem sigsOk_eq : @Molt.sigsOk = @MoltPetit.Model.sigsOk := rfl
+
+theorem validSignedChainK'_eq : @Molt.validSignedChainK' = @MoltPetit.Model.validSignedChainK' := by
+  ext σ sk pk n Δconf ops registry sc
+  change (Molt.sigsOk n ops registry sc && Molt.validChainK' n Δconf (Molt.stripSigs sc)) =
+    (MoltPetit.Model.sigsOk n ops registry sc &&
+     MoltPetit.Model.validChainK' n Δconf (MoltPetit.Model.stripSigs sc))
+  rw [validChainK'_eq]
+  rfl
+
+theorem schedPin_eq_schedPinned : @Molt.schedPin = @MoltPetit.Model.schedPinned := rfl
+
+theorem validSignedChainSched_eq :
+    @Molt.validSignedChainSched = @MoltPetit.Model.validSignedChainSched := by
+  ext σ sk pk n schedule ops registry sc
+  change (Molt.sigsOk n ops registry sc && Molt.validChainK n (Molt.stripSigs sc)
+      && Molt.schedPin schedule (Molt.stripSigs sc)) =
+    (MoltPetit.Model.sigsOk n ops registry sc &&
+     MoltPetit.Model.validChainK n (MoltPetit.Model.stripSigs sc)
+      && MoltPetit.Model.schedPinned schedule (MoltPetit.Model.stripSigs sc))
+  rw [validChainK_eq]
+  rfl
+
+theorem noMixing_eq_lockstepOk : @Molt.noMixing = @MoltPetit.Model.lockstepOk := by
+  ext n c
+  induction c with
+  | nil => rfl
+  | cons b rest ih =>
+    dsimp [Molt.noMixing, MoltPetit.Model.lockstepOk]
+    rw [ih]
+
+theorem validSignedChainLock_eq :
+    @Molt.validSignedChainLock = @MoltPetit.Model.validSignedChainLock := by
+  ext σ sk pk n ops registry sc
+  change (Molt.sigsOk n ops registry sc && Molt.validChainK n (Molt.stripSigs sc)
+      && Molt.noMixing n (Molt.stripSigs sc)) =
+    (MoltPetit.Model.sigsOk n ops registry sc &&
+     MoltPetit.Model.validChainK n (MoltPetit.Model.stripSigs sc)
+      && MoltPetit.Model.lockstepOk n (MoltPetit.Model.stripSigs sc))
+  rw [validChainK_eq, noMixing_eq_lockstepOk]
+  rfl
+
+theorem reference_eq_model : MoltPaper.thm_reference_eq_model := by
+  refine ⟨rfl, rfl, rfl, linksOk_eq, rfl, rfl, rfl, validChain_eq, rfl, rfl, rfl,
+          rfl, rfl, rfl, keyMonoOk_eq, validChainK_eq, rfl, rfl, rfl, rfl,
+          validChainK'_eq, validSignedChainK'_eq, validSignedChainSched_eq,
+          validSignedChainLock_eq, rfl, rfl⟩
+
 end MoltPetit.Model

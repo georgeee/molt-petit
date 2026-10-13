@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 2. reference_eq_model
+In progress: (none)
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -23,7 +23,7 @@ In progress: 2. reference_eq_model
   - Linking: `linksOk (c ++ [b]) ↔ linksOk c ∧ childOk t b`.
   - Density: windows with `u + n ≤ t.slot + 1` have the same count over `c` and over `c ++ [b]`, because `b.slot > t.slot` puts `b` outside them. Windows with `t.slot + 2 ≤ u + n ≤ b.slot + 1` are the new ones.
   - Look for existing `windowCount_append` lemmas: `grep -rn "windowCount_append" MoltPetit/`.
-- [ ] 2. **`reference_eq_model`**. One `funext` per conjunct.
+- [x] 2. **`reference_eq_model`**. One `funext` per conjunct.
   - Most conjuncts close by `rfl`, or by `funext`, then `induction`, then `simp [Molt.X, MoltPetit.Model.X]`.
   - `Molt.validChain` is written with `denseSoFar`. Prove `denseSoFar = maturedWindowsDense` first.
   - If a conjunct is FALSE, write the counterexample under STOP and do not change the statement.

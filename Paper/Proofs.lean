@@ -156,5 +156,7 @@ theorem cert_fold_lock_client : thm_cert_fold_lock_client :=
 
 theorem validChain_snoc : thm_validChain_snoc :=
   @MoltPetit.Model.validChain_snoc
+theorem reference_eq_model : thm_reference_eq_model :=
+  @MoltPetit.Model.reference_eq_model
 
 end MoltPaper
