@@ -5,6 +5,9 @@ import MoltPetit.Model.Grounded
 import MoltPetit.Model.ExposureSafety
 import MoltPetit.Model.ExposureCert
 
+import MoltPetit.Model.KeyStealingLockstepCertGen
+import MoltPetit.Model.KeyStealingScheduleCertHorizon
+
 namespace MoltPetit.Model
 
 theorem linksOk_snoc : ∀ (c : Chain) (t b : Block),
@@ -283,5 +286,20 @@ theorem exposure_certified_agreement_ever_on : MoltPaper.thm_exposure_certified_
     · obtain ⟨r, hrR, hrLog⟩ := hbridge (hSigned' B hBs')
       exact Or.inr ⟨r, hrR, hrLog⟩
   exact exposure_agreement_ever_on hn hexec hBudget hVS hVS'     hHead hHead' hAdm hAdm' hAvail hAvail' hTip hTip' hRecent hRecent' hDeep hDeep'
+
+
+theorem lockstepGen_recent_certified_history_agreement_two_readings :
+    MoltPaper.thm_lockstepGen_recent_certified_history_agreement_two_readings := by
+  intro n hn rosterGen Sig sk pk ops registry rented Stolen honestSigned now now' Δ G Formed R T hP cl cl' g g' c hc c' hc' s₁ s₁' srest srest' sTip sTip' hTipS hTipS' hLink hLinks hDense hLockS hSigned hLink' hLinks' hDense' hLockS' hSigned' hRecent hRecent' k hDeep hDeep'
+  have hRec : min now now' ≤ sTip.slot + Δ := le_trans (Nat.min_le_left now now') hRecent
+  have hRec' : min now now' ≤ sTip'.slot + Δ := le_trans (Nat.min_le_right now now') hRecent'
+  exact lockstepGen_recent_certified_history_agreement hn hP hc hc' hTipS hTipS' hLink hLinks hDense hLockS hSigned hLink' hLinks' hDense' hLockS' hSigned' hRec hRec' hDeep hDeep'
+
+theorem sched_recent_certified_history_agreement_horizon_two_readings :
+    MoltPaper.thm_sched_recent_certified_history_agreement_horizon_two_readings := by
+  intro n hn schedule Sig sk pk ops registry rented Stolen honestSigned now now' Δ G Formed hUnf hHash H hBudget cl cl' c hc c' hc' s₁ s₁' srest srest' sTip sTip' hTipS hTipS' hLink hLinks hDense hPinS hSigned hLink' hLinks' hDense' hPinS' hSigned' hRecent hRecent' hH hH' k hDeep hDeep'
+  have hRec : min now now' ≤ sTip.slot + Δ := le_trans (Nat.min_le_left now now') hRecent
+  have hRec' : min now now' ≤ sTip'.slot + Δ := le_trans (Nat.min_le_right now now') hRecent'
+  exact sched_recent_certified_history_agreement_horizon hn hUnf hHash hBudget hc hc' hTipS hTipS' hLink hLinks hDense hPinS hSigned hLink' hLinks' hDense' hPinS' hSigned' hRec hRec' hH hH' hDeep hDeep'
 
 end MoltPetit.Model

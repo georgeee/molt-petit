@@ -161,4 +161,11 @@ theorem reference_eq_model : thm_reference_eq_model :=
 theorem exposure_certified_agreement_ever_on : thm_exposure_certified_agreement_ever_on :=
   @MoltPetit.Model.exposure_certified_agreement_ever_on
 
+theorem lockstepGen_recent_certified_history_agreement_two_readings :
+    thm_lockstepGen_recent_certified_history_agreement_two_readings :=
+  @MoltPetit.Model.lockstepGen_recent_certified_history_agreement_two_readings
+theorem sched_recent_certified_history_agreement_horizon_two_readings :
+    thm_sched_recent_certified_history_agreement_horizon_two_readings :=
+  @MoltPetit.Model.sched_recent_certified_history_agreement_horizon_two_readings
+
 end MoltPaper

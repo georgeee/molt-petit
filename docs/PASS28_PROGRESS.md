@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 4. lockstepGen_recent_certified_history_agreement_two_readings and sched_recent_certified_history_agreement_horizon_two_readings
+In progress: (none)
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -30,7 +30,7 @@ In progress: 4. lockstepGen_recent_certified_history_agreement_two_readings and 
 - [x] 3. **`exposure_certified_agreement_ever_on`**. Copy the proof of `exposure_certified_agreement_on`. Find it with `grep -rn "exposure_certified_agreement_on" MoltPetit/ Paper/`.
   - Replace the timed-budget argument with the one `exposure_agreement_ever_on` uses (`ExposureBoundedEver`, no clock).
   - The history and certificate plumbing is identical.
-- [ ] 4. **`lockstepGen_recent_certified_history_agreement_two_readings`** and **`sched_recent_certified_history_agreement_horizon_two_readings`**.
+- [x] 4. **`lockstepGen_recent_certified_history_agreement_two_readings`** and **`sched_recent_certified_history_agreement_horizon_two_readings`**.
   - Apply the one-reading theorem at `now₀ := min now now'`.
   - The recency hypotheses follow from `min_le_left` and `min_le_right`.
 - [ ] 5. **`valid_chain_be_complete`** (`Rust/Deployed.lean`). Prove the converse of `valid_chain_be_validChain`, in the same file and structure.
