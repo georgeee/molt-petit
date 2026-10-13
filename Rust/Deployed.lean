@@ -954,4 +954,13 @@ lemma entrySlots_cert_next_tail_bound {st : CertStateG U64} {b : Block} {t' : Ta
       simp [entrySlots, htl]
     · exact hb
 
+
+lemma getElem?_append_head {α : Type} (A : List α) (b : α) (B : List α) :
+    (A ++ b :: B)[A.length]? = some b := by
+  induction A with
+  | nil => rfl
+  | cons a A' ih =>
+    simp only [List.cons_append, List.length_cons]
+    exact ih
+
 end Rust
