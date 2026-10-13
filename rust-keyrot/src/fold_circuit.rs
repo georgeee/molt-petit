@@ -21,7 +21,8 @@
 //! The block id is computed in-circuit via Poseidon hash from the block's
 //! fields: slot, height, constant 1 for has_prev, the four prev limbs, four
 //! contents_hash witness targets, and the key_index target, with each u64
-//! field split into 32-bit halves (lo then hi) via `split_low_high(t, 32, 64)`.
+//! field split into 32-bit halves (lo then hi) via `split_low_high(t, 32, 64)`
+//! and constrained to be canonical (if hi == 2^32 - 1 then lo == 0).
 //! Connecting the computed digest to the block id wire ensures that what the
 //! signature signs is bound to the key version wire used in the step and
 //! registry lookup.
@@ -460,21 +461,26 @@ impl FoldProver {
             for x in [&bg.slot, &bg.height, &ki] {
                 bl.range_check(MpCircuit::target(x), CMP_BITS);
             }
-            let split = |bl: &mut CircuitBuilder<F, D>, t: Target| -> [Target; 2] {
+            let split_canonical = |bl: &mut CircuitBuilder<F, D>, t: Target| -> [Target; 2] {
                 let (lo, hi) = bl.split_low_high(t, 32, 64);
+                let max_u32 = bl.constant(F::from_canonical_u64(0xffff_ffff));
+                let is_max = bl.is_equal(hi, max_u32);
+                let bad = bl.mul(is_max.target, lo);
+                let zero = bl.zero();
+                bl.connect(bad, zero);
                 [lo, hi]
             };
             let mut hash_targets = Vec::with_capacity(23);
-            hash_targets.extend_from_slice(&split(&mut bl, MpCircuit::target(&bg.slot)));
-            hash_targets.extend_from_slice(&split(&mut bl, MpCircuit::target(&bg.height)));
+            hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(&bg.slot)));
+            hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(&bg.height)));
             hash_targets.push(bl.one());
             for limb in [&bg.prev.a, &bg.prev.b, &bg.prev.c, &bg.prev.d] {
-                hash_targets.extend_from_slice(&split(&mut bl, MpCircuit::target(limb)));
+                hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(limb)));
             }
             for limb in &ch {
-                hash_targets.extend_from_slice(&split(&mut bl, MpCircuit::target(limb)));
+                hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(limb)));
             }
-            hash_targets.extend_from_slice(&split(&mut bl, MpCircuit::target(&ki)));
+            hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(&ki)));
 
             let computed_id = bl.hash_n_to_hash_no_pad::<PoseidonHash>(hash_targets);
             bl.connect(computed_id.elements[0], MpCircuit::target(&bg.id.a));
