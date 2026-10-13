@@ -747,4 +747,165 @@ theorem fold_anchors_ok_be_complete {all rest : TailG U64} {tip_slot slot n q : 
       rw [hu_val']
       exact hd
 
+
+theorem cert_step_core_be_complete {n q : U64} {st : CertStateG U64} {b : Block}
+    {cl : MoltPetit.Model.CertClaim}
+    (hn : 1 ≤ n.val) (hn_bound : n.val < 2 ^ 62)
+    (hq : quorum n = ok q)
+    (hrep : TailRepr n.val st cl)
+    (htip_h : st.tip_height.val < 2 ^ 62)
+    (htip_s : st.tip_slot.val < 2 ^ 62)
+    (hb_h : b.height.val < 2 ^ 62)
+    (hb_s : b.slot.val < 2 ^ 62)
+    (hrest_bound : ∀ s ∈ entrySlots st.tail, s < 2 ^ 62)
+    (hchild_h : (toModelBlock b).height = cl.tipHeight + 1)
+    (hchild_s : cl.tipSlot < (toModelBlock b).slot)
+    (hchild_prev : (toModelBlock b).prev = some cl.tipId)
+    (hdense : ∀ u : Nat, cl.tipSlot + 2 ≤ u + n.val → u + n.val ≤ (toModelBlock b).slot + 1 →
+      q.val ≤ MoltPetit.Model.windowCount (cl.tail ++ [toModelBlock b]) u n.val) :
+    cert_step_core_be UBK () n q st (toBlockG b) = ok true := by
+  have hsucc_ok : st.tip_height.val + (1#u64 : U64).val < 2 ^ 64 := by
+    have : (1#u64 : U64).val = 1 := rfl
+    omega
+  obtain ⟨succ, hsucc_eq, hsucc_val⟩ := u64_add_ok hsucc_ok
+  have hh_eq : b.height = succ := by
+    apply UScalar.val_eq_imp
+    rw [hsucc_val]
+    have : (1#u64 : U64).val = 1 := rfl
+    rw [this]
+    dsimp [toModelBlock] at hchild_h
+    rw [hchild_h, hrep.tip_height]
+  have hh_ok : decide (b.height = succ) = true := decide_eq_true hh_eq
+  have hslot_lt : decide (st.tip_slot < b.slot) = true := by
+    apply decide_eq_true
+    dsimp [toModelBlock] at hchild_s
+    have : st.tip_slot.val < b.slot.val := by
+      rw [hrep.tip_slot]
+      exact hchild_s
+    scalar_tac
+  obtain ⟨p, hp⟩ : ∃ p, b.prev = some p := by
+    cases hp : b.prev with
+    | none =>
+      dsimp [toModelBlock] at hchild_prev
+      rw [hp] at hchild_prev
+      contradiction
+    | some p => exact ⟨p, rfl⟩
+  dsimp [toModelBlock] at hchild_prev
+  rw [hp] at hchild_prev
+  injection hchild_prev with hp_eq
+  obtain ⟨h_tip, hst_id, hhash_id⟩ := hrep.tip_id
+  have hp_hash : p = h_tip := by
+    apply hashToNat_inj
+    rw [hp_eq, hhash_id]
+  have hprev_g : (toBlockG b).prev = toHashG h_tip := by
+    dsimp [toBlockG]
+    rw [hp, hp_hash]
+  have hhas_prev : (toBlockG b).has_prev = true := by
+    dsimp [toBlockG]; rw [hp]; rfl
+  have ht2_ok : (1#u64 : U64).val + (1#u64 : U64).val < 2 ^ 64 := by decide
+  obtain ⟨t2, ht2_eq, ht2_val⟩ := u64_add_ok ht2_ok
+  have hts2_ok : st.tip_slot.val + t2.val < 2 ^ 64 := by
+    have : t2.val = 2 := by rw [ht2_val]; rfl
+    omega
+  obtain ⟨ts2, hts2_eq, hts2_val⟩ := u64_add_ok hts2_ok
+  obtain ⟨lo, hlo_eq, hlo_val⟩ := ubk_monus ts2 n
+  have hts2_val' : ts2.val = cl.tipSlot + 2 := by
+    have : t2.val = 2 := by rw [ht2_val]; rfl
+    rw [hts2_val, this, hrep.tip_slot]
+  have hlo_val' : lo.val = cl.tipSlot + 2 - n.val := by
+    rw [hlo_val, hts2_val']
+  have hlo_n : lo.val + n.val < 2 ^ 64 := by
+    rw [hlo_val']
+    omega
+  have hts : st.tip_slot.val + 2 < 2 ^ 64 := by omega
+  have hbs : (toBlockG b).slot.val + 1 < 2 ^ 64 := by
+    dsimp [toBlockG]; omega
+  have hlen : ∀ u, ((presentSlots st.tail).filter (fun s => u ≤ s ∧ s < u + n.val)).length + 1 < 2 ^ 64 := by
+    intro u
+    have hfl : ((presentSlots st.tail).filter (fun s => u ≤ s ∧ s < u + n.val)).length ≤ (entrySlots st.tail).length := by
+      have h1 := List.length_filter_le (fun s => u ≤ s ∧ s < u + n.val) (presentSlots st.tail)
+      have h2 : (presentSlots st.tail).length ≤ (entrySlots st.tail).length := by
+        induction st.tail with
+        | TNil => rfl
+        | TCons f s tl ih =>
+          dsimp [presentSlots, entrySlots]
+          split <;> (try simp [ih]) <;> omega
+      omega
+    rw [hrep.tail_len] at hfl
+    omega
+  have hbase := fold_window_ok_be_complete (tail := st.tail) (q := q) hlo_n hts hbs (hlen lo.val) ?_
+  · have hanchors := fold_anchors_ok_be_complete (all := st.tail) (rest := st.tail) (tip_slot := st.tip_slot)
+      (slot := (toBlockG b).slot) (n := n) (q := q) hrest_bound hts hbs hn_bound hlen ?_
+    · dsimp [cert_step_core_be, UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.one, U64Backend.Insts.Molt_petitBackendU64Bool.add]
+      simp only [bind_tc_ok]
+      rw [hsucc_eq]
+      simp only [bind_tc_ok]
+      dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.eq]
+      rw [hh_ok]
+      simp only [bind_tc_ok]
+      dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.lt]
+      rw [hslot_lt]
+      simp only [bind_tc_ok]
+      rw [hprev_g, hst_id]
+      rw [hashg_eq_eq, hash_eq_self]
+      simp only [bind_tc_ok]
+      dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.bool_const]
+      rw [hhas_prev]
+      simp only [bind_tc_ok]
+      dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.and]
+      rw [ht2_eq]
+      simp only [bind_tc_ok]
+      rw [hts2_eq]
+      simp only [bind_tc_ok]
+      change U64Backend.Insts.Molt_petitBackendKU64Bool.monus () ts2 n = ok lo at hlo_eq
+      rw [hlo_eq]
+      simp only [bind_tc_ok]
+      change fold_window_ok_be UB () st.tail st.tip_slot b.slot lo n q = ok true at hbase
+      change fold_anchors_ok_be UB () st.tail st.tail st.tip_slot b.slot n q = ok true at hanchors
+      rw [hbase, hanchors]
+      rfl
+    · intro s hs htip_le hu_le
+      have h1 : cl.tipSlot + 2 ≤ (s + 1) + n.val := by
+        have : st.tip_slot.val = cl.tipSlot := hrep.tip_slot
+        omega
+      have h2 : (s + 1) + n.val ≤ (toModelBlock b).slot + 1 := by
+        dsimp [toModelBlock, toBlockG]; exact hu_le
+      have hqle := hdense (s + 1) h1 h2
+      have hext := windowCount_extend_eq hrep b (u := s + 1) (by omega) n.val
+      rw [hext] at hqle
+      dsimp [toBlockG]
+      exact hqle
+  · intro htip_le hu_le
+    have h1 : cl.tipSlot + 2 ≤ lo.val + n.val := by
+      rw [hlo_val']; omega
+    have h2 : lo.val + n.val ≤ (toModelBlock b).slot + 1 := by
+      dsimp [toModelBlock, toBlockG]; exact hu_le
+    have hqle := hdense lo.val h1 h2
+    have hext := windowCount_extend_eq hrep b (u := lo.val) (by rw [hlo_val']) n.val
+    rw [hext] at hqle
+    dsimp [toBlockG]
+    exact hqle
+
+theorem cert_step_sched_be_complete {n q era : U64} {st : CertStateG U64} {b : Block}
+    (hera : 0 < era.val)
+    (hcore : cert_step_core_be UBK () n q st (toBlockG b) = ok true)
+    (hpin : b.slot.val / era.val ≤ b.key_index.val) :
+    cert_step_sched_be UBK () n q era st (toBlockG b) b.key_index = ok true := by
+  obtain ⟨gen, hgen, hgen_val⟩ := ubk_div b.slot era (by omega)
+  have hlt : decide (b.key_index < gen) = false := by
+    apply decide_eq_false
+    intro hc
+    have : b.key_index.val < gen.val := by scalar_tac
+    omega
+  dsimp [cert_step_sched_be]
+  rw [hcore]
+  simp only [bind_tc_ok]
+  change U64Backend.Insts.Molt_petitBackendKU64Bool.div () b.slot era = ok gen at hgen
+  rw [hgen]
+  simp only [bind_tc_ok]
+  dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.lt]
+  rw [hlt]
+  dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.not, U64Backend.Insts.Molt_petitBackendU64Bool.and]
+  rfl
+
 end Rust
