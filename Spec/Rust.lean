@@ -1393,4 +1393,270 @@ def validate_certified_chain_k
       else ok false
     else ok false
 
+/-- Trait declaration: [molt_petit::CryptoD]
+    Source: 'src/lib.rs', lines 1186:0-1195:1
+    Visibility: public -/
+structure CryptoD (Self : Type) where
+  CryptoInst : Crypto Self
+  block_id : Self → Std.U64 → Std.U64 → Option Hash → Hash → Std.U64
+    → Result Hash
+  cert_state : Self → Hash → Result (CertStateG Std.U64)
+  cert_floors_state : Self → Hash → Result (FloorsG Std.U64)
+  cert_gen : Self → Hash → Result Std.U64
+
+/-- [molt_petit::ids_ok]:
+    Source: 'src/lib.rs', lines 1198:0-1206:1
+    Visibility: public -/
+def ids_ok
+  {C : Type} (CryptoDInst : CryptoD C) (crypto : C) (c : Chain) :
+  Result Bool
+  := do
+  match c with
+  | Chain.Nil => ok true
+  | Chain.Cons b tl =>
+    let id ←
+      CryptoDInst.block_id crypto b.slot b.height b.prev b.contents_hash
+        b.key_index
+    let b1 ← hash_eq id b.id
+    if b1
+    then ids_ok CryptoDInst crypto tl
+    else ok false
+partial_fixpoint
+
+/-- [molt_petit::recent_ok]:
+    Source: 'src/lib.rs', lines 1209:0-1215:1
+    Visibility: public -/
+def recent_ok
+  (now : Std.U64) (delta : Std.U64) (tip : Std.U64) : Result Bool := do
+  if now <= tip
+  then ok true
+  else let i ← now - tip
+       ok (i <= delta)
+
+/-- [molt_petit::tail_of_buffer]:
+    Source: 'src/lib.rs', lines 1219:0-1240:1 -/
+def tail_of_buffer (t : TailG Std.U64) (lo : Std.U64) : Result Chain := do
+  match t with
+  | TailG.TNil => ok Chain.Nil
+  | TailG.TCons f s tl =>
+    let rest ← tail_of_buffer tl lo
+    if f = 1#u64
+    then
+      if lo <= s
+      then
+        ok (Chain.Cons
+          {
+            slot := s,
+            height := 0#u64,
+            prev := none,
+            id := { a := 0#u64, b := 0#u64, c := 0#u64, d := 0#u64 },
+            contents_hash := { a := 0#u64, b := 0#u64, c := 0#u64, d := 0#u64 },
+            key_index := 0#u64
+          } rest)
+      else ok rest
+    else ok rest
+partial_fixpoint
+
+/-- [molt_petit::claim_of_state]:
+    Source: 'src/lib.rs', lines 1243:0-1252:1
+    Visibility: public -/
+def claim_of_state
+  (n : Std.U64) (st : CertStateG Std.U64) : Result CertClaim := do
+  let lo ← suffix_lo n st.tip_slot
+  let c ← tail_of_buffer st.tail lo
+  ok
+    {
+      tip_slot := st.tip_slot,
+      tip_height := st.tip_height,
+      tip_id :=
+        {
+          a := st.tip_id.a,
+          b := st.tip_id.b,
+          c := st.tip_id.c,
+          d := st.tip_id.d
+        },
+      tail := c
+    }
+
+/-- [molt_petit::floors_of_state]:
+    Source: 'src/lib.rs', lines 1255:0-1260:1 -/
+def floors_of_state
+  (i : Std.U64) (fl : FloorsG Std.U64) : Result FloorList := do
+  match fl with
+  | FloorsG.FNil => ok FloorList.FNil
+  | FloorsG.FCons f tl =>
+    let i1 ← i + 1#u64
+    let fl1 ← floors_of_state i1 tl
+    ok (FloorList.FCons i f fl1)
+partial_fixpoint
+
+/-- [molt_petit::sched_pin_ok]:
+    Source: 'src/lib.rs', lines 1263:0-1268:1
+    Visibility: public -/
+def sched_pin_ok (era : Std.U64) (c : Chain) : Result Bool := do
+  match c with
+  | Chain.Nil => ok true
+  | Chain.Cons b tl =>
+    if era > 0#u64
+    then
+      let i ← b.slot / era
+      if i <= b.key_index
+      then sched_pin_ok era tl
+      else ok false
+    else ok false
+partial_fixpoint
+
+/-- [molt_petit::lockstep_from]:
+    Source: 'src/lib.rs', lines 1273:0-1282:1
+    Visibility: public -/
+def lockstep_from
+  (n : Std.U64) (ts : Std.U64) (g : Std.U64) (c : Chain) : Result Bool := do
+  match c with
+  | Chain.Nil => ok true
+  | Chain.Cons b tl =>
+    let i ← ts / n
+    let i1 ← b.slot / n
+    let ok1 ←
+      if g <= b.key_index
+      then if i = i1
+           then ok (g = b.key_index)
+           else ok true
+      else ok false
+    if ok1
+    then lockstep_from n b.slot b.key_index tl
+    else ok false
+partial_fixpoint
+
+/-- [molt_petit::validate_deployed]:
+    Source: 'src/lib.rs', lines 1287:0-1299:1
+    Visibility: public -/
+def validate_deployed
+  {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (now : Std.U64)
+  (delta : Std.U64) (crypto : C) (cert : Hash) (suffix : SignedChain) :
+  Result Bool
+  := do
+  let st ← CryptoDInst.cert_state crypto cert
+  let cl ← claim_of_state n st
+  let stripped ← strip_sigs suffix
+  let b ← is_nil stripped
+  let tip ← tip_slot_from cl.tip_slot stripped
+  let b1 ← CryptoDInst.CryptoInst.cert_verify crypto cert
+  if b1
+  then
+    if ¬ b
+    then
+      let b2 ← sigs_ok CryptoDInst.CryptoInst n crypto suffix
+      if b2
+      then
+        let b3 ← ids_ok CryptoDInst crypto stripped
+        if b3
+        then
+          let b4 ← validate_suffix n cl stripped
+          if b4
+          then recent_ok now delta tip
+          else ok false
+        else ok false
+      else ok false
+    else ok false
+  else ok false
+
+/-- [molt_petit::validate_deployed_k]:
+    Source: 'src/lib.rs', lines 1303:0-1309:1
+    Visibility: public -/
+def validate_deployed_k
+  {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (now : Std.U64)
+  (delta : Std.U64) (crypto : C) (cert : Hash) (suffix : SignedChain) :
+  Result Bool
+  := do
+  let fg ← CryptoDInst.cert_floors_state crypto cert
+  let fl ← floors_of_state 0#u64 fg
+  let stripped ← strip_sigs suffix
+  let b ← validate_deployed CryptoDInst n now delta crypto cert suffix
+  if b
+  then
+    let b1 ← floors_shape_ok n fl
+    if b1
+    then key_mono_from n fl stripped
+    else ok false
+  else ok false
+
+/-- [molt_petit::validate_deployed_sched]:
+    Source: 'src/lib.rs', lines 1312:0-1315:1
+    Visibility: public -/
+def validate_deployed_sched
+  {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (era : Std.U64)
+  (now : Std.U64) (delta : Std.U64) (crypto : C) (cert : Hash)
+  (suffix : SignedChain) :
+  Result Bool
+  := do
+  let stripped ← strip_sigs suffix
+  let b ← validate_deployed CryptoDInst n now delta crypto cert suffix
+  if b
+  then sched_pin_ok era stripped
+  else ok false
+
+/-- [molt_petit::validate_deployed_lock]:
+    Source: 'src/lib.rs', lines 1319:0-1324:1
+    Visibility: public -/
+def validate_deployed_lock
+  {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (now : Std.U64)
+  (delta : Std.U64) (crypto : C) (cert : Hash) (suffix : SignedChain) :
+  Result Bool
+  := do
+  let st ← CryptoDInst.cert_state crypto cert
+  let g ← CryptoDInst.cert_gen crypto cert
+  let stripped ← strip_sigs suffix
+  let b ← validate_deployed CryptoDInst n now delta crypto cert suffix
+  if b
+  then lockstep_from n st.tip_slot g stripped
+  else ok false
+
+/-- [molt_petit::produce_block_deployed]:
+    Source: 'src/lib.rs', lines 1329:0-1364:1
+    Visibility: public -/
+def produce_block_deployed
+  {C : Type} (CryptoDInst : CryptoD C) (n : Std.U64) (me : Std.U64)
+  (at_slot : Std.U64) (delta : Std.U64) (contents_hash : Hash)
+  (key_index : Std.U64) (sk : Hash) (crypto : C) (cert : Hash)
+  (suffix : SignedChain) :
+  Result CertifiedChain
+  := do
+  let i ← producer_for_slot n at_slot
+  if i != me
+  then ok CertifiedChain.Invalid
+  else
+    let csg ← CryptoDInst.cert_state crypto cert
+    let cl ← claim_of_state n csg
+    let tip_h ← signed_tip_height_from cl.tip_height suffix
+    let tip_i ← signed_tip_id_from cl.tip_id suffix
+    let i1 ← tip_h + 1#u64
+    let id ←
+      CryptoDInst.block_id crypto at_slot i1 (some tip_i) contents_hash
+        key_index
+    let sig ←
+      CryptoDInst.CryptoInst.sign crypto sk
+        {
+          slot := at_slot,
+          height := i1,
+          prev := (some tip_i),
+          id,
+          contents_hash,
+          key_index
+        }
+    let new_suffix ←
+      append_signed suffix
+        {
+          slot := at_slot,
+          height := i1,
+          prev := (some tip_i),
+          id,
+          contents_hash,
+          key_index
+        } sig
+    let b ←
+      validate_deployed CryptoDInst n at_slot delta crypto cert new_suffix
+    if b
+    then ok (CertifiedChain.CC cert new_suffix)
+    else ok CertifiedChain.Invalid
+
 end molt_petit

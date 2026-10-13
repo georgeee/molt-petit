@@ -204,3 +204,67 @@ def FoldLockOut (n q : U64) : CertStateG U64 → U64 → List Block → CertStat
       ∃ t', cert_next_tail_be UB () st.tail b.slot = ok t' ∧
         FoldLockOut n q (stepState b t') b.key_index bs stO gO
 end Rust
+
+/-! ### The deployed client (Pass 28)
+
+The predicates the deployed theorems are instantiated with. `RustFormed` is
+what `ids_ok` checks; `DSigned` is the per-block test of every deployed
+theorem; `rustOps`/`rustRegistry` present the Rust signature check as a
+model `SigOps` and versioned registry, for the mode-3 packages; `Attests*`
+say that a signed history folds from the genesis to a public state. -/
+
+open Aeneas Std Result
+namespace Rust
+open molt_petit
+
+/-- A model block is **formed** when it is the projection of a Rust block
+whose id is the deployment's hash of its other fields (`ids_ok`). -/
+def RustFormed {C} (I : CryptoD C) (crypto : C) (B : MoltPetit.Model.Block) : Prop :=
+  ∃ b : Block, toModelBlock b = B ∧
+    I.block_id crypto b.slot b.height b.prev b.contents_hash b.key_index = ok b.id
+
+/-- Signed under the slot producer's key at the stated version, and formed. -/
+def DSigned {C} (I : CryptoD C) (crypto : C) (n : U64) (B : MoltPetit.Model.Block) : Prop :=
+  RustSigned I.CryptoInst crypto n B ∧ RustFormed I crypto B
+
+/-- The Rust signature check as a model `SigOps` (signing is not used by
+any statement). -/
+noncomputable def rustOps {C} (I : Crypto C) (crypto : C) :
+    MoltPetit.Model.SigOps Hash Hash Hash :=
+  open Classical in
+  { sign := fun _ _ => ⟨0#u64, 0#u64, 0#u64, 0#u64⟩
+    verify := fun pk B sig =>
+      decide (∃ b : Block, toModelBlock b = B ∧ I.verify crypto pk b sig = ok true) }
+
+/-- The Rust key directory as a model registry: the key `key_for` returns for
+seat `i`, version `j` (an arbitrary fixed key where `key_for` returns none). -/
+noncomputable def rustRegistry {C} (I : Crypto C) (crypto : C) :
+    MoltPetit.Model.KeyRegistry Hash :=
+  open Classical in
+  fun i j =>
+    if h : ∃ key : Hash, ∃ iu ju : U64, iu.val = i ∧ ju.val = j ∧ I.key_for crypto iu ju = ok key
+    then Classical.choose h else ⟨0#u64, 0#u64, 0#u64, 0#u64⟩
+
+/-- Mode 1 (and Theorem 1): the signed, formed history `bs` folds from the
+genesis `G` to the public state `stO` with floors `out`. -/
+def AttestsK {C} (I : CryptoD C) (crypto : C) (n q : U64) (G : Block) (bs : List Block)
+    (stO : CertStateG U64) (out : FloorsG U64) : Prop :=
+  (∀ b ∈ bs, DSigned I crypto n (toModelBlock b)) ∧
+  FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) bs stO out
+
+/-- Mode 2, schedule `slot / era`. -/
+def AttestsSched {C} (I : CryptoD C) (crypto : C) (n q era : U64) (G : Block)
+    (bs : List Block) (stO : CertStateG U64) : Prop :=
+  (∀ b ∈ bs, DSigned I crypto n (toModelBlock b)) ∧
+  FoldSchedOut n q era (genesisState n.val G) bs stO
+
+/-- Mode 3, with the final generation `gO`. -/
+def AttestsLock {C} (I : CryptoD C) (crypto : C) (n q : U64) (G : Block)
+    (bs : List Block) (stO : CertStateG U64) (gO : U64) : Prop :=
+  (∀ b ∈ bs, DSigned I crypto n (toModelBlock b)) ∧
+  FoldLockOut n q (genesisState n.val G) G.key_index bs stO gO
+
+/-- The full chain a client acts on: the attested history, then the tail. -/
+def fullChain (G : Block) (bs : List Block) (tl : Chain) : MoltPetit.Model.Chain :=
+  (G :: bs).map toModelBlock ++ toModelChain tl
+end Rust

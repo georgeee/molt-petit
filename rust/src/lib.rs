@@ -1170,3 +1170,195 @@ pub fn validate_certified_chain_k<C: CryptoK>(n: u64, crypto: &C, cc: &Certified
         }
     }
 }
+
+// ===========================================================================
+// Pass 28: the deployed client.
+//
+// Everything the agreement theorems used to take as hypotheses about a client
+// is checked here by verified code: block ids are recomputed, the newest block
+// is recent on the caller's clock reading, the certificate's claim is decoded
+// from the fold certificate's public state by verified code, and each mode's
+// key-version rule is run on the tail.
+// ===========================================================================
+
+/// What a deployed client needs beyond `Crypto`: the deployment's block-id
+/// hash, and the fold certificate's public state (the proof's public inputs).
+pub trait CryptoD: Crypto {
+    /// The id the hashing layer gives a block with these other fields.
+    fn block_id(&self, slot: u64, height: u64, prev: Option<Hash>, contents_hash: &Hash, key_index: u64) -> Hash;
+    /// The claim state the fold certificate exposes.
+    fn cert_state(&self, cert: &Hash) -> CertStateG<u64>;
+    /// Mode 1: the per-producer floors it exposes, producer 0 first.
+    fn cert_floors_state(&self, cert: &Hash) -> FloorsG<u64>;
+    /// Mode 3: the tip generation it exposes.
+    fn cert_gen(&self, cert: &Hash) -> u64;
+}
+
+/// Every block's id is the deployment's hash of its other fields.
+pub fn ids_ok<C: CryptoD>(crypto: &C, c: &Chain) -> bool {
+    match c {
+        Chain::Nil => true,
+        Chain::Cons(b, tl) => {
+            let id = crypto.block_id(b.slot, b.height, b.prev, &b.contents_hash, b.key_index);
+            hash_eq(&id, &b.id) && ids_ok(crypto, tl)
+        }
+    }
+}
+
+/// The verifier rule's recency check: `now <= tip + delta`, without overflow.
+pub fn recent_ok(now: u64, delta: u64, tip: u64) -> bool {
+    if now <= tip {
+        true
+    } else {
+        now - tip <= delta
+    }
+}
+
+/// The claim's tail decoded from the buffer: one block per present entry at
+/// or above `lo`, carrying only its slot (the validator reads nothing else).
+fn tail_of_buffer(t: &TailG<u64>, lo: u64) -> Chain {
+    match t {
+        TailG::TNil => Chain::Nil,
+        TailG::TCons(f, s, tl) => {
+            let rest = tail_of_buffer(tl, lo);
+            if *f == 1 && lo <= *s {
+                let z = Hash { a: 0, b: 0, c: 0, d: 0 };
+                let nb = Block {
+                    slot: *s,
+                    height: 0,
+                    prev: None,
+                    id: z,
+                    contents_hash: z,
+                    key_index: 0,
+                };
+                Chain::Cons(nb, Box::new(rest))
+            } else {
+                rest
+            }
+        }
+    }
+}
+
+/// The claim a fold certificate's public state stands for.
+pub fn claim_of_state(n: u64, st: &CertStateG<u64>) -> CertClaim {
+    let tip_id = Hash { a: st.tip_id.a, b: st.tip_id.b, c: st.tip_id.c, d: st.tip_id.d };
+    let lo = suffix_lo(n, st.tip_slot);
+    CertClaim {
+        tip_slot: st.tip_slot,
+        tip_height: st.tip_height,
+        tip_id,
+        tail: tail_of_buffer(&st.tail, lo),
+    }
+}
+
+/// The floors of the public state as a `FloorList` from producer `i` on.
+fn floors_of_state(i: u64, fl: &FloorsG<u64>) -> FloorList {
+    match fl {
+        FloorsG::FNil => FloorList::FNil,
+        FloorsG::FCons(f, tl) => FloorList::FCons(i, *f, Box::new(floors_of_state(i + 1, tl))),
+    }
+}
+
+/// Mode 2's pin on the tail, for the schedule `slot / era`.
+pub fn sched_pin_ok(era: u64, c: &Chain) -> bool {
+    match c {
+        Chain::Nil => true,
+        Chain::Cons(b, tl) => era > 0 && b.slot / era <= b.key_index && sched_pin_ok(era, tl),
+    }
+}
+
+/// Mode 3's lockstep rule on the tail (`lockstepFrom`): from the claim's tip
+/// slot `ts` and generation `g`, no block states less than `g`, and a block in
+/// the previous block's grid window states the same version.
+pub fn lockstep_from(n: u64, ts: u64, g: u64, c: &Chain) -> bool {
+    match c {
+        Chain::Nil => true,
+        Chain::Cons(b, tl) => {
+            let same = ts / n == b.slot / n;
+            let ok = g <= b.key_index && (!same || g == b.key_index);
+            ok && lockstep_from(n, b.slot, b.key_index, tl)
+        }
+    }
+}
+
+/// The checks every mode runs: the certificate verifies, the tail is
+/// non-empty, signed, with recomputed ids, valid against the decoded claim,
+/// and its newest block is recent at `now`.
+pub fn validate_deployed<C: CryptoD>(n: u64, now: u64, delta: u64, crypto: &C, cert: &Hash, suffix: &SignedChain) -> bool {
+    let st = crypto.cert_state(cert);
+    let cl = claim_of_state(n, &st);
+    let stripped = strip_sigs(suffix);
+    let nonempty = !is_nil(&stripped);
+    let tip = tip_slot_from(cl.tip_slot, &stripped);
+    crypto.cert_verify(cert)
+        && nonempty
+        && sigs_ok(n, crypto, suffix)
+        && ids_ok(crypto, &stripped)
+        && validate_suffix(n, &cl, &stripped)
+        && recent_ok(now, delta, tip)
+}
+
+/// Mode 1: the deployed checks plus the monotone rule from the certificate's
+/// floors.
+pub fn validate_deployed_k<C: CryptoD>(n: u64, now: u64, delta: u64, crypto: &C, cert: &Hash, suffix: &SignedChain) -> bool {
+    let fl = floors_of_state(0, &crypto.cert_floors_state(cert));
+    let stripped = strip_sigs(suffix);
+    validate_deployed(n, now, delta, crypto, cert, suffix)
+        && floors_shape_ok(n, &fl)
+        && key_mono_from(n, &fl, &stripped)
+}
+
+/// Mode 2: the deployed checks plus the schedule pin on the tail.
+pub fn validate_deployed_sched<C: CryptoD>(n: u64, era: u64, now: u64, delta: u64, crypto: &C, cert: &Hash, suffix: &SignedChain) -> bool {
+    let stripped = strip_sigs(suffix);
+    validate_deployed(n, now, delta, crypto, cert, suffix) && sched_pin_ok(era, &stripped)
+}
+
+/// Mode 3: the deployed checks plus the lockstep rule on the tail, from the
+/// certificate's tip slot and generation.
+pub fn validate_deployed_lock<C: CryptoD>(n: u64, now: u64, delta: u64, crypto: &C, cert: &Hash, suffix: &SignedChain) -> bool {
+    let st = crypto.cert_state(cert);
+    let g = crypto.cert_gen(cert);
+    let stripped = strip_sigs(suffix);
+    validate_deployed(n, now, delta, crypto, cert, suffix) && lockstep_from(n, st.tip_slot, g, &stripped)
+}
+
+/// Honest production for the deployed client: only in the caller's own slot,
+/// build the next block with its id computed by the hashing layer, sign it,
+/// and ship it only if the result passes `validate_deployed` at the new slot.
+pub fn produce_block_deployed<C: CryptoD>(
+    n: u64,
+    me: u64,
+    at_slot: u64,
+    delta: u64,
+    contents_hash: Hash,
+    key_index: u64,
+    sk: Hash,
+    crypto: &C,
+    cert: Hash,
+    suffix: SignedChain,
+) -> CertifiedChain {
+    if producer_for_slot(n, at_slot) != me {
+        return CertifiedChain::Invalid;
+    }
+    let cl = claim_of_state(n, &crypto.cert_state(&cert));
+    let tip_h = signed_tip_height_from(cl.tip_height, &suffix);
+    let tip_i = signed_tip_id_from(cl.tip_id, &suffix);
+    let prev = Some(tip_i);
+    let id = crypto.block_id(at_slot, tip_h + 1, prev, &contents_hash, key_index);
+    let nb = Block {
+        slot: at_slot,
+        height: tip_h + 1,
+        prev,
+        id,
+        contents_hash,
+        key_index,
+    };
+    let sig = crypto.sign(&sk, &nb);
+    let new_suffix = append_signed(suffix, nb, sig);
+    if validate_deployed(n, at_slot, delta, crypto, &cert, &new_suffix) {
+        CertifiedChain::CC(cert, new_suffix)
+    } else {
+        CertifiedChain::Invalid
+    }
+}
