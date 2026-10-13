@@ -272,4 +272,65 @@ theorem window_dense_be_ok {c : Chain} {u n q : U64}
     · intro h; scalar_tac
   rw [hnot_lt, hw_val, hqv]
 
+theorem anchors_dense_be_complete : ∀ (all rest : Chain) (lo t n q : U64),
+    (∀ b ∈ toModelChain rest, b.slot < 2 ^ 62) →
+    (∀ b ∈ toModelChain all, b.slot < 2 ^ 62) →
+    (∀ u, MoltPetit.Model.windowCount (toModelChain all) u n.val < 2 ^ 64) →
+    t.val < 2 ^ 62 →
+    n.val < 2 ^ 62 →
+    quorum n = ok q →
+    (∀ u, lo.val ≤ u → u + n.val ≤ t.val + 1 →
+      MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain all) u n.val) →
+    anchors_dense_be UB () (toChainG all) (toChainG rest) lo t n q = ok true := by
+  intro all rest
+  induction rest with
+  | Nil =>
+    intro lo t n q _ _ _ _ _ _ _
+    simp only [toChainG_nil, anchors_dense_be, UB,
+      U64Backend.Insts.Molt_petitBackendU64Bool.bool_const]
+  | Cons b tl ih =>
+    intro lo t n q hrest_bound hall_bound hwc ht hn hq hdense
+    have hb_bound : b.slot.val < 2 ^ 62 := by
+      have : toModelBlock b ∈ toModelChain (Chain.Cons b tl) := by simp [toModelChain]
+      exact hrest_bound (toModelBlock b) this
+    have htl_bound : ∀ x ∈ toModelChain tl, x.slot < 2 ^ 62 := by
+      intro x hx
+      have : x ∈ toModelChain (Chain.Cons b tl) := by simp [toModelChain, hx]
+      exact hrest_bound x this
+    have h1_val : (1#u64 : U64).val = 1 := rfl
+    obtain ⟨u, hu, hu_val⟩ := u64_add_ok (x := b.slot) (y := 1#u64) (by rw [h1_val]; omega)
+    obtain ⟨upn, hupn, hupn_val⟩ := u64_add_ok (x := u) (y := n) (by rw [hu_val]; omega)
+    obtain ⟨t11, ht11, ht11_val⟩ := u64_add_ok (x := t) (y := 1#u64) (by rw [h1_val]; omega)
+    have hu_n_bound : u.val + n.val < 2 ^ 64 := by rw [hu_val]; omega
+    obtain ⟨d, hdense_be, hd_iff⟩ := window_dense_be_ok hu_n_bound (hwc u.val) hq
+    set cond : Bool := (!decide (u < lo)) && (!decide (t11 < upn))
+    have hok1 : (!cond || d) = true := by
+      cases hc : cond
+      · rfl
+      · dsimp [cond] at hc
+        simp only [Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not] at hc
+        obtain ⟨hlo_le_u, hupn_le_t11⟩ := hc
+        have h1_le : lo.val ≤ u.val := by scalar_tac
+        have h2_le : u.val + n.val ≤ t.val + 1 := by
+          have : upn.val ≤ t11.val := by scalar_tac
+          rw [hupn_val, ht11_val] at this
+          exact this
+        have hdense_u := hdense u.val h1_le h2_le
+        have hd_true : d = true := hd_iff.mpr hdense_u
+        subst hd_true
+        rfl
+    have hrest_ok := ih lo t n q htl_bound hall_bound hwc ht hn hq hdense
+    rw [toChainG_cons, anchors_dense_be]
+    simp only [toBlockG_slot, UB,
+      U64Backend.Insts.Molt_petitBackendU64Bool.one,
+      U64Backend.Insts.Molt_petitBackendU64Bool.add,
+      U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+      u64_backend_not,
+      u64_backend_and,
+      u64_backend_or,
+      bind_tc_ok, hu, hupn, ht11, hdense_be, hrest_ok]
+    change ok ((!cond || d) && true) = ok true
+    rw [hok1]
+    rfl
+
 end Rust
