@@ -13,29 +13,95 @@ open molt_petit
 theorem u64_add_ok {x y : U64} (h : x.val + y.val < 2 ^ 64) :
     ∃ z : U64, x + y = ok z ∧ z.val = x.val + y.val := by
   have hadd := UScalar.add_equiv x y
-  split at hadd
-  · rename_i z hz
-    exact ⟨z, hz, hadd.2.1⟩
-  · rename_i e he
+  cases hxy : x + y with
+  | ok z =>
+    rw [hxy] at hadd
+    exact ⟨z, rfl, hadd.2.1⟩
+  | fail e =>
+    rw [hxy] at hadd
     exfalso
-    exact hadd (by simp only [UScalar.inBounds]; omega)
+    exact hadd (by simp only [UScalar.inBounds, UScalarTy.numBits]; omega)
+  | div =>
+    rw [hxy] at hadd
+    exact False.elim hadd
 
 theorem hashToNat_inj {x y : molt_petit.Hash} (h : hashToNat x = hashToNat y) : x = y := by
   obtain ⟨xa, xb, xc, xd⟩ := x
   obtain ⟨ya, yb, yc, yd⟩ := y
-  have hxa := xa.val_lt
-  have hxb := xb.val_lt
-  have hxc := xc.val_lt
-  have hxd := xd.val_lt
-  have hya := ya.val_lt
-  have hyb := yb.val_lt
-  have hyc := yc.val_lt
-  have hyd := yd.val_lt
+  have hxa : xa.val < 2 ^ 64 := by scalar_tac
+  have hxb : xb.val < 2 ^ 64 := by scalar_tac
+  have hxc : xc.val < 2 ^ 64 := by scalar_tac
+  have hxd : xd.val < 2 ^ 64 := by scalar_tac
+  have hya : ya.val < 2 ^ 64 := by scalar_tac
+  have hyb : yb.val < 2 ^ 64 := by scalar_tac
+  have hyc : yc.val < 2 ^ 64 := by scalar_tac
+  have hyd : yd.val < 2 ^ 64 := by scalar_tac
   dsimp [hashToNat] at h
-  have ha : xa = ya := UScalar.eq_of_val_eq (by omega)
-  have hb : xb = yb := UScalar.eq_of_val_eq (by omega)
-  have hc : xc = yc := UScalar.eq_of_val_eq (by omega)
-  have hd : xd = yd := UScalar.eq_of_val_eq (by omega)
+  have ha : xa = ya := UScalar.val_eq_imp _ _ (by omega)
+  have hb : xb = yb := UScalar.val_eq_imp _ _ (by omega)
+  have hc : xc = yc := UScalar.val_eq_imp _ _ (by omega)
+  have hd : xd = yd := UScalar.val_eq_imp _ _ (by omega)
   rw [ha, hb, hc, hd]
+
+@[simp] theorem hash_eq_self (x : Hash) : molt_petit.hash_eq x x = ok true := by
+  unfold molt_petit.hash_eq; simp
+
+theorem genesis_ok_be_complete {b : Block}
+    (h : MoltPetit.Model.genesisOk (toModelBlock b) = true) :
+    genesis_ok_be UB () (toBlockG b) = ok true := by
+  dsimp [toModelBlock, MoltPetit.Model.genesisOk] at h
+  simp only [decide_eq_true_eq] at h
+  obtain ⟨hh, hp⟩ := h
+  have h0 : (0#u64 : U64).val = 0 := rfl
+  have hhb : b.height = 0#u64 := UScalar.val_eq_imp _ _ (by rw [h0]; exact hh)
+  cases hpv : b.prev with
+  | none =>
+    dsimp [genesis_ok_be, UB, toBlockG,
+      U64Backend.Insts.Molt_petitBackendU64Bool.zero,
+      U64Backend.Insts.Molt_petitBackendU64Bool.eq,
+      U64Backend.Insts.Molt_petitBackendU64Bool.bool_const,
+      U64Backend.Insts.Molt_petitBackendU64Bool.not,
+      U64Backend.Insts.Molt_petitBackendU64Bool.and]
+    rw [hpv]
+    dsimp
+    rw [hhb]
+    rfl
+  | some p =>
+    rw [hpv] at hp
+    simp only [Option.map_some] at hp
+    contradiction
+
+theorem child_ok_be_complete {parent child : Block}
+    (hp_bound : parent.height.val < 2 ^ 62)
+    (h : MoltPetit.Model.childOk (toModelBlock parent) (toModelBlock child) = true) :
+    child_ok_be UB () (toBlockG parent) (toBlockG child) = ok true := by
+  dsimp [toModelBlock, MoltPetit.Model.childOk] at h
+  simp only [decide_eq_true_eq] at h
+  obtain ⟨hh, hs, hp⟩ := h
+  have h1 : (1#u64 : U64).val = 1 := rfl
+  have hsucc : ∃ succ : U64, parent.height + 1#u64 = ok succ ∧ succ.val = parent.height.val + 1 :=
+    u64_add_ok (by rw [h1]; omega)
+  obtain ⟨succ, hsucc_eq, hsucc_val⟩ := hsucc
+  have hchild_h : child.height = succ := UScalar.val_eq_imp _ _ (by rw [hsucc_val]; exact hh)
+  have hlt : decide (parent.slot < child.slot) = true := decide_eq_true hs
+  cases hpv : child.prev with
+  | none =>
+    rw [hpv] at hp
+    contradiction
+  | some p =>
+    rw [hpv] at hp
+    simp only [Option.map_some, Option.some.injEq] at hp
+    have hp_eq : p = parent.id := hashToNat_inj hp
+    subst hp_eq
+    simp only [child_ok_be, UB, toBlockG,
+      U64Backend.Insts.Molt_petitBackendU64Bool.one,
+      U64Backend.Insts.Molt_petitBackendU64Bool.add,
+      U64Backend.Insts.Molt_petitBackendU64Bool.eq,
+      U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+      U64Backend.Insts.Molt_petitBackendU64Bool.bool_const,
+      U64Backend.Insts.Molt_petitBackendU64Bool.and,
+      bind_tc_ok, hsucc_eq, hchild_h, hlt, hpv]
+    simp only [hashg_eq_eq, hash_eq_self, bind_tc_ok]
+    rfl
 
 end Rust
