@@ -104,4 +104,54 @@ theorem child_ok_be_complete {parent child : Block}
     simp only [hashg_eq_eq, hash_eq_self, bind_tc_ok]
     rfl
 
+
+theorem links_from_be_complete : ∀ (parent : Block) (c : Chain),
+    parent.height.val < 2 ^ 62 →
+    (∀ b ∈ toModelChain c, b.height < 2 ^ 62) →
+    MoltPetit.Model.linksOk (toModelBlock parent :: toModelChain c) = true →
+    links_from_be UB () (toBlockG parent) (toChainG c) = ok true := by
+  intro parent c
+  induction c generalizing parent with
+  | Nil =>
+    intro _ _ _
+    simp only [toChainG_nil, links_from_be, UB,
+      U64Backend.Insts.Molt_petitBackendU64Bool.bool_const]
+  | Cons b tl ih =>
+    intro hp_bound htl_bound hOk
+    simp only [toModelChain_cons, MoltPetit.Model.linksOk, Bool.and_eq_true] at hOk
+    obtain ⟨hchild, hrest⟩ := hOk
+    have hhere := child_ok_be_complete hp_bound hchild
+    have hb_bound : b.height.val < 2 ^ 62 := by
+      have : toModelBlock b ∈ toModelChain (Chain.Cons b tl) := by simp [toModelChain]
+      have := htl_bound (toModelBlock b) this
+      exact this
+    have htl_bound' : ∀ x ∈ toModelChain tl, x.height < 2 ^ 62 := by
+      intro x hx
+      have : x ∈ toModelChain (Chain.Cons b tl) := by simp [toModelChain, hx]
+      exact htl_bound x this
+    have hih := ih b hb_bound htl_bound' hrest
+    simp only [toChainG_cons, links_from_be, UB,
+      U64Backend.Insts.Molt_petitBackendU64Bool.and,
+      bind_tc_ok, hhere, hih]
+    rfl
+
+theorem links_ok_be_complete {c : Chain}
+    (hbound : ∀ b ∈ toModelChain c, b.height < 2 ^ 62)
+    (h : MoltPetit.Model.linksOk (toModelChain c) = true) :
+    links_ok_be UB () (toChainG c) = ok true := by
+  cases c with
+  | Nil =>
+    simp only [toChainG_nil, links_ok_be, UB,
+      U64Backend.Insts.Molt_petitBackendU64Bool.bool_const]
+  | Cons g tl =>
+    simp only [toChainG_cons, links_ok_be]
+    have hg_bound : g.height.val < 2 ^ 62 := by
+      have : toModelBlock g ∈ toModelChain (Chain.Cons g tl) := by simp [toModelChain]
+      exact hbound (toModelBlock g) this
+    have htl_bound : ∀ b ∈ toModelChain tl, b.height < 2 ^ 62 := by
+      intro b hb
+      have : b ∈ toModelChain (Chain.Cons g tl) := by simp [toModelChain, hb]
+      exact hbound b this
+    exact links_from_be_complete g tl hg_bound htl_bound h
+
 end Rust
