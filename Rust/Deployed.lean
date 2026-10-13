@@ -154,4 +154,32 @@ theorem links_ok_be_complete {c : Chain}
       exact hbound b this
     exact links_from_be_complete g tl hg_bound htl_bound h
 
+
+theorem tip_slot_from_be_complete : ∀ (c : Chain) (cur : U64),
+    ∃ r : U64, tip_slot_from_be UB () cur (toChainG c) = ok r ∧
+      (match (toModelChain c).getLast? with
+       | some tip => r.val = tip.slot
+       | none => r = cur) := by
+  intro c
+  induction c with
+  | Nil =>
+    intro cur
+    refine ⟨cur, by simp [toChainG_nil, tip_slot_from_be], ?_⟩
+    simp [toModelChain]
+  | Cons b tl ih =>
+    intro cur
+    simp only [toChainG_cons, tip_slot_from_be, toBlockG_slot]
+    obtain ⟨r, hr, hval⟩ := ih b.slot
+    refine ⟨r, hr, ?_⟩
+    simp only [toModelChain_cons]
+    cases htl : toModelChain tl with
+    | nil =>
+      simp only [htl] at hval
+      subst hval
+      simp [toModelBlock]
+    | cons b' tl' =>
+      rw [htl] at hval
+      simp only [List.getLast?_cons_cons]
+      exact hval
+
 end Rust
