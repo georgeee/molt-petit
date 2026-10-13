@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 5. valid_chain_be_complete
+In progress: 6. cert_fold_sched_complete
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -33,7 +33,7 @@ In progress: 5. valid_chain_be_complete
 - [x] 4. **`lockstepGen_recent_certified_history_agreement_two_readings`** and **`sched_recent_certified_history_agreement_horizon_two_readings`**.
   - Apply the one-reading theorem at `now₀ := min now now'`.
   - The recency hypotheses follow from `min_le_left` and `min_le_right`.
-- [ ] 5. **`valid_chain_be_complete`** (`Rust/Deployed.lean`). Prove the converse of `valid_chain_be_validChain`, in the same file and structure.
+- [x] 5. **`valid_chain_be_complete`** (`Rust/Deployed.lean`). Prove the converse of `valid_chain_be_validChain`, in the same file and structure.
   - Each `_be` primitive returns `ok` (no overflow) under the bounds.
   - Its boolean result equals the model's.
   - Reuse the `*_corr` lemmas in `Rust/Equiv.lean`.

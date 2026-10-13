@@ -333,4 +333,197 @@ theorem anchors_dense_be_complete : ∀ (all rest : Chain) (lo t n q : U64),
     rw [hok1]
     rfl
 
+
+theorem matured_dense_be_complete {c : Chain} {lo t n q : U64}
+    (hbound : ∀ b ∈ toModelChain c, b.slot < 2 ^ 62)
+    (hwc : ∀ u, MoltPetit.Model.windowCount (toModelChain c) u n.val < 2 ^ 64)
+    (hlo : lo.val < 2 ^ 62)
+    (ht : t.val < 2 ^ 62)
+    (hn : n.val < 2 ^ 62)
+    (hq : quorum n = ok q)
+    (hdense : ∀ u, lo.val ≤ u → u + n.val ≤ t.val + 1 →
+      MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain c) u n.val) :
+    matured_dense_be UB () (toChainG c) lo t n q = ok true := by
+  have h1_val : (1#u64 : U64).val = 1 := rfl
+  obtain ⟨lpn, hlpn, hlpn_val⟩ := u64_add_ok (x := lo) (y := n) (by omega)
+  obtain ⟨t11, ht11, ht11_val⟩ := u64_add_ok (x := t) (y := 1#u64) (by rw [h1_val]; omega)
+  obtain ⟨d_lo, hd_lo_be, hd_lo_iff⟩ := window_dense_be_ok (u := lo) (c := c) (by omega) (hwc lo.val) hq
+  have hbase : (!(!decide (t11 < lpn)) || d_lo) = true := by
+    cases hlt : decide (t11 < lpn)
+    · simp only [Bool.not_false, Bool.true_or, decide_eq_false_iff_not] at hlt ⊢
+      have hle : lpn.val ≤ t11.val := by scalar_tac
+      rw [hlpn_val, ht11_val] at hle
+      have hd := hdense lo.val (by omega) hle
+      have hd_true : d_lo = true := hd_lo_iff.mpr hd
+      rw [hd_true]
+      rfl
+    · rfl
+  have hanch := anchors_dense_be_complete c c lo t n q hbound hbound hwc ht hn hq hdense
+  simp only [matured_dense_be, UB,
+    U64Backend.Insts.Molt_petitBackendU64Bool.one,
+    U64Backend.Insts.Molt_petitBackendU64Bool.add,
+    U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+    u64_backend_not,
+    u64_backend_or,
+    u64_backend_and,
+    bind_tc_ok, hlpn, ht11, hd_lo_be, hanch]
+  rw [hbase]
+  rfl
+
+theorem linksOk_of_isChain :
+    ∀ {ch : MoltPetit.Model.Chain}, List.IsChain (fun a b => MoltPetit.Model.childOk a b = true) ch →
+      MoltPetit.Model.linksOk ch = true
+  | [], _ => rfl
+  | [_], _ => rfl
+  | a :: b :: rest, h => by
+    rw [List.isChain_cons_cons] at h
+    rw [MoltPetit.Model.linksOk, Bool.and_eq_true]
+    exact ⟨h.1, linksOk_of_isChain h.2⟩
+
+theorem linksOk_of_validChain {ch : MoltPetit.Model.Chain}
+    (hSeq : MoltPetit.Model.SequentialHeights ch)
+    (hSlots : MoltPetit.Model.StrictSlots ch)
+    (hParent : MoltPetit.Model.ParentLinked ch) :
+    MoltPetit.Model.linksOk ch = true := by
+  apply linksOk_of_isChain
+  rw [List.isChain_iff_getElem]
+  intro i hi
+  have hi_len : i < ch.length := by omega
+  have hi1_len : i + 1 < ch.length := hi
+  set P := ch[i]
+  set B := ch[i + 1]
+  have hP_at : MoltPetit.Model.blockAt? ch i = some P := by
+    unfold MoltPetit.Model.blockAt?
+    rw [List.getElem?_eq_getElem hi_len]
+  have hB_at : MoltPetit.Model.blockAt? ch (i + 1) = some B := by
+    unfold MoltPetit.Model.blockAt?
+    rw [List.getElem?_eq_getElem hi1_len]
+  have hPh : P.height = i := hSeq hP_at
+  have hBh : B.height = i + 1 := hSeq hB_at
+  have hH : B.height = P.height + 1 := by omega
+  have hS : P.slot < B.slot := MoltPetit.Model.strictSlots_lt hSlots hP_at hB_at (by omega)
+  have hPar := hParent hB_at
+  rcases hPar with ⟨P', hP'_at, hPrev⟩
+  have hP_eq : P' = P := by
+    unfold MoltPetit.Model.blockAt? at hP_at hP'_at
+    rw [hP_at] at hP'_at
+    injection hP'_at with hP'_eq
+    exact hP'_eq.symm
+  subst hP_eq
+  rw [MoltPetit.Model.childOk_iff]
+  exact ⟨hH, hS, hPrev⟩
+
+theorem windowCount_le_length (c : MoltPetit.Model.Chain) (u n : Nat) :
+    MoltPetit.Model.windowCount c u n ≤ c.length := by
+  dsimp [MoltPetit.Model.windowCount]
+  exact List.length_filter_le _ _
+
+theorem windowCount_bound_of_validChain {n : Nat} {c : MoltPetit.Model.Chain}
+    (hbound : ∀ B ∈ c, B.height < 2 ^ 62)
+    (hSeq : MoltPetit.Model.SequentialHeights c)
+    (u : Nat) :
+    MoltPetit.Model.windowCount c u n < 2 ^ 64 := by
+  have hle := windowCount_le_length c u n
+  cases hc : c with
+  | nil =>
+    dsimp [MoltPetit.Model.windowCount]
+    omega
+  | cons g tl =>
+    obtain ⟨tip, hTip⟩ : ∃ tip, (g :: tl).getLast? = some tip := by
+      cases hL : (g :: tl).getLast? with
+      | some t => exact ⟨t, rfl⟩
+      | none => simp at hL
+    have hAt := MoltPetit.Model.blockAt_getLast hTip
+    subst hc
+    have hH := hSeq hAt
+    have hMem : tip ∈ g :: tl := List.mem_of_getLast? hTip
+    have hb := hbound tip hMem
+    omega
+
+theorem valid_chain_be_complete : MoltPaper.thm_valid_chain_be_complete := by
+  intro n q c hn hsmall hq hbound h
+  cases c with
+  | Nil =>
+    simp only [toChainG_nil, valid_chain_be,
+      U64Backend.Insts.Molt_petitBackendU64Bool.bool_const]
+  | Cons g tl =>
+    have hSeq := h.1
+    have hSlots := h.2.1
+    have hParent := h.2.2.1
+    have hDense := h.2.2.2
+    have hbound_slot : ∀ b ∈ toModelChain (Chain.Cons g tl), b.slot < 2 ^ 62 := by
+      intro b hb; exact (hbound b hb).1
+    have hbound_height : ∀ b ∈ toModelChain (Chain.Cons g tl), b.height < 2 ^ 62 := by
+      intro b hb; exact (hbound b hb).2
+    have hwc : ∀ u, MoltPetit.Model.windowCount (toModelChain (Chain.Cons g tl)) u n.val < 2 ^ 64 := by
+      intro u
+      exact windowCount_bound_of_validChain hbound_height hSeq u
+    have h0_at : MoltPetit.Model.blockAt? (toModelChain (Chain.Cons g tl)) 0 = some (toModelBlock g) := by
+      simp [toModelChain, MoltPetit.Model.blockAt?]
+    have hg_height : (toModelBlock g).height = 0 := hSeq h0_at
+    have hg_prev : (toModelBlock g).prev = none := by
+      have := hParent h0_at
+      exact this
+    have hg_ok : MoltPetit.Model.genesisOk (toModelBlock g) = true := by
+      simp [MoltPetit.Model.genesisOk, hg_height, hg_prev]
+    have hgenesis_be := genesis_ok_be_complete hg_ok
+    have hlinks_ok : MoltPetit.Model.linksOk (toModelChain (Chain.Cons g tl)) = true :=
+      linksOk_of_validChain hSeq hSlots hParent
+    have hlinks_be := links_ok_be_complete hbound_height hlinks_ok
+    obtain ⟨tip, htip_be, htip_val⟩ := tip_slot_from_be_complete tl g.slot
+    obtain ⟨tip_block, htip_block⟩ : ∃ tip_block, (toModelChain (Chain.Cons g tl)).getLast? = some tip_block := by
+      cases hL : (toModelChain (Chain.Cons g tl)).getLast? with
+      | some t => exact ⟨t, rfl⟩
+      | none => simp [toModelChain] at hL
+    have htip_eq : tip.val = tip_block.slot := by
+      simp only [toModelChain_cons] at htip_block
+      cases htl : toModelChain tl with
+      | nil =>
+        simp only [htl, List.getLast?_singleton, Option.some.injEq] at htip_block
+        subst htip_block
+        have htl_nil : tl = Chain.Nil := by
+          cases tl
+          · rfl
+          · rename_i b' tl'; exfalso; simp [toModelChain] at htl
+        subst htl_nil
+        simp only [toModelChain_nil] at htip_val
+        rw [htip_val]
+        rfl
+      | cons b' rest =>
+        rw [htl] at htip_block
+        rw [List.getLast?_cons_cons] at htip_block
+        rw [htl] at htip_val
+        rw [htip_block] at htip_val
+        exact htip_val
+    have htip_bound : tip.val < 2 ^ 62 := by
+      rw [htip_eq]
+      have hmem : tip_block ∈ toModelChain (Chain.Cons g tl) := List.mem_of_getLast? htip_block
+      exact (hbound tip_block hmem).1
+    have h0_bound : (0#u64 : U64).val < 2 ^ 62 := by
+      have : (0#u64 : U64).val = 0 := rfl
+      rw [this]; omega
+    have hhdense : ∀ u, (0#u64 : U64).val ≤ u → u + n.val ≤ tip.val + 1 →
+        MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain (Chain.Cons g tl)) u n.val := by
+      intro u _ hu
+      have hAtTip := MoltPetit.Model.blockAt_getLast htip_block
+      rw [htip_eq] at hu
+      exact hDense hAtTip u hu
+    have hdense_be := matured_dense_be_complete
+      (c := Chain.Cons g tl) (lo := 0#u64) (t := tip) (n := n) (q := q)
+      hbound_slot hwc h0_bound htip_bound hsmall hq hhdense
+    have hlinks_be' : links_ok_be UB () (ChainG.ConsG (toBlockG g) (toChainG tl)) = ok true := by
+      have : toChainG (Chain.Cons g tl) = ChainG.ConsG (toBlockG g) (toChainG tl) := rfl
+      rw [← this]
+      exact hlinks_be
+    have hdense_be' : matured_dense_be UB () (ChainG.ConsG (toBlockG g) (toChainG tl)) 0#u64 tip n q = ok true := by
+      have : toChainG (Chain.Cons g tl) = ChainG.ConsG (toBlockG g) (toChainG tl) := rfl
+      rw [← this]
+      exact hdense_be
+    rw [toChainG_cons, valid_chain_be]
+    simp only [toBlockG_slot, UB,
+      U64Backend.Insts.Molt_petitBackendU64Bool.zero,
+      u64_backend_and,
+      bind_tc_ok, hgenesis_be, hlinks_be', htip_be, hdense_be']
+    rfl
+
 end Rust
