@@ -908,4 +908,50 @@ theorem cert_step_sched_be_complete {n q era : U64} {st : CertStateG U64} {b : B
   dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.not, U64Backend.Insts.Molt_petitBackendU64Bool.and]
   rfl
 
+
+lemma entrySlots_initTail_bound {n : Nat} {slot : U64} (hslot : slot.val < 2 ^ 62) :
+    ∀ s ∈ entrySlots (initTail n slot), s < 2 ^ 62 := by
+  intro s hs
+  by_cases hn : n < 2
+  · unfold initTail at hs
+    simp [hn] at hs
+  · unfold initTail at hs
+    simp [hn] at hs
+    rw [entrySlots_padTail] at hs
+    simp only [entrySlots_cons, entrySlots_nil, List.mem_append, List.mem_replicate, List.mem_cons, List.not_mem_nil, or_false] at hs
+    rcases hs with ⟨_, rfl⟩ | rfl
+    · omega
+    · exact hslot
+
+lemma entrySlots_cert_next_tail_bound {st : CertStateG U64} {b : Block} {t' : TailG U64}
+    (hbound : ∀ s ∈ entrySlots st.tail, s < 2 ^ 62)
+    (hb : b.slot.val < 2 ^ 62)
+    (ht' : cert_next_tail_be UB () st.tail b.slot = ok t') :
+    ∀ s ∈ entrySlots (stepState b t').tail, s < 2 ^ 62 := by
+  dsimp [stepState]
+  cases htail : st.tail with
+  | TNil =>
+    have hcorr := cert_next_tail_be_corr .TNil b.slot
+    rw [htail] at ht'
+    rw [ht'] at hcorr
+    dsimp only at hcorr
+    injection hcorr with ht'_eq
+    subst ht'_eq
+    simp [entrySlots]
+  | TCons f0 s0 tl =>
+    have hcorr := cert_next_tail_be_corr (TailG.TCons f0 s0 tl) b.slot
+    rw [htail] at ht'
+    rw [ht'] at hcorr
+    dsimp only at hcorr
+    injection hcorr with ht'_eq
+    subst ht'_eq
+    rw [entrySlots_tailPush]
+    intro s hs
+    simp only [List.mem_append, List.mem_singleton] at hs
+    rcases hs with htl | rfl
+    · apply hbound
+      rw [htail]
+      simp [entrySlots, htl]
+    · exact hb
+
 end Rust
