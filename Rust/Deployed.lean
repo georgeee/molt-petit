@@ -2016,4 +2016,282 @@ theorem validate_suffix_sound_view_of_toModelChain {n : U64} {cl : molt_petit.Ce
     obtain ⟨rfl, rfl⟩ := hChain
     exact validate_suffix_sound_view hTipS h hcv
 
+/-! ## Step 11: Per-block checks and validator unfolding -/
+
+/-- Div helper: `x / y = ok z` entails non-zero divisor and integer division. -/
+theorem u64_div_ok {x y z : U64} (h : x / y = ok z) :
+    y.val ≠ 0 ∧ z.val = x.val / y.val := by
+  have hnz : y.val ≠ 0 := by
+    intro hy0
+    dsimp [HDiv.hDiv, UScalar.div] at h
+    have : y.bv = 0 := by
+      apply BitVec.eq_of_toNat_eq
+      simp [hy0]
+    simp [this] at h
+  have ⟨z', hz', hzv⟩ := UScalar.div_spec x hnz
+  rw [hz'] at h
+  injection h with h
+  subst z'
+  exact ⟨hnz, hzv⟩
+
+/-- A passing `ids_ok` makes every block of the model chain `RustFormed`. -/
+theorem ids_ok_formed {C} {I : CryptoD C} {crypto : C} :
+    ∀ (c : molt_petit.Chain),
+    molt_petit.ids_ok I crypto c = ok true →
+    ∀ B ∈ toModelChain c, RustFormed I crypto B
+  | molt_petit.Chain.Nil, h, B, hB => by
+    simp [toModelChain] at hB
+  | molt_petit.Chain.Cons b tl, h, B, hB => by
+    rw [molt_petit.ids_ok] at h
+    obtain ⟨id, hid, h⟩ := molt_petit.bind_inv h
+    obtain ⟨b1, hb1, h⟩ := molt_petit.bind_inv h
+    split at h
+    · rename_i hb1t
+      rw [hb1t] at hb1
+      have heq := hash_eq_sound hb1
+      simp only [toModelChain, toModelBlock, List.mem_cons] at hB
+      rcases hB with rfl | hBtl
+      · refine ⟨b, rfl, ?_⟩
+        rw [← heq]
+        exact hid
+      · exact ids_ok_formed tl h B hBtl
+    · simp at h
+
+/-- A passing `recent_ok` gives `now ≤ tip + delta`. -/
+theorem recent_ok_sound {now delta tip : U64}
+    (h : molt_petit.recent_ok now delta tip = ok true) :
+    now.val ≤ tip.val + delta.val := by
+  rw [molt_petit.recent_ok] at h
+  split_ifs at h with hle
+  · have hle_val : now.val ≤ tip.val := by scalar_tac
+    omega
+  · obtain ⟨i, hi, h⟩ := molt_petit.bind_inv h
+    have hsub := UScalar.sub_equiv now tip
+    rw [hi] at hsub
+    have hiv : i.val = now.val - tip.val := by omega
+    clear hsub
+    injection h with h
+    have hle_delta : i.val ≤ delta.val := of_decide_eq_true h
+    omega
+
+/-- Suffix blocks with valid signatures and ids are `DSigned`. -/
+theorem dsigned_of_sigs_ok_ids_ok {C} {I : CryptoD C} {n : U64} {crypto : C}
+    {sc : molt_petit.SignedChain} {stripped : molt_petit.Chain}
+    (hsig : molt_petit.sigs_ok I.CryptoInst n crypto sc = ok true)
+    (hstrip : molt_petit.strip_sigs sc = ok stripped)
+    (hids : molt_petit.ids_ok I crypto stripped = ok true) :
+    ∀ B ∈ toModelChain stripped, DSigned I crypto n B := by
+  intro B hB
+  exact ⟨sigs_ok_signed sc hsig hstrip B hB, ids_ok_formed stripped hids B hB⟩
+
+/-- A passing `sched_pin_ok` gives the model `schedPinned` predicate. -/
+theorem sched_pin_ok_sound {era : U64} :
+    ∀ (c : molt_petit.Chain),
+    molt_petit.sched_pin_ok era c = ok true →
+    MoltPetit.Model.schedPinned (fun s => s / era.val) (toModelChain c) = true
+  | molt_petit.Chain.Nil, _ => rfl
+  | molt_petit.Chain.Cons b tl, h => by
+    rw [molt_petit.sched_pin_ok] at h
+    split_ifs at h with hera_gt
+    · obtain ⟨i, hi, h⟩ := molt_petit.bind_inv h
+      have ⟨_, hdiv⟩ := u64_div_ok hi
+      split_ifs at h with hle
+      · have hle_val : i.val ≤ b.key_index.val := by scalar_tac
+        rw [hdiv] at hle_val
+        have hpin_b :
+            decide ((toModelBlock b).slot / era.val ≤ (toModelBlock b).keyIndex) = true := by
+          simp only [toModelBlock, decide_eq_true_eq]; exact hle_val
+        have htl := sched_pin_ok_sound tl h
+        simp only [toModelChain, MoltPetit.Model.schedPinned, List.all_cons, Bool.and_eq_true]
+        exact ⟨hpin_b, htl⟩
+      · simp at h
+    · simp at h
+
+/-- Non-empty chain passing `sched_pin_ok` entails `0 < era.val`. -/
+theorem sched_pin_ok_era {era : U64} {b : molt_petit.Block} {tl : molt_petit.Chain}
+    (h : molt_petit.sched_pin_ok era (.Cons b tl) = ok true) :
+    0 < era.val := by
+  rw [molt_petit.sched_pin_ok] at h
+  split_ifs at h with hera_gt
+  · scalar_tac
+  · simp at h
+
+/-- A passing `lockstep_from` gives the model `lockstepFrom` predicate. -/
+theorem lockstep_from_sound {n ts g : U64} :
+    ∀ (c : molt_petit.Chain),
+    molt_petit.lockstep_from n ts g c = ok true →
+    MoltPetit.Model.lockstepFrom n.val ts.val g.val (toModelChain c) = true
+  | molt_petit.Chain.Nil, _ => by
+    simp [toModelChain, MoltPetit.Model.lockstepFrom]
+  | molt_petit.Chain.Cons b tl, h => by
+    rw [molt_petit.lockstep_from] at h
+    obtain ⟨i, hi, h⟩ := molt_petit.bind_inv h
+    obtain ⟨i1, hi1, h⟩ := molt_petit.bind_inv h
+    obtain ⟨ok1, hok1, h⟩ := molt_petit.bind_inv h
+    have ⟨_, hdiv_i⟩ := u64_div_ok hi
+    have ⟨_, hdiv_i1⟩ := u64_div_ok hi1
+    split at h
+    · rename_i hok1t
+      rw [hok1t] at hok1
+      by_cases hg_le : g ≤ b.key_index
+      · rw [if_pos hg_le] at hok1
+        by_cases h_eq : i = i1
+        · rw [if_pos h_eq] at hok1
+          injection hok1 with heq
+          have hg_eq : g = b.key_index := of_decide_eq_true heq
+          have hg_val : g.val = b.key_index.val := congrArg UScalar.val hg_eq
+          have hg_le_val : g.val ≤ b.key_index.val := by scalar_tac
+          have hcond : g.val ≤ (toModelBlock b).keyIndex ∧
+              (ts.val / n.val = (toModelBlock b).slot / n.val →
+                g.val = (toModelBlock b).keyIndex) := by
+            simp only [toModelBlock]
+            exact ⟨hg_le_val, fun _ => hg_val⟩
+          simp only [toModelChain, MoltPetit.Model.lockstepFrom, Bool.and_eq_true]
+          refine ⟨decide_eq_true hcond, ?_⟩
+          exact lockstep_from_sound tl h
+        · rw [if_neg h_eq] at hok1
+          injection hok1 with heq
+          have hg_le_val : g.val ≤ b.key_index.val := by scalar_tac
+          have hcond : g.val ≤ (toModelBlock b).keyIndex ∧
+              (ts.val / n.val = (toModelBlock b).slot / n.val →
+                g.val = (toModelBlock b).keyIndex) := by
+            simp only [toModelBlock]
+            refine ⟨hg_le_val, fun hdiv_eq => ?_⟩
+            have hi_val_eq : i.val = i1.val := by rw [hdiv_i, hdiv_i1, hdiv_eq]
+            have : i = i1 := UScalar.eq_of_val_eq hi_val_eq
+            exact False.elim (h_eq this)
+          simp only [toModelChain, MoltPetit.Model.lockstepFrom, Bool.and_eq_true]
+          refine ⟨decide_eq_true hcond, ?_⟩
+          exact lockstep_from_sound tl h
+      · rw [if_neg hg_le] at hok1
+        injection hok1 with hbad
+        contradiction
+    · simp at h
+
+/-- `is_nil` returns `ok false` iff the chain is a `Cons`. -/
+theorem is_nil_false {c : molt_petit.Chain} (h : molt_petit.is_nil c = ok false) :
+    ∃ s1 tl, c = molt_petit.Chain.Cons s1 tl := by
+  cases c with
+  | Nil =>
+    rw [molt_petit.is_nil] at h
+    injection h with h
+    contradiction
+  | Cons s1 tl =>
+    exact ⟨s1, tl, rfl⟩
+
+/-- **Deployed validator decomposition**: a passing `validate_deployed` splits into:
+  - a verifying certificate state `st`
+  - a decoded claim `cl`
+  - a non-empty stripped tail `s1 :: tl`
+  - passing signatures, ids, suffix validation, and recency check against `tip`. -/
+theorem validate_deployed_sound {C} {I : CryptoD C} {n now delta : U64} {crypto : C}
+    {cert : Hash} {suffix : molt_petit.SignedChain}
+    (h : molt_petit.validate_deployed I n now delta crypto cert suffix = ok true) :
+    ∃ (st : CertStateG U64) (cl : molt_petit.CertClaim) (stripped : molt_petit.Chain)
+      (tip : U64) (s1 : molt_petit.Block) (tl : molt_petit.Chain),
+      I.cert_state crypto cert = ok st ∧
+      molt_petit.claim_of_state n st = ok cl ∧
+      molt_petit.strip_sigs suffix = ok stripped ∧
+      stripped = molt_petit.Chain.Cons s1 tl ∧
+      molt_petit.tip_slot_from cl.tip_slot stripped = ok tip ∧
+      I.CryptoInst.cert_verify crypto cert = ok true ∧
+      molt_petit.sigs_ok I.CryptoInst n crypto suffix = ok true ∧
+      molt_petit.ids_ok I crypto stripped = ok true ∧
+      molt_petit.validate_suffix n cl stripped = ok true ∧
+      molt_petit.recent_ok now delta tip = ok true := by
+  rw [molt_petit.validate_deployed] at h
+  obtain ⟨st, hst, h⟩ := molt_petit.bind_inv h
+  obtain ⟨cl, hcl, h⟩ := molt_petit.bind_inv h
+  obtain ⟨stripped, hstrip, h⟩ := molt_petit.bind_inv h
+  obtain ⟨b, hb, h⟩ := molt_petit.bind_inv h
+  obtain ⟨tip, htip, h⟩ := molt_petit.bind_inv h
+  obtain ⟨b1, hb1, h⟩ := molt_petit.bind_inv h
+  split at h
+  · rename_i hb1t; rw [hb1t] at hb1
+    split at h
+    · rename_i hbn; rw [Bool.not_eq_true] at hbn
+      have hb_val : b = false := hbn
+      rw [hb_val] at hb
+      obtain ⟨s1, tl, hcons⟩ := is_nil_false hb
+      obtain ⟨b2, hb2, h⟩ := molt_petit.bind_inv h
+      split at h
+      · rename_i hb2t; rw [hb2t] at hb2
+        obtain ⟨b3, hb3, h⟩ := molt_petit.bind_inv h
+        split at h
+        · rename_i hb3t; rw [hb3t] at hb3
+          obtain ⟨b4, hb4, h⟩ := molt_petit.bind_inv h
+          split at h
+          · rename_i hb4t; rw [hb4t] at hb4
+            exact ⟨st, cl, stripped, tip, s1, tl,
+                   hst, hcl, hstrip, hcons, htip, hb1, hb2, hb3, hb4, h⟩
+          · simp at h
+        · simp at h
+      · simp at h
+    · simp at h
+  · simp at h
+
+/-- **Mode 1 deployed validator decomposition**: splits `validate_deployed_k` into
+`validate_deployed` and the key-monotonicity checks. -/
+theorem validate_deployed_k_sound {C} {I : CryptoD C} {n now delta : U64} {crypto : C}
+    {cert : Hash} {suffix : molt_petit.SignedChain}
+    (h : molt_petit.validate_deployed_k I n now delta crypto cert suffix = ok true) :
+    molt_petit.validate_deployed I n now delta crypto cert suffix = ok true ∧
+    ∃ (fg : FloorsG U64) (fl : FloorList) (stripped : molt_petit.Chain),
+      I.cert_floors_state crypto cert = ok fg ∧
+      molt_petit.floors_of_state 0#u64 fg = ok fl ∧
+      molt_petit.strip_sigs suffix = ok stripped ∧
+      molt_petit.floors_shape_ok n fl = ok true ∧
+      molt_petit.key_mono_from n fl stripped = ok true := by
+  rw [molt_petit.validate_deployed_k] at h
+  obtain ⟨fg, hfg, h⟩ := molt_petit.bind_inv h
+  obtain ⟨fl, hfl, h⟩ := molt_petit.bind_inv h
+  obtain ⟨stripped, hstrip, h⟩ := molt_petit.bind_inv h
+  obtain ⟨b, hb, h⟩ := molt_petit.bind_inv h
+  split at h
+  · rename_i hbt; rw [hbt] at hb
+    obtain ⟨b1, hb1, h⟩ := molt_petit.bind_inv h
+    split at h
+    · rename_i hb1t; rw [hb1t] at hb1
+      exact ⟨hb, fg, fl, stripped, hfg, hfl, hstrip, hb1, h⟩
+    · simp at h
+  · simp at h
+
+/-- **Mode 2 deployed validator decomposition**: splits `validate_deployed_sched` into
+`validate_deployed` and `sched_pin_ok`. -/
+theorem validate_deployed_sched_sound {C} {I : CryptoD C} {n era now delta : U64} {crypto : C}
+    {cert : Hash} {suffix : molt_petit.SignedChain}
+    (h : molt_petit.validate_deployed_sched I n era now delta crypto cert suffix = ok true) :
+    molt_petit.validate_deployed I n now delta crypto cert suffix = ok true ∧
+    ∃ (stripped : molt_petit.Chain),
+      molt_petit.strip_sigs suffix = ok stripped ∧
+      molt_petit.sched_pin_ok era stripped = ok true := by
+  rw [molt_petit.validate_deployed_sched] at h
+  obtain ⟨stripped, hstrip, h⟩ := molt_petit.bind_inv h
+  obtain ⟨b, hb, h⟩ := molt_petit.bind_inv h
+  split at h
+  · rename_i hbt; rw [hbt] at hb
+    exact ⟨hb, stripped, hstrip, h⟩
+  · simp at h
+
+/-- **Mode 3 deployed validator decomposition**: splits `validate_deployed_lock` into
+`validate_deployed` and `lockstep_from`. -/
+theorem validate_deployed_lock_sound {C} {I : CryptoD C} {n now delta : U64} {crypto : C}
+    {cert : Hash} {suffix : molt_petit.SignedChain}
+    (h : molt_petit.validate_deployed_lock I n now delta crypto cert suffix = ok true) :
+    molt_petit.validate_deployed I n now delta crypto cert suffix = ok true ∧
+    ∃ (st : CertStateG U64) (g : U64) (stripped : molt_petit.Chain),
+      I.cert_state crypto cert = ok st ∧
+      I.cert_gen crypto cert = ok g ∧
+      molt_petit.strip_sigs suffix = ok stripped ∧
+      molt_petit.lockstep_from n st.tip_slot g stripped = ok true := by
+  rw [molt_petit.validate_deployed_lock] at h
+  obtain ⟨st, hst, h⟩ := molt_petit.bind_inv h
+  obtain ⟨g, hg, h⟩ := molt_petit.bind_inv h
+  obtain ⟨stripped, hstrip, h⟩ := molt_petit.bind_inv h
+  obtain ⟨b, hb, h⟩ := molt_petit.bind_inv h
+  split at h
+  · rename_i hbt; rw [hbt] at hb
+    exact ⟨hb, st, g, stripped, hst, hg, hstrip, h⟩
+  · simp at h
+
 end Rust

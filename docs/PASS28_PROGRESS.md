@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 11. Per-block checks.
+In progress: 12. History.
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -55,7 +55,7 @@ In progress: 11. Per-block checks.
 - [x] 10. **View transport.** Suppose `validate_suffix n cl tl = ok true` and `claimView cl₀ = claimView (toModelClaim cl)`. Then the hypotheses `hLink`, `hLinks` and `hDense` of the certificate theorems hold against `cl₀` for `toModelChain tl` (non-empty).
   - Start from `validate_suffix_sound`, which gives them against `toModelClaim cl`.
   - Transport field by field: `windowCount` reads only slots, so prove `windowCount (t₁ ++ s) u n = windowCount (t₂ ++ s) u n` when `t₁.map slot = t₂.map slot`.
-- [ ] 11. **Per-block checks.**
+- [x] 11. **Per-block checks.**
   - `ids_ok I crypto tl = ok true` gives `RustFormed` for every block of `toModelChain tl`.
   - `recent_ok now Δ tip = ok true` gives `now.val ≤ tip.val + Δ.val`.
   - `sigs_ok_signed` gives `RustSigned` (already in `Rust/Bridge.lean`).
