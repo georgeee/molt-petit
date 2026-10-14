@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 19. rust_produce_block_deployed_live.
+In progress: 19a. ids_ok_append_signed and sigs_ok_append_signed.
 
 **Rescaffold (reviewer, after step 18).** The scaffold moved; the pin is now the commit "pass28 rescaffold 3" (`git log --grep "pass28 rescaffold 3"`), and `git diff <that commit> -- Spec/ rust/ rust-keyrot/` must stay empty. What changed:
 - Block ids hash the parent block's signature. `CryptoD.block_id` gains `parent_sig : Option Hash`; `CryptoD.cert_tip_sig` is new. `ids_ok` now walks the SIGNED chain: `ids_ok I crypto ps suffix`, passing each block's signature as the next block's `ps`. `validate_deployed` starts it at `some ts` with `I.cert_tip_sig crypto cert = ok ts`. `RustFormed I crypto B` is now `∃ b ps, toModelBlock b = B ∧ I.block_id crypto b.slot b.height b.prev ps b.contents_hash b.key_index = ok b.id`.
@@ -94,15 +94,10 @@ In progress: 19. rust_produce_block_deployed_live.
   - Step 11 gives `lockstepFrom`.
   - `foldLockOut_gO` relates `gO` to the history.
 - [x] 18. **`rust_deployed_ks`**. Immediate from `hFold` and the first conjunct of `validate_deployed`.
-- [ ] 19. **`rust_produce_block_deployed_live`**. Unfold the producer.
-  - Use `signed_tip_*` and `append_signed`, as in `rust_produce_block_cert_sound` in `Rust/Results_rust.lean`.
-  - Then show each conjunct of `validate_deployed`:
-    - signature: `hSign`;
-    - id: by construction (`ids_ok` of `suffix ++ [nb]` from `hids`, threading signatures: the new block's id was computed with `parent_sig := some (signed_tip_sig_from ts suffix)`, the last signature `ids_ok` threads); `hId` gives the id;
-    - links: `htipH` and `htipS`;
-    - density: old windows from `hsuf`, new windows from `hDense`;
-    - recency: `recent_ok at_slot Δ at_slot`.
-    - overflow: `hsmall` and `hS` bound every `+` in `matured_dense` and the links check.
+- [ ] 19. **`rust_produce_block_deployed_live`**.
+  - [ ] 19a. **`ids_ok_append_signed` and `sigs_ok_append_signed`**: signature and id chains preserved across `append_signed`.
+  - [ ] 19b. **`validate_suffix_append`**: suffix links and density checks for the appended block.
+  - [ ] 19c. **`rust_produce_block_deployed_live`**: unfold `produce_block_deployed` and assemble the conjuncts.
 - [ ] 20. **`ts_deployed_agreement`** (next to `ts_timed_certified_agreement`). Reduce to `ts_timed_certified_agreement` with `Formed := TSFormed sigOps`.
   - `validateDeployed` unfolds to `validateCertifiedChain`, a non-empty suffix (`0 < lengthOfSigned`), `idsOk`, and `recentOk`.
   - `idsOk sigOps ps (toTSSigned sc) = true` gives `TSFormed sigOps B` for every `B ∈ stripSigs sc` (induct on `sc`, generalising `ps`).
