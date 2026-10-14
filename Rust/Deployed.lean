@@ -1950,4 +1950,70 @@ theorem claim_of_state_total (n : U64) (st : CertStateG U64) (h : st.tip_slot.va
   exact ⟨_, rfl⟩
 
 
+
+theorem windowCount_append_eq_of_tail_map_slot {t₁ t₂ s : List MoltPetit.Model.Block}
+    (h : t₁.map (·.slot) = t₂.map (·.slot)) (u n : Nat) :
+    MoltPetit.Model.windowCount (t₁ ++ s) u n = MoltPetit.Model.windowCount (t₂ ++ s) u n :=
+  windowCount_append_eq_of_map_slot h u n
+
+/-- **View transport for suffix validator**:
+If `validate_suffix` accepts `.Cons s1 tl` against `cl`, and `claimView cl₀ = claimView (toModelClaim cl)`,
+then the linking and density hypotheses hold against `cl₀` for `toModelBlock s1 :: toModelChain tl`. -/
+theorem validate_suffix_sound_view {n : U64} {cl : molt_petit.CertClaim}
+    {cl₀ : MoltPetit.Model.CertClaim}
+    {s1 : molt_petit.Block} {tl : molt_petit.Chain} {sTip : MoltPetit.Model.Block}
+    (hTipS : (toModelBlock s1 :: toModelChain tl).getLast? = some sTip)
+    (h : molt_petit.validate_suffix n cl (.Cons s1 tl) = ok true)
+    (hcv : MoltPetit.Model.claimView cl₀ = MoltPetit.Model.claimView (toModelClaim cl)) :
+    ((toModelBlock s1).height = cl₀.tipHeight + 1 ∧
+     cl₀.tipSlot < (toModelBlock s1).slot ∧
+     (toModelBlock s1).prev = some cl₀.tipId) ∧
+    MoltPetit.Model.linksOk (toModelBlock s1 :: toModelChain tl) = true ∧
+    (∀ u : Nat, (cl₀.tipSlot : Int) + 2 - n.val ≤ (u : Int) →
+        u + n.val ≤ sTip.slot + 1 →
+        MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
+          (cl₀.tail ++ toModelBlock s1 :: toModelChain tl) u n.val) := by
+  have h_tipId : cl₀.tipId = (toModelClaim cl).tipId := congrArg (fun v => v.1) hcv
+  have h_tipSlot : cl₀.tipSlot = (toModelClaim cl).tipSlot := congrArg (fun v => v.2.1) hcv
+  have h_tipHeight : cl₀.tipHeight = (toModelClaim cl).tipHeight := congrArg (fun v => v.2.2.1) hcv
+  have h_tail : cl₀.tail.map (·.slot) = (toModelClaim cl).tail.map (·.slot) := congrArg (fun v => v.2.2.2) hcv
+  obtain ⟨⟨hh, hs, hp⟩, hlinks, hdense⟩ := validate_suffix_sound hTipS h
+  refine ⟨⟨?_, ?_, ?_⟩, hlinks, ?_⟩
+  · rw [h_tipHeight]; exact hh
+  · rw [h_tipSlot]; exact hs
+  · rw [h_tipId]; exact hp
+  · intro u hu1 hu2
+    rw [h_tipSlot] at hu1
+    have hq_le := hdense u hu1 hu2
+    rw [windowCount_append_eq_of_map_slot h_tail]
+    exact hq_le
+
+/-- **View transport for suffix validator (general chain formulation)**:
+If `validate_suffix` accepts `tl` against `cl` where `toModelChain tl = s1 :: srest`,
+and `claimView cl₀ = claimView (toModelClaim cl)`,
+then the linking and density hypotheses hold against `cl₀` for `s1 :: srest`. -/
+theorem validate_suffix_sound_view_of_toModelChain {n : U64} {cl : molt_petit.CertClaim}
+    {cl₀ : MoltPetit.Model.CertClaim}
+    {tl : molt_petit.Chain} {s1 : MoltPetit.Model.Block} {srest : MoltPetit.Model.Chain}
+    {sTip : MoltPetit.Model.Block}
+    (hChain : toModelChain tl = s1 :: srest)
+    (hTipS : (s1 :: srest).getLast? = some sTip)
+    (h : molt_petit.validate_suffix n cl tl = ok true)
+    (hcv : MoltPetit.Model.claimView cl₀ = MoltPetit.Model.claimView (toModelClaim cl)) :
+    (s1.height = cl₀.tipHeight + 1 ∧
+     cl₀.tipSlot < s1.slot ∧
+     s1.prev = some cl₀.tipId) ∧
+    MoltPetit.Model.linksOk (s1 :: srest) = true ∧
+    (∀ u : Nat, (cl₀.tipSlot : Int) + 2 - n.val ≤ (u : Int) →
+        u + n.val ≤ sTip.slot + 1 →
+        MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
+          (cl₀.tail ++ s1 :: srest) u n.val) := by
+  cases tl with
+  | Nil =>
+    simp [toModelChain] at hChain
+  | Cons b tl' =>
+    simp only [toModelChain, List.cons.injEq] at hChain
+    obtain ⟨rfl, rfl⟩ := hChain
+    exact validate_suffix_sound_view hTipS h hcv
+
 end Rust
