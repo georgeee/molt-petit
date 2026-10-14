@@ -168,4 +168,28 @@ theorem sched_recent_certified_history_agreement_horizon_two_readings :
     thm_sched_recent_certified_history_agreement_horizon_two_readings :=
   @MoltPetit.Model.sched_recent_certified_history_agreement_horizon_two_readings
 
+
+theorem valid_chain_be_complete : thm_valid_chain_be_complete :=
+  @Rust.valid_chain_be_complete
+theorem cert_fold_k_complete : thm_cert_fold_k_complete :=
+  @Rust.cert_fold_k_complete
+theorem cert_fold_sched_complete : thm_cert_fold_sched_complete :=
+  @Rust.cert_fold_sched_complete
+theorem cert_fold_lock_complete : thm_cert_fold_lock_complete :=
+  @Rust.cert_fold_lock_complete
+theorem rust_deployed_agreement : thm_rust_deployed_agreement :=
+  @Rust.rust_deployed_agreement
+theorem rust_deployed_k_agreement : thm_rust_deployed_k_agreement :=
+  @Rust.rust_deployed_k_agreement
+theorem rust_deployed_sched_agreement : thm_rust_deployed_sched_agreement :=
+  @Rust.rust_deployed_sched_agreement
+theorem rust_deployed_lock_agreement : thm_rust_deployed_lock_agreement :=
+  @Rust.rust_deployed_lock_agreement
+theorem rust_deployed_ks : thm_rust_deployed_ks :=
+  @Rust.rust_deployed_ks
+theorem rust_produce_block_deployed_live : thm_rust_produce_block_deployed_live :=
+  @Rust.rust_produce_block_deployed_live
+theorem ts_deployed_agreement : thm_ts_deployed_agreement :=
+  @MoltPetit.Model.ts_deployed_agreement
+
 end MoltPaper
