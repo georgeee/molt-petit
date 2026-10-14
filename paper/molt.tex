@@ -703,14 +703,14 @@ to each step (Section~\ref{sec:rotation}).
 The prototype's fold certificate (Section~\ref{sec:impl}) runs one
 verified step per block, and the step is proved to build exactly these
 claims (\code{cert\_fold\_k\_sound}, \code{cert\_fold\_sched\_sound},
-\code{cert\_fold\_lock\_sound}). Given the circuit's knowledge soundness,
-that its gadgets compute what the verified code computes, and that the
-circuit routes each witness as the fold relation says, a verifying
-certificate's decoded claim agrees in view (its tip and its tail's
-slots) with a claim the derivation reaches (\code{cert\_fold\_k\_client}
-and its mode-2 and mode-3 twins). The agreement theorems take the
-derivation of the decoded claim itself, and no stated theorem composes
-the two, so for them this assumption stands in every mode.
+\code{cert\_fold\_lock\_sound}). For the deployed Rust client the two
+are composed (Section~\ref{sec:impl}): its theorems hold for every
+history that folds to the certificate's public state, and knowledge
+soundness supplies one (\code{rust\_deployed\_ks}). For that client the
+assumption becomes the circuit's knowledge soundness, that its gadgets
+compute what the verified code computes, and that it routes each
+witness as the fold relation says. The model theorems and the
+TypeScript client take it as stated.
 
 The assumption does not posit a valid chain behind the certificate: a
 proved lemma rebuilds it from the steps (\code{groundedCert\_history}
@@ -759,12 +759,16 @@ is counted slot by slot: rented slots plus stolen key versions that are
 still live. Mode 3 and the untimed mode 2 theorems face it.
 
 \paragraph{How far each result reaches.} Every result is a Lean theorem
-about the model. Theorem~\ref{thm:lc} is also carried to both
-implementations (Section~\ref{sec:impl}):
-\code{rust\_timed\_certified\_agreement} and
-\code{ts\_timed\_certified\_agreement}. It needs no key-version rule, and
-the validator it is proved for (\code{validate\_certified\_chain}) runs
-none. The other results are, today, proved for the model only.
+about the model. Theorem~\ref{thm:lc} and its mode-1, mode-2 and mode-3
+forms are also proved for the deployed Rust client, from the certificate
+it verifies to the blocks it accepts
+(\code{rust\_deployed\_agreement}, \code{rust\_deployed\_k\_agreement},
+\code{rust\_deployed\_sched\_agreement},
+\code{rust\_deployed\_lock\_agreement}; Section~\ref{sec:impl}), and
+Theorem~\ref{thm:lc} for the TypeScript client
+(\code{ts\_deployed\_agreement}). Those clients recompute block ids and
+check recency themselves. The other results are proved for the model
+only.
 
 \subsection{Light-client safety}
 \label{sec:lc}
@@ -819,8 +823,8 @@ slots after a window counts against it, however long ago it happened.
 Under that cumulative budget (\code{ExposureBoundedEver}) agreement holds
 with no assumption on clocks, for full chains whose non-genesis blocks
 are admissible and exist by time $R$
-(\code{exposure\_agreement\_ever\_on}). We have not proved its
-certificate form. The lookback lets a signer that was compromised and
+(\code{exposure\_agreement\_ever\_on}), and for a certificate plus a
+tail (\code{exposure\_certified\_agreement\_ever\_on}). The lookback lets a signer that was compromised and
 then cleaned up stop counting against later windows; the honest clock
 bound is its price.
 
@@ -914,7 +918,10 @@ verifies; Theorem~\ref{thm:lc}'s exposure model counts producers, not
 versions (\code{badSched\_single\_key\_safe\_not\_enough} is a sanity
 check exhibiting such an instance). The untimed theorems have no clock
 model: they read the recency check at one $\mathit{now}$, shared by both
-clients.
+clients. Their two-reading forms let each client check at its own
+$\mathit{now}$, with the budget read at the earlier one
+(\code{sched\_recent\_certified\_history\_agreement\_horizon\_two\_readings},
+\code{lockstepGen\_recent\_certified\_history\_agreement\_two\_readings}).
 
 \subsubsection*{Mode 1: rotate when you want}
 
@@ -927,12 +934,11 @@ monotone rule, for any $\Delta_{\mathrm{conf}}$. At a certificate
 boundary the verifier has no history, so the certificate must supply
 each validator's floor. The fold certificate does: each step checks the
 block's version against its producer's floor, raises it, and exposes all
-$n$ floors. The Rust client \code{validate\_certified\_chain\_k} checks
-the tail against them (\code{validate\_suffix\_k\_sound}). Given that
-the deployment decodes the floors from the certificate's public inputs,
-as \code{cert\_fold\_k\_client} assumes, they are the floors of a
-history the certificate attests, so a certificate client does enforce
-that a retired key is dead. With $\Delta_{\mathrm{conf}} = n$, a rotation
+$n$ floors. The deployed Rust client decodes them from the
+certificate's public inputs and checks the tail against them, and both
+full chains then satisfy the monotone rule
+(\code{rust\_deployed\_k\_agreement}), so a certificate client does
+enforce that a retired key is dead. With $\Delta_{\mathrm{conf}} = n$, a rotation
 takes effect in under half a minute at the prototype's settings.
 
 A validator that loses its key signs its next block under a higher
@@ -1056,8 +1062,9 @@ stretch. What you get: by Theorem~\ref{thm:sched} and the parent-id
 links (\code{same\_block\_same\_prefix}), any two accepted recent chains
 agree on everything at least $n$ below the lower tip, whatever happened
 while the wallet slept. The prototype's fold certificate checks the pin
-at each step, and a verifying one yields a claim in view
-(\code{cert\_fold\_sched\_client}).
+at each step, the deployed Rust client checks it on the tail, and
+Theorem~\ref{thm:sched} holds for that client end to end
+(\code{rust\_deployed\_sched\_agreement}).
 
 \subsubsection*{Mode 3: rotate together, at any time}
 
@@ -1154,16 +1161,14 @@ chains, rebuilt history plus a non-empty tail
 certificate's counter is pinned to the roster's once its window
 completes (\code{lockstep\_cert\_gen\_pinned}). These need a certificate
 that carries the generation and checks the lockstep rule
-(\code{GroundedCertLock}); the prototype's fold certificate does, and a
-verifying one's claim agrees with such a claim in view
-(\code{cert\_fold\_lock\_client}).
+(\code{GroundedCertLock}); the prototype's fold certificate does, the
+deployed Rust client checks the lockstep rule on the tail, and
+Theorem~\ref{thm:lock-gen} holds for that client end to end, at depth
+$2n$ in the full chains (\code{rust\_deployed\_lock\_agreement}).
 
 \paragraph{The limits of this subsection.} Mode 1 has no guarantee under
-theft. The mode-2 and mode-3 results are about the model: no Rust or
-TypeScript validator runs the schedule pin or the lockstep rule on the
-tail (the certificate theorems take them as hypotheses), and no
-agreement theorem about the Rust validator uses mode 1's monotone check.
-Mode 3 and the untimed mode 2 rest on
+theft. The TypeScript client runs no mode's key rule; the Rust client
+runs all three. Mode 3 and the untimed mode 2 rest on
 Assumption~\ref{ass:rotation-honest}; mode 2's theft theorem does not.
 
 \subsection{Liveness, and the slot time}
@@ -1216,24 +1221,39 @@ Aeneas translates to Lean~4.
 
 \emph{The native validator.} Its translation is proved sound against the
 model: if the code accepts a chain, the chain is valid in the model
-(\code{rust\_valid\_chain\_sound} and companions). Soundness carries
-Theorem~\ref{thm:lc} to the shipped code
-(\code{rust\_timed\_certified\_agreement}). Id formation is checked by
-the hashing layer, not the validator, so this theorem and its TypeScript
-twin take it as an assumption on the blocks shown (\code{hFormedS}). The
-Rust theorem allows two crypto contexts if every signature the second
-accepts the first does too (\code{hCryptoSig}); one context, as in a
-deployment, meets it trivially. Mode 1's monotone check is bridged on a
-full chain (\code{rust\_valid\_chain\_k\_sound}) and at a certificate
-boundary, relative to the floors it is given
-(\code{validate\_suffix\_k\_sound}; TypeScript
-\code{ts\_validateSuffixK\_sound}).
+(\code{rust\_valid\_chain\_sound} and companions; mode~1:
+\code{rust\_valid\_chain\_k\_sound}).
+
+\emph{The deployed client.} \code{validate\_deployed} is what a light
+client runs. It verifies the certificate and decodes its claim from the
+certificate's public state. It checks the tail's signatures, its links
+and the density of the windows it completes. It recomputes every tail
+block's id, with each parent's signature threaded in, starting from the
+certificate's tip signature. And it checks that the newest block is at
+most $\Delta$ slots old at the client's clock reading. Its per-mode forms
+add the mode's key rule on the tail: the floors decoded from the
+certificate (mode~1), the schedule pin (mode~2), or the lockstep rule
+(mode~3). The theorems of Section~\ref{sec:results} hold for it with
+nothing assumed about the claim, the ids, the recency or the tail's key
+rule. The clock hypothesis is $R \le \mathit{now} + \delta$ with
+$\Delta + \delta \le \varphi$
+(\code{rust\_deployed\_agreement} and its three twins). Its producer,
+\code{produce\_block\_deployed}, extends a tail the client accepts to
+one it accepts again, given the slot is its own and after the tip, and
+every window the new block completes is dense (\code{rust\_produce\_block\_deployed\_live}). This needs size
+bounds: slots, the roster, and the decoded tail plus the suffix below
+$2^{62}$, and a decoded tail no newer than its tip. Each excludes a
+64-bit overflow, which the checked arithmetic turns into a rejection.
+\code{FoldCrypto} (\code{rust-keyrot/src/fold\_crypto.rs}) instantiates
+the client's cryptography with the fold certificate and XMSS, and a
+test runs the client end to end on a folded chain.
 
 \emph{The circuits.} The same source has a validator generic over its
 backend (\code{valid\_chain\_be}); over plonky2 it checks a whole chain
 at once. Its translation is proved sound for the links-and-density rule,
-for every $n < 2^{63} - 1$ (\code{valid\_chain\_be\_validChain}); the
-converse is not proved.
+for every $n < 2^{63} - 1$ (\code{valid\_chain\_be\_validChain}), and,
+conversely, it accepts every chain the model accepts with slots and
+heights below $2^{62}$ (\code{valid\_chain\_be\_complete}).
 
 The \emph{fold certificate} (\code{rust-keyrot/src/fold\_circuit.rs}) is
 the one a client relies on. Each proof verifies the previous proof of the
@@ -1241,27 +1261,31 @@ same circuit, or starts from the genesis, a circuit constant, and runs
 one step from the verified crate on one block (\code{cert\_step\_k\_be}
 and its twins): links, the windows the block completes (against a
 buffer of the last $n-1$ blocks' slots), and the mode's key rule. It
-also verifies the block's signature subproof, requires its message to be
-the block id and its key to be the registry's key for the producer at
-the stated version, under a committed registry root. The verified step
-takes the key version as an input separate from the block; that the
-circuit routes the signature's version into it, as the fold relation
-(\code{FoldK} and its twins) says, is assumed. The public inputs are the
-fold state: tip, slot buffer, and floors (mode 1) or generation
-(mode 3). The steps are proved to build exactly the model's certificate
-claims (\code{cert\_fold\_k\_sound} and twins), and a verifying
-certificate's decoded claim agrees with one in view
-(\code{cert\_fold\_k\_client} and twins; see
-Assumption~\ref{ass:cert}). Tests check the circuit's state against the
-native fold at every block, and that a rejected block, a forged previous
-state, and a signature by the wrong key or over the wrong block have no
-proof. Gadget faithfulness (including the step's witnessed division),
+computes the block's id itself, as a Poseidon hash of the block's fields
+and the previous state's tip signature, with every 64-bit value split
+into canonical 32-bit halves. It verifies the block's signature
+subproof. The subproof's message must be that id. Its key must be the
+registry's key for the producer at the version the id hashes, under a
+committed registry root. The digest of the signature it verified becomes
+the new tip signature. The public inputs are the fold state: tip, tip
+signature, slot buffer, and floors (mode 1) or generation (mode 3). The
+steps are proved to build exactly the model's certificate claims
+(\code{cert\_fold\_k\_sound} and twins), and to accept every chain the
+mode's full-chain rule accepts, within the same size bounds
+(\code{cert\_fold\_k\_complete}, \code{cert\_fold\_sched\_complete},
+\code{cert\_fold\_lock\_complete}). Tests check the circuit's state
+against the native fold at every block. They also check that a rejected
+block, a forged previous state, a wrong id, parent signature or key
+version, and a signature by the wrong key or over the wrong block have
+no proof. Gadget faithfulness (including the step's witnessed division),
 the circuit's routing, and the proof system's knowledge soundness are
 the remaining trust assumptions of the fold certificate.
 
 \emph{A TypeScript twin.} \code{moltPetit.ts} reaches Lean through an
 independent compiler, Thales, with its own soundness bridge
-(\code{ts\_timed\_certified\_agreement}). The vendored output corrects
+(\code{ts\_timed\_certified\_agreement}). Its deployed form
+\code{validateDeployed} recomputes ids and checks recency like the Rust
+client, but checks no key rule (\code{ts\_deployed\_agreement}). The vendored output corrects
 recorded compiler bugs by hand (\code{tools/thales-reemission/}); those
 corrections are part of the trusted base. One, a match binder that
 shadowed the producer's \code{contentsHash} parameter, was found only by
@@ -1275,8 +1299,7 @@ abstract.
 (Charon + Aeneas, Thales with its hand corrections) and the circuit
 gadgets, with the Rust crate built with overflow checks on, as its
 release profile sets; the node's signing loop (the once-per-slot record,
-the clock, the recency check), whose guarantees every safety theorem
-assumes; and that the named assumptions match the deployed primitives.
+the clock), whose guarantees every safety theorem assumes; and that the named assumptions match the deployed primitives.
 Cryptography enters only as theorem assumptions.
 
 \paragraph{Measurements.} The prototype (\code{rust-keyrot/}) pairs the
@@ -1399,15 +1422,13 @@ instead of a slowly settling fork-choice score.
 
 \paragraph{What is not machine-checked.} Beyond the trusted base of
 Section~\ref{sec:impl}, every unchecked fact is a named assumption: the
-deployment assumptions of Section~\ref{sec:assumptions}; id formation
-(\code{hFormedS}); honest custody per key for mode 3 and the untimed
+deployment assumptions of Section~\ref{sec:assumptions}; honest custody per key for mode 3 and the untimed
 mode 2; version independence under theft; the roster's commitment to the
-cold roots, the circuit's trust anchor; the recency check, which runs in
-the unverified node loop because the pure validators carry no clock; the
-mode-3 duties of moving together and erasure; and that a lost key
+cold roots, the circuit's trust anchor; that the clock reading handed
+to the client is the node's real clock; the mode-3 duties of moving together and erasure; and that a lost key
 exposes nothing, which rests on a signing record that survives the loss.
-\code{valid\_chain\_be\_validChain} is proved for the native 64-bit
-instantiation, for every $n < 2^{63} - 1$.
+The circuit results are proved for the native 64-bit instantiation;
+that the plonky2 gadgets compute the same is the gadget assumption.
 
 \paragraph{The long-range residual.} Exposure after a window's stretch
 does not count against it, so a patient attacker can collect late
@@ -1423,7 +1444,8 @@ keep the windowed budget and accept the contained residual.
 
 \paragraph{Artifact.} \code{lake build} re-checks every theorem cited
 here: the model, both implementation bridges, the \code{Molt} library
-with its axiom guards, and \code{Spec/} with \code{Paper/Proofs.lean}.
+with its axiom guards (its executable functions are proved equal to the
+model's, \code{reference\_eq\_model}), and \code{Spec/} with \code{Paper/Proofs.lean}.
 \code{nix flake check} re-checks that the vendored translations are
 exactly what the pinned translators produce from \code{rust/src/lib.rs}
 and \code{moltPetit.ts}, and that \code{rust-keyrot/} builds against that
