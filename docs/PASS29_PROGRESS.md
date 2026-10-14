@@ -10,7 +10,7 @@ Build one module at a time, in the background:
 
 At the scaffold, a full `lake build` fails first in `MoltPetit.TS.TimedResults` and `MoltPetit.Model.KeyStealingSchedule`. Modules downstream of these (including `Rust.Deployed`) were not reached and will show further errors once they build.
 
-In progress: 4. Signatures
+In progress: 5. Tail formedness
 
 ## Stage A: model (mode 2 without the monotone rule)
 
@@ -23,7 +23,7 @@ In progress: 4. Signatures
 
 ## Stage B: Rust deployed client (`Rust/Deployed.lean`)
 
-- [ ] 4. **Signatures.**
+- [x] 4. **Signatures.**
   - New lemma: `sigs_ok` on `SCons b s rest` gives `SigOn I.CryptoInst crypto n b s` and `sigs_ok rest`.
   - Also: `SigOn … b s → RustSigned … (toModelBlock b)`.
 - [ ] 5. **Tail formedness** (replaces `ids_ok_formed`; SPEC item 2). Assume:
