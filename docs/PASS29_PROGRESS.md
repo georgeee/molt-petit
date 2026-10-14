@@ -10,11 +10,11 @@ Build one module at a time, in the background:
 
 At the scaffold, a full `lake build` fails first in `MoltPetit.TS.TimedResults` and `MoltPetit.Model.KeyStealingSchedule`. Modules downstream of these (including `Rust.Deployed`) were not reached and will show further errors once they build.
 
-In progress: 1. MoltPetit.Model.KeyStealingSchedule
+In progress: 2. sched_liveness_produce_block
 
 ## Stage A: model (mode 2 without the monotone rule)
 
-- [ ] 1. **`MoltPetit.Model.KeyStealingSchedule`**. `validSignedChainSched` is now `sigsOk && validChain && schedPinned`, so `h.left.right : validChain … = true` directly.
+- [x] 1. **`MoltPetit.Model.KeyStealingSchedule`**. `validSignedChainSched` is now `sigsOk && validChain && schedPinned`, so `h.left.right : validChain … = true` directly.
   - Replace `validChainK_sound h.left.right` and the like by the direct fact.
   - Any argument that used `keyMonoOk` for mode 2 must be rewritten without it. Mode-2 safety rests on the schedule pin.
   - Then build every module that imports it, one at a time, and repair them the same way: `grep -rln "validSignedChainSched" MoltPetit/ Rust/ Molt/ Paper/`.
