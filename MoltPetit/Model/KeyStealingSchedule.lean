@@ -46,7 +46,7 @@ theorem validChain_of_validSignedChainSched {σ sk pk : Type} {n : Nat}
     {sc : SignedChain σ} (h : validSignedChainSched n schedule ops registry sc = true) :
     ValidChain n (stripSigs sc) := by
   rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true] at h
-  exact (validChainK_sound h.1.2).1
+  exact validChain_sound h.1.2
 
 /-- **A rotated-out key is dead (scheduled, validator side).** Every block of an
 accepted scheduled chain verifies under its **declared** registry entry, and its
