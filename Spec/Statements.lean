@@ -1652,6 +1652,7 @@ def thm_rust_produce_block_deployed_live : Prop :=
     (htipH : signed_tip_height_from cl.tip_height suffix = ok tipH)
     (hLt : tipS.val < at_slot.val)
     (hH : tipH.val + 1 < 2 ^ 64)
+    (hsmall : n.val < 2 ^ 62) (hS : at_slot.val < 2 ^ 62)
     (hSign : ∀ b : Block, ∃ key s, I.CryptoInst.key_for crypto me key_index = ok key ∧
       I.CryptoInst.sign crypto sk b = ok s ∧ I.CryptoInst.verify crypto key b s = ok true)
     (hId : ∀ s h p ps c k, ∃ id, I.block_id crypto s h p ps c k = ok id)

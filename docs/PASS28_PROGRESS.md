@@ -14,7 +14,12 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 19. rust_produce_block_deployed_live.
+In progress: 11b. ids repair.
+
+**Rescaffold (reviewer, after step 18).** The scaffold moved; the pin is now the commit "pass28 rescaffold 3" (`git log --grep "pass28 rescaffold 3"`), and `git diff <that commit> -- Spec/ rust/ rust-keyrot/` must stay empty. What changed:
+- Block ids hash the parent block's signature. `CryptoD.block_id` gains `parent_sig : Option Hash`; `CryptoD.cert_tip_sig` is new. `ids_ok` now walks the SIGNED chain: `ids_ok I crypto ps suffix`, passing each block's signature as the next block's `ps`. `validate_deployed` starts it at `some ts` with `I.cert_tip_sig crypto cert = ok ts`. `RustFormed I crypto B` is now `∃ b ps, toModelBlock b = B ∧ I.block_id crypto b.slot b.height b.prev ps b.contents_hash b.key_index = ok b.id`.
+- `thm_rust_produce_block_deployed_live` gains `hts`, the signed form of `hids`, `hId` over six arguments, and the bounds `hsmall : n.val < 2 ^ 62`, `hS : at_slot.val < 2 ^ 62` (the STOP counterexample below is resolved by these).
+- TypeScript: `validateDeployed`, `idsOk`, `recentOk` in `Spec/TS.lean`; `TSFormed` in `Spec/Model.lean`; statement `thm_ts_deployed_agreement` (step 20).
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -61,6 +66,7 @@ In progress: 19. rust_produce_block_deployed_live.
   - `sigs_ok_signed` gives `RustSigned` (already in `Rust/Bridge.lean`).
   - `sched_pin_ok` and `lockstep_from` correspond to `schedPinned (·/era)` and `lockstepFrom`.
   - Unfold `validate_deployed*` into its conjuncts.
+- [ ] 11b. **ids repair.** Re-prove `ids_ok_formed` in `Rust/Deployed.lean` for the signed `ids_ok`: `∀ ps sc tl, strip_sigs sc = ok tl → ids_ok I crypto ps sc = ok true → ∀ B ∈ toModelChain tl, RustFormed I crypto B`. Induct on `sc`, generalising `ps`; the witness for each block is the `ps` threaded to it. Then repair every use (steps 11, 13–18): `lake build` and fix each error. Change no statement.
 - [x] 12. **History.** From `AttestsK I crypto n q G bs stO out` together with `hG` and `hSigG`, derive two facts about `cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)`:
   - `GroundedCert n.val (DSigned I crypto n) (toModelBlock G) cl₀`, from `cert_fold_k_sound` (`GroundedCertK`) plus a `GroundedCertK → GroundedCert` lemma that forgets the floor;
   - `GroundedHistory … cl₀ ((G :: bs).map toModelBlock)`, by the same induction.
@@ -92,60 +98,18 @@ In progress: 19. rust_produce_block_deployed_live.
   - Use `signed_tip_*` and `append_signed`, as in `rust_produce_block_cert_sound` in `Rust/Results_rust.lean`.
   - Then show each conjunct of `validate_deployed`:
     - signature: `hSign`;
-    - id: by construction;
+    - id: by construction (`ids_ok` of `suffix ++ [nb]` from `hids`, threading signatures: the new block's id was computed with `parent_sig := some (signed_tip_sig_from ts suffix)`, the last signature `ids_ok` threads); `hId` gives the id;
     - links: `htipH` and `htipS`;
     - density: old windows from `hsuf`, new windows from `hDense`;
     - recency: `recent_ok at_slot Δ at_slot`.
-- [ ] 20. **Close out.** Aliases for every Pass 28 statement in `Paper/Proofs.lean`; `#print axioms` clean; `bash tools/check.sh` green.
+    - overflow: `hsmall` and `hS` bound every `+` in `matured_dense` and the links check.
+- [ ] 20. **`ts_deployed_agreement`** (next to `ts_timed_certified_agreement`). Reduce to `ts_timed_certified_agreement` with `Formed := TSFormed sigOps`.
+  - `validateDeployed` unfolds to `validateCertifiedChain`, a non-empty suffix (`0 < lengthOfSigned`), `idsOk`, and `recentOk`.
+  - `idsOk sigOps ps (toTSSigned sc) = true` gives `TSFormed sigOps B` for every `B ∈ stripSigs sc` (induct on `sc`, generalising `ps`).
+  - Recency: `recentOk now Δ (tipSlotFrom _ (toTSChain (stripSigs sc)))` is `now ≤ tip + Δ` with `tip` the last slot of the non-empty suffix, so `R ≤ now + δ ≤ tip + Δ + δ ≤ tip + φ` (over `Int`, then cast).
+  - Name `s₁ :: srest := stripSigs sc` from non-emptiness.
+- [ ] 21. **Close out.** Aliases for every Pass 28 statement in `Paper/Proofs.lean`; `#print axioms` clean; `bash tools/check.sh` green.
 
 STOP:
-Counterexample to pinned statement `Spec/Statements.lean:1637` (`thm_rust_produce_block_deployed_live`):
 
-The statement asserts that under honest production hypotheses, `produce_block_deployed` produces a certified chain accepted by `validate_deployed`. However, the statement does not assume an overflow bound on `at_slot` (such as `at_slot.val + 1 < 2 ^ 64`).
-
-Concrete counterexample assignment:
-- `n := 1#u64` (so `1 ≤ n.val`)
-- `me := 0#u64`
-- `at_slot := 18446744073709551615#u64` (`2^64 - 1`)
-- `Δ := 0#u64`
-- `key_index := 0#u64`
-- `contents := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
-- `sk := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
-- `cert := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
-- `suffix := SignedChain.SNil`
-- `tl := Chain.Nil` (so `strip_sigs suffix = ok tl`)
-- `C := Unit`, `crypto := ()`
-- `tipS := 18446744073709551614#u64` (`2^64 - 2`)
-- `tipH := 0#u64`
-- `st := { tip_slot := tipS, tip_height := tipH, tip_id := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩, tail := Chain.Nil }`
-- `cl := { tip_slot := tipS, tip_height := tipH, tip_id := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩, tail := Chain.Nil }`
-- `I`: a `CryptoD Unit` implementation returning `ok` for all operations (`cert_state _ _ = ok st`, `cert_verify _ _ = ok true`, `key_for _ _ _ = ok ⟨0,0,0,0⟩`, `sign _ _ _ = ok ⟨0,0,0,0⟩`, `verify _ _ _ _ = ok true`, `block_id _ _ _ _ _ _ = ok ⟨0,0,0,0⟩`).
-
-Verification of all hypotheses:
-- `hn : 1 ≤ n.val`: `1 ≤ 1` holds.
-- `hst : I.cert_state crypto cert = ok st`: holds by definition of `I`.
-- `hcl : claim_of_state n st = ok cl`: holds since `st.tail = Chain.Nil`.
-- `hcv : I.CryptoInst.cert_verify crypto cert = ok true`: holds by definition of `I`.
-- `hstr : strip_sigs suffix = ok tl`: `strip_sigs SignedChain.SNil = ok Chain.Nil`.
-- `hsig : sigs_ok I.CryptoInst n crypto suffix = ok true`: holds for `SignedChain.SNil`.
-- `hids : ids_ok I crypto tl = ok true`: holds for `Chain.Nil`.
-- `hsuf : validate_suffix n cl tl = ok true`: holds for `Chain.Nil`.
-- `hMine : producer_for_slot n at_slot = ok me`: `(2^64 - 1) % 1 = 0`, holds.
-- `htipS : tip_slot_from cl.tip_slot tl = ok tipS`: `tip_slot_from tipS Chain.Nil = ok tipS`.
-- `htipH : signed_tip_height_from cl.tip_height suffix = ok tipH`: `signed_tip_height_from tipH SignedChain.SNil = ok tipH`.
-- `hLt : tipS.val < at_slot.val`: `2^64 - 2 < 2^64 - 1` holds.
-- `hH : tipH.val + 1 < 2 ^ 64`: `0 + 1 < 2^64` holds.
-- `hSign`: holds by definition of `I`.
-- `hId`: holds by definition of `I`.
-- `hDense`: For `u` with `tipS.val + 2 ≤ u + n.val ≤ at_slot.val + 1`, we have `2^64 ≤ u + 1 ≤ 2^64`, forcing `u = 2^64 - 1 = at_slot.val`. The single block has `slot = at_slot.val`, which is in window `[u, u]`, so `windowCount = 1 ≥ quorum 1 = 1`.
-
-Failure of conclusion:
-When `produce_block_deployed` runs, it appends the new block `nb` with `nb.slot = at_slot = 18446744073709551615#u64` and validates the resulting suffix via `validate_deployed`.
-`validate_deployed` calls `validate_suffix`, which calls `matured_dense buf lo tip_slot n` where `tip_slot = nb.slot = 18446744073709551615#u64`.
-In `matured_dense`:
-```lean
-let i1 ← t + 1#u64
-```
-with `t = 18446744073709551615#u64`. Checked addition overflows `U64` and returns `Result.fail Error.integerOverflow`.
-This failure propagates up through `matured_dense`, `validate_suffix`, `validate_deployed`, and `produce_block_deployed`, so `produce_block_deployed` returns `Result.fail Error.integerOverflow` instead of `ok (CertifiedChain.CC cert suffix')`.
-Hence the conclusion does not hold.
+(Resolved by the rescaffold: the earlier counterexample at `at_slot = 2^64 - 1` is excluded by `hS`.)
