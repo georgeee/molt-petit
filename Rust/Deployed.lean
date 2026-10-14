@@ -2542,5 +2542,66 @@ lemma foldK_history_aux {n q : U64} {G : Block}
     rw [h1, h2] at hrec
     exact hrec
 
+
+lemma attestsK_history {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Block}
+    {bs : List Block} {stO : CertStateG U64} {out : FloorsG U64}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSigG : DSigned I crypto n (toModelBlock G))
+    (hA : AttestsK I crypto n q G bs stO out) :
+    let cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)
+    MoltPetit.Model.GroundedCert n.val (DSigned I crypto n) (toModelBlock G) cl₀ ∧
+    MoltPetit.Model.GroundedHistory n.val (DSigned I crypto n) (toModelBlock G) cl₀ ((G :: bs).map toModelBlock) ∧
+    MoltPetit.Model.GroundedHistoryK n.val (DSigned I crypto n) (toModelBlock G) cl₀ (floorsFun out) ((G :: bs).map toModelBlock) ∧
+    stateView n.val stO = MoltPetit.Model.claimView cl₀ := by
+  intro cl₀
+  obtain ⟨hSig, hFoldOut⟩ := hA
+  have hFold := foldKOut_foldK hFoldOut
+  have ⟨hgen, hslot0⟩ := cert_genesis_ok_be_sound hG
+  have hbase_hist : MoltPetit.Model.GroundedHistoryK n.val (DSigned I crypto n)
+      (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock))
+      (floorsFun (initFloors n.val G.key_index)) ((G :: []).map toModelBlock) := by
+    simp only [List.map_nil]
+    have hnil := modelClaimOf_nil n.val (toModelBlock G)
+    rw [hnil]
+    have hfun := floorsFun_initFloors n.val hn G.key_index
+    rw [hfun]
+    have hslot0_m : (toModelBlock G).slot = 0 := hslot0
+    have hprod0 : MoltPetit.Model.producerForSlot n.val (toModelBlock G).slot = 0 := by
+      dsimp [MoltPetit.Model.producerForSlot]
+      rw [hslot0_m]
+      exact Nat.zero_mod n.val
+    have hfun_eq : (fun i => if i = 0 then G.key_index.val else 0) =
+        (fun i => if MoltPetit.Model.producerForSlot n.val (toModelBlock G).slot = i then
+          max 0 (toModelBlock G).keyIndex else 0) := by
+      funext i
+      rw [hprod0]
+      have hki : (toModelBlock G).keyIndex = G.key_index.val := rfl
+      rw [hki]
+      have hmax : max 0 G.key_index.val = G.key_index.val := by omega
+      rw [hmax]
+      by_cases hi : i = 0
+      · subst hi; simp
+      · have : ¬ (0 = i) := fun hc => hi hc.symm
+        simp [hi, this]
+    rw [hfun_eq]
+    exact groundedHistoryK_genesis hn hgen hslot0 hSigG
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hlen0 : floorsLen (initFloors n.val G.key_index) = n.val :=
+    floorsLen_initFloors n.val G.key_index
+  have hhistK := foldK_history_aux hn hq bs [] (genesisState n.val G)
+    (initFloors n.val G.key_index) out hSig hbase_rep hlen0 hbase_hist hFold
+  simp only [List.nil_append] at hhistK
+  have hcertK : MoltPetit.Model.GroundedCertK n.val (DSigned I crypto n)
+      (toModelBlock G) cl₀ (floorsFun out) :=
+    cert_fold_k_sound hn hq hG hSigG hSig hFold
+  have hcert := groundedCert_of_groundedCertK hcertK
+  have hhist := groundedHistory_of_groundedHistoryK hhistK
+  have hview := stateView_of_foldKOut hn hq hG hFoldOut
+  exact ⟨hcert, hhist, hhistK, hview⟩
+
 end Rust
 
