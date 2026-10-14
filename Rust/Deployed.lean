@@ -3639,4 +3639,174 @@ theorem sigs_ok_append_signed {C} {I : Crypto C} {n : U64} {crypto : C} :
       exact ih nb sig me key sc1 hsc1 hprod hkey hver hsig
     · simp at hsig
 
+theorem window_count_complete : ∀ (c : Chain) (u len : U64),
+    u.val + len.val < 2 ^ 64 →
+    MoltPetit.Model.windowCount (toModelChain c) u.val len.val < 2 ^ 64 →
+    ∃ w : U64, window_count c u len = ok w ∧
+      w.val = MoltPetit.Model.windowCount (toModelChain c) u.val len.val := by
+  intro c
+  induction c with
+  | Nil =>
+    intro u len _ _
+    rw [window_count]
+    refine ⟨0#u64, rfl, ?_⟩
+    simp [toModelChain, MoltPetit.Model.windowCount]
+  | Cons b tl ih =>
+    intro u len hun hwc
+    rw [toModelChain_cons, model_windowCount_cons] at hwc
+    have hwc_tl : MoltPetit.Model.windowCount (toModelChain tl) u.val len.val < 2 ^ 64 := by omega
+    obtain ⟨rest, hrest, hrest_val⟩ := ih u len hun hwc_tl
+    obtain ⟨hi, hhi, hhi_val⟩ := u64_add_ok hun
+    have h1_val : (1#u64 : U64).val = 1 := rfl
+    have h0_val : (0#u64 : U64).val = 0 := rfl
+    rw [window_count]
+    split
+    · rename_i hu_le
+      have h1 : u.val ≤ b.slot.val := by scalar_tac
+      rw [hhi]
+      simp only [bind_tc_ok]
+      split
+      · rename_i hlt
+        have h2 : b.slot.val < u.val + len.val := by
+          have : b.slot.val < hi.val := by scalar_tac
+          omega
+        have hinw : MoltPetit.Model.blockInWindow u.val len.val (toModelBlock b) = true := by
+          dsimp [MoltPetit.Model.blockInWindow, toModelBlock]
+          simp [h1, h2]
+        have hsum : (1#u64 : U64).val + rest.val < 2 ^ 64 := by
+          rw [hinw] at hwc
+          simp only [Bool.true_and, ite_true] at hwc
+          rw [h1_val]
+          omega
+        obtain ⟨w, hw, hw_val⟩ := u64_add_ok (x := 1#u64) (y := rest) hsum
+        rw [hrest]
+        simp only [bind_tc_ok]
+        rw [hw]
+        refine ⟨w, rfl, ?_⟩
+        rw [hw_val, hrest_val, h1_val, toModelChain_cons, model_windowCount_cons, hinw]
+        simp
+      · rename_i hnlt
+        have h2 : ¬ (b.slot.val < u.val + len.val) := by
+          have : ¬ (b.slot.val < hi.val) := by scalar_tac
+          omega
+        have hinw : MoltPetit.Model.blockInWindow u.val len.val (toModelBlock b) = false := by
+          dsimp [MoltPetit.Model.blockInWindow, toModelBlock]
+          simp [h2]
+        have hsum : (0#u64 : U64).val + rest.val < 2 ^ 64 := by
+          rw [h0_val]; omega
+        obtain ⟨w, hw, hw_val⟩ := u64_add_ok (x := 0#u64) (y := rest) hsum
+        rw [hrest]
+        simp only [bind_tc_ok]
+        rw [hw]
+        refine ⟨w, rfl, ?_⟩
+        rw [hw_val, hrest_val, h0_val, toModelChain_cons, model_windowCount_cons, hinw]
+        simp
+    · rename_i hnot_le
+      have h1 : ¬ (u.val ≤ b.slot.val) := by scalar_tac
+      have hinw : MoltPetit.Model.blockInWindow u.val len.val (toModelBlock b) = false := by
+        dsimp [MoltPetit.Model.blockInWindow, toModelBlock]
+        simp [h1]
+      have hsum : (0#u64 : U64).val + rest.val < 2 ^ 64 := by
+        rw [h0_val]; omega
+      obtain ⟨w, hw, hw_val⟩ := u64_add_ok (x := 0#u64) (y := rest) hsum
+      rw [hrest]
+      simp only [bind_tc_ok]
+      rw [hw]
+      refine ⟨w, rfl, ?_⟩
+      rw [hw_val, hrest_val, h0_val, toModelChain_cons, model_windowCount_cons, hinw]
+      simp
+
+
+theorem window_dense_complete {c : Chain} {u n : U64}
+    (h_u_n : u.val + n.val < 2 ^ 64)
+    (h_wc : MoltPetit.Model.windowCount (toModelChain c) u.val n.val < 2 ^ 64)
+    (hn : n.val < 2 ^ 62)
+    (hdense : MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain c) u.val n.val) :
+    window_dense n c u = ok true := by
+  have hn_max : 2 * n.val + 2 ≤ U64.max := by scalar_tac
+  obtain ⟨q, hq, hqv⟩ := molt_petit.spec_ok_exists (quorum_corr n hn_max)
+  obtain ⟨w, hw, hw_val⟩ := window_count_complete c u n h_u_n h_wc
+  rw [window_dense]
+  simp only [bind_tc_ok, hq, hw]
+  have hle : q ≤ w := by
+    have : q.val ≤ w.val := by rw [hqv, hw_val]; exact hdense
+    scalar_tac
+  exact congrArg ok (decide_eq_true hle)
+
+theorem anchors_dense_complete : ∀ (all rest : Chain) (lo t n : U64),
+    (∀ b ∈ toModelChain rest, b.slot < 2 ^ 62) →
+    (∀ b ∈ toModelChain all, b.slot < 2 ^ 62) →
+    (∀ u, MoltPetit.Model.windowCount (toModelChain all) u n.val < 2 ^ 64) →
+    t.val < 2 ^ 62 →
+    n.val < 2 ^ 62 →
+    (∀ u, lo.val ≤ u → u + n.val ≤ t.val + 1 →
+      MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain all) u n.val) →
+    anchors_dense all rest lo t n = ok true := by
+  intro all rest
+  induction rest with
+  | Nil =>
+    intro lo t n _ _ _ _ _ _
+    rw [anchors_dense]
+  | Cons b tl ih =>
+    intro lo t n hrest_bound hall_bound hwc ht hn hdense
+    have hb_bound : b.slot.val < 2 ^ 62 := by
+      have : toModelBlock b ∈ toModelChain (Chain.Cons b tl) := by simp [toModelChain]
+      exact hrest_bound (toModelBlock b) this
+    have htl_bound : ∀ x ∈ toModelChain tl, x.slot < 2 ^ 62 := by
+      intro x hx
+      have : x ∈ toModelChain (Chain.Cons b tl) := by simp [toModelChain, hx]
+      exact hrest_bound x this
+    have h1_val : (1#u64 : U64).val = 1 := rfl
+    obtain ⟨u, hu, hu_val⟩ := u64_add_ok (x := b.slot) (y := 1#u64) (by rw [h1_val]; omega)
+    obtain ⟨upn, hupn, hupn_val⟩ := u64_add_ok (x := u) (y := n) (by rw [hu_val]; omega)
+    obtain ⟨t11, ht11, ht11_val⟩ := u64_add_ok (x := t) (y := 1#u64) (by rw [h1_val]; omega)
+    have hu_n_bound : u.val + n.val < 2 ^ 64 := by rw [hu_val]; omega
+    have hrest_ok := ih lo t n htl_bound hall_bound hwc ht hn hdense
+    rw [anchors_dense]
+    simp only [bind_tc_ok, hu]
+    split
+    · rename_i hlo_u
+      simp only [bind_tc_ok, hupn, ht11]
+      split
+      · rename_i hupn_t11
+        have h1_le : lo.val ≤ u.val := by scalar_tac
+        have h2_le : u.val + n.val ≤ t.val + 1 := by
+          have : upn.val ≤ t11.val := by scalar_tac
+          rw [hupn_val, ht11_val] at this
+          exact this
+        have hd := hdense u.val h1_le h2_le
+        have hwd := window_dense_complete (c := all) hu_n_bound (hwc u.val) hn hd
+        simp only [bind_tc_ok, hwd]
+        exact hrest_ok
+      · exact hrest_ok
+    · exact hrest_ok
+
+theorem matured_dense_complete {c : Chain} {lo t n : U64}
+    (hbound : ∀ b ∈ toModelChain c, b.slot < 2 ^ 62)
+    (hwc : ∀ u, MoltPetit.Model.windowCount (toModelChain c) u n.val < 2 ^ 64)
+    (hlo : lo.val < 2 ^ 62)
+    (ht : t.val < 2 ^ 62)
+    (hn : n.val < 2 ^ 62)
+    (hdense : ∀ u, lo.val ≤ u → u + n.val ≤ t.val + 1 →
+      MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain c) u n.val) :
+    matured_dense c lo t n = ok true := by
+  have h1_val : (1#u64 : U64).val = 1 := rfl
+  obtain ⟨lpn, hlpn, hlpn_val⟩ := u64_add_ok (x := lo) (y := n) (by omega)
+  obtain ⟨t11, ht11, ht11_val⟩ := u64_add_ok (x := t) (y := 1#u64) (by rw [h1_val]; omega)
+  have hanch := anchors_dense_complete c c lo t n hbound hbound hwc ht hn hdense
+  rw [matured_dense]
+  simp only [bind_tc_ok, hlpn, ht11]
+  split
+  · rename_i hlpn_t11
+    have hle : lo.val + n.val ≤ t.val + 1 := by
+      have : lpn.val ≤ t11.val := by scalar_tac
+      rw [hlpn_val, ht11_val] at this
+      exact this
+    have hd := hdense lo.val (by omega) hle
+    have hwd := window_dense_complete (c := c) (by omega) (hwc lo.val) hn hd
+    simp only [bind_tc_ok, hwd, ite_true]
+    exact hanch
+  · simp only [bind_tc_ok, ite_true]
+    exact hanch
+
 end Rust
