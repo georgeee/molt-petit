@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 18. rust_deployed_ks.
+In progress: 19. rust_produce_block_deployed_live.
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -87,7 +87,7 @@ In progress: 18. rust_deployed_ks.
   - Use step 16 for `SignedFormed`.
   - Step 11 gives `lockstepFrom`.
   - `foldLockOut_gO` relates `gO` to the history.
-- [ ] 18. **`rust_deployed_ks`**. Immediate from `hFold` and the first conjunct of `validate_deployed`.
+- [x] 18. **`rust_deployed_ks`**. Immediate from `hFold` and the first conjunct of `validate_deployed`.
 - [ ] 19. **`rust_produce_block_deployed_live`**. Unfold the producer.
   - Use `signed_tip_*` and `append_signed`, as in `rust_produce_block_cert_sound` in `Rust/Results_rust.lean`.
   - Then show each conjunct of `validate_deployed`:

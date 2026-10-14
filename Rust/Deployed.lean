@@ -3482,6 +3482,18 @@ theorem rust_deployed_lock_agreement : MoltPaper.thm_rust_deployed_lock_agreemen
 
 #print axioms Rust.rust_deployed_lock_agreement
 
+/-! ## Step 18: rust_deployed_ks -/
+
+/-- **Theorem (deployed knowledge soundness)**: knowledge soundness supplies an attested history. -/
+theorem rust_deployed_ks : MoltPaper.thm_rust_deployed_ks := by
+  intro n q C I crypto G hFold now Δ cert suffix hval
+  obtain ⟨st, cl, stripped, tip, s1, tl,
+          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hids, hsuf, hrecent⟩ :=
+    validate_deployed_sound hval
+  exact hFold cert hverify
+
+#print axioms Rust.rust_deployed_ks
+
 end Rust
 
 
