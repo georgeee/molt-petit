@@ -3906,4 +3906,70 @@ theorem tip_slot_from_chain_append : ∀ (c : Chain) (cur : U64) (nb : Block),
     rw [chain_append, tip_slot_from]
     exact ih b.slot nb
 
+
+theorem links_from_chain_append_nil (parent nb : Block) (h : child_ok parent nb = ok true) :
+    links_from parent (chain_append Chain.Nil nb) = ok true := by
+  rw [chain_append, links_from]
+  simp only [bind_tc_ok, h]
+  rw [links_from]
+  rfl
+
+theorem links_from_chain_append_cons (b : Block) (tl : Chain) (parent nb : Block)
+    (hlinks : links_from parent (Chain.Cons b tl) = ok true)
+    (hrest : links_from b (chain_append tl nb) = ok true) :
+    links_from parent (chain_append (Chain.Cons b tl) nb) = ok true := by
+  rw [chain_append, links_from]
+  rw [links_from] at hlinks
+  obtain ⟨ch, hch, hlinks⟩ := bind_inv hlinks
+  split at hlinks
+  · rename_i hcht; subst hcht
+    simp only [bind_tc_ok, hch]
+    exact hrest
+  · simp at hlinks
+
+theorem signed_chain_tip_links : ∀ (rest_sc : SignedChain) (b0 : Block) (sig0 : Hash) (rest_tl : Chain),
+    strip_sigs rest_sc = ok rest_tl →
+    ∀ (curH : U64) (curI : Hash) (curS : U64) (tipH : U64) (tipI : Hash) (tipS : U64) (nb : Block),
+      signed_tip_height_from curH (SignedChain.SCons b0 sig0 rest_sc) = ok tipH →
+      signed_tip_id_from curI (SignedChain.SCons b0 sig0 rest_sc) = ok tipI →
+      tip_slot_from curS (Chain.Cons b0 rest_tl) = ok tipS →
+      nb.prev = some tipI →
+      tipH + 1#u64 = ok nb.height →
+      tipS < nb.slot →
+      links_from b0 rest_tl = ok true →
+      links_from b0 (chain_append rest_tl nb) = ok true := by
+  intro rest_sc
+  induction rest_sc with
+  | SNil =>
+    intro b0 sig0 rest_tl hstr curH curI curS tipH tipI tipS nb hH hI hS hprev hheight hslot _
+    rw [strip_sigs] at hstr
+    injection hstr with hstr; subst hstr
+    rw [signed_tip_height_from, signed_tip_height_from] at hH
+    injection hH with hH; subst hH
+    rw [signed_tip_id_from, signed_tip_id_from] at hI
+    injection hI with hI; subst hI
+    rw [tip_slot_from, tip_slot_from] at hS
+    injection hS with hS; subst hS
+    have hch : child_ok b0 nb = ok true := child_ok_intro hprev hheight hslot
+    exact links_from_chain_append_nil b0 nb hch
+  | SCons b1 sig1 rest_sc' ih =>
+    intro b0 sig0 rest_tl hstr curH curI curS tipH tipI tipS nb hH hI hS hprev hheight hslot hlinks
+    rw [strip_sigs] at hstr
+    obtain ⟨tl', htl', hstr⟩ := bind_inv hstr
+    injection hstr with hstr; subst hstr
+    rw [signed_tip_height_from] at hH
+    rw [signed_tip_id_from] at hI
+    rw [tip_slot_from] at hS
+    rw [links_from] at hlinks
+    obtain ⟨ch, hch, hlinks_rest⟩ := bind_inv hlinks
+    split at hlinks_rest
+    · rename_i hcht; subst hcht
+      have hrest := ih b1 sig1 tl' htl' b0.height b0.id b0.slot tipH tipI tipS nb hH hI hS hprev hheight hslot hlinks_rest
+      have hlinks_cons : links_from b0 (Chain.Cons b1 tl') = ok true := by
+        rw [links_from]
+        simp only [bind_tc_ok, hch]
+        exact hlinks_rest
+      exact links_from_chain_append_cons b1 tl' b0 nb hlinks_cons hrest
+    · simp at hlinks_rest
+
 end Rust
