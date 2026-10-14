@@ -669,9 +669,13 @@ The prototype's fold certificate (Section~\ref{sec:impl}) runs one
 verified step per block, and the step is proved to build exactly these
 claims (\code{cert\_fold\_k\_sound}, \code{cert\_fold\_sched\_sound},
 \code{cert\_fold\_lock\_sound}). For the deployed Rust client the two
-are composed (Section~\ref{sec:impl}): its theorems hold for every
-history that folds to the certificate's public state, and knowledge
-soundness supplies one (\code{rust\_deployed\_ks}). For that client the
+are composed (Section~\ref{sec:impl}): its theorems take as a
+hypothesis a history that folds to the certificate's public state and
+threads signatures from the genesis's to the certificate's tip
+signature, and knowledge soundness supplies one from a verified
+certificate (\code{rust\_deployed\_ks}, \code{rust\_deployed\_sched\_ks},
+\code{rust\_deployed\_lock\_ks}). The mode-free client's theorem reads
+the certificate as mode~1's fold. For that client the
 assumption becomes the circuit's knowledge soundness, that its gadgets
 compute what the verified code computes, and that it routes each
 witness as the fold relation says. The model theorems and the
@@ -681,7 +685,8 @@ The assumption does not posit a valid chain behind the certificate: a
 proved lemma rebuilds it from the steps (\code{groundedCert\_history}
 and its mode-2 and mode-3 twins), and the certificate theorems conclude
 about that history followed by the tail. Theorem~\ref{thm:lc}'s
-certificate needs no signed genesis; the full-chain validators of every
+certificate needs no signed genesis, though its deployed Rust form
+assumes one (\code{hSigG}); the full-chain validators of every
 mode, and the certificate derivations and fold steps of modes 1--3,
 check the genesis like any other block, signed by validator~0. Every
 certificate model places the genesis at slot $0$.
