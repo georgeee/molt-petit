@@ -10,7 +10,7 @@ Build one module at a time, in the background:
 
 At the scaffold, a full `lake build` fails first in `MoltPetit.TS.TimedResults` and `MoltPetit.Model.KeyStealingSchedule`. Modules downstream of these (including `Rust.Deployed`) were not reached and will show further errors once they build.
 
-In progress: 9. rust_deployed_sched_agreement
+In progress: 10. rust_deployed_lock_agreement
 
 ## Stage A: model (mode 2 without the monotone rule)
 
@@ -41,7 +41,7 @@ In progress: 9. rust_deployed_sched_agreement
   - every block of `fullChain G bs tl` is `DSigned … G`;
   - the claim's tip is `T`, so the suffix's head links to `T.id`.
 - [x] 8. **`rust_deployed_k_agreement`**. As step 7, with the floors.
-- [ ] 9. **`rust_deployed_sched_agreement`**. As step 7, with the pin.
+- [x] 9. **`rust_deployed_sched_agreement`**. As step 7, with the pin.
 - [ ] 10. **`rust_deployed_lock_agreement`**. As step 7, for `RustFormed … G` and the mode-3 packages.
 - [ ] 11. **`rust_deployed_ks`**, **`rust_deployed_sched_ks`**, **`rust_deployed_lock_ks`**.
   - `validate_deployed*` = `ok true` gives `cert_verify = ok true`; then apply `hFold`.
