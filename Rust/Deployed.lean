@@ -3428,22 +3428,24 @@ lemma foldLock_history_aux {n q : U64} {G : Block}
     rw [h1, h2] at hrec
     exact hrec
 
-lemma attestsLock_history {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Block}
-    {bs : List Block} {stO : CertStateG U64} {gO : U64}
+lemma attestsLock_history {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Block} {sG : Hash}
+    {bs : List (Block × Hash)} {stO : CertStateG U64} {gO : U64} {ts : Hash}
     (hn : 1 ≤ n.val) (hq : quorum n = ok q)
     (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
-    (hSigG : DSigned I crypto n (toModelBlock G))
-    (hA : AttestsLock I crypto n q G bs stO gO) :
-    let cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)
-    MoltPetit.Model.GroundedCertLock n.val (DSigned I crypto n) (toModelBlock G) cl₀ gO.val ∧
-    MoltPetit.Model.GroundedHistoryLock n.val (DSigned I crypto n) (toModelBlock G) cl₀ gO.val ((G :: bs).map toModelBlock) ∧
-    MoltPetit.Model.GroundedHistory n.val (DSigned I crypto n) (toModelBlock G) cl₀ ((G :: bs).map toModelBlock) ∧
+    (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hA : AttestsLock I crypto n q G sG bs stO gO ts) :
+    let cl₀ := modelClaimOf n.val (toModelBlock G) ((bs.map Prod.fst).map toModelBlock)
+    MoltPetit.Model.GroundedCertLock n.val (DSigned I crypto n G) (toModelBlock G) cl₀ gO.val ∧
+    MoltPetit.Model.GroundedHistoryLock n.val (DSigned I crypto n G) (toModelBlock G) cl₀ gO.val ((G :: bs.map Prod.fst).map toModelBlock) ∧
+    MoltPetit.Model.GroundedHistory n.val (DSigned I crypto n G) (toModelBlock G) cl₀ ((G :: bs.map Prod.fst).map toModelBlock) ∧
     stateView n.val stO = MoltPetit.Model.claimView cl₀ := by
   intro cl₀
   obtain ⟨hSig, hFoldOut⟩ := hA
   have hFold := foldLockOut_foldLock hFoldOut
   have ⟨hgen, hslot0⟩ := cert_genesis_ok_be_sound hG
-  have hbase_hist : MoltPetit.Model.GroundedHistoryLock n.val (DSigned I crypto n)
+  have hSigG_ds : DSigned I crypto n G (toModelBlock G) :=
+    ⟨rustSigned_of_sigOn hSigG, ⟨G, rfl, FormedFrom.genesis⟩⟩
+  have hbase_hist : MoltPetit.Model.GroundedHistoryLock n.val (DSigned I crypto n G)
       (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock))
       G.key_index.val ((G :: []).map toModelBlock) := by
     simp only [List.map_nil]
@@ -3451,17 +3453,25 @@ lemma attestsLock_history {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Bloc
     rw [hnil]
     have hGki : (toModelBlock G).keyIndex = G.key_index.val := rfl
     rw [← hGki]
-    exact groundedHistoryLock_genesis hn hgen hslot0 hSigG
+    exact groundedHistoryLock_genesis hn hgen hslot0 hSigG_ds
   have hbase_rep : TailRepr n.val (genesisState n.val G)
       (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
     simp only [List.map_nil]
     exact tailRepr_genesisState n.val G
-  have hhistLock := foldLock_history_aux hn hq bs [] (genesisState n.val G)
-    G.key_index stO gO hSig hbase_rep hbase_hist hFoldOut
+  have hhist_ds := foldCoreOut_history_dsigned hSigG hSig (foldLockOut_to_core hFoldOut)
+  have hSig_bs : ∀ b ∈ bs.map Prod.fst, DSigned I crypto n G (toModelBlock b) := by
+    intro b hb
+    have hmem : toModelBlock b ∈ (G :: bs.map Prod.fst).map toModelBlock := by
+      apply List.mem_cons_of_mem
+      rw [List.mem_map]
+      exact ⟨b, hb, rfl⟩
+    exact hhist_ds (toModelBlock b) hmem
+  have hhistLock := foldLock_history_aux hn hq (bs.map Prod.fst) [] (genesisState n.val G)
+    G.key_index stO gO hSig_bs hbase_rep hbase_hist hFoldOut
   simp only [List.nil_append] at hhistLock
-  have hcertLock : MoltPetit.Model.GroundedCertLock n.val (DSigned I crypto n)
+  have hcertLock : MoltPetit.Model.GroundedCertLock n.val (DSigned I crypto n G)
       (toModelBlock G) cl₀ gO.val := by
-    have h_sound := cert_fold_lock_sound hn hq hG hSigG hSig hFold
+    have h_sound := cert_fold_lock_sound hn hq hG hSigG_ds hSig_bs hFold
     have h_gO := foldLockOut_gO hFoldOut
     rw [h_gO]
     exact h_sound
@@ -3846,11 +3856,11 @@ theorem signedDeclared_of_rustSigned {C} (I : molt_petit.Crypto C) (crypto : C) 
   exact hver
 
 /-- `DSigned` implies the model `SignedFormed` under `rustOps` and `rustRegistry`. -/
-theorem signedFormed_of_dSigned {C} (I : CryptoD C) (crypto : C) (n : U64)
-    (B : MoltPetit.Model.Block) (h : DSigned I crypto n B) :
+theorem signedFormed_of_dSigned {C} (I : CryptoD C) (crypto : C) (n : U64) (G : Block)
+    (B : MoltPetit.Model.Block) (h : DSigned I crypto n G B) :
     MoltPetit.Model.SignedFormed n.val (rustOps I.CryptoInst crypto)
       (rustRegistry I.CryptoInst crypto)
-      (RustFormed I crypto) B :=
+      (RustFormed I crypto n G) B :=
   ⟨signedDeclared_of_rustSigned I.CryptoInst crypto n B h.1, h.2⟩
 
 #print axioms Rust.signedDeclared_of_rustSigned
@@ -3870,8 +3880,8 @@ lemma groundedHistoryLock_mono {n : Nat} {Signed Signed' : MoltPetit.Model.Block
 agree on every block `2n` deep in their full chains. -/
 theorem rust_deployed_lock_agreement : MoltPaper.thm_rust_deployed_lock_agreement := by
   intro n q Δ hn hq C I crypto rosterGen rented Stolen honestSigned G R T now now'
-        hP hG hSigG cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
-        bs bs' stO stO' gO gO' hst hst' hgen hgen' hA hA' h hDeep hDeep'
+        hP hG sG hSigG cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+        bs bs' ts ts' hts hts' stO stO' gO gO' hst hst' hgen hgen' hA hA' h hDeep hDeep'
   obtain ⟨hval_dep, st1, g1, str1, hst1, hg1, hstr1, hlock1⟩ :=
     validate_deployed_lock_sound hval
   obtain ⟨hval'_dep, st1', g1', str1', hst1', hg1', hstr1', hlock1'⟩ :=
@@ -3882,67 +3892,87 @@ theorem rust_deployed_lock_agreement : MoltPaper.thm_rust_deployed_lock_agreemen
   rw [hgen'] at hg1'; injection hg1' with hg1'; subst hg1'
   rw [hstr] at hstr1; injection hstr1 with hstr1; subst hstr1
   rw [hstr'] at hstr1'; injection hstr1' with hstr1'; subst hstr1'
-  obtain ⟨st, cl, stripped, tip, s1, tl_sub, ts,
+  obtain ⟨st, cl, stripped, tip, s1, tl_sub, ts0,
           hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hts_sig, hids, hsuf, hrecent⟩ :=
     validate_deployed_sound hval_dep
-  obtain ⟨st', cl', stripped', tip', s1', tl_sub', ts',
+  obtain ⟨st', cl', stripped', tip', s1', tl_sub', ts0',
           hst_val', hcl', hstrip', hcons', htip', hverify', hsig', hts_sig', hids', hsuf', hrecent'⟩ :=
     validate_deployed_sound hval'_dep
   rw [hstr] at hstrip; injection hstrip with hstrip; subst hstrip; subst hcons
   rw [hstr'] at hstrip'; injection hstrip' with hstrip'; subst hstrip'; subst hcons'
   rw [hst] at hst_val; injection hst_val with hst_val; subst hst_val
   rw [hst'] at hst_val'; injection hst_val' with hst_val'; subst hst_val'
+  rw [hts] at hts_sig; injection hts_sig with hts_sig; subst hts_sig
+  rw [hts'] at hts_sig'; injection hts_sig' with hts_sig'; subst hts_sig'
   have htip_rw : molt_petit.tip_slot_from cl.tip_slot (molt_petit.Chain.Cons s1 tl_sub) =
                  molt_petit.tip_slot_from s1.slot tl_sub := by
     rw [molt_petit.tip_slot_from]
   rw [htip_rw] at htip
-  obtain ⟨sTip, hTipS, hts⟩ :=
+  obtain ⟨sTip, hTipS, hts_slot⟩ :=
     tip_slot_from_eq_getLast tl_sub s1.slot (toModelBlock s1) rfl htip
   have htip_rw' : molt_petit.tip_slot_from cl'.tip_slot (molt_petit.Chain.Cons s1' tl_sub') =
                   molt_petit.tip_slot_from s1'.slot tl_sub' := by
     rw [molt_petit.tip_slot_from]
   rw [htip_rw'] at htip'
-  obtain ⟨sTip', hTipS', hts'⟩ :=
+  obtain ⟨sTip', hTipS', hts_slot'⟩ :=
     tip_slot_from_eq_getLast tl_sub' s1'.slot (toModelBlock s1') rfl htip'
   obtain ⟨hcert, hhist, _, hview⟩ := attestsLock_history hn hq hG hSigG hA
   obtain ⟨hcert', hhist', _, hview'⟩ := attestsLock_history hn hq hG hSigG hA'
-  have hcv : MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) =
+  have hcv : MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) ((bs.map Prod.fst).map toModelBlock)) =
              MoltPetit.Model.claimView (toModelClaim cl) := by
     rw [← hview, claim_of_state_sound hcl]
-  have hcv' : MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs'.map toModelBlock)) =
+  have hcv' : MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) ((bs'.map Prod.fst).map toModelBlock)) =
               MoltPetit.Model.claimView (toModelClaim cl') := by
     rw [← hview', claim_of_state_sound hcl']
   obtain ⟨hLink, hLinks, hDense⟩ := validate_suffix_sound_view hTipS hsuf hcv
   obtain ⟨hLink', hLinks', hDense'⟩ := validate_suffix_sound_view hTipS' hsuf' hcv'
+  have ⟨_hh, _hs, hp⟩ := hLink
+  have ⟨_hh', _hs', hp'⟩ := hLink'
+  have ⟨_, T, hT, hSigT, hstO_id, _, _⟩ := foldLockOut_history_formed hSigG hA.1 hA.2
+  have ⟨_, T', hT', hSigT', hstO'_id, _, _⟩ := foldLockOut_history_formed hSigG hA'.1 hA'.2
+  have h_tipId : (modelClaimOf n.val (toModelBlock G) ((bs.map Prod.fst).map toModelBlock)).tipId = hashToNat T.id := by
+    have h1 : (modelClaimOf n.val (toModelBlock G) ((bs.map Prod.fst).map toModelBlock)).tipId = hashGToNat stO.tip_id := congrArg (fun v => v.1) hview.symm
+    rw [h1, hstO_id, hashGToNat_toHashG]
+  have hprev_T : (toModelBlock s1).prev = some (hashToNat T.id) := by
+    rw [hp, h_tipId]
+  have hlinks : ChainLinks T.id (.Cons s1 tl_sub) :=
+    chainLinks_of_toModel_linksOk tl_sub hprev_T hLinks
+  have hSigned_ds := dsigned_of_sigs_ok_ids_ok hT hSigT hsig hstr hids hlinks
+  have h_tipId' : (modelClaimOf n.val (toModelBlock G) ((bs'.map Prod.fst).map toModelBlock)).tipId = hashToNat T'.id := by
+    have h1 : (modelClaimOf n.val (toModelBlock G) ((bs'.map Prod.fst).map toModelBlock)).tipId = hashGToNat stO'.tip_id := congrArg (fun v => v.1) hview'.symm
+    rw [h1, hstO'_id, hashGToNat_toHashG]
+  have hprev_T' : (toModelBlock s1').prev = some (hashToNat T'.id) := by
+    rw [hp', h_tipId']
+  have hlinks' : ChainLinks T'.id (.Cons s1' tl_sub') :=
+    chainLinks_of_toModel_linksOk tl_sub' hprev_T' hLinks'
+  have hSigned_ds' := dsigned_of_sigs_ok_ids_ok hT' hSigT' hsig' hstr' hids' hlinks'
   have hhist_sf := groundedHistoryLock_mono hhist
-    (fun B _ hB => signedFormed_of_dSigned I crypto n B hB)
+    (fun B _ hB => signedFormed_of_dSigned I crypto n G B hB)
   have hhist_sf' := groundedHistoryLock_mono hhist'
-    (fun B _ hB => signedFormed_of_dSigned I crypto n B hB)
-  have hSigned_ds := dsigned_of_sigs_ok_ids_ok hsig hstr hids
-  have hSigned_ds' := dsigned_of_sigs_ok_ids_ok hsig' hstr' hids'
+    (fun B _ hB => signedFormed_of_dSigned I crypto n G B hB)
   have hSigned : ∀ B ∈ (toModelBlock s1 :: toModelChain tl_sub),
       MoltPetit.Model.SignedFormed n.val (rustOps I.CryptoInst crypto)
-        (rustRegistry I.CryptoInst crypto) (RustFormed I crypto) B :=
-    fun B hB => signedFormed_of_dSigned I crypto n B (hSigned_ds B hB)
+        (rustRegistry I.CryptoInst crypto) (RustFormed I crypto n G) B :=
+    fun B hB => signedFormed_of_dSigned I crypto n G B (hSigned_ds B hB)
   have hSigned' : ∀ B ∈ (toModelBlock s1' :: toModelChain tl_sub'),
       MoltPetit.Model.SignedFormed n.val (rustOps I.CryptoInst crypto)
-        (rustRegistry I.CryptoInst crypto) (RustFormed I crypto) B :=
-    fun B hB => signedFormed_of_dSigned I crypto n B (hSigned_ds' B hB)
+        (rustRegistry I.CryptoInst crypto) (RustFormed I crypto n G) B :=
+    fun B hB => signedFormed_of_dSigned I crypto n G B (hSigned_ds' B hB)
   have hLockS_st := lockstep_from_sound (.Cons s1 tl_sub) hlock1
   have hLockS_st' := lockstep_from_sound (.Cons s1' tl_sub') hlock1'
-  have hts_eq : (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)).tipSlot = stO.tip_slot.val := by
+  have hts_eq : (modelClaimOf n.val (toModelBlock G) ((bs.map Prod.fst).map toModelBlock)).tipSlot = stO.tip_slot.val := by
     have h := congr_arg (fun v => v.2.1) hview
     exact h.symm
-  have hts_eq' : (modelClaimOf n.val (toModelBlock G) (bs'.map toModelBlock)).tipSlot = stO'.tip_slot.val := by
+  have hts_eq' : (modelClaimOf n.val (toModelBlock G) ((bs'.map Prod.fst).map toModelBlock)).tipSlot = stO'.tip_slot.val := by
     have h := congr_arg (fun v => v.2.1) hview'
     exact h.symm
   have hLockS : MoltPetit.Model.lockstepFrom n.val
-      (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)).tipSlot gO.val
+      (modelClaimOf n.val (toModelBlock G) ((bs.map Prod.fst).map toModelBlock)).tipSlot gO.val
       (toModelBlock s1 :: toModelChain tl_sub) = true := by
     rw [hts_eq]
     exact hLockS_st
   have hLockS' : MoltPetit.Model.lockstepFrom n.val
-      (modelClaimOf n.val (toModelBlock G) (bs'.map toModelBlock)).tipSlot gO'.val
+      (modelClaimOf n.val (toModelBlock G) ((bs'.map Prod.fst).map toModelBlock)).tipSlot gO'.val
       (toModelBlock s1' :: toModelChain tl_sub') = true := by
     rw [hts_eq']
     exact hLockS_st'
