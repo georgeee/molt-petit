@@ -230,6 +230,13 @@ impl KeyRotCrypto {
     }
 }
 
+/// Native demo implementation of [`CryptoD`].
+///
+/// **Warning**: This is a native demo whose signature handles are arbitrary PoK
+/// proof commitments, NOT fold circuit signature digests, and whose certificate
+/// query methods return stubs. It must NOT be used with fold certificates.
+/// For deployed validation and production against fold certificates, use
+/// [`crate::fold_crypto::FoldCrypto`].
 impl CryptoD for KeyRotCrypto {
     fn block_id(
         &self,
