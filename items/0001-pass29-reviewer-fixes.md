@@ -1,14 +1,14 @@
 ---
 id: 0001
 kind: task
-status: active
+status: done
 title: Pass 29: fix independent-review findings F1-F14
 owner: session 375f62fc (Molt Petit driver), host bare1
 created: 2026-10-14
 updated: 2026-10-14
 needs_george: ""
 data: [bare1:/srv/agent-cage/etheron-bare/agent/etheron-bare/work/review-moltpetit/]
-commits: [molt-petit@27a9026 (scaffold), molt-petit@a2a9767 (spec)]
+commits: [molt-petit@27a9026 (scaffold), molt-petit@17a9a36 (proved + paper, pushed main+publish-prep)]
 ---
 
 Independent review of 7ce7743 (item 0002) found F1-F14. Lean side: relational formedness from the genesis
