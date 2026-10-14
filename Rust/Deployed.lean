@@ -4262,4 +4262,76 @@ theorem validate_suffix_append
     have hnb_slot_bound : nb.slot.val < 2 ^ 62 := by rw [hnb_slot]; exact hS
     exact matured_dense_complete hbound hwc hlo_bound hnb_slot_bound hsmall hdense_all
 
+theorem is_nil_chain_append (tl : Chain) (nb : Block) :
+    is_nil (chain_append tl nb) = ok false := by
+  cases tl with
+  | Nil => rfl
+  | Cons b rest => rfl
+
+theorem recent_ok_self (now delta : U64) :
+    recent_ok now delta now = ok true := by
+  rw [recent_ok]
+  split_ifs with hle
+  · rfl
+  · exfalso
+    exact hle (by scalar_tac)
+
+theorem rust_produce_block_deployed_live : MoltPaper.thm_rust_produce_block_deployed_live := by
+  intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
+    hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId hDense
+  obtain ⟨tipI, htipI⟩ := signed_tip_id_from_total cl.tip_id suffix
+  obtain ⟨h1, hh1⟩ := signed_tip_sig_from_total ts suffix
+  have h1_u64 : (1#u64 : U64).val = 1 := rfl
+  obtain ⟨succ, hsucc_eq, hsucc_val⟩ := u64_add_ok (x := tipH) (y := 1#u64) (by rw [h1_u64]; exact hH)
+  obtain ⟨id, hid⟩ := hId at_slot succ (some tipI) (some h1) contents key_index
+  let nb : Block := {
+    slot := at_slot,
+    height := succ,
+    prev := some tipI,
+    id := id,
+    contents_hash := contents,
+    key_index := key_index
+  }
+  obtain ⟨key, s, hkey, hsign, hver⟩ := hSign nb
+  obtain ⟨new_suffix, happ⟩ := append_signed_total suffix nb s
+  have hstrip' : strip_sigs new_suffix = ok (chain_append tl nb) :=
+    strip_sigs_append_signed_eq suffix nb s tl new_suffix hstr happ
+  have hmodel' : toModelChain (chain_append tl nb) = toModelChain tl ++ [toModelBlock nb] :=
+    toModelChain_chain_append tl nb
+  have hsigs_app : sigs_ok I.CryptoInst n crypto new_suffix = ok true :=
+    sigs_ok_append_signed suffix nb s me key new_suffix happ hMine hkey hver hsig
+  have hids_app : ids_ok I crypto (some ts) new_suffix = ok true :=
+    ids_ok_append_signed suffix nb s ts h1 new_suffix happ hh1 hid hids
+  have hsuf_app : validate_suffix n cl (chain_append tl nb) = ok true :=
+    validate_suffix_append hn hsmall hS hstr hsuf htipS htipH htipI hLt hH htail hlen rfl rfl hsucc_eq hDense
+  have his_nil : is_nil (chain_append tl nb) = ok false := is_nil_chain_append tl nb
+  have htip_app : tip_slot_from cl.tip_slot (chain_append tl nb) = ok nb.slot :=
+    tip_slot_from_chain_append tl cl.tip_slot nb
+  have hrec : recent_ok at_slot Δ nb.slot = ok true := by
+    show recent_ok at_slot Δ at_slot = ok true
+    exact recent_ok_self at_slot Δ
+  have hval : validate_deployed I n at_slot Δ crypto cert new_suffix = ok true := by
+    rw [validate_deployed]
+    simp only [bind_tc_ok, hst, hcl, hstrip', his_nil, htip_app, hcv, ite_true, hsigs_app, hts, hids_app, hsuf_app, hrec]
+    rfl
+  have hprod : produce_block_deployed I n me at_slot Δ contents key_index sk crypto cert suffix =
+      ok (CertifiedChain.CC cert new_suffix) := by
+    rw [produce_block_deployed]
+    simp only [bind_tc_ok, hMine]
+    have hne : (me != me) = false := by simp
+    simp only [hne, ite_false, bind_tc_ok, hst, hcl, htipH, htipI, hts, hh1, hsucc_eq, hid]
+    change (do
+      let sig ← I.CryptoInst.sign crypto sk nb
+      let new_suffix' ← append_signed suffix nb sig
+      let b ← validate_deployed I n at_slot Δ crypto cert new_suffix'
+      if b then ok (CertifiedChain.CC cert new_suffix') else ok CertifiedChain.Invalid) =
+      ok (CertifiedChain.CC cert new_suffix)
+    rw [hsign]
+    simp only [bind_tc_ok]
+    rw [happ]
+    simp only [bind_tc_ok, hval, ite_true]
+  refine ⟨new_suffix, chain_append tl nb, nb, hprod, hval, hstrip', hmodel', rfl, rfl, rfl⟩
+
+#print axioms Rust.rust_produce_block_deployed_live
+
 end Rust
