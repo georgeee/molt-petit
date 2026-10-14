@@ -10,7 +10,7 @@ Build one module at a time, in the background:
 
 At the scaffold, a full `lake build` fails first in `MoltPetit.TS.TimedResults` and `MoltPetit.Model.KeyStealingSchedule`. Modules downstream of these (including `Rust.Deployed`) were not reached and will show further errors once they build.
 
-In progress: none
+In progress: 1. MoltPetit.Model.KeyStealingSchedule
 
 ## Stage A: model (mode 2 without the monotone rule)
 
