@@ -106,12 +106,8 @@ namespace MoltPetit.Model
 theorem schedCore_of_validSignedChainSched {σ sk pk : Type} {n : Nat}
     {schedule : Nat → Nat} {ops : SigOps σ sk pk} {registry : KeyRegistry pk}
     {sc : SignedChain σ} (h : validSignedChainSched n schedule ops registry sc = true) :
-    validSignedChainSchedCore n schedule ops registry sc = true := by
-  rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true] at h
-  obtain ⟨⟨hSig, hK⟩, hPin⟩ := h
-  rw [validChainK, Bool.and_eq_true] at hK
-  rw [validSignedChainSchedCore, Bool.and_eq_true, Bool.and_eq_true]
-  exact ⟨⟨hSig, hK.1⟩, hPin⟩
+    validSignedChainSchedCore n schedule ops registry sc = true :=
+  h
 
 theorem validChain_of_validSignedChainSchedCore {σ sk pk : Type} {n : Nat}
     {schedule : Nat → Nat} {ops : SigOps σ sk pk} {registry : KeyRegistry pk}
