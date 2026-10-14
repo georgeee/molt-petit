@@ -2040,26 +2040,36 @@ theorem u64_div_ok {x y z : U64} (h : x / y = ok z) :
 
 /-- A passing `ids_ok` makes every block of the model chain `RustFormed`. -/
 theorem ids_ok_formed {C} {I : CryptoD C} {crypto : C} :
-    ∀ (c : molt_petit.Chain),
-    molt_petit.ids_ok I crypto c = ok true →
-    ∀ B ∈ toModelChain c, RustFormed I crypto B
-  | molt_petit.Chain.Nil, h, B, hB => by
+    ∀ (ps : Option Hash) (sc : molt_petit.SignedChain) (tl : molt_petit.Chain),
+    molt_petit.strip_sigs sc = ok tl →
+    molt_petit.ids_ok I crypto ps sc = ok true →
+    ∀ B ∈ toModelChain tl, RustFormed I crypto B := by
+  intro ps sc
+  induction sc generalizing ps with
+  | SNil =>
+    intro tl hstrip hids B hB
+    rw [molt_petit.strip_sigs] at hstrip
+    injection hstrip with hstrip; subst hstrip
     simp [toModelChain] at hB
-  | molt_petit.Chain.Cons b tl, h, B, hB => by
-    rw [molt_petit.ids_ok] at h
-    obtain ⟨id, hid, h⟩ := molt_petit.bind_inv h
-    obtain ⟨b1, hb1, h⟩ := molt_petit.bind_inv h
-    split at h
+  | SCons b s rest ih =>
+    intro tl hstrip hids B hB
+    rw [molt_petit.strip_sigs] at hstrip
+    obtain ⟨c, hc, hstrip⟩ := molt_petit.bind_inv hstrip
+    injection hstrip with hstrip; subst hstrip
+    rw [molt_petit.ids_ok.eq_def] at hids
+    obtain ⟨id, hid, hids⟩ := molt_petit.bind_inv hids
+    obtain ⟨b1, hb1, hids⟩ := molt_petit.bind_inv hids
+    split at hids
     · rename_i hb1t
       rw [hb1t] at hb1
       have heq := hash_eq_sound hb1
-      simp only [toModelChain, toModelBlock, List.mem_cons] at hB
-      rcases hB with rfl | hBtl
-      · refine ⟨b, rfl, ?_⟩
+      rw [toModelChain_cons] at hB
+      rcases List.mem_cons.mp hB with rfl | hBtl
+      · refine ⟨b, ps, rfl, ?_⟩
         rw [← heq]
         exact hid
-      · exact ids_ok_formed tl h B hBtl
-    · simp at h
+      · exact ih (some s) c hc hids B hBtl
+    · simp at hids
 
 /-- A passing `recent_ok` gives `now ≤ tip + delta`. -/
 theorem recent_ok_sound {now delta tip : U64}
@@ -2080,13 +2090,13 @@ theorem recent_ok_sound {now delta tip : U64}
 
 /-- Suffix blocks with valid signatures and ids are `DSigned`. -/
 theorem dsigned_of_sigs_ok_ids_ok {C} {I : CryptoD C} {n : U64} {crypto : C}
-    {sc : molt_petit.SignedChain} {stripped : molt_petit.Chain}
+    {ps : Option Hash} {sc : molt_petit.SignedChain} {stripped : molt_petit.Chain}
     (hsig : molt_petit.sigs_ok I.CryptoInst n crypto sc = ok true)
     (hstrip : molt_petit.strip_sigs sc = ok stripped)
-    (hids : molt_petit.ids_ok I crypto stripped = ok true) :
+    (hids : molt_petit.ids_ok I crypto ps sc = ok true) :
     ∀ B ∈ toModelChain stripped, DSigned I crypto n B := by
   intro B hB
-  exact ⟨sigs_ok_signed sc hsig hstrip B hB, ids_ok_formed stripped hids B hB⟩
+  exact ⟨sigs_ok_signed sc hsig hstrip B hB, ids_ok_formed ps sc stripped hstrip hids B hB⟩
 
 /-- A passing `sched_pin_ok` gives the model `schedPinned` predicate. -/
 theorem sched_pin_ok_sound {era : U64} :
@@ -2192,7 +2202,7 @@ theorem validate_deployed_sound {C} {I : CryptoD C} {n now delta : U64} {crypto 
     {cert : Hash} {suffix : molt_petit.SignedChain}
     (h : molt_petit.validate_deployed I n now delta crypto cert suffix = ok true) :
     ∃ (st : CertStateG U64) (cl : molt_petit.CertClaim) (stripped : molt_petit.Chain)
-      (tip : U64) (s1 : molt_petit.Block) (tl : molt_petit.Chain),
+      (tip : U64) (s1 : molt_petit.Block) (tl : molt_petit.Chain) (ts : Hash),
       I.cert_state crypto cert = ok st ∧
       molt_petit.claim_of_state n st = ok cl ∧
       molt_petit.strip_sigs suffix = ok stripped ∧
@@ -2200,7 +2210,8 @@ theorem validate_deployed_sound {C} {I : CryptoD C} {n now delta : U64} {crypto 
       molt_petit.tip_slot_from cl.tip_slot stripped = ok tip ∧
       I.CryptoInst.cert_verify crypto cert = ok true ∧
       molt_petit.sigs_ok I.CryptoInst n crypto suffix = ok true ∧
-      molt_petit.ids_ok I crypto stripped = ok true ∧
+      I.cert_tip_sig crypto cert = ok ts ∧
+      molt_petit.ids_ok I crypto (some ts) suffix = ok true ∧
       molt_petit.validate_suffix n cl stripped = ok true ∧
       molt_petit.recent_ok now delta tip = ok true := by
   rw [molt_petit.validate_deployed] at h
@@ -2220,14 +2231,15 @@ theorem validate_deployed_sound {C} {I : CryptoD C} {n now delta : U64} {crypto 
       obtain ⟨b2, hb2, h⟩ := molt_petit.bind_inv h
       split at h
       · rename_i hb2t; rw [hb2t] at hb2
+        obtain ⟨ts, hts, h⟩ := molt_petit.bind_inv h
         obtain ⟨b3, hb3, h⟩ := molt_petit.bind_inv h
         split at h
         · rename_i hb3t; rw [hb3t] at hb3
           obtain ⟨b4, hb4, h⟩ := molt_petit.bind_inv h
           split at h
           · rename_i hb4t; rw [hb4t] at hb4
-            exact ⟨st, cl, stripped, tip, s1, tl,
-                   hst, hcl, hstrip, hcons, htip, hb1, hb2, hb3, hb4, h⟩
+            exact ⟨st, cl, stripped, tip, s1, tl, ts,
+                   hst, hcl, hstrip, hcons, htip, hb1, hb2, hts, hb3, hb4, h⟩
           · simp at h
         · simp at h
       · simp at h
@@ -3044,11 +3056,11 @@ theorem rust_deployed_agreement : MoltPaper.thm_rust_deployed_agreement := by
   intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R hG hSigG hexec hClock hBudget hL hL'
         hbridge hφ now now' hNow hNow' cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
         bs bs' stO stO' out out' hst hst' hA hA' h hDeep hDeep'
-  obtain ⟨st, cl, stripped, tip, s1, tl_sub,
-          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hids, hsuf, hrecent⟩ :=
+  obtain ⟨st, cl, stripped, tip, s1, tl_sub, ts,
+          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hts_sig, hids, hsuf, hrecent⟩ :=
     validate_deployed_sound hval
-  obtain ⟨st', cl', stripped', tip', s1', tl_sub',
-          hst_val', hcl', hstrip', hcons', htip', hverify', hsig', hids', hsuf', hrecent'⟩ :=
+  obtain ⟨st', cl', stripped', tip', s1', tl_sub', ts',
+          hst_val', hcl', hstrip', hcons', htip', hverify', hsig', hts_sig', hids', hsuf', hrecent'⟩ :=
     validate_deployed_sound hval'
   rw [hstr] at hstrip
   injection hstrip with hstrip
@@ -3228,11 +3240,11 @@ theorem rust_deployed_sched_agreement : MoltPaper.thm_rust_deployed_sched_agreem
   rw [hstr'] at hstrip_sched'
   injection hstrip_sched' with hstrip_sched'
   subst hstrip_sched'
-  obtain ⟨st, cl, stripped_dep, tip, s1, tl_sub,
-          hst_val, hcl, hstrip_dep, hcons, htip, hverify, hsig, hids, hsuf, hrecent⟩ :=
+  obtain ⟨st, cl, stripped_dep, tip, s1, tl_sub, ts,
+          hst_val, hcl, hstrip_dep, hcons, htip, hverify, hsig, hts_sig, hids, hsuf, hrecent⟩ :=
     validate_deployed_sound hval_dep
-  obtain ⟨st', cl', stripped_dep', tip', s1', tl_sub',
-          hst_val', hcl', hstrip_dep', hcons', htip', hverify', hsig', hids', hsuf', hrecent'⟩ :=
+  obtain ⟨st', cl', stripped_dep', tip', s1', tl_sub', ts',
+          hst_val', hcl', hstrip_dep', hcons', htip', hverify', hsig', hts_sig', hids', hsuf', hrecent'⟩ :=
     validate_deployed_sound hval'_dep
   rw [hstr] at hstrip_dep
   injection hstrip_dep with hstrip_dep
@@ -3403,11 +3415,11 @@ theorem rust_deployed_lock_agreement : MoltPaper.thm_rust_deployed_lock_agreemen
   rw [hgen'] at hg1'; injection hg1' with hg1'; subst hg1'
   rw [hstr] at hstr1; injection hstr1 with hstr1; subst hstr1
   rw [hstr'] at hstr1'; injection hstr1' with hstr1'; subst hstr1'
-  obtain ⟨st, cl, stripped, tip, s1, tl_sub,
-          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hids, hsuf, hrecent⟩ :=
+  obtain ⟨st, cl, stripped, tip, s1, tl_sub, ts,
+          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hts_sig, hids, hsuf, hrecent⟩ :=
     validate_deployed_sound hval_dep
-  obtain ⟨st', cl', stripped', tip', s1', tl_sub',
-          hst_val', hcl', hstrip', hcons', htip', hverify', hsig', hids', hsuf', hrecent'⟩ :=
+  obtain ⟨st', cl', stripped', tip', s1', tl_sub', ts',
+          hst_val', hcl', hstrip', hcons', htip', hverify', hsig', hts_sig', hids', hsuf', hrecent'⟩ :=
     validate_deployed_sound hval'_dep
   rw [hstr] at hstrip; injection hstrip with hstrip; subst hstrip; subst hcons
   rw [hstr'] at hstrip'; injection hstrip' with hstrip'; subst hstrip'; subst hcons'
@@ -3487,8 +3499,8 @@ theorem rust_deployed_lock_agreement : MoltPaper.thm_rust_deployed_lock_agreemen
 /-- **Theorem (deployed knowledge soundness)**: knowledge soundness supplies an attested history. -/
 theorem rust_deployed_ks : MoltPaper.thm_rust_deployed_ks := by
   intro n q C I crypto G hFold now Δ cert suffix hval
-  obtain ⟨st, cl, stripped, tip, s1, tl,
-          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hids, hsuf, hrecent⟩ :=
+  obtain ⟨st, cl, stripped, tip, s1, tl, ts,
+          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hts_sig, hids, hsuf, hrecent⟩ :=
     validate_deployed_sound hval
   exact hFold cert hverify
 

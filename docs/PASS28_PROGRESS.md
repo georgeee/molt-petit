@@ -66,7 +66,7 @@ In progress: 11b. ids repair.
   - `sigs_ok_signed` gives `RustSigned` (already in `Rust/Bridge.lean`).
   - `sched_pin_ok` and `lockstep_from` correspond to `schedPinned (·/era)` and `lockstepFrom`.
   - Unfold `validate_deployed*` into its conjuncts.
-- [ ] 11b. **ids repair.** Re-prove `ids_ok_formed` in `Rust/Deployed.lean` for the signed `ids_ok`: `∀ ps sc tl, strip_sigs sc = ok tl → ids_ok I crypto ps sc = ok true → ∀ B ∈ toModelChain tl, RustFormed I crypto B`. Induct on `sc`, generalising `ps`; the witness for each block is the `ps` threaded to it. Then repair every use (steps 11, 13–18): `lake build` and fix each error. Change no statement.
+- [x] 11b. **ids repair.** Re-prove `ids_ok_formed` in `Rust/Deployed.lean` for the signed `ids_ok`: `∀ ps sc tl, strip_sigs sc = ok tl → ids_ok I crypto ps sc = ok true → ∀ B ∈ toModelChain tl, RustFormed I crypto B`. Induct on `sc`, generalising `ps`; the witness for each block is the `ps` threaded to it. Then repair every use (steps 11, 13–18): `lake build` and fix each error. Change no statement.
 - [x] 12. **History.** From `AttestsK I crypto n q G bs stO out` together with `hG` and `hSigG`, derive two facts about `cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)`:
   - `GroundedCert n.val (DSigned I crypto n) (toModelBlock G) cl₀`, from `cert_fold_k_sound` (`GroundedCertK`) plus a `GroundedCertK → GroundedCert` lemma that forgets the floor;
   - `GroundedHistory … cl₀ ((G :: bs).map toModelBlock)`, by the same induction.
