@@ -191,12 +191,12 @@ theorem schedPin_eq_schedPinned : @Molt.schedPin = @MoltPetit.Model.schedPinned 
 theorem validSignedChainSched_eq :
     @Molt.validSignedChainSched = @MoltPetit.Model.validSignedChainSched := by
   ext σ sk pk n schedule ops registry sc
-  change (Molt.sigsOk n ops registry sc && Molt.validChainK n (Molt.stripSigs sc)
+  change (Molt.sigsOk n ops registry sc && Molt.validChain n (Molt.stripSigs sc)
       && Molt.schedPin schedule (Molt.stripSigs sc)) =
     (MoltPetit.Model.sigsOk n ops registry sc &&
-     MoltPetit.Model.validChainK n (MoltPetit.Model.stripSigs sc)
+     MoltPetit.Model.validChain n (MoltPetit.Model.stripSigs sc)
       && MoltPetit.Model.schedPinned schedule (MoltPetit.Model.stripSigs sc))
-  rw [validChainK_eq]
+  rw [validChain_eq]
   rfl
 
 theorem noMixing_eq_lockstepOk : @Molt.noMixing = @MoltPetit.Model.lockstepOk := by
