@@ -3100,5 +3100,119 @@ theorem rust_deployed_agreement : MoltPaper.thm_rust_deployed_agreement := by
     hSigned hSigned' hRecent hRecent' hhist hhist' hDeep hDeep'
   exact hagree
 
+/-- Pointwise agreement between `floorLookup` on `toTSFloors fl` (where `fl` is decoded by
+`floors_of_state k fg`) and `floorsFun fg`. -/
+lemma floorLookup_floors_of_state (fg : FloorsG U64) :
+    ∀ (k : U64) (fl : molt_petit.FloorList),
+      molt_petit.floors_of_state k fg = ok fl →
+      ∀ (off : Nat),
+        MoltPetit.floorLookup (toTSFloors fl) ((k.val + off : Nat) : Int) =
+          ((floorsFun fg off : Nat) : Int) := by
+  induction fg with
+  | FNil =>
+    intro k fl h off
+    rw [molt_petit.floors_of_state] at h
+    injection h with h
+    subst h
+    simp [toTSFloors, MoltPetit.floorLookup, floorsFun]
+  | FCons f tl ih =>
+    intro k fl h off
+    rw [molt_petit.floors_of_state] at h
+    obtain ⟨k1, hk1, h⟩ := molt_petit.bind_inv h
+    obtain ⟨fl1, hfl1, h⟩ := molt_petit.bind_inv h
+    injection h with h
+    subst h
+    simp only [toTSFloors]
+    rw [MoltPetit.floorLookup]
+    have hadd := UScalar.add_equiv k 1#u64
+    have hk1v : k1.val = k.val + 1 := by
+      simp only [hk1] at hadd
+      simpa using hadd.2.1
+    cases off with
+    | zero =>
+      simp only [Nat.add_zero]
+      have heq : ((k.val : Int) == (k.val : Int)) = true := by simp
+      rw [heq]
+      rfl
+    | succ off' =>
+      have hneq : ((k.val : Int) == ((k.val + (off' + 1) : Nat) : Int)) = false := by
+        apply beq_eq_false_iff_ne.mpr
+        intro hc
+        have : k.val = k.val + off' + 1 := by exact_mod_cast hc
+        omega
+      rw [hneq]
+      have hrewr : ((k.val + (off' + 1) : Nat) : Int) = ((k1.val + off' : Nat) : Int) := by
+        rw [hk1v]
+        push_cast
+        omega
+      rw [hrewr]
+      exact ih k1 fl1 hfl1 off'
+
+lemma rust_deployed_k_mono {C} (I : CryptoD C) (crypto : C) {n q Δ : U64}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    {G : Block} (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSigG : DSigned I crypto n (toModelBlock G))
+    {now : U64} {cert : Hash} {suffix : SignedChain}
+    (hval : validate_deployed_k I n now Δ crypto cert suffix = ok true)
+    {tl : Chain} (hstr : strip_sigs suffix = ok tl)
+    {bs : List Block} {stO : CertStateG U64} {out : FloorsG U64}
+    (hfl : I.cert_floors_state crypto cert = ok out)
+    (hA : AttestsK I crypto n q G bs stO out) :
+    MoltPetit.Model.KeyIndexMonotone n.val (fullChain G bs tl) := by
+  obtain ⟨_, fg, fl, stripped, hfg, hfl_state, hstrip, hshape, hkeymono⟩ :=
+    validate_deployed_k_sound hval
+  rw [hfl] at hfg
+  injection hfg with hfg
+  subst hfg
+  rw [hstr] at hstrip
+  injection hstrip with hstrip
+  subst hstrip
+  rw [molt_petit.floors_shape_ok] at hshape
+  have hshapeTS : MoltPetit.floorsShapeFrom 0 (n.val : Int) (toTSFloors fl) = true := by
+    have := floors_shape_from_corr fl 0#u64 n hshape
+    simpa using this
+  have hhas : ∀ j : Nat, j < n.val → MoltPetit.Model.FloorHas (toTSFloors fl) j :=
+    fun j hj => MoltPetit.Model.floorHas_of_shapeFrom (toTSFloors fl) 0 hshapeTS j
+      (Int.natCast_nonneg j) (by exact_mod_cast hj)
+  have hden : ∀ j : Nat, j < n.val →
+      MoltPetit.floorLookup (toTSFloors fl) (j : Int) = ((floorsFun out j : Nat) : Int) := by
+    intro j hj
+    have hlook := floorLookup_floors_of_state out 0#u64 fl hfl_state j
+    have h0 : (0#u64 : U64).val = 0 := rfl
+    rw [h0, Nat.zero_add] at hlook
+    exact hlook
+  have hts := key_mono_from_corr (by omega) tl fl hkeymono
+  have hmono_tl :
+      MoltPetit.Model.keyMonoFrom n.val (floorsFun out) (toModelChain tl) = true := by
+    have hiff :=
+      MoltPetit.Model.ts_keyMonoFromTs hn (toModelChain tl) (toTSFloors fl) (floorsFun out) hhas hden
+    exact hiff.mp hts
+  obtain ⟨hcert, hhist, hhistK, hview⟩ := attestsK_history hn hq hG hSigG hA
+  have hcM : MoltPetit.Model.keyMonoOk n.val ((G :: bs).map toModelBlock) = true := by
+    have := hhistK.valid
+    rw [MoltPetit.Model.validChainK, Bool.and_eq_true] at this
+    exact this.2
+  have hmono_from_floor : MoltPetit.Model.keyMonoFrom n.val
+      (MoltPetit.Model.keyFloor n.val ((G :: bs).map toModelBlock)) (toModelChain tl) = true := by
+    rw [MoltPetit.Model.keyMonoFrom_congr hhistK.floors]
+    exact hmono_tl
+  have hmono_full : MoltPetit.Model.keyMonoOk n.val (fullChain G bs tl) = true := by
+    exact MoltPetit.Model.keyMonoOk_append_of_from hcM hmono_from_floor
+  exact MoltPetit.Model.keyMonoOk_sound hmono_full
+
+/-- **Theorem (deployed K agreement)**: mode 1 deployed agreement with monotone key indices. -/
+theorem rust_deployed_k_agreement : MoltPaper.thm_rust_deployed_k_agreement := by
+  intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R hG hSigG hexec hClock hBudget hL hL'
+        hbridge hφ now now' hNow hNow' cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+        bs bs' stO stO' out out' hst hst' hfl hfl' hA hA' h hDeep hDeep'
+  obtain ⟨hval_dep, _⟩ := validate_deployed_k_sound hval
+  obtain ⟨hval'_dep, _⟩ := validate_deployed_k_sound hval'
+  have hagree := rust_deployed_agreement hn hq I crypto
+    hG hSigG hexec hClock hBudget hL hL' hbridge hφ
+    hNow hNow' hval_dep hval'_dep hstr hstr' hst hst' hA hA' hDeep hDeep'
+  have hmono := rust_deployed_k_mono I crypto hn hq hG hSigG hval hstr hfl hA
+  have hmono' := rust_deployed_k_mono I crypto hn hq hG hSigG hval' hstr' hfl' hA'
+  exact ⟨hagree, hmono, hmono'⟩
+
 end Rust
 
