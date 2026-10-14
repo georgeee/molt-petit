@@ -3596,13 +3596,13 @@ lemma floorLookup_floors_of_state (fg : FloorsG U64) :
 lemma rust_deployed_k_mono {C} (I : CryptoD C) (crypto : C) {n q Δ : U64}
     (hn : 1 ≤ n.val) (hq : quorum n = ok q)
     {G : Block} (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
-    (hSigG : DSigned I crypto n (toModelBlock G))
+    {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
     {now : U64} {cert : Hash} {suffix : SignedChain}
     (hval : validate_deployed_k I n now Δ crypto cert suffix = ok true)
     {tl : Chain} (hstr : strip_sigs suffix = ok tl)
-    {bs : List Block} {stO : CertStateG U64} {out : FloorsG U64}
+    {bs : List (Block × Hash)} {ts : Hash} {stO : CertStateG U64} {out : FloorsG U64}
     (hfl : I.cert_floors_state crypto cert = ok out)
-    (hA : AttestsK I crypto n q G bs stO out) :
+    (hA : AttestsK I crypto n q G sG bs stO out ts) :
     MoltPetit.Model.KeyIndexMonotone n.val (fullChain G bs tl) := by
   obtain ⟨_, fg, fl, stripped, hfg, hfl_state, hstrip, hshape, hkeymono⟩ :=
     validate_deployed_k_sound hval
@@ -3633,12 +3633,12 @@ lemma rust_deployed_k_mono {C} (I : CryptoD C) (crypto : C) {n q Δ : U64}
       MoltPetit.Model.ts_keyMonoFromTs hn (toModelChain tl) (toTSFloors fl) (floorsFun out) hhas hden
     exact hiff.mp hts
   obtain ⟨hcert, hhist, hhistK, hview⟩ := attestsK_history hn hq hG hSigG hA
-  have hcM : MoltPetit.Model.keyMonoOk n.val ((G :: bs).map toModelBlock) = true := by
+  have hcM : MoltPetit.Model.keyMonoOk n.val ((G :: bs.map Prod.fst).map toModelBlock) = true := by
     have := hhistK.valid
     rw [MoltPetit.Model.validChainK, Bool.and_eq_true] at this
     exact this.2
   have hmono_from_floor : MoltPetit.Model.keyMonoFrom n.val
-      (MoltPetit.Model.keyFloor n.val ((G :: bs).map toModelBlock)) (toModelChain tl) = true := by
+      (MoltPetit.Model.keyFloor n.val ((G :: bs.map Prod.fst).map toModelBlock)) (toModelChain tl) = true := by
     rw [MoltPetit.Model.keyMonoFrom_congr hhistK.floors]
     exact hmono_tl
   have hmono_full : MoltPetit.Model.keyMonoOk n.val (fullChain G bs tl) = true := by
@@ -3647,14 +3647,14 @@ lemma rust_deployed_k_mono {C} (I : CryptoD C) (crypto : C) {n q Δ : U64}
 
 /-- **Theorem (deployed K agreement)**: mode 1 deployed agreement with monotone key indices. -/
 theorem rust_deployed_k_agreement : MoltPaper.thm_rust_deployed_k_agreement := by
-  intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R hG hSigG hexec hClock hBudget hL hL'
+  intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R hG sG hSigG hexec hClock hBudget hL hL'
         hbridge hφ now now' hNow hNow' cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
-        bs bs' stO stO' out out' hst hst' hfl hfl' hA hA' h hDeep hDeep'
+        bs bs' ts ts' hts hts' stO stO' out out' hst hst' hfl hfl' hA hA' h hDeep hDeep'
   obtain ⟨hval_dep, _⟩ := validate_deployed_k_sound hval
   obtain ⟨hval'_dep, _⟩ := validate_deployed_k_sound hval'
   have hagree := rust_deployed_agreement hn hq I crypto
     hG hSigG hexec hClock hBudget hL hL' hbridge hφ
-    hNow hNow' hval_dep hval'_dep hstr hstr' hst hst' hA hA' hDeep hDeep'
+    hNow hNow' hval_dep hval'_dep hstr hstr' hts hts' hst hst' hA hA' hDeep hDeep'
   have hmono := rust_deployed_k_mono I crypto hn hq hG hSigG hval hstr hfl hA
   have hmono' := rust_deployed_k_mono I crypto hn hq hG hSigG hval' hstr' hfl' hA'
   exact ⟨hagree, hmono, hmono'⟩
