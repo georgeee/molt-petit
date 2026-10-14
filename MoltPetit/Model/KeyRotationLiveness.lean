@@ -232,7 +232,6 @@ theorem sched_liveness_produce_block
     (hCover : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
       HonestBlocksCover bad record
         (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
-    (hFloor : keyFloor n (stripSigs sc) me ≤ keyIndex)
     (hSched : schedule slot ≤ keyIndex)
     (hSig : ops.verify (registry me keyIndex)
       (nextBlock slot newId contentsHash keyIndex tip) sig = true) :
@@ -243,9 +242,9 @@ theorem sched_liveness_produce_block
   set b := nextBlock slot newId contentsHash keyIndex tip
   set sb : SignedBlock Sig := ⟨b, sig⟩
   rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true] at hVal
-  obtain ⟨⟨hSigs, hChainK⟩, hSchedPin⟩ := hVal
-  obtain ⟨hProd, hExtK'⟩ := liveness_produce_blockK
-    (Δconf := 0) hBudget hChainK hTipEq hTipLt hMine hSCorrect hCover hFloor
+  obtain ⟨⟨hSigs, hChain⟩, hSchedPin⟩ := hVal
+  have hProd := liveness_produce_block hBudget hChain hTipEq hTipLt hMine hSCorrect hCover
+  have hExt := liveness_valid_extension hBudget hChain hTipEq hTipLt hSCorrect hCover
   refine ⟨hProd, ?_⟩
   have hStrip : stripSigs (sc ++ [sb]) = stripSigs sc ++ [b] := by
     simp only [stripSigs, List.map_append, List.map_cons, List.map_nil]
@@ -261,10 +260,9 @@ theorem sched_liveness_produce_block
     rw [sigsOk, List.all_append]
     rw [sigsOk] at hSigs
     simp [hSigs, hSigOk]
-  have hChainKExt : validChainK n (stripSigs (sc ++ [sb])) = true := by
+  have hChainExt : validChain n (stripSigs (sc ++ [sb])) = true := by
     rw [hStrip]
-    rw [validChainK', Bool.and_eq_true] at hExtK'
-    exact hExtK'.1
+    exact hExt
   have hSchedExt : schedPinned schedule (stripSigs (sc ++ [sb])) = true := by
     rw [hStrip, schedPinned, List.all_append]
     rw [schedPinned] at hSchedPin
@@ -275,7 +273,7 @@ theorem sched_liveness_produce_block
     rw [hbSlot, hbKi]
     exact decide_eq_true hSched
   rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true]
-  exact ⟨⟨hSigsExt, hChainKExt⟩, hSchedExt⟩
+  exact ⟨⟨hSigsExt, hChainExt⟩, hSchedExt⟩
 
 
 theorem lockstep_liveness_produce_block

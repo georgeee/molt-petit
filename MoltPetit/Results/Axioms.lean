@@ -365,7 +365,7 @@ axiom-hygiene claim. The Rust path is audited in `Rust/Axioms.lean`.
 -- wire-authentication contract disappears, and the budget is one global hypothesis
 -- (no AttestedHistoryK). The safety chain is mirrored over the core validator
 -- (sigs + structure/density + pin; keyMonoOk is not load-bearing for scheduled safety).
-/-- info: 'MoltPetit.Model.schedUnforgeable_of_core' depends on axioms: [propext] -/
+/-- info: 'MoltPetit.Model.schedUnforgeable_of_core' does not depend on any axioms -/
 #guard_msgs in
 #print axioms MoltPetit.Model.schedUnforgeable_of_core
 /-- info: 'MoltPetit.Model.honestSlotsUnique_schedCore' depends on axioms: [propext, Classical.choice, Quot.sound] -/

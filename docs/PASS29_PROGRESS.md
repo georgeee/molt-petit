@@ -10,7 +10,7 @@ Build one module at a time, in the background:
 
 At the scaffold, a full `lake build` fails first in `MoltPetit.TS.TimedResults` and `MoltPetit.Model.KeyStealingSchedule`. Modules downstream of these (including `Rust.Deployed`) were not reached and will show further errors once they build.
 
-In progress: 2. sched_liveness_produce_block
+In progress: 4. Signatures
 
 ## Stage A: model (mode 2 without the monotone rule)
 
@@ -18,8 +18,8 @@ In progress: 2. sched_liveness_produce_block
   - Replace `validChainK_sound h.left.right` and the like by the direct fact.
   - Any argument that used `keyMonoOk` for mode 2 must be rewritten without it. Mode-2 safety rests on the schedule pin.
   - Then build every module that imports it, one at a time, and repair them the same way: `grep -rln "validSignedChainSched" MoltPetit/ Rust/ Molt/ Paper/`.
-- [ ] 2. **`sched_liveness_produce_block`** without `hFloor`. Delete the floor obligation from the proof; the produced block need not meet a floor.
-- [ ] 3. **`reference_eq_model`**. Re-close the mode-2 conjunct; Model and Reference changed in step.
+- [x] 2. **`sched_liveness_produce_block`** without `hFloor`. Delete the floor obligation from the proof; the produced block need not meet a floor.
+- [x] 3. **`reference_eq_model`**. Re-close the mode-2 conjunct; Model and Reference changed in step.
 
 ## Stage B: Rust deployed client (`Rust/Deployed.lean`)
 
