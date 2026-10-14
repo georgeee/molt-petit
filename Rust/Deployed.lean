@@ -3995,13 +3995,41 @@ theorem rust_deployed_lock_agreement : MoltPaper.thm_rust_deployed_lock_agreemen
 
 /-- **Theorem (deployed knowledge soundness)**: knowledge soundness supplies an attested history. -/
 theorem rust_deployed_ks : MoltPaper.thm_rust_deployed_ks := by
-  intro n q C I crypto G hFold now Δ cert suffix hval
+  intro n q C I crypto G sG hFold now Δ cert suffix hval
+  have hdep : validate_deployed I n now Δ crypto cert suffix = ok true := by
+    cases hval with
+    | inl h => exact h
+    | inr h => exact (validate_deployed_k_sound h).left
   obtain ⟨st, cl, stripped, tip, s1, tl, ts,
           hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hts_sig, hids, hsuf, hrecent⟩ :=
-    validate_deployed_sound hval
+    validate_deployed_sound hdep
   exact hFold cert hverify
 
 #print axioms Rust.rust_deployed_ks
+
+/-- **Theorem (deployed schedule knowledge soundness)**:
+knowledge soundness supplies an attested history for mode 2. -/
+theorem rust_deployed_sched_ks : MoltPaper.thm_rust_deployed_sched_ks := by
+  intro n q era C I crypto G sG hFold now Δ cert suffix hval
+  obtain ⟨hval_dep, _⟩ := validate_deployed_sched_sound hval
+  obtain ⟨st, cl, stripped, tip, s1, tl, ts,
+          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hts_sig, hids, hsuf, hrecent⟩ :=
+    validate_deployed_sound hval_dep
+  exact hFold cert hverify
+
+#print axioms Rust.rust_deployed_sched_ks
+
+/-- **Theorem (deployed lockstep knowledge soundness)**:
+knowledge soundness supplies an attested history for mode 3. -/
+theorem rust_deployed_lock_ks : MoltPaper.thm_rust_deployed_lock_ks := by
+  intro n q C I crypto G sG hFold now Δ cert suffix hval
+  obtain ⟨hval_dep, _⟩ := validate_deployed_lock_sound hval
+  obtain ⟨st, cl, stripped, tip, s1, tl, ts,
+          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hts_sig, hids, hsuf, hrecent⟩ :=
+    validate_deployed_sound hval_dep
+  exact hFold cert hverify
+
+#print axioms Rust.rust_deployed_lock_ks
 
 /-! ## Step 19: rust_produce_block_deployed_live -/
 

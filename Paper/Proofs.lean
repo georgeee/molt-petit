@@ -187,6 +187,10 @@ theorem rust_deployed_lock_agreement : thm_rust_deployed_lock_agreement :=
   @Rust.rust_deployed_lock_agreement
 theorem rust_deployed_ks : thm_rust_deployed_ks :=
   @Rust.rust_deployed_ks
+theorem rust_deployed_sched_ks : thm_rust_deployed_sched_ks :=
+  @Rust.rust_deployed_sched_ks
+theorem rust_deployed_lock_ks : thm_rust_deployed_lock_ks :=
+  @Rust.rust_deployed_lock_ks
 theorem rust_produce_block_deployed_live : thm_rust_produce_block_deployed_live :=
   @Rust.rust_produce_block_deployed_live
 theorem ts_deployed_agreement : thm_ts_deployed_agreement :=
