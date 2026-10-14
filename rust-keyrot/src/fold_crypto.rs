@@ -17,7 +17,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use plonky2::field::types::{Field, PrimeField64};
 use plonky2::plonk::circuit_data::VerifierCircuitData;
 use plonky2::plonk::proof::ProofWithPublicInputs;
@@ -29,7 +29,7 @@ use molt_petit::{
 };
 
 use crate::fold_circuit::{
-    exposed_state, BlockSig, FoldBlock, KeyRegistry, Mode, SigBinding,
+    exposed_state, BlockSig, FoldBlock, FoldProver, KeyRegistry, Mode, SigBinding,
 };
 use crate::poseidon_util::fold_block_id;
 use crate::sphincs::Params;
@@ -38,6 +38,8 @@ use crate::xmss::{self, Sig};
 
 /// A 256-bit hash key for internal lookup tables.
 pub type HKey = (u64, u64, u64, u64);
+
+pub const GOLDILOCKS_ORDER: u64 = 0xFFFF_FFFF_0000_0001;
 
 #[inline]
 pub fn hkey(h: &Hash) -> HKey {
@@ -50,9 +52,17 @@ pub fn hkey_raw(h: &[u64; 4]) -> HKey {
 }
 
 /// Convert a 4-limb [`Hash`] into an `n_fe`-element field vector for public keys.
-pub fn hash_to_pk(h: &Hash, n_fe: usize) -> Vec<F> {
+/// Returns `None` if any limb is non-canonical (>= Goldilocks modulus).
+pub fn hash_to_pk(h: &Hash, n_fe: usize) -> Option<Vec<F>> {
     let limbs = [h.a, h.b, h.c, h.d];
-    limbs[..n_fe].iter().map(|&x| F::from_canonical_u64(x)).collect()
+    let mut out = Vec::with_capacity(n_fe);
+    for &x in &limbs[..n_fe] {
+        if x >= GOLDILOCKS_ORDER {
+            return None;
+        }
+        out.push(F::from_canonical_u64(x));
+    }
+    Some(out)
 }
 
 /// Convert an `n_fe`-element field public key into a [`Hash`].
@@ -104,15 +114,23 @@ pub struct FoldCrypto {
     keys: Vec<Vec<xmss::Key>>,
     reg: KeyRegistry,
     vc: xmss::VerifierCircuit,
-    cert_vd: RefCell<Option<VerifierCircuitData<F, C, D>>>,
+    /// Immutable authoritative fold verifier data.
+    cert_vd: VerifierCircuitData<F, C, D>,
+    /// State tracking for unused XMSS leaves per (producer, key_index).
+    leaf_counters: RefCell<HashMap<(usize, usize), u64>>,
     sigs: RefCell<HashMap<HKey, Sig>>,
     certs: RefCell<HashMap<HKey, ProofWithPublicInputs<F, C, D>>>,
 }
 
 impl FoldCrypto {
-    /// Create a new `FoldCrypto` dictionary for committee size `n`, fold `mode`, and
-    /// `kbits` key-rotation capacity. Uses standard parameters `Params::xmss("t", 2, 3)`.
-    pub fn new(n: u64, mode: Mode, kbits: usize) -> Self {
+    /// Create a new `FoldCrypto` dictionary for committee size `n`, fold `mode`,
+    /// `kbits` key-rotation capacity, and authoritative immutable `cert_vd`.
+    pub fn new(
+        n: u64,
+        mode: Mode,
+        kbits: usize,
+        cert_vd: VerifierCircuitData<F, C, D>,
+    ) -> Self {
         let p = Params::xmss("t", 2, 3);
         let keys: Vec<Vec<_>> = (0..n as usize)
             .map(|pr| {
@@ -121,44 +139,17 @@ impl FoldCrypto {
                     .collect()
             })
             .collect();
-        let reg = KeyRegistry::new(n as usize, kbits, p.n_fe, |pr, ki| {
-            keys[pr][ki as usize].public_key()
-        });
-        let vc = xmss::VerifierCircuit::build(p.clone());
-        Self {
-            n,
-            mode,
-            kbits,
-            p,
-            keys,
-            reg,
-            vc,
-            cert_vd: RefCell::new(None),
-            sigs: RefCell::new(HashMap::new()),
-            certs: RefCell::new(HashMap::new()),
-        }
+        Self::with_keys(n, mode, kbits, p, keys, cert_vd)
     }
 
-    /// Construct `FoldCrypto` with pre-existing verifier circuit data.
-    pub fn with_verifier_data(
-        n: u64,
-        mode: Mode,
-        kbits: usize,
-        cert_vd: VerifierCircuitData<F, C, D>,
-    ) -> Self {
-        let s = Self::new(n, mode, kbits);
-        *s.cert_vd.borrow_mut() = Some(cert_vd);
-        s
-    }
-
-    /// Construct `FoldCrypto` with custom keys and parameters.
+    /// Construct `FoldCrypto` with custom keys, parameters, and fixed `cert_vd`.
     pub fn with_keys(
         n: u64,
         mode: Mode,
         kbits: usize,
         p: Params,
         keys: Vec<Vec<xmss::Key>>,
-        cert_vd: Option<VerifierCircuitData<F, C, D>>,
+        cert_vd: VerifierCircuitData<F, C, D>,
     ) -> Self {
         let reg = KeyRegistry::new(n as usize, kbits, p.n_fe, |pr, ki| {
             keys[pr][ki as usize].public_key()
@@ -172,31 +163,55 @@ impl FoldCrypto {
             keys,
             reg,
             vc,
-            cert_vd: RefCell::new(cert_vd),
+            cert_vd,
+            leaf_counters: RefCell::new(HashMap::new()),
             sigs: RefCell::new(HashMap::new()),
             certs: RefCell::new(HashMap::new()),
         }
     }
 
-    /// Update or initialize the verifier circuit data for fold proofs.
-    pub fn set_verifier_data(&self, cert_vd: VerifierCircuitData<F, C, D>) {
-        *self.cert_vd.borrow_mut() = Some(cert_vd);
+    /// Construct `FoldCrypto` referencing an initialized [`FoldProver`].
+    pub fn from_prover(
+        fp: &FoldProver,
+        kbits: usize,
+        keys: Vec<Vec<xmss::Key>>,
+    ) -> Self {
+        Self::with_keys(
+            fp.n as u64,
+            fp.mode,
+            kbits,
+            Params::xmss("t", 2, 3),
+            keys,
+            fp.verifier_data().clone(),
+        )
     }
 
-    /// Register a fold proof under a given `Hash` handle.
+    /// The fixed fold verifier data this instance accepts.
+    pub fn verifier_data(&self) -> &VerifierCircuitData<F, C, D> {
+        &self.cert_vd
+    }
+
+    /// Register a fold proof under a given `Hash` handle. Takes only (handle, proof).
     pub fn register_cert(&self, handle: Hash, proof: ProofWithPublicInputs<F, C, D>) {
         self.certs.borrow_mut().insert(hkey(&handle), proof);
     }
 
-    /// Register a fold proof and set the verifier circuit data simultaneously.
+    /// Register a fold proof with explicit verifier data check: rejects any vd
+    /// that does not match this dictionary's fixed verifier data.
     pub fn register_cert_with_vd(
         &self,
         handle: Hash,
         proof: ProofWithPublicInputs<F, C, D>,
-        vd: VerifierCircuitData<F, C, D>,
-    ) {
-        self.set_verifier_data(vd);
+        vd: &VerifierCircuitData<F, C, D>,
+    ) -> Result<()> {
+        ensure!(
+            self.cert_vd.verifier_only.circuit_digest == vd.verifier_only.circuit_digest
+                && self.cert_vd.verifier_only.constants_sigmas_cap == vd.verifier_only.constants_sigmas_cap
+                && self.cert_vd.common == vd.common,
+            "verifier data substitution rejected: vd does not match fixed fold circuit"
+        );
         self.register_cert(handle, proof);
+        Ok(())
     }
 
     /// Construct a [`SigBinding`] configured to match this dictionary's key registry
@@ -317,6 +332,16 @@ impl FoldCrypto {
     pub fn vc(&self) -> &xmss::VerifierCircuit {
         &self.vc
     }
+
+    /// Retrieve stored signature by its digest handle.
+    pub fn get_sig(&self, handle: &Hash) -> Option<Sig> {
+        self.sigs.borrow().get(&hkey(handle)).cloned()
+    }
+
+    /// Retrieve stored certificate proof by its handle.
+    pub fn get_cert(&self, handle: &Hash) -> Option<ProofWithPublicInputs<F, C, D>> {
+        self.certs.borrow().get(&hkey(handle)).cloned()
+    }
 }
 
 impl Crypto for FoldCrypto {
@@ -325,7 +350,13 @@ impl Crypto for FoldCrypto {
         let Some(sig_entry) = table.get(&hkey(sig)) else {
             return false;
         };
-        let pk = hash_to_pk(key, self.p.n_fe);
+        let Some(pk) = hash_to_pk(key, self.p.n_fe) else {
+            return false;
+        };
+        let b_limbs = [b.id.a, b.id.b, b.id.c, b.id.d];
+        if b_limbs.iter().any(|&x| x >= GOLDILOCKS_ORDER) {
+            return false;
+        }
         let msg: [F; 4] = [
             F::from_canonical_u64(b.id.a),
             F::from_canonical_u64(b.id.b),
@@ -346,32 +377,43 @@ impl Crypto for FoldCrypto {
     }
 
     fn sign(&self, sk: &Hash, b: &Block) -> Hash {
-        let pr = if (sk.a as usize) < self.keys.len() {
-            sk.a as usize
-        } else {
-            (b.slot % self.n) as usize
-        };
-        let ki = b.key_index as usize;
+        let pr = sk.a as usize;
         assert!(
             pr < self.keys.len(),
-            "producer index {} out of range (total {})",
+            "producer index {} in sk.a out of range (committee size {})",
             pr,
             self.keys.len()
         );
+        let ki = b.key_index as usize;
         assert!(
             ki < self.keys[pr].len(),
-            "key index {} out of range (total {})",
+            "key index {} out of range for producer {}",
             ki,
-            self.keys[pr].len()
+            pr
         );
         let key = &self.keys[pr][ki];
+        let leaf = {
+            let mut counters = self.leaf_counters.borrow_mut();
+            let counter = counters.entry((pr, ki)).or_insert(0);
+            let max_leaves = 1u64 << self.p.sub_h;
+            assert!(
+                *counter < max_leaves,
+                "XMSS key leaves exhausted for producer {} at key index {} (max {} leaves; key must be rotated)",
+                pr,
+                ki,
+                max_leaves
+            );
+            let current = *counter;
+            *counter += 1;
+            current
+        };
         let msg: [F; 4] = [
             F::from_canonical_u64(b.id.a),
             F::from_canonical_u64(b.id.b),
             F::from_canonical_u64(b.id.c),
             F::from_canonical_u64(b.id.d),
         ];
-        let sig = key.sign(&msg, 0);
+        let sig = key.sign(&msg, leaf);
         let sdig = xmss::sig_digest(&sig, &self.p);
         let handle = Hash {
             a: sdig[0],
@@ -388,12 +430,8 @@ impl Crypto for FoldCrypto {
         let Some(proof) = certs.get(&hkey(cert)) else {
             return false;
         };
-        let vd_guard = self.cert_vd.borrow();
-        let Some(vd) = vd_guard.as_ref() else {
-            return false;
-        };
-        check_cyclic_proof_verifier_data(proof, &vd.verifier_only, &vd.common).is_ok()
-            && vd.verify(proof.clone()).is_ok()
+        check_cyclic_proof_verifier_data(proof, &self.cert_vd.verifier_only, &self.cert_vd.common).is_ok()
+            && self.cert_vd.verify(proof.clone()).is_ok()
     }
 
     fn cert_claim(&self, cert: &Hash) -> CertClaim {
@@ -531,22 +569,29 @@ mod tests {
     use super::*;
     use crate::fold_circuit::FoldProver;
     use molt_petit::{producer_for_slot, CertifiedChain, SignedChain};
+    use plonky2::plonk::circuit_builder::CircuitBuilder;
+    use plonky2::plonk::circuit_data::CircuitConfig;
 
     const BITS: usize = 13;
+
+    fn dummy_vd() -> VerifierCircuitData<F, C, D> {
+        let builder = CircuitBuilder::<F, D>::new(CircuitConfig::standard_recursion_config());
+        builder.build::<C>().verifier_data()
+    }
 
     #[test]
     fn test_fold_crypto_keys_and_sigs() {
         let n = 3u64;
         let kbits = 2usize;
         let mode = Mode::Sched { era: 3 };
-        let crypto = FoldCrypto::new(n, mode, kbits);
+        let crypto = FoldCrypto::new(n, mode, kbits, dummy_vd());
 
         // Verify key_for returns valid public keys
         for pr in 0..n {
             for ki in 0..(1 << kbits) {
                 let pk = crypto.key_for(pr, ki);
                 let raw_pk = crypto.keys[pr as usize][ki as usize].public_key();
-                let decoded = hash_to_pk(&pk, crypto.p.n_fe);
+                let decoded = hash_to_pk(&pk, crypto.p.n_fe).expect("canonical pk");
                 assert_eq!(decoded, raw_pk);
             }
         }
@@ -589,7 +634,7 @@ mod tests {
 
     #[test]
     fn test_fold_crypto_block_id() {
-        let crypto = FoldCrypto::new(3, Mode::Sched { era: 3 }, 2);
+        let crypto = FoldCrypto::new(3, Mode::Sched { era: 3 }, 2, dummy_vd());
         let ch = Hash { a: 1, b: 2, c: 3, d: 4 };
         let prev = Hash { a: 10, b: 20, c: 30, d: 40 };
         let psig = Hash { a: 100, b: 200, c: 300, d: 400 };
@@ -615,26 +660,238 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "producer index 99 in sk.a out of range")]
+    fn test_sign_out_of_range_sk_panics() {
+        let crypto = FoldCrypto::new(3, Mode::Sched { era: 3 }, 2, dummy_vd());
+        let b = Block {
+            slot: 1,
+            height: 1,
+            prev: None,
+            id: Hash { a: 11, b: 22, c: 33, d: 44 },
+            contents_hash: Hash { a: 1, b: 2, c: 3, d: 4 },
+            key_index: 0,
+        };
+        let bad_sk = Hash { a: 99, b: 0, c: 0, d: 0 };
+        crypto.sign(&bad_sk, &b);
+    }
+
+    #[test]
+    fn test_xmss_leaf_counter_increments_and_panics_on_exhaustion() {
+        let crypto = FoldCrypto::new(3, Mode::Sched { era: 3 }, 2, dummy_vd());
+        let pr = 0u64;
+        let ki = 0u64;
+        let sk = crypto.sk_for(pr);
+        let max_leaves = 1u64 << crypto.p.sub_h; // 8 for ("t", 2, 3)
+
+        let mut sig_handles = Vec::new();
+        for i in 0..max_leaves {
+            let b = Block {
+                slot: i * 3, // slot % 3 == 0 (producer 0)
+                height: i + 1,
+                prev: None,
+                id: Hash { a: i + 1, b: 0, c: 0, d: 0 },
+                contents_hash: Hash { a: 0, b: 0, c: 0, d: 0 },
+                key_index: ki,
+            };
+            let sig = crypto.sign(&sk, &b);
+            let raw_sig = crypto.get_sig(&sig).expect("signature stored");
+            assert_eq!(raw_sig.leaf, i);
+            assert!(crypto.verify(&crypto.key_for(pr, ki), &b, &sig));
+            sig_handles.push(sig);
+        }
+
+        // Distinct leaf indices produce distinct signature digests
+        for i in 0..sig_handles.len() {
+            for j in (i + 1)..sig_handles.len() {
+                assert!(!molt_petit::hash_eq(&sig_handles[i], &sig_handles[j]));
+            }
+        }
+
+        // Exhaustion: signing the 9th block under the same key must panic
+        let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let b = Block {
+                slot: max_leaves * 3,
+                height: max_leaves + 1,
+                prev: None,
+                id: Hash { a: 999, b: 0, c: 0, d: 0 },
+                contents_hash: Hash { a: 0, b: 0, c: 0, d: 0 },
+                key_index: ki,
+            };
+            crypto.sign(&sk, &b);
+        }));
+        assert!(res.is_err(), "signing after leaf exhaustion must panic");
+    }
+
+    #[test]
+    fn test_hash_to_pk_rejects_non_canonical() {
+        let crypto = FoldCrypto::new(3, Mode::Sched { era: 3 }, 2, dummy_vd());
+        let b = Block {
+            slot: 1,
+            height: 1,
+            prev: None,
+            id: Hash { a: 11, b: 22, c: 33, d: 44 },
+            contents_hash: Hash { a: 1, b: 2, c: 3, d: 4 },
+            key_index: 0,
+        };
+        let pr = producer_for_slot(3, b.slot);
+        let sig = crypto.sign(&crypto.sk_for(pr), &b);
+
+        // Non-canonical key limbs: >= GOLDILOCKS_ORDER
+        let non_canonical_key = Hash {
+            a: GOLDILOCKS_ORDER,
+            b: 0,
+            c: 0,
+            d: 0,
+        };
+        assert!(!crypto.verify(&non_canonical_key, &b, &sig));
+
+        let non_canonical_key2 = Hash {
+            a: u64::MAX,
+            b: 0,
+            c: 0,
+            d: 0,
+        };
+        assert!(!crypto.verify(&non_canonical_key2, &b, &sig));
+
+        // Non-canonical block ID limbs: >= GOLDILOCKS_ORDER
+        let b_non_canonical = Block {
+            slot: 1,
+            height: 1,
+            prev: None,
+            id: Hash { a: u64::MAX, b: 22, c: 33, d: 44 },
+            contents_hash: Hash { a: 1, b: 2, c: 3, d: 4 },
+            key_index: 0,
+        };
+        assert!(!crypto.verify(&crypto.key_for(pr, 0), &b_non_canonical, &sig));
+    }
+
+    #[test]
+    fn test_cert_verify_rejects_proof_from_different_circuit() {
+        let n = 3u64;
+        let kbits = 2usize;
+        let mode = Mode::Sched { era: 3 };
+
+        // 1. Honest circuit setup
+        let g_ch = [1u64, 2, 3, 4];
+        let g_id = fold_block_id(0, 0, false, [0; 4], false, [0; 4], g_ch, 0);
+        let g_fold = FoldBlock {
+            slot: 0,
+            height: 0,
+            prev: [0; 4],
+            id: g_id,
+            sig: [100, 200, 300, 400],
+            contents_hash: g_ch,
+            key_index: 0,
+        };
+        let p = Params::xmss("t", 2, 3);
+        let keys: Vec<Vec<_>> = (0..n as usize)
+            .map(|pr| {
+                (0..1u64 << kbits)
+                    .map(|ki| xmss::Key::keygen(p.clone(), 1000 * pr as u64 + ki))
+                    .collect()
+            })
+            .collect();
+        let reg = KeyRegistry::new(n as usize, kbits, p.n_fe, |pr, ki| {
+            keys[pr][ki as usize].public_key()
+        });
+        let binding = SigBinding {
+            verifier: xmss::VerifierCircuit::build(p.clone()).data,
+            n_fe: p.n_fe,
+            root: reg.root(),
+            pbits: reg.pbits,
+            kbits: reg.kbits,
+        };
+        let fp_honest = FoldProver::new(n as usize, mode, &g_fold, BITS, Some(binding)).unwrap();
+        let crypto = FoldCrypto::from_prover(&fp_honest, kbits, keys);
+
+        // 2. Dishonest circuit setup with different genesis block ID (g_ch differs)
+        let g_ch_bad = [9999u64, 2, 3, 4];
+        let g_id_bad = fold_block_id(0, 0, false, [0; 4], false, [0; 4], g_ch_bad, 0);
+        let g_fold_bad = FoldBlock {
+            slot: 0,
+            height: 0,
+            prev: [0; 4],
+            id: g_id_bad,
+            sig: [100, 200, 300, 400],
+            contents_hash: g_ch_bad,
+            key_index: 0,
+        };
+        let binding_bad = crypto.binding();
+        let mut fp_bad = FoldProver::new(n as usize, mode, &g_fold_bad, BITS, Some(binding_bad)).unwrap();
+        let st0_bad = fp_bad.genesis_state().clone();
+
+        // Build block 1 under bad prover
+        let b1_bad_id = fold_block_id(1, 1, true, g_id_bad, true, [100, 200, 300, 400], [11, 22, 33, 44], 0);
+        let b1_bad = Block {
+            slot: 1,
+            height: 1,
+            prev: Some(Hash { a: g_id_bad[0], b: g_id_bad[1], c: g_id_bad[2], d: g_id_bad[3] }),
+            id: Hash { a: b1_bad_id[0], b: b1_bad_id[1], c: b1_bad_id[2], d: b1_bad_id[3] },
+            contents_hash: Hash { a: 11, b: 22, c: 33, d: 44 },
+            key_index: 0,
+        };
+        let b1_sig = crypto.sign(&crypto.sk_for(producer_for_slot(n, 1)), &b1_bad);
+        let b1_bad_fold = crypto.to_fold_block(&b1_bad, &b1_sig);
+        let b1_ev = crypto.block_sig(&b1_bad, &b1_sig).unwrap();
+        let (bad_data, bad_proof) = fp_bad.step(&st0_bad, None, &b1_bad_fold, Some(&b1_ev)).unwrap();
+
+        // 3. Register the bad proof in honest crypto (takes only handle and proof)
+        let bad_handle = Hash { a: 0xbad, b: 0xbad, c: 0, d: 0 };
+        crypto.register_cert(bad_handle, bad_proof.clone());
+
+        // cert_verify MUST fail because bad_proof was proven against a different circuit
+        assert!(!crypto.cert_verify(&bad_handle));
+
+        // register_cert_with_vd MUST also reject bad_data.verifier_data()
+        assert!(crypto.register_cert_with_vd(bad_handle, bad_proof, &bad_data.verifier_data()).is_err());
+    }
+
+    #[test]
     fn fold_crypto_end_to_end() {
         let n = 3u64;
         let kbits = 2usize;
         let mode = Mode::Sched { era: 3 };
-        let crypto = FoldCrypto::new(n, mode, kbits);
+
+        // Setup keys and binding
+        let p = Params::xmss("t", 2, 3);
+        let keys: Vec<Vec<_>> = (0..n as usize)
+            .map(|pr| {
+                (0..1u64 << kbits)
+                    .map(|ki| xmss::Key::keygen(p.clone(), 1000 * pr as u64 + ki))
+                    .collect()
+            })
+            .collect();
+        let reg = KeyRegistry::new(n as usize, kbits, p.n_fe, |pr, ki| {
+            keys[pr][ki as usize].public_key()
+        });
+        let binding = SigBinding {
+            verifier: xmss::VerifierCircuit::build(p.clone()).data,
+            n_fe: p.n_fe,
+            root: reg.root(),
+            pbits: reg.pbits,
+            kbits: reg.kbits,
+        };
 
         // 1. Build a chain of a few blocks with XMSS signatures:
         // Genesis block (slot 0, height 0)
-        let g_ch = Hash { a: 1, b: 2, c: 3, d: 4 };
-        let g_id = crypto.block_id(0, 0, None, None, &g_ch, 0);
-        let g_sig = Hash { a: 100, b: 200, c: 300, d: 400 };
-        let g_block = Block {
+        let g_ch = [1u64, 2, 3, 4];
+        let g_id_raw = fold_block_id(0, 0, false, [0; 4], false, [0; 4], g_ch, 0);
+        let g_sig_raw = [100u64, 200, 300, 400];
+        let g_fold = FoldBlock {
             slot: 0,
             height: 0,
-            prev: None,
-            id: g_id,
+            prev: [0; 4],
+            id: g_id_raw,
+            sig: g_sig_raw,
             contents_hash: g_ch,
             key_index: 0,
         };
-        let g_fold = crypto.to_fold_block(&g_block, &g_sig);
+        let g_id = Hash { a: g_id_raw[0], b: g_id_raw[1], c: g_id_raw[2], d: g_id_raw[3] };
+        let g_sig = Hash { a: g_sig_raw[0], b: g_sig_raw[1], c: g_sig_raw[2], d: g_sig_raw[3] };
+
+        // Construct FoldProver and FoldCrypto with matching fixed verifier data
+        let mut fp = FoldProver::new(n as usize, mode, &g_fold, BITS, Some(binding)).unwrap();
+        let crypto = FoldCrypto::from_prover(&fp, kbits, keys);
 
         // Block 1: slot 1, height 1
         let b1_ch = Hash { a: 11, b: 22, c: 33, d: 44 };
@@ -684,7 +941,6 @@ mod tests {
         let b3_sig = crypto.sign(&crypto.sk_for(b3_pr), &b3);
 
         // 2. Fold the first k-1 blocks (blocks 1 and 2) into a certificate and register it.
-        let mut fp = FoldProver::new(n as usize, mode, &g_fold, BITS, Some(crypto.binding())).unwrap();
         let st0 = fp.genesis_state().clone();
         let b1_ev = crypto.block_sig(&b1, &b1_sig).expect("b1 sig evidence");
         let (_cdata1, p1) = fp.step(&st0, None, &b1_fold, Some(&b1_ev)).expect("step 1 fold");
@@ -694,7 +950,11 @@ mod tests {
         let (cdata2, p2) = fp.step(&st1, Some(&p1), &b2_fold, Some(&b2_ev)).expect("step 2 fold");
 
         let cert_handle = Hash { a: 0xfeed, b: 0xbeef, c: 1, d: 2 };
-        crypto.register_cert_with_vd(cert_handle, p2, cdata2.verifier_data());
+        // register_cert takes ONLY (handle, proof):
+        crypto.register_cert(cert_handle, p2.clone());
+
+        // register_cert_with_vd succeeds with matching verifier data:
+        assert!(crypto.register_cert_with_vd(cert_handle, p2, &cdata2.verifier_data()).is_ok());
 
         // Verify certificate methods exposed by CryptoD
         let cert_tip_sig = crypto.cert_tip_sig(&cert_handle);

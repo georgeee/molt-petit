@@ -41,7 +41,7 @@ use plonky2::hash::poseidon::PoseidonHash;
 use plonky2::iop::target::{BoolTarget, Target};
 use plonky2::iop::witness::{PartialWitness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
-use plonky2::plonk::circuit_data::{CircuitConfig, CircuitData, CommonCircuitData};
+use plonky2::plonk::circuit_data::{CircuitConfig, CircuitData, CommonCircuitData, VerifierCircuitData};
 use plonky2::plonk::circuit_data::VerifierCircuitTarget;
 use plonky2::plonk::proof::{ProofWithPublicInputs, ProofWithPublicInputsTarget};
 use plonky2::recursion::cyclic_recursion::check_cyclic_proof_verifier_data;
@@ -290,6 +290,7 @@ pub struct FoldProver {
     genesis: FoldState,
     common: CommonCircuitData<F, D>,
     digest: Option<Vec<F>>,
+    pub verifier_data: Option<VerifierCircuitData<F, C, D>>,
     /// Gate count of the step circuit before padding (for the bench).
     pub step_gates: usize,
     /// Wall-clock of the last step's circuit build and of its proof.
@@ -310,6 +311,7 @@ impl FoldProver {
             genesis: FoldState::genesis(n, mode, genesis_block, genesis_block.sig),
             common: common_data_for_recursion(bits),
             digest: None,
+            verifier_data: None,
             step_gates: 0,
             last_build: Default::default(),
             last_prove: Default::default(),
@@ -330,11 +332,17 @@ impl FoldProver {
             let built = fp.build(&fp.common, &g, &probe, None)?;
             fp.step_gates = built.gates;
             if built.success {
+                fp.verifier_data = Some(built.data.verifier_data());
+                fp.digest = Some(built.data.verifier_only.circuit_digest.elements.to_vec());
                 return Ok(fp);
             }
             fp.common = built.data.common;
         }
         bail!("recursion shape did not converge")
+    }
+
+    pub fn verifier_data(&self) -> &VerifierCircuitData<F, C, D> {
+        self.verifier_data.as_ref().expect("verifier data initialized")
     }
 
     pub fn genesis_state(&self) -> &FoldState {
