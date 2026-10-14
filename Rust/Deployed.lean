@@ -2061,38 +2061,84 @@ theorem rustSigned_of_sigOn {C} {I : Crypto C} {crypto : C} {n : U64}
   obtain ⟨i, key, hi, hkey, hver⟩ := h
   exact ⟨b, i, key, s, rfl, hi, hkey, hver⟩
 
-/-- A passing `ids_ok` makes every block of the model chain `RustFormed`. -/
-theorem ids_ok_formed {C} {I : CryptoD C} {crypto : C} :
-    ∀ (ps : Option Hash) (sc : molt_petit.SignedChain) (tl : molt_petit.Chain),
+/-- Consecutive blocks of `tl` link backwards, starting from `prevId`. -/
+def ChainLinks (prevId : Hash) : molt_petit.Chain → Prop
+  | .Nil => True
+  | .Cons b tl => b.prev = some prevId ∧ ChainLinks b.id tl
+
+theorem chainLinks_of_linksOk {s1 : Block} {tipId : Hash} :
+    ∀ (tl_sub : molt_petit.Chain),
+    s1.prev = some tipId →
+    MoltPetit.Model.linksOk (toModelBlock s1 :: toModelChain tl_sub) = true →
+    ChainLinks tipId (molt_petit.Chain.Cons s1 tl_sub)
+  | molt_petit.Chain.Nil, hprev, _ => ⟨hprev, trivial⟩
+  | molt_petit.Chain.Cons s2 rest, hprev, hlinks => by
+    refine ⟨hprev, ?_⟩
+    rw [toModelChain_cons, MoltPetit.Model.linksOk, Bool.and_eq_true] at hlinks
+    obtain ⟨hchild, hrest⟩ := hlinks
+    rw [MoltPetit.Model.childOk, decide_eq_true_eq] at hchild
+    obtain ⟨_, _, hp⟩ := hchild
+    cases hs2_prev : s2.prev with
+    | none =>
+      simp [toModelBlock, hs2_prev] at hp
+    | some p =>
+      simp [toModelBlock, hs2_prev] at hp
+      have hp_eq : p = s1.id := hashToNat_inj hp
+      subst hp_eq
+      exact chainLinks_of_linksOk rest hs2_prev hrest
+
+theorem chainLinks_of_toModel_linksOk {s1 : Block} {tipId : Hash} (tl_sub : molt_petit.Chain)
+    (hprev : (toModelBlock s1).prev = some (hashToNat tipId))
+    (hlinks : MoltPetit.Model.linksOk (toModelBlock s1 :: toModelChain tl_sub) = true) :
+    ChainLinks tipId (molt_petit.Chain.Cons s1 tl_sub) := by
+  have hp : s1.prev = some tipId := by
+    cases hs : s1.prev with
+    | none => simp [toModelBlock, hs] at hprev
+    | some p =>
+      simp [toModelBlock, hs] at hprev
+      exact congrArg some (hashToNat_inj hprev)
+  exact chainLinks_of_linksOk tl_sub hp hlinks
+
+/-- A passing `ids_ok` on a linked chain makes every block of the model chain `RustFormed`. -/
+theorem ids_ok_formed {C} {I : CryptoD C} {crypto : C} {n : U64} {G : Block} :
+    ∀ (T : Block) (ts : Hash) (sc : molt_petit.SignedChain) (tl : molt_petit.Chain),
+    FormedFrom I crypto n G T →
+    SigOn I.CryptoInst crypto n T ts →
     molt_petit.strip_sigs sc = ok tl →
-    molt_petit.ids_ok I crypto ps sc = ok true →
-    ∀ B ∈ toModelChain tl, RustFormed I crypto B := by
-  intro ps sc
-  induction sc generalizing ps with
+    molt_petit.sigs_ok I.CryptoInst n crypto sc = ok true →
+    molt_petit.ids_ok I crypto (some ts) sc = ok true →
+    ChainLinks T.id tl →
+    ∀ B ∈ toModelChain tl, RustFormed I crypto n G B := by
+  intro T ts sc
+  induction sc generalizing T ts with
   | SNil =>
-    intro tl hstrip hids B hB
+    intro tl hT hSigT hstrip hsig hids hlinks B hB
     rw [molt_petit.strip_sigs] at hstrip
     injection hstrip with hstrip; subst hstrip
     simp [toModelChain] at hB
   | SCons b s rest ih =>
-    intro tl hstrip hids B hB
+    intro tl hT hSigT hstrip hsig hids hlinks B hB
     rw [molt_petit.strip_sigs] at hstrip
     obtain ⟨c, hc, hstrip⟩ := molt_petit.bind_inv hstrip
     injection hstrip with hstrip; subst hstrip
+    dsimp [ChainLinks] at hlinks
+    obtain ⟨hprev, hlinks_c⟩ := hlinks
+    obtain ⟨hSig_b, hsig_rest⟩ := sigs_ok_cons hsig
     rw [molt_petit.ids_ok.eq_def] at hids
-    obtain ⟨id, hid, hids⟩ := molt_petit.bind_inv hids
-    obtain ⟨b1, hb1, hids⟩ := molt_petit.bind_inv hids
-    split at hids
+    obtain ⟨id, hid, h1⟩ := molt_petit.bind_inv hids
+    obtain ⟨b1, hb1, h2⟩ := molt_petit.bind_inv h1
+    split at h2
     · rename_i hb1t
       rw [hb1t] at hb1
       have heq := hash_eq_sound hb1
+      rw [heq] at hid
+      have hb_formed : FormedFrom I crypto n G b :=
+        FormedFrom.step hT hSigT hprev hid
       rw [toModelChain_cons] at hB
       rcases List.mem_cons.mp hB with rfl | hBtl
-      · refine ⟨b, ps, rfl, ?_⟩
-        rw [← heq]
-        exact hid
-      · exact ih (some s) c hc hids B hBtl
-    · simp at hids
+      · exact ⟨b, rfl, hb_formed⟩
+      · exact ih b s c hb_formed hSig_b hc hsig_rest h2 hlinks_c B hBtl
+    · simp at h2
 
 /-- A passing `recent_ok` gives `now ≤ tip + delta`. -/
 theorem recent_ok_sound {now delta tip : U64}
@@ -2113,13 +2159,18 @@ theorem recent_ok_sound {now delta tip : U64}
 
 /-- Suffix blocks with valid signatures and ids are `DSigned`. -/
 theorem dsigned_of_sigs_ok_ids_ok {C} {I : CryptoD C} {n : U64} {crypto : C}
-    {ps : Option Hash} {sc : molt_petit.SignedChain} {stripped : molt_petit.Chain}
+    {G T : Block} {ts : Hash}
+    {sc : molt_petit.SignedChain} {stripped : molt_petit.Chain}
+    (hT : FormedFrom I crypto n G T)
+    (hSigT : SigOn I.CryptoInst crypto n T ts)
     (hsig : molt_petit.sigs_ok I.CryptoInst n crypto sc = ok true)
     (hstrip : molt_petit.strip_sigs sc = ok stripped)
-    (hids : molt_petit.ids_ok I crypto ps sc = ok true) :
-    ∀ B ∈ toModelChain stripped, DSigned I crypto n B := by
+    (hids : molt_petit.ids_ok I crypto (some ts) sc = ok true)
+    (hlinks : ChainLinks T.id stripped) :
+    ∀ B ∈ toModelChain stripped, DSigned I crypto n G B := by
   intro B hB
-  exact ⟨sigs_ok_signed sc hsig hstrip B hB, ids_ok_formed ps sc stripped hstrip hids B hB⟩
+  exact ⟨sigs_ok_signed sc hsig hstrip B hB,
+         ids_ok_formed T ts sc stripped hT hSigT hstrip hsig hids hlinks B hB⟩
 
 /-- A passing `sched_pin_ok` gives the model `schedPinned` predicate. -/
 theorem sched_pin_ok_sound {era : U64} :
