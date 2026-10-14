@@ -990,12 +990,10 @@ $\mathit{Stolen}$. What breaks first: a schedule taken from the network
 generation, which counts until its era ends; a stolen cold root, which
 costs its validator for good.
 
-\paragraph{The untimed form.} An older form has no real-time model of
-signing. Under
-Assumption~\ref{ass:rotation-honest} and the $\rho + T$ count, which
-charges a stolen live key from the start of time (or from a horizon $H$
-at least $n$ slots below both tips), two accepted chains of equal tip
-height agree on the block $n$ below each tip
+\paragraph{The untimed form.} Without a real-time model of signing,
+under Assumption~\ref{ass:rotation-honest} and the $\rho + T$ count
+charged from a horizon $H$ at least $n$ slots below both tips, two
+accepted chains of equal tip height agree on the block $n$ below each tip
 (\code{sched\_recent\_tip\_ancestor\_agreement\_horizon}; at unequal
 heights \code{sched\_recent\_tip\_ancestor\_mem\_horizon}; and
 \code{sched\_recent\_certified\_history\_agreement\_horizon} over a
@@ -1140,8 +1138,8 @@ signature verifies at the stated version and that version meets the schedule
 (\code{sched\_liveness\_produce\_block}); mode 3 signed, if it is at
 least every version on the chain and equals those already in the
 producer's grid window (\code{lockstep\_liveness\_produce\_block}). An attacker
-can still slow a mode down through these conditions (a stolen key used
-at a higher version raises its validator's floor), but not break safety.
+can still slow a mode down through these conditions (in modes 1 and 3,
+a stolen key used at a higher version raises the floor), but not break safety.
 
 The global form is a density fact about one chain in the unsigned
 model; reading it as liveness of a synchronous run is ours, since the
@@ -1188,11 +1186,10 @@ clock readings. Its producer,
 \code{produce\_block\_deployed}, extends a tail the client accepts to
 one it accepts again, given the slot is its own and after the tip, and
 every window the new block completes is dense
-(\code{rust\_produce\_block\_deployed\_live}). The theorem takes the
-density as given, rather than deriving it from the fault budget as the
-model's liveness theorems do; it covers the mode-free validator at the
-clock reading of the new slot, and assumes that key lookup, signing and
-id hashing succeed for the producer. It needs size
+(\code{rust\_produce\_block\_deployed\_live}): the density is assumed,
+not derived from the budget, for the mode-free validator at the new
+slot's clock reading, given that key lookup, signing and hashing
+succeed. It needs size
 bounds: slots, the roster, and the decoded tail plus the suffix below
 $2^{62}$, the tip height below $2^{64}-1$, and a decoded tail no newer than its tip. Each excludes a
 64-bit overflow, which the checked arithmetic turns into a rejection.
@@ -1227,9 +1224,8 @@ mode's full-chain rule accepts with its genesis at slot~$0$, within the
 same size bounds
 (\code{cert\_fold\_k\_complete}, \code{cert\_fold\_sched\_complete},
 \code{cert\_fold\_lock\_complete}). Tests check the circuit's state
-against the native fold at every block. They also check that a rejected
-block, a forged previous state, a wrong id, parent signature or key
-version, and a signature by the wrong key or over the wrong block have
+against the native fold at every block, and that a rejected block, a
+forged state, a wrong id, parent signature, key version or signer have
 no proof. Gadget faithfulness (including the step's witnessed division),
 the circuit's routing, and the proof system's knowledge soundness are
 the remaining trust assumptions of the fold certificate.
@@ -1243,15 +1239,15 @@ recorded compiler bugs by hand (\code{tools/thales-reemission/}); those
 corrections are part of the trusted base. One, a match binder that
 shadowed the producer's \code{contentsHash} parameter, was found only by
 outside review; no theorem covered that function. The TypeScript
-\code{verify} receives slot, height, parent and id, not the whole block,
-so key version and contents hash are bound only through the id.
+\code{verify} receives slot, height, parent and id, so key version and contents hash are bound only through the id.
 
 \paragraph{What is trusted.} The Lean kernel; the pinned translators
 (Charon + Aeneas, Thales with its hand corrections) and the circuit
 gadgets, with the Rust crate built with overflow checks on, as its
 release profile sets; the node's signing loop (the once-per-slot record,
-the clock), whose guarantees every safety theorem assumes; and that the named assumptions match the deployed primitives.
-Cryptography enters only as theorem assumptions.
+the clock), whose guarantees every safety theorem assumes; and that the
+named assumptions, the only way cryptography enters, match the deployed
+primitives.
 
 \paragraph{Measurements.} The prototype (\code{rust-keyrot/}) pairs the
 consensus rule with a minimal application, a committed key set that
@@ -1362,8 +1358,7 @@ Thales~\cite{thales}.
 a public schedule: a predictable leader is easier to censor, but no
 randomness beacon is needed. There is no recovery from halts: if a
 complete window ever has fewer than $\quorum$ blocks, the chain halts for
-good; at $n = 7$ and $\tau \approx 4$\,s, three validators missing their
-slots within one window of about $28$\,s do it. Safety reads a clock
+good (at $n = 7$, three missed slots in one window). Safety reads a clock
 (Assumption~\ref{ass:clock}), but never a synchronous network.
 
 \paragraph{What is not machine-checked.} Beyond the trusted base of
@@ -1372,23 +1367,19 @@ deployment assumptions of Section~\ref{sec:assumptions}; honest custody per key 
 mode 2; version independence under theft; the roster's commitment to the
 cold roots, the circuit's trust anchor; that the clock reading handed
 to the client is the node's real clock; the mode-3 duties of moving together and erasure; and that a lost key
-exposes nothing, which rests on a signing record that survives the loss.
+exposes nothing.
 
 \paragraph{The long-range residual.} Exposure after a window's stretch
 does not count against it, so a patient attacker can collect late
 signatures into an arbitrarily long fork on old slots. Recency rejects
 it, and Theorem~\ref{thm:forge} forbids preparing one in advance, but it
-is never impossible. Forward-secure signatures~\cite{forwardsec} with erasure, or
-counting every exposure forever,
-would remove it, at the price of a stateful signer or of charging a
-cleaned-up signer for good. Key rotation does not. We keep the windowed
-budget and accept the contained residual.
+is never impossible. Forward-secure signatures~\cite{forwardsec}
+with erasure would remove it, at the price of a stateful signer; key
+rotation does not.
 
 \paragraph{Artifact.} \code{lake build} re-checks every theorem cited
-here, with axiom guards (the \code{Molt} library's executable functions
-are proved equal to the model's, \code{reference\_eq\_model}).
-\code{nix flake check} re-checks that the vendored translations are what
-the pinned translators produce, and runs the \code{rust-keyrot/} tests. 
+here, with axiom guards; \code{nix flake check} also re-checks the vendored translations against
+the pinned translators and runs the \code{rust-keyrot/} tests.
 
 \begin{thebibliography}{99}
 
