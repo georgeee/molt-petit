@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 9. Decoding.
+In progress: 10. View transport.
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -49,7 +49,7 @@ In progress: 9. Decoding.
 
 ## Stage C: the deployed client (`Rust/Deployed.lean`)
 
-- [ ] 9. **Decoding.** If `claim_of_state n st = ok cl`, then `claimView (toModelClaim cl) = stateView n.val st`, and `claim_of_state` never fails.
+- [x] 9. **Decoding.** If `claim_of_state n st = ok cl`, then `claimView (toModelClaim cl) = stateView n.val st`, and `claim_of_state` never fails.
   - Use `suffix_lo_val` from `Rust/Bridge.lean`.
   - `tail_of_buffer` keeps the entries `tailSlots` keeps, filtered by `lo ≤ s`.
 - [ ] 10. **View transport.** Suppose `validate_suffix n cl tl = ok true` and `claimView cl₀ = claimView (toModelClaim cl)`. Then the hypotheses `hLink`, `hLinks` and `hDense` of the certificate theorems hold against `cl₀` for `toModelChain tl` (non-empty).

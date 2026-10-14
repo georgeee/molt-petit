@@ -1814,4 +1814,140 @@ theorem cert_fold_k_complete : MoltPaper.thm_cert_fold_k_complete := by
   exact foldK_complete_aux hn hsmall hq bs [] (genesisState n.val G) (initFloors n.val G.key_index)
     hbound' hV' hMono' hbase_rep hbase_tail_bound hlen0 hfun0
 
+
+/-! ## Step 9: Decoding -/
+
+theorem u64_sub_ok {x y : U64} (h : y.val ≤ x.val) :
+    ∃ z : U64, x - y = ok z ∧ z.val = x.val - y.val := by
+  have hsub := UScalar.sub_equiv x y
+  cases hxy : x - y with
+  | ok z =>
+    rw [hxy] at hsub
+    exact ⟨z, rfl, by omega⟩
+  | fail e =>
+    rw [hxy] at hsub
+    omega
+  | div =>
+    rw [hxy] at hsub
+    exact False.elim hsub
+
+theorem tail_of_buffer_corr : ∀ (t : TailG U64) (lo : U64) {c : molt_petit.Chain},
+    molt_petit.tail_of_buffer t lo = ok c →
+    (toModelChain c).map (·.slot) = (tailSlots t).filter (fun s => decide (lo.val ≤ s)) := by
+  intro t
+  induction t with
+  | TNil =>
+    intro lo c h
+    rw [molt_petit.tail_of_buffer] at h
+    injection h with h; subst h
+    rfl
+  | TCons f s tl ih =>
+    intro lo c h
+    rw [molt_petit.tail_of_buffer] at h
+    obtain ⟨rest, hrest, h⟩ := molt_petit.bind_inv h
+    have ih' := ih lo hrest
+    by_cases hf : f = 1#u64
+    · have hf_val : f.val = 1 := by rw [hf]; rfl
+      have hts : tailSlots (.TCons f s tl) = s.val :: tailSlots tl := by
+        simp [tailSlots, hf_val]
+      rw [hts]
+      simp only [hf, ite_true] at h
+      by_cases hlo : lo ≤ s
+      · have hlo_val : lo.val ≤ s.val := by scalar_tac
+        have hdec : decide (lo.val ≤ s.val) = true := decide_eq_true hlo_val
+        simp only [hlo, ite_true] at h
+        injection h with hc; subst c
+        simp only [toModelChain, toModelBlock, List.map_cons]
+        rw [ih']
+        simp [hdec]
+      · have hlo_val : ¬(lo.val ≤ s.val) := by
+          intro hle
+          have : lo ≤ s := by scalar_tac
+          contradiction
+        have hdec : decide (lo.val ≤ s.val) = false := decide_eq_false hlo_val
+        simp only [hlo, ite_false] at h
+        injection h with hc; subst c
+        rw [ih']
+        simp [hdec]
+    · have hf_val : f.val ≠ 1 := by
+        intro heq
+        apply hf
+        exact UScalar.val_eq_imp _ _ heq
+      have hts : tailSlots (.TCons f s tl) = tailSlots tl := by
+        simp [tailSlots, hf_val]
+      rw [hts]
+      simp only [hf, ite_false] at h
+      injection h with hc; subst c
+      rw [ih']
+
+theorem tail_of_buffer_total : ∀ (t : TailG U64) (lo : U64),
+    ∃ c, molt_petit.tail_of_buffer t lo = ok c := by
+  intro t
+  induction t with
+  | TNil =>
+    intro lo
+    refine ⟨.Nil, ?_⟩
+    rw [molt_petit.tail_of_buffer]
+  | TCons f s tl ih =>
+    intro lo
+    obtain ⟨rest, hrest⟩ := ih lo
+    rw [molt_petit.tail_of_buffer, hrest]
+    simp only [bind_tc_ok]
+    by_cases hf : f = 1#u64
+    · simp only [hf, ite_true]
+      by_cases hlo : lo ≤ s
+      · simp only [hlo, ite_true]
+        exact ⟨_, rfl⟩
+      · simp only [hlo, ite_false]
+        exact ⟨_, rfl⟩
+    · simp only [hf, ite_false]
+      exact ⟨_, rfl⟩
+
+theorem suffix_lo_total (n tip_slot : U64) (h : tip_slot.val + 2 < 2 ^ 64) :
+    ∃ lo : U64, molt_petit.suffix_lo n tip_slot = ok lo := by
+  obtain ⟨i, hi, hival⟩ := u64_add_ok (x := tip_slot) (y := 2#u64) h
+  rw [molt_petit.suffix_lo, hi]
+  simp only [bind_tc_ok]
+  by_cases hni : i < n
+  · simp only [hni, ite_true]
+    exact ⟨0#u64, rfl⟩
+  · simp only [hni, ite_false]
+    have hle : n.val ≤ i.val := by
+      by_contra hc
+      have : i < n := by scalar_tac
+      exact hni this
+    obtain ⟨lo, hlo, _⟩ := u64_sub_ok hle
+    rw [hlo]
+    exact ⟨lo, rfl⟩
+
+theorem claim_of_state_sound {n : U64} {st : CertStateG U64} {cl : molt_petit.CertClaim}
+    (hcl : molt_petit.claim_of_state n st = ok cl) :
+    MoltPetit.Model.claimView (toModelClaim cl) = stateView n.val st := by
+  rw [molt_petit.claim_of_state] at hcl
+  obtain ⟨lo, hlo, hcl⟩ := molt_petit.bind_inv hcl
+  obtain ⟨c, hc, hcl⟩ := molt_petit.bind_inv hcl
+  injection hcl with hcl
+  subst cl
+  have hlov : lo.val = st.tip_slot.val + 2 - n.val := suffix_lo_val hlo
+  have hcorr := tail_of_buffer_corr st.tail lo hc
+  dsimp [toModelClaim, MoltPetit.Model.claimView, stateView]
+  have hhash : hashToNat
+      { a := st.tip_id.a, b := st.tip_id.b, c := st.tip_id.c, d := st.tip_id.d } =
+      hashGToNat st.tip_id := rfl
+  rw [hhash]
+  refine Prod.ext rfl (Prod.ext rfl (Prod.ext rfl ?_))
+  dsimp
+  rw [hcorr, hlov]
+
+theorem claim_of_state_total (n : U64) (st : CertStateG U64) (h : st.tip_slot.val + 2 < 2 ^ 64) :
+    ∃ cl, molt_petit.claim_of_state n st = ok cl := by
+  obtain ⟨lo, hlo⟩ := suffix_lo_total n st.tip_slot h
+  obtain ⟨c, hc⟩ := tail_of_buffer_total st.tail lo
+  rw [molt_petit.claim_of_state, hlo]
+  simp only [bind_tc_ok]
+  rw [hc]
+  simp only [bind_tc_ok]
+  exact ⟨_, rfl⟩
+
+
 end Rust
