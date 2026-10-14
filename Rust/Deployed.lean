@@ -3038,5 +3038,67 @@ lemma attestsLock_history {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Bloc
   have hview := stateView_of_foldLockOut hn hq hG hFoldOut
   exact ⟨hcertLock, hhistLock, hhist, hview⟩
 
+/-- **Theorem 1 (deployed agreement)**: two clients that accept with `validate_deployed`
+at clock readings `now`, `now'` agree on every block `n` deep in their full chains. -/
+theorem rust_deployed_agreement : MoltPaper.thm_rust_deployed_agreement := by
+  intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R hG hSigG hexec hClock hBudget hL hL'
+        hbridge hφ now now' hNow hNow' cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+        bs bs' stO stO' out out' hst hst' hA hA' h hDeep hDeep'
+  obtain ⟨st, cl, stripped, tip, s1, tl_sub,
+          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hids, hsuf, hrecent⟩ :=
+    validate_deployed_sound hval
+  obtain ⟨st', cl', stripped', tip', s1', tl_sub',
+          hst_val', hcl', hstrip', hcons', htip', hverify', hsig', hids', hsuf', hrecent'⟩ :=
+    validate_deployed_sound hval'
+  rw [hstr] at hstrip
+  injection hstrip with hstrip
+  subst hstrip
+  subst hcons
+  rw [hstr'] at hstrip'
+  injection hstrip' with hstrip'
+  subst hstrip'
+  subst hcons'
+  rw [hst] at hst_val
+  injection hst_val with hst_val
+  subst hst_val
+  rw [hst'] at hst_val'
+  injection hst_val' with hst_val'
+  subst hst_val'
+  have htip_rw : molt_petit.tip_slot_from cl.tip_slot (molt_petit.Chain.Cons s1 tl_sub) =
+                 molt_petit.tip_slot_from s1.slot tl_sub := by
+    rw [molt_petit.tip_slot_from]
+  rw [htip_rw] at htip
+  obtain ⟨sTip, hTipS, hts⟩ :=
+    tip_slot_from_eq_getLast tl_sub s1.slot (toModelBlock s1) rfl htip
+  have htip_rw' : molt_petit.tip_slot_from cl'.tip_slot (molt_petit.Chain.Cons s1' tl_sub') =
+                  molt_petit.tip_slot_from s1'.slot tl_sub' := by
+    rw [molt_petit.tip_slot_from]
+  rw [htip_rw'] at htip'
+  obtain ⟨sTip', hTipS', hts'⟩ :=
+    tip_slot_from_eq_getLast tl_sub' s1'.slot (toModelBlock s1') rfl htip'
+  obtain ⟨hcert, hhist, _, hview⟩ := attestsK_history hn hq hG hSigG hA
+  obtain ⟨hcert', hhist', _, hview'⟩ := attestsK_history hn hq hG hSigG hA'
+  have hcv : MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) =
+             MoltPetit.Model.claimView (toModelClaim cl) := by
+    rw [← hview, claim_of_state_sound hcl]
+  have hcv' : MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs'.map toModelBlock)) =
+              MoltPetit.Model.claimView (toModelClaim cl') := by
+    rw [← hview', claim_of_state_sound hcl']
+  obtain ⟨hLink, hLinks, hDense⟩ := validate_suffix_sound_view hTipS hsuf hcv
+  obtain ⟨hLink', hLinks', hDense'⟩ := validate_suffix_sound_view hTipS' hsuf' hcv'
+  have hSigned := dsigned_of_sigs_ok_ids_ok hsig hstr hids
+  have hSigned' := dsigned_of_sigs_ok_ids_ok hsig' hstr' hids'
+  have hRecent : R ≤ sTip.slot + φ := by
+    have hrec := recent_ok_sound hrecent
+    omega
+  have hRecent' : R ≤ sTip'.slot + φ := by
+    have hrec' := recent_ok_sound hrecent'
+    omega
+  have hagree := MoltPetit.Model.exposure_certified_agreement_on
+    hn hexec hClock hBudget hL hL' hbridge
+    hcert hcert' hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'
+    hSigned hSigned' hRecent hRecent' hhist hhist' hDeep hDeep'
+  exact hagree
+
 end Rust
 

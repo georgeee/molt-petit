@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 13. rust_deployed_agreement.
+In progress: 14. rust_deployed_k_agreement.
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -68,7 +68,7 @@ In progress: 13. rust_deployed_agreement.
   The twins for sched and lock follow (`GroundedCertSched`/`GroundedHistorySched`, `GroundedCertLock`/`GroundedHistoryLock`).
   - First check whether `groundedCert_history` constructs this exact history.
   - `stateView_of_foldKOut` gives `stateView n stO = claimView cl₀`.
-- [ ] 13. **`rust_deployed_agreement`**. Apply `exposure_certified_agreement_on` with `Signed := DSigned I crypto n`, `cl := cl₀`, `c := (G :: bs).map toModelBlock` and `s₁ :: srest := toModelChain tl`.
+- [x] 13. **`rust_deployed_agreement`**. Apply `exposure_certified_agreement_on` with `Signed := DSigned I crypto n`, `cl := cl₀`, `c := (G :: bs).map toModelBlock` and `s₁ :: srest := toModelChain tl`.
   - Steps 9–12 give its hypotheses.
   - Recency: `R ≤ now + δ ≤ tip + Δ + δ ≤ tip + φ`.
   - `fullChain G bs tl` unfolds to `c ++ s₁ :: srest`.
