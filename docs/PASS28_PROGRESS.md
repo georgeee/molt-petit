@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 12. History.
+In progress: 13. rust_deployed_agreement.
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -61,7 +61,7 @@ In progress: 12. History.
   - `sigs_ok_signed` gives `RustSigned` (already in `Rust/Bridge.lean`).
   - `sched_pin_ok` and `lockstep_from` correspond to `schedPinned (·/era)` and `lockstepFrom`.
   - Unfold `validate_deployed*` into its conjuncts.
-- [ ] 12. **History.** From `AttestsK I crypto n q G bs stO out` together with `hG` and `hSigG`, derive two facts about `cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)`:
+- [x] 12. **History.** From `AttestsK I crypto n q G bs stO out` together with `hG` and `hSigG`, derive two facts about `cl₀ := modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)`:
   - `GroundedCert n.val (DSigned I crypto n) (toModelBlock G) cl₀`, from `cert_fold_k_sound` (`GroundedCertK`) plus a `GroundedCertK → GroundedCert` lemma that forgets the floor;
   - `GroundedHistory … cl₀ ((G :: bs).map toModelBlock)`, by the same induction.
 
