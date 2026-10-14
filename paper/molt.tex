@@ -873,7 +873,8 @@ versions (\code{badSched\_single\_key\_safe\_not\_enough} is a sanity
 check exhibiting such an instance). The untimed theorems have no clock
 model: they read the recency check at one $\mathit{now}$, shared by both
 clients. Their two-reading forms let each client check at its own
-$\mathit{now}$, with the budget read at the earlier one
+$\mathit{now}$, with Assumption~\ref{ass:rotation-honest} read at the
+earlier one
 (\code{sched\_recent\_certified\_history\_agreement\_horizon\_two\_readings},
 \code{lockstepGen\_recent\_certified\_history\_agreement\_two\_readings}).
 
@@ -892,8 +893,11 @@ $n$ floors. The deployed Rust client decodes them from the
 certificate's public inputs and checks the tail against them, and both
 full chains then satisfy the monotone rule
 (\code{rust\_deployed\_k\_agreement}), so a certificate client does
-enforce that a retired key is dead. With $\Delta_{\mathrm{conf}} = n$, a rotation
-takes effect in under half a minute at the prototype's settings.
+enforce that a retired key is dead. The fold and the deployed client
+use no lag: a rotation raises its validator's floor at the rotation
+block itself, and once that block is $n$ blocks deep every accepted
+recent chain contains it, so every client enforces the new floor.
+$\Delta_{\mathrm{conf}}$ matters only to the model's own certificate claim.
 
 A validator that loses its key signs its next block under a higher
 version, whose key the deployment must already have delegated from the
@@ -984,9 +988,11 @@ costs its validator for good.
 \paragraph{The untimed form.} An older form has no real-time model of
 signing. Under
 Assumption~\ref{ass:rotation-honest} and the $\rho + T$ count, which
-charges a stolen live key from the start of time, two accepted chains
-agree on the block $n$ below each tip
-(\code{sched\_recent\_tip\_ancestor\_agreement\_horizon}, and
+charges a stolen live key from the start of time (or from a horizon $H$
+at least $n$ slots below both tips), two accepted chains of equal tip
+height agree on the block $n$ below each tip
+(\code{sched\_recent\_tip\_ancestor\_agreement\_horizon}; at unequal
+heights \code{sched\_recent\_tip\_ancestor\_mem\_horizon}; and
 \code{sched\_recent\_certified\_history\_agreement\_horizon} over a
 certificate). Theorem~\ref{thm:sched} supersedes it.
 
@@ -1029,7 +1035,10 @@ than $2n$ blocks (\code{hLong}). Then two accepted chains agree on the
 block $2n$ below each tip at equal heights (\code{hTipHeight}); at
 unequal heights, the lower chain's block $2n$ deep is a block of the
 taller one, at least $2n$ deep there. Through the parent-id links they
-agree on their whole common prefix
+agree at every height more than $n + ((t+1) \bmod n)$ below the tip of
+the chain with the earlier tip, slot $t$
+(\code{lockstepGen\_shared\_prefix\_sharp}),
+and they share their genesis even when the validator does not pin one
 (\code{lockstepGen\_recent\_genesis\_agreement}).
 \end{theorem}
 
@@ -1083,7 +1092,8 @@ honest signer moves at the agreed grid-window boundary. Clients hold the
 genesis and a clock, nothing else, may sleep for any time, and sync from
 a certificate plus a tail. The certificate carries the claim and the tip
 generation; for $n \ge 2$ the claim's tail determines the generation
-(\code{groundedCertLock\_gen\_unique}). What you
+(\code{groundedCertLock\_gen\_of\_tail},
+\code{groundedCertLock\_gen\_unique}). What you
 get: any two accepted chains agree on the lower chain's confirmed part,
 with no schedule and no anchor. For certified chains,
 \code{lockstep\_recent\_certified\_suffix\_agreement} and
@@ -1121,7 +1131,7 @@ from the list.
 
 Each mode's validator also lets an honest producer through: mode 1
 unsigned (\code{liveness\_produce\_blockK}); mode 2 signed, if the
-signature verifies at the stated version and that version meets the schedule and the producer's floor
+signature verifies at the stated version and that version meets the schedule
 (\code{sched\_liveness\_produce\_block}); mode 3 signed, if it is at
 least every version on the chain and equals those already in the
 producer's grid window (\code{lockstep\_liveness\_produce\_block}). An attacker
@@ -1164,13 +1174,22 @@ certificate (mode~1), the schedule pin (mode~2), or the lockstep rule
 (mode~3). The theorems of Section~\ref{sec:results} hold for it with
 nothing assumed about the claim, the ids, the recency or the tail's key
 rule. The clock hypothesis is $R \le \mathit{now} + \delta$ with
-$\Delta + \delta \le \varphi$
-(\code{rust\_deployed\_agreement} and its three twins). Its producer,
+$\Delta + \delta \le \varphi$ (\code{rust\_deployed\_agreement},
+\code{rust\_deployed\_k\_agreement},
+\code{rust\_deployed\_sched\_agreement}); mode~3's form
+(\code{rust\_deployed\_lock\_agreement}) is untimed, with
+Assumption~\ref{ass:rotation-honest} read at the earlier of the two
+clock readings. Its producer,
 \code{produce\_block\_deployed}, extends a tail the client accepts to
 one it accepts again, given the slot is its own and after the tip, and
-every window the new block completes is dense (\code{rust\_produce\_block\_deployed\_live}). This needs size
+every window the new block completes is dense
+(\code{rust\_produce\_block\_deployed\_live}). The theorem takes the
+density as given, rather than deriving it from the fault budget as the
+model's liveness theorems do; it covers the mode-free validator at the
+clock reading of the new slot, and assumes that key lookup, signing and
+id hashing succeed for the producer. It needs size
 bounds: slots, the roster, and the decoded tail plus the suffix below
-$2^{62}$, and a decoded tail no newer than its tip. Each excludes a
+$2^{62}$, the tip height below $2^{64}-1$, and a decoded tail no newer than its tip. Each excludes a
 64-bit overflow, which the checked arithmetic turns into a rejection.
 \code{FoldCrypto} (\code{rust-keyrot/src/fold\_crypto.rs}) instantiates
 the client's cryptography with the fold certificate and XMSS, and a
@@ -1180,8 +1199,8 @@ test runs the client end to end on a folded chain.
 backend (\code{valid\_chain\_be}); over plonky2 it checks a whole chain
 at once. Its translation is proved sound for the links-and-density rule,
 for every $n < 2^{63} - 1$ (\code{valid\_chain\_be\_validChain}), and,
-conversely, it accepts every chain the model accepts with slots and
-heights below $2^{62}$ (\code{valid\_chain\_be\_complete}).
+conversely, it accepts every chain the model accepts with the roster,
+slots and heights below $2^{62}$ (\code{valid\_chain\_be\_complete}).
 
 The \emph{fold certificate} (\code{rust-keyrot/src/fold\_circuit.rs}) is
 the one a client relies on. Each proof verifies the previous proof of the
@@ -1199,7 +1218,8 @@ the new tip signature. The public inputs are the fold state: tip, tip
 signature, slot buffer, and floors (mode 1) or generation (mode 3). The
 steps are proved to build exactly the model's certificate claims
 (\code{cert\_fold\_k\_sound} and twins), and to accept every chain the
-mode's full-chain rule accepts, within the same size bounds
+mode's full-chain rule accepts with its genesis at slot~$0$, within the
+same size bounds
 (\code{cert\_fold\_k\_complete}, \code{cert\_fold\_sched\_complete},
 \code{cert\_fold\_lock\_complete}). Tests check the circuit's state
 against the native fold at every block. They also check that a rejected
