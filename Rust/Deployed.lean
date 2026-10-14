@@ -3317,6 +3317,66 @@ theorem rust_deployed_sched_agreement : MoltPaper.thm_rust_deployed_sched_agreem
     hSigned_sched hSigned_sched' hRecent hRecent' hhist hhist' hDeep hDeep'
   exact ⟨hagree, hPin_full, hPin_full'⟩
 
+/-! ## Step 16: rustOps and rustRegistry bridge -/
+
+/-- `RustSigned` implies the model `SignedDeclared` under `rustOps` and `rustRegistry`. -/
+theorem signedDeclared_of_rustSigned {C} (I : molt_petit.Crypto C) (crypto : C) (n : U64)
+    (B : MoltPetit.Model.Block) (h : RustSigned I crypto n B) :
+    MoltPetit.Model.SignedDeclared n.val (rustOps I crypto) (rustRegistry I crypto) B := by
+  classical
+  obtain ⟨b, i, key, sig, hto, hprod, hkey, hver⟩ := h
+  have hn : 0 < n.val := by
+    have hp := hprod
+    unfold molt_petit.producer_for_slot at hp
+    change UScalar.rem b.slot n = ok i at hp
+    unfold UScalar.rem at hp
+    split at hp
+    · rename_i hne
+      have : n.val ≠ 0 := by simpa using hne
+      omega
+    · contradiction
+  have hc := producer_for_slot_corr n b.slot hn
+  rw [hprod] at hc
+  have hiv : i.val = MoltPetit.Model.producerForSlot n.val b.slot.val := by
+    simpa using hc
+  have hBslot : B.slot = b.slot.val := by rw [← hto]; rfl
+  have hBkey : B.keyIndex = b.key_index.val := by rw [← hto]; rfl
+  refine ⟨sig, ?_⟩
+  dsimp [rustOps]
+  rw [decide_eq_true_iff]
+  refine ⟨b, hto, ?_⟩
+  have hprod_eq : MoltPetit.Model.producerForSlot n.val B.slot = i.val := by
+    rw [hBslot, ← hiv]
+  have hreg :
+      rustRegistry I crypto (MoltPetit.Model.producerForSlot n.val B.slot) B.keyIndex = key := by
+    rw [hprod_eq, hBkey]
+    dsimp [rustRegistry]
+    have hex : ∃ key' : Hash, ∃ iu ju : U64,
+        iu.val = i.val ∧ ju.val = b.key_index.val ∧ I.key_for crypto iu ju = ok key' := by
+      exact ⟨key, i, b.key_index, rfl, rfl, hkey⟩
+    rw [dif_pos hex]
+    have hspec := Classical.choose_spec hex
+    obtain ⟨iu, ju, hiu, hju, hkey'⟩ := hspec
+    have hiu_eq : iu = i := UScalar.eq_of_val_eq hiu
+    have hju_eq : ju = b.key_index := UScalar.eq_of_val_eq hju
+    rw [hiu_eq, hju_eq] at hkey'
+    rw [hkey] at hkey'
+    injection hkey' with hkey'
+    exact hkey'.symm
+  rw [hreg]
+  exact hver
+
+/-- `DSigned` implies the model `SignedFormed` under `rustOps` and `rustRegistry`. -/
+theorem signedFormed_of_dSigned {C} (I : CryptoD C) (crypto : C) (n : U64)
+    (B : MoltPetit.Model.Block) (h : DSigned I crypto n B) :
+    MoltPetit.Model.SignedFormed n.val (rustOps I.CryptoInst crypto)
+      (rustRegistry I.CryptoInst crypto)
+      (RustFormed I crypto) B :=
+  ⟨signedDeclared_of_rustSigned I.CryptoInst crypto n B h.1, h.2⟩
+
+#print axioms Rust.signedDeclared_of_rustSigned
+#print axioms Rust.signedFormed_of_dSigned
+
 end Rust
 
 
