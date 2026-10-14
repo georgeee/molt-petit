@@ -99,3 +99,53 @@ In progress: 19. rust_produce_block_deployed_live.
 - [ ] 20. **Close out.** Aliases for every Pass 28 statement in `Paper/Proofs.lean`; `#print axioms` clean; `bash tools/check.sh` green.
 
 STOP:
+Counterexample to pinned statement `Spec/Statements.lean:1637` (`thm_rust_produce_block_deployed_live`):
+
+The statement asserts that under honest production hypotheses, `produce_block_deployed` produces a certified chain accepted by `validate_deployed`. However, the statement does not assume an overflow bound on `at_slot` (such as `at_slot.val + 1 < 2 ^ 64`).
+
+Concrete counterexample assignment:
+- `n := 1#u64` (so `1 ≤ n.val`)
+- `me := 0#u64`
+- `at_slot := 18446744073709551615#u64` (`2^64 - 1`)
+- `Δ := 0#u64`
+- `key_index := 0#u64`
+- `contents := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
+- `sk := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
+- `cert := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
+- `suffix := SignedChain.SNil`
+- `tl := Chain.Nil` (so `strip_sigs suffix = ok tl`)
+- `C := Unit`, `crypto := ()`
+- `tipS := 18446744073709551614#u64` (`2^64 - 2`)
+- `tipH := 0#u64`
+- `st := { tip_slot := tipS, tip_height := tipH, tip_id := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩, tail := Chain.Nil }`
+- `cl := { tip_slot := tipS, tip_height := tipH, tip_id := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩, tail := Chain.Nil }`
+- `I`: a `CryptoD Unit` implementation returning `ok` for all operations (`cert_state _ _ = ok st`, `cert_verify _ _ = ok true`, `key_for _ _ _ = ok ⟨0,0,0,0⟩`, `sign _ _ _ = ok ⟨0,0,0,0⟩`, `verify _ _ _ _ = ok true`, `block_id _ _ _ _ _ _ = ok ⟨0,0,0,0⟩`).
+
+Verification of all hypotheses:
+- `hn : 1 ≤ n.val`: `1 ≤ 1` holds.
+- `hst : I.cert_state crypto cert = ok st`: holds by definition of `I`.
+- `hcl : claim_of_state n st = ok cl`: holds since `st.tail = Chain.Nil`.
+- `hcv : I.CryptoInst.cert_verify crypto cert = ok true`: holds by definition of `I`.
+- `hstr : strip_sigs suffix = ok tl`: `strip_sigs SignedChain.SNil = ok Chain.Nil`.
+- `hsig : sigs_ok I.CryptoInst n crypto suffix = ok true`: holds for `SignedChain.SNil`.
+- `hids : ids_ok I crypto tl = ok true`: holds for `Chain.Nil`.
+- `hsuf : validate_suffix n cl tl = ok true`: holds for `Chain.Nil`.
+- `hMine : producer_for_slot n at_slot = ok me`: `(2^64 - 1) % 1 = 0`, holds.
+- `htipS : tip_slot_from cl.tip_slot tl = ok tipS`: `tip_slot_from tipS Chain.Nil = ok tipS`.
+- `htipH : signed_tip_height_from cl.tip_height suffix = ok tipH`: `signed_tip_height_from tipH SignedChain.SNil = ok tipH`.
+- `hLt : tipS.val < at_slot.val`: `2^64 - 2 < 2^64 - 1` holds.
+- `hH : tipH.val + 1 < 2 ^ 64`: `0 + 1 < 2^64` holds.
+- `hSign`: holds by definition of `I`.
+- `hId`: holds by definition of `I`.
+- `hDense`: For `u` with `tipS.val + 2 ≤ u + n.val ≤ at_slot.val + 1`, we have `2^64 ≤ u + 1 ≤ 2^64`, forcing `u = 2^64 - 1 = at_slot.val`. The single block has `slot = at_slot.val`, which is in window `[u, u]`, so `windowCount = 1 ≥ quorum 1 = 1`.
+
+Failure of conclusion:
+When `produce_block_deployed` runs, it appends the new block `nb` with `nb.slot = at_slot = 18446744073709551615#u64` and validates the resulting suffix via `validate_deployed`.
+`validate_deployed` calls `validate_suffix`, which calls `matured_dense buf lo tip_slot n` where `tip_slot = nb.slot = 18446744073709551615#u64`.
+In `matured_dense`:
+```lean
+let i1 ← t + 1#u64
+```
+with `t = 18446744073709551615#u64`. Checked addition overflows `U64` and returns `Result.fail Error.integerOverflow`.
+This failure propagates up through `matured_dense`, `validate_suffix`, `validate_deployed`, and `produce_block_deployed`, so `produce_block_deployed` returns `Result.fail Error.integerOverflow` instead of `ok (CertifiedChain.CC cert suffix')`.
+Hence the conclusion does not hold.
