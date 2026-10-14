@@ -3506,6 +3506,67 @@ theorem rust_deployed_ks : MoltPaper.thm_rust_deployed_ks := by
 
 #print axioms Rust.rust_deployed_ks
 
+/-! ## Step 19: rust_produce_block_deployed_live -/
+
+theorem signed_tip_id_from_total (cur : Hash) (sc : SignedChain) :
+    ∃ h : Hash, signed_tip_id_from cur sc = ok h := by
+  induction sc generalizing cur with
+  | SNil =>
+    rw [signed_tip_id_from]
+    exact ⟨cur, rfl⟩
+  | SCons b s tl ih =>
+    rw [signed_tip_id_from]
+    exact ih b.id
+
+theorem signed_tip_sig_from_total (cur : Hash) (sc : SignedChain) :
+    ∃ h : Hash, signed_tip_sig_from cur sc = ok h := by
+  induction sc generalizing cur with
+  | SNil =>
+    rw [signed_tip_sig_from]
+    exact ⟨cur, rfl⟩
+  | SCons b s tl ih =>
+    rw [signed_tip_sig_from]
+    exact ih s
+
+theorem append_signed_total (sc : SignedChain) (nb : Block) (sig : Hash) :
+    ∃ sc' : SignedChain, append_signed sc nb sig = ok sc' := by
+  induction sc with
+  | SNil =>
+    rw [append_signed]
+    exact ⟨SignedChain.SCons nb sig SignedChain.SNil, rfl⟩
+  | SCons b s tl ih =>
+    obtain ⟨sc1, hsc1⟩ := ih
+    rw [append_signed, hsc1]
+    exact ⟨SignedChain.SCons b s sc1, rfl⟩
+
+theorem strip_sigs_append_signed : ∀ (sc : SignedChain) (nb : Block) (sig : Hash) (tl : Chain),
+    strip_sigs sc = ok tl →
+    ∃ (tl' : Chain) (sc' : SignedChain),
+      append_signed sc nb sig = ok sc' ∧
+      strip_sigs sc' = ok tl' ∧
+      toModelChain tl' = toModelChain tl ++ [toModelBlock nb] := by
+  intro sc
+  induction sc with
+  | SNil =>
+    intro nb sig tl hstrip
+    rw [strip_sigs] at hstrip
+    injection hstrip with hstrip; subst hstrip
+    rw [append_signed]
+    refine ⟨Chain.Cons nb Chain.Nil, SignedChain.SCons nb sig SignedChain.SNil, rfl, ?_, ?_⟩
+    · rw [strip_sigs, strip_sigs]
+      rfl
+    · rfl
+  | SCons b s rest ih =>
+    intro nb sig tl hstrip
+    rw [strip_sigs] at hstrip
+    obtain ⟨c, hc, hstrip⟩ := bind_inv hstrip
+    injection hstrip with hstrip; subst hstrip
+    obtain ⟨tl', sc', happ, hstrip', hmodel⟩ := ih nb sig c hc
+    rw [append_signed, happ]
+    simp only [bind_tc_ok]
+    refine ⟨Chain.Cons b tl', SignedChain.SCons b s sc', rfl, ?_, ?_⟩
+    · rw [strip_sigs, hstrip']
+      rfl
+    · rw [toModelChain_cons, toModelChain_cons, hmodel, List.cons_append]
+
 end Rust
-
-
