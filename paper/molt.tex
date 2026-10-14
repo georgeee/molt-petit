@@ -634,10 +634,10 @@ already signed. A slow clock costs only liveness.
 
 One more property is assumed, and it is why ids include the parent's
 signature: a block can be signed only after its parent exists
-(\code{chain\_order}, a field of \code{SigningExecutionOn}). An id rule
-without the parent's signature would make this false, and no check would
-notice. Junk that no verifier accepts, such as a
-block with a copied id, is outside the assumption, so it cannot break it.
+(\code{chain\_order}, a field of \code{SigningExecutionOn}), which an id
+rule without that signature would make silently false. It concerns
+\emph{formed} blocks: the genesis, and blocks whose id hashes a verifying
+signature on a formed parent (\code{FormedFrom}, \code{TSFormed}).
 
 \begin{assumption}[Hash collision resistance]\label{ass:hash}
 No two different admissible blocks that actually occur (or the genesis)
@@ -669,11 +669,10 @@ The prototype's fold certificate (Section~\ref{sec:impl}) runs one
 verified step per block, and the step is proved to build exactly these
 claims (\code{cert\_fold\_k\_sound}, \code{cert\_fold\_sched\_sound},
 \code{cert\_fold\_lock\_sound}). For the deployed Rust client the two
-are composed (Section~\ref{sec:impl}): its theorems take as a
-hypothesis a history that folds to the certificate's public state and
-threads signatures from the genesis's to the certificate's tip
-signature, and knowledge soundness supplies one from a verified
-certificate (\code{rust\_deployed\_ks}, \code{rust\_deployed\_sched\_ks},
+are composed (Section~\ref{sec:impl}): its theorems assume a history
+that folds to the certificate's public state, with signatures threaded
+from the genesis's to the tip's, and knowledge soundness supplies one
+(\code{rust\_deployed\_ks}, \code{rust\_deployed\_sched\_ks},
 \code{rust\_deployed\_lock\_ks}). The mode-free client's theorem reads
 the certificate as mode~1's fold. For that client the
 assumption becomes the circuit's knowledge soundness, that its gadgets
