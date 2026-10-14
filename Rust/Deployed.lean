@@ -3377,6 +3377,111 @@ theorem signedFormed_of_dSigned {C} (I : CryptoD C) (crypto : C) (n : U64)
 #print axioms Rust.signedDeclared_of_rustSigned
 #print axioms Rust.signedFormed_of_dSigned
 
+
+lemma groundedHistoryLock_mono {n : Nat} {Signed Signed' : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    {cl : MoltPetit.Model.CertClaim} {g : Nat} {c : MoltPetit.Model.Chain}
+    (h : MoltPetit.Model.GroundedHistoryLock n Signed G cl g c)
+    (hS : ∀ B ∈ c, Signed B → Signed' B) :
+    MoltPetit.Model.GroundedHistoryLock n Signed' G cl g c :=
+  ⟨h.valid, h.lock, h.head, h.tip, h.tail_eq, h.len_eq, fun B hB => hS B hB (h.signed B hB), h.gen_max, h.win_const⟩
+
+/-! ## Step 17: rust_deployed_lock_agreement -/
+
+/-- **Theorem (mode 3 deployed lock agreement)**: two clients accepted by `validate_deployed_lock`
+agree on every block `2n` deep in their full chains. -/
+theorem rust_deployed_lock_agreement : MoltPaper.thm_rust_deployed_lock_agreement := by
+  intro n q Δ hn hq C I crypto rosterGen rented Stolen honestSigned G R T now now'
+        hP hG hSigG cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+        bs bs' stO stO' gO gO' hst hst' hgen hgen' hA hA' h hDeep hDeep'
+  obtain ⟨hval_dep, st1, g1, str1, hst1, hg1, hstr1, hlock1⟩ :=
+    validate_deployed_lock_sound hval
+  obtain ⟨hval'_dep, st1', g1', str1', hst1', hg1', hstr1', hlock1'⟩ :=
+    validate_deployed_lock_sound hval'
+  rw [hst] at hst1; injection hst1 with hst1; subst hst1
+  rw [hst'] at hst1'; injection hst1' with hst1'; subst hst1'
+  rw [hgen] at hg1; injection hg1 with hg1; subst hg1
+  rw [hgen'] at hg1'; injection hg1' with hg1'; subst hg1'
+  rw [hstr] at hstr1; injection hstr1 with hstr1; subst hstr1
+  rw [hstr'] at hstr1'; injection hstr1' with hstr1'; subst hstr1'
+  obtain ⟨st, cl, stripped, tip, s1, tl_sub,
+          hst_val, hcl, hstrip, hcons, htip, hverify, hsig, hids, hsuf, hrecent⟩ :=
+    validate_deployed_sound hval_dep
+  obtain ⟨st', cl', stripped', tip', s1', tl_sub',
+          hst_val', hcl', hstrip', hcons', htip', hverify', hsig', hids', hsuf', hrecent'⟩ :=
+    validate_deployed_sound hval'_dep
+  rw [hstr] at hstrip; injection hstrip with hstrip; subst hstrip; subst hcons
+  rw [hstr'] at hstrip'; injection hstrip' with hstrip'; subst hstrip'; subst hcons'
+  rw [hst] at hst_val; injection hst_val with hst_val; subst hst_val
+  rw [hst'] at hst_val'; injection hst_val' with hst_val'; subst hst_val'
+  have htip_rw : molt_petit.tip_slot_from cl.tip_slot (molt_petit.Chain.Cons s1 tl_sub) =
+                 molt_petit.tip_slot_from s1.slot tl_sub := by
+    rw [molt_petit.tip_slot_from]
+  rw [htip_rw] at htip
+  obtain ⟨sTip, hTipS, hts⟩ :=
+    tip_slot_from_eq_getLast tl_sub s1.slot (toModelBlock s1) rfl htip
+  have htip_rw' : molt_petit.tip_slot_from cl'.tip_slot (molt_petit.Chain.Cons s1' tl_sub') =
+                  molt_petit.tip_slot_from s1'.slot tl_sub' := by
+    rw [molt_petit.tip_slot_from]
+  rw [htip_rw'] at htip'
+  obtain ⟨sTip', hTipS', hts'⟩ :=
+    tip_slot_from_eq_getLast tl_sub' s1'.slot (toModelBlock s1') rfl htip'
+  obtain ⟨hcert, hhist, _, hview⟩ := attestsLock_history hn hq hG hSigG hA
+  obtain ⟨hcert', hhist', _, hview'⟩ := attestsLock_history hn hq hG hSigG hA'
+  have hcv : MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) =
+             MoltPetit.Model.claimView (toModelClaim cl) := by
+    rw [← hview, claim_of_state_sound hcl]
+  have hcv' : MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs'.map toModelBlock)) =
+              MoltPetit.Model.claimView (toModelClaim cl') := by
+    rw [← hview', claim_of_state_sound hcl']
+  obtain ⟨hLink, hLinks, hDense⟩ := validate_suffix_sound_view hTipS hsuf hcv
+  obtain ⟨hLink', hLinks', hDense'⟩ := validate_suffix_sound_view hTipS' hsuf' hcv'
+  have hhist_sf := groundedHistoryLock_mono hhist
+    (fun B _ hB => signedFormed_of_dSigned I crypto n B hB)
+  have hhist_sf' := groundedHistoryLock_mono hhist'
+    (fun B _ hB => signedFormed_of_dSigned I crypto n B hB)
+  have hSigned_ds := dsigned_of_sigs_ok_ids_ok hsig hstr hids
+  have hSigned_ds' := dsigned_of_sigs_ok_ids_ok hsig' hstr' hids'
+  have hSigned : ∀ B ∈ (toModelBlock s1 :: toModelChain tl_sub),
+      MoltPetit.Model.SignedFormed n.val (rustOps I.CryptoInst crypto)
+        (rustRegistry I.CryptoInst crypto) (RustFormed I crypto) B :=
+    fun B hB => signedFormed_of_dSigned I crypto n B (hSigned_ds B hB)
+  have hSigned' : ∀ B ∈ (toModelBlock s1' :: toModelChain tl_sub'),
+      MoltPetit.Model.SignedFormed n.val (rustOps I.CryptoInst crypto)
+        (rustRegistry I.CryptoInst crypto) (RustFormed I crypto) B :=
+    fun B hB => signedFormed_of_dSigned I crypto n B (hSigned_ds' B hB)
+  have hLockS_st := lockstep_from_sound (.Cons s1 tl_sub) hlock1
+  have hLockS_st' := lockstep_from_sound (.Cons s1' tl_sub') hlock1'
+  have hts_eq : (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)).tipSlot = stO.tip_slot.val := by
+    have h := congr_arg (fun v => v.2.1) hview
+    exact h.symm
+  have hts_eq' : (modelClaimOf n.val (toModelBlock G) (bs'.map toModelBlock)).tipSlot = stO'.tip_slot.val := by
+    have h := congr_arg (fun v => v.2.1) hview'
+    exact h.symm
+  have hLockS : MoltPetit.Model.lockstepFrom n.val
+      (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)).tipSlot gO.val
+      (toModelBlock s1 :: toModelChain tl_sub) = true := by
+    rw [hts_eq]
+    exact hLockS_st
+  have hLockS' : MoltPetit.Model.lockstepFrom n.val
+      (modelClaimOf n.val (toModelBlock G) (bs'.map toModelBlock)).tipSlot gO'.val
+      (toModelBlock s1' :: toModelChain tl_sub') = true := by
+    rw [hts_eq']
+    exact hLockS_st'
+  have hRecent : min now.val now'.val ≤ sTip.slot + Δ.val := by
+    have hrec := recent_ok_sound hrecent
+    omega
+  have hRecent' : min now.val now'.val ≤ sTip'.slot + Δ.val := by
+    have hrec' := recent_ok_sound hrecent'
+    omega
+  have hagree := MoltPetit.Model.lockstepGen_recent_certified_history_agreement
+    hn hP hhist_sf hhist_sf' hTipS hTipS'
+    hLink hLinks hDense hLockS hSigned
+    hLink' hLinks' hDense' hLockS' hSigned'
+    hRecent hRecent' hDeep hDeep'
+  exact hagree
+
+#print axioms Rust.rust_deployed_lock_agreement
+
 end Rust
 
 
