@@ -2172,6 +2172,331 @@ theorem dsigned_of_sigs_ok_ids_ok {C} {I : CryptoD C} {n : U64} {crypto : C}
   exact ⟨sigs_ok_signed sc hsig hstrip B hB,
          ids_ok_formed T ts sc stripped hT hSigT hstrip hsig hids hlinks B hB⟩
 
+
+/-- Soundness of the predecessor check in `cert_step_core_be`. -/
+theorem cert_step_core_be_prev {n q : U64} {st : CertStateG U64} {b : molt_petit.Block} {T : molt_petit.Block}
+    (hst : st.tip_id = toHashG T.id)
+    (h : cert_step_core_be UBK () n q st (toBlockG b) = ok true) :
+    b.prev = some T.id := by
+  dsimp [cert_step_core_be, U64Backend.Insts.Molt_petitBackendU64Bool.and] at h
+  obtain ⟨t, ht, h⟩ := bind_inv h
+  obtain ⟨succ, hsucc, h⟩ := bind_inv h
+  obtain ⟨h_ok, hh_ok, h⟩ := bind_inv h
+  obtain ⟨slot_ok, hslot_ok, h⟩ := bind_inv h
+  obtain ⟨prev_eq, hprev_eq, h⟩ := bind_inv h
+  obtain ⟨has, hhas, h⟩ := bind_inv h
+  obtain ⟨prev_ok, hprev_ok, h⟩ := bind_inv h
+  obtain ⟨t1, ht1, h⟩ := bind_inv h
+  obtain ⟨links, hlinks, h⟩ := bind_inv h
+  obtain ⟨t2, ht2, h⟩ := bind_inv h
+  obtain ⟨ts2, hts2, h⟩ := bind_inv h
+  obtain ⟨lo, hlo, h⟩ := bind_inv h
+  obtain ⟨base, hbase, h⟩ := bind_inv h
+  obtain ⟨anchors, hanchors, h⟩ := bind_inv h
+  obtain ⟨t3, ht3, h⟩ := bind_inv h
+  split at h
+  · rename_i hlinks_t
+    injection h with h; subst h
+    subst hlinks_t
+    split at hlinks
+    · rename_i ht1_t
+      injection hlinks with hlinks; subst hlinks
+      subst ht1_t
+      split at hprev_ok
+      · rename_i hhas_t
+        injection hprev_ok with hprev_ok; subst hprev_ok
+        subst hhas_t
+        injection hhas with hhas
+        cases hp : b.prev with
+        | none =>
+          dsimp [toBlockG] at hhas
+          rw [hp] at hhas
+          simp at hhas
+        | some p =>
+          dsimp [toBlockG] at hprev_eq
+          rw [hp, hst] at hprev_eq
+          rw [hashg_eq_eq] at hprev_eq
+          have hpeq := hash_eq_sound hprev_eq
+          rw [hpeq]
+      · simp at hprev_ok
+    · simp at hlinks
+  · simp at h
+
+/-- `cert_step_k_be` entails `cert_step_core_be`. -/
+theorem cert_step_k_be_core {n q : U64} {st : CertStateG U64} {fl : FloorsG U64}
+    {b : molt_petit.Block} {ki : U64}
+    (h : cert_step_k_be UBK () n q st fl (toBlockG b) ki = ok true) :
+    cert_step_core_be UBK () n q st (toBlockG b) = ok true := by
+  dsimp [cert_step_k_be, U64Backend.Insts.Molt_petitBackendU64Bool.and] at h
+  obtain ⟨core, hcore, h⟩ := bind_inv h
+  obtain ⟨p, hp, h⟩ := bind_inv h
+  obtain ⟨t, ht, h⟩ := bind_inv h
+  obtain ⟨fl_ok, hfl_ok, h⟩ := bind_inv h
+  split at h
+  · rename_i hcore_t
+    injection h with h; subst h
+    rw [hcore_t] at hcore
+    exact hcore
+  · simp at h
+
+/-- `cert_step_sched_be` entails `cert_step_core_be`. -/
+theorem cert_step_sched_be_core {n q era : U64} {st : CertStateG U64}
+    {b : molt_petit.Block} {ki : U64}
+    (h : cert_step_sched_be UBK () n q era st (toBlockG b) ki = ok true) :
+    cert_step_core_be UBK () n q st (toBlockG b) = ok true := by
+  dsimp [cert_step_sched_be, U64Backend.Insts.Molt_petitBackendU64Bool.and] at h
+  obtain ⟨core, hcore, h⟩ := bind_inv h
+  obtain ⟨gen, hgen, h⟩ := bind_inv h
+  obtain ⟨below, hbelow, h⟩ := bind_inv h
+  obtain ⟨pinned, hpinned, h⟩ := bind_inv h
+  split at h
+  · rename_i hcore_t
+    injection h with h; subst h
+    rw [hcore_t] at hcore
+    exact hcore
+  · simp at h
+
+/-- `cert_step_lock_be` entails `cert_step_core_be`. -/
+theorem cert_step_lock_be_core {n q : U64} {st : CertStateG U64} {g : U64}
+    {b : molt_petit.Block} {ki : U64}
+    (h : cert_step_lock_be UBK () n q st g (toBlockG b) ki = ok true) :
+    cert_step_core_be UBK () n q st (toBlockG b) = ok true := by
+  dsimp [cert_step_lock_be, U64Backend.Insts.Molt_petitBackendU64Bool.and] at h
+  obtain ⟨core, hcore, h⟩ := bind_inv h
+  obtain ⟨below, hbelow, h⟩ := bind_inv h
+  obtain ⟨ge, hge, h⟩ := bind_inv h
+  obtain ⟨w_tip, hw_tip, h⟩ := bind_inv h
+  obtain ⟨w_b, hw_b, h⟩ := bind_inv h
+  obtain ⟨same, hsame, h⟩ := bind_inv h
+  obtain ⟨keeps, hkeeps, h⟩ := bind_inv h
+  obtain ⟨nsame, hnsame, h⟩ := bind_inv h
+  obtain ⟨mix_ok, hmix_ok, h⟩ := bind_inv h
+  obtain ⟨t, ht, h⟩ := bind_inv h
+  split at h
+  · rename_i hcore_t
+    injection h with h; subst h
+    rw [hcore_t] at hcore
+    exact hcore
+  · simp at h
+
+/-- A core fold step sequence: each step passes `cert_step_core_be`. -/
+def FoldCoreOut (n q : U64) : CertStateG U64 → List Block → CertStateG U64 → Prop
+  | st, [], stO => stO = st
+  | st, b :: bs, stO =>
+      cert_step_core_be UBK () n q st (toBlockG b) = ok true ∧
+      ∃ t', FoldCoreOut n q (stepState b t') bs stO
+
+/-- `FoldKOut` implies `FoldCoreOut`. -/
+theorem foldKOut_to_core {n q : U64} :
+    ∀ {st fl bs stO out},
+    FoldKOut n q st fl bs stO out → FoldCoreOut n q st bs stO := by
+  intro st fl bs
+  induction bs generalizing st fl with
+  | nil =>
+    intro stO out h
+    dsimp [FoldKOut] at h
+    dsimp [FoldCoreOut]
+    exact h.1
+  | cons b rest ih =>
+    intro stO out h
+    dsimp [FoldKOut] at h
+    obtain ⟨hstep, t', fl', ht', hfl', hrest⟩ := h
+    dsimp [FoldCoreOut]
+    refine ⟨cert_step_k_be_core hstep, t', ih hrest⟩
+
+/-- `FoldSchedOut` implies `FoldCoreOut`. -/
+theorem foldSchedOut_to_core {n q era : U64} :
+    ∀ {st bs stO},
+    FoldSchedOut n q era st bs stO → FoldCoreOut n q st bs stO := by
+  intro st bs
+  induction bs generalizing st with
+  | nil =>
+    intro stO h
+    dsimp [FoldSchedOut] at h
+    dsimp [FoldCoreOut]
+    exact h
+  | cons b rest ih =>
+    intro stO h
+    dsimp [FoldSchedOut] at h
+    obtain ⟨hstep, t', ht', hrest⟩ := h
+    dsimp [FoldCoreOut]
+    refine ⟨cert_step_sched_be_core hstep, t', ih hrest⟩
+
+/-- `FoldLockOut` implies `FoldCoreOut`. -/
+theorem foldLockOut_to_core {n q : U64} :
+    ∀ {st g bs stO gO},
+    FoldLockOut n q st g bs stO gO → FoldCoreOut n q st bs stO := by
+  intro st g bs
+  induction bs generalizing st g with
+  | nil =>
+    intro stO gO h
+    dsimp [FoldLockOut] at h
+    dsimp [FoldCoreOut]
+    exact h.1
+  | cons b rest ih =>
+    intro stO gO h
+    dsimp [FoldLockOut] at h
+    obtain ⟨hstep, t', ht', hrest⟩ := h
+    dsimp [FoldCoreOut]
+    refine ⟨cert_step_lock_be_core hstep, t', ih hrest⟩
+
+/-- Soundness of history formedness along `FoldCoreOut`:
+generalized induction on `bs : List (Block × Hash)`. -/
+lemma foldCoreOut_history_formed_aux {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Block} :
+    ∀ (bs : List (Block × Hash)) (T : Block) (sT : Hash) (st : CertStateG U64)
+      (stO : CertStateG U64) (ts : Hash),
+    FormedFrom I crypto n G T →
+    SigOn I.CryptoInst crypto n T sT →
+    st.tip_id = toHashG T.id →
+    st.tip_slot = T.slot →
+    st.tip_height = T.height →
+    SigHist I crypto n sT bs ts →
+    FoldCoreOut n q st (bs.map Prod.fst) stO →
+    (∀ b ∈ bs.map Prod.fst, FormedFrom I crypto n G b) ∧
+    ∃ T' : Block,
+      FormedFrom I crypto n G T' ∧
+      SigOn I.CryptoInst crypto n T' ts ∧
+      stO.tip_id = toHashG T'.id ∧
+      stO.tip_slot = T'.slot ∧
+      stO.tip_height = T'.height := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro T sT st stO ts hT hSigT hst_id hst_slot hst_height hSigHist hFold
+    dsimp [SigHist] at hSigHist
+    subst hSigHist
+    dsimp [FoldCoreOut] at hFold
+    subst hFold
+    refine ⟨by simp, ⟨T, hT, hSigT, hst_id, hst_slot, hst_height⟩⟩
+  | cons pair rest ih =>
+    obtain ⟨b, s⟩ := pair
+    intro T sT st stO ts hT hSigT hst_id hst_slot hst_height hSigHist hFold
+    dsimp [List.map] at hFold
+    dsimp [FoldCoreOut] at hFold
+    obtain ⟨hstep, t', hfold_rest⟩ := hFold
+    dsimp [SigHist] at hSigHist
+    obtain ⟨hSig_b, hid_b, hSigHist_rest⟩ := hSigHist
+    have hprev := cert_step_core_be_prev hst_id hstep
+    have hb_formed : FormedFrom I crypto n G b :=
+      FormedFrom.step hT hSigT hprev hid_b
+    have hst'_id : (stepState b t').tip_id = toHashG b.id := rfl
+    have hst'_slot : (stepState b t').tip_slot = b.slot := rfl
+    have hst'_height : (stepState b t').tip_height = b.height := rfl
+    have ⟨hrest_formed, T', hT'_formed, hT'_sig, hstO_id, hstO_slot, hstO_height⟩ :=
+      ih b s (stepState b t') stO ts hb_formed hSig_b hst'_id hst'_slot hst'_height hSigHist_rest hfold_rest
+    refine ⟨?_, ⟨T', hT'_formed, hT'_sig, hstO_id, hstO_slot, hstO_height⟩⟩
+    intro x hx
+    simp only [List.map_cons, Prod.fst, List.mem_cons] at hx
+    rcases hx with rfl | hx_rest
+    · exact hb_formed
+    · exact hrest_formed x hx_rest
+
+/-- History formedness starting from the genesis state. -/
+theorem foldCoreOut_history_formed {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Block} {sG : Hash}
+    {bs : List (Block × Hash)} {stO : CertStateG U64} {ts : Hash}
+    (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hSig : SigHist I crypto n sG bs ts)
+    (hFold : FoldCoreOut n q (genesisState n.val G) (bs.map Prod.fst) stO) :
+    (∀ b ∈ G :: bs.map Prod.fst, FormedFrom I crypto n G b) ∧
+    ∃ T : Block,
+      FormedFrom I crypto n G T ∧
+      SigOn I.CryptoInst crypto n T ts ∧
+      stO.tip_id = toHashG T.id ∧
+      stO.tip_slot = T.slot ∧
+      stO.tip_height = T.height := by
+  have hgen : FormedFrom I crypto n G G := FormedFrom.genesis
+  have ⟨hbs, hT⟩ := foldCoreOut_history_formed_aux bs G sG (genesisState n.val G) stO ts
+    hgen hSigG rfl rfl rfl hSig hFold
+  refine ⟨?_, hT⟩
+  intro b hb
+  simp only [List.mem_cons] at hb
+  rcases hb with rfl | hb_rest
+  · exact hgen
+  · exact hbs b hb_rest
+
+/-- History formedness for mode 1 (`FoldKOut`). -/
+theorem foldKOut_history_formed {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Block} {sG : Hash}
+    {bs : List (Block × Hash)} {stO : CertStateG U64} {out : FloorsG U64} {ts : Hash}
+    (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hSig : SigHist I crypto n sG bs ts)
+    (hFold : FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) (bs.map Prod.fst) stO out) :
+    (∀ b ∈ G :: bs.map Prod.fst, FormedFrom I crypto n G b) ∧
+    ∃ T : Block,
+      FormedFrom I crypto n G T ∧
+      SigOn I.CryptoInst crypto n T ts ∧
+      stO.tip_id = toHashG T.id ∧
+      stO.tip_slot = T.slot ∧
+      stO.tip_height = T.height :=
+  foldCoreOut_history_formed hSigG hSig (foldKOut_to_core hFold)
+
+/-- History formedness for mode 2 (`FoldSchedOut`). -/
+theorem foldSchedOut_history_formed {C} {I : CryptoD C} {crypto : C} {n q era : U64} {G : Block} {sG : Hash}
+    {bs : List (Block × Hash)} {stO : CertStateG U64} {ts : Hash}
+    (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hSig : SigHist I crypto n sG bs ts)
+    (hFold : FoldSchedOut n q era (genesisState n.val G) (bs.map Prod.fst) stO) :
+    (∀ b ∈ G :: bs.map Prod.fst, FormedFrom I crypto n G b) ∧
+    ∃ T : Block,
+      FormedFrom I crypto n G T ∧
+      SigOn I.CryptoInst crypto n T ts ∧
+      stO.tip_id = toHashG T.id ∧
+      stO.tip_slot = T.slot ∧
+      stO.tip_height = T.height :=
+  foldCoreOut_history_formed hSigG hSig (foldSchedOut_to_core hFold)
+
+/-- History formedness for mode 3 (`FoldLockOut`). -/
+theorem foldLockOut_history_formed {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Block} {sG : Hash}
+    {bs : List (Block × Hash)} {stO : CertStateG U64} {gO : U64} {ts : Hash}
+    (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hSig : SigHist I crypto n sG bs ts)
+    (hFold : FoldLockOut n q (genesisState n.val G) G.key_index (bs.map Prod.fst) stO gO) :
+    (∀ b ∈ G :: bs.map Prod.fst, FormedFrom I crypto n G b) ∧
+    ∃ T : Block,
+      FormedFrom I crypto n G T ∧
+      SigOn I.CryptoInst crypto n T ts ∧
+      stO.tip_id = toHashG T.id ∧
+      stO.tip_slot = T.slot ∧
+      stO.tip_height = T.height :=
+  foldCoreOut_history_formed hSigG hSig (foldLockOut_to_core hFold)
+
+/-- Blocks in `SigHist` have verifying signatures (`RustSigned`). -/
+lemma sigHist_rustSigned {C} {I : CryptoD C} {crypto : C} {n : U64} :
+    ∀ (bs : List (Block × Hash)) (ps ts : Hash),
+    SigHist I crypto n ps bs ts →
+    ∀ b ∈ bs.map Prod.fst, RustSigned I.CryptoInst crypto n (toModelBlock b) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro ps ts _ b hb
+    simp only [List.map_nil, List.not_mem_nil] at hb
+  | cons pair rest ih =>
+    obtain ⟨b, s⟩ := pair
+    intro ps ts hSig x hx
+    dsimp [SigHist] at hSig
+    obtain ⟨hSig_b, _, hSig_rest⟩ := hSig
+    simp only [List.map_cons, Prod.fst, List.mem_cons] at hx
+    rcases hx with rfl | hx_rest
+    · exact rustSigned_of_sigOn hSig_b
+    · exact ih s ts hSig_rest x hx_rest
+
+/-- Every block of the attested history `G :: bs.map Prod.fst` is `DSigned`. -/
+theorem foldCoreOut_history_dsigned {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Block} {sG : Hash}
+    {bs : List (Block × Hash)} {stO : CertStateG U64} {ts : Hash}
+    (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hSig : SigHist I crypto n sG bs ts)
+    (hFold : FoldCoreOut n q (genesisState n.val G) (bs.map Prod.fst) stO) :
+    ∀ B ∈ (G :: bs.map Prod.fst).map toModelBlock, DSigned I crypto n G B := by
+  intro B hB
+  simp only [List.map_cons, List.mem_cons] at hB
+  have ⟨hformed, _⟩ := foldCoreOut_history_formed hSigG hSig hFold
+  rcases hB with rfl | hB_rest
+  · refine ⟨rustSigned_of_sigOn hSigG, ⟨G, rfl, FormedFrom.genesis⟩⟩
+  · rw [List.mem_map] at hB_rest
+    obtain ⟨b, hb, rfl⟩ := hB_rest
+    have hsign := sigHist_rustSigned bs sG ts hSig b hb
+    have hform := hformed b (by simp [hb])
+    exact ⟨hsign, ⟨b, rfl, hform⟩⟩
+
 /-- A passing `sched_pin_ok` gives the model `schedPinned` predicate. -/
 theorem sched_pin_ok_sound {era : U64} :
     ∀ (c : molt_petit.Chain),
