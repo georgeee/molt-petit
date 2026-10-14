@@ -217,16 +217,36 @@ open Aeneas Std Result
 namespace Rust
 open molt_petit
 
-/-- A model block is **formed** when it is the projection of a Rust block
-whose id is the deployment's hash of its other fields and some parent
-signature (`ids_ok` checks it with the actual parent's signature). -/
-def RustFormed {C} (I : CryptoD C) (crypto : C) (B : MoltPetit.Model.Block) : Prop :=
-  ∃ (b : Block) (ps : Option Hash), toModelBlock b = B ∧
-    I.block_id crypto b.slot b.height b.prev ps b.contents_hash b.key_index = ok b.id
+/-- `s` verifies for the Rust block `b` under the key of `b`'s slot producer at
+the version `b` states. -/
+def SigOn {C} (I : Crypto C) (crypto : C) (n : U64) (b : Block) (s : Hash) : Prop :=
+  ∃ (i : U64) (key : Hash), producer_for_slot n b.slot = ok i ∧
+    I.key_for crypto i b.key_index = ok key ∧ I.verify crypto key b s = ok true
 
-/-- Signed under the slot producer's key at the stated version, and formed. -/
-def DSigned {C} (I : CryptoD C) (crypto : C) (n : U64) (B : MoltPetit.Model.Block) : Prop :=
-  RustSigned I.CryptoInst crypto n B ∧ RustFormed I crypto B
+/-- A Rust block is **formed from the genesis** `G` (Pass 29): it is `G`, or
+its id is the deployment's hash of its other fields and a signature that
+verifies for a parent formed from `G`, whose id it names. So forming a block
+needs a verifying signature on its parent; an arbitrary parent signature
+does not do. -/
+inductive FormedFrom {C} (I : CryptoD C) (crypto : C) (n : U64) (G : Block) : Block → Prop
+  | genesis : FormedFrom I crypto n G G
+  | step {p b : Block} {sp : Hash} :
+      FormedFrom I crypto n G p → SigOn I.CryptoInst crypto n p sp → b.prev = some p.id →
+      I.block_id crypto b.slot b.height b.prev (some sp) b.contents_hash b.key_index = ok b.id →
+      FormedFrom I crypto n G b
+
+/-- A model block is **formed** when it is the projection of a Rust block
+formed from the genesis (`ids_ok` checks the tail's ids with the actual
+parent signatures, starting from the certificate's tip signature). -/
+def RustFormed {C} (I : CryptoD C) (crypto : C) (n : U64) (G : Block)
+    (B : MoltPetit.Model.Block) : Prop :=
+  ∃ b : Block, toModelBlock b = B ∧ FormedFrom I crypto n G b
+
+/-- Signed under the slot producer's key at the stated version, and formed
+from the genesis. -/
+def DSigned {C} (I : CryptoD C) (crypto : C) (n : U64) (G : Block)
+    (B : MoltPetit.Model.Block) : Prop :=
+  RustSigned I.CryptoInst crypto n B ∧ RustFormed I crypto n G B
 
 /-- The Rust signature check as a model `SigOps` (signing is not used by
 any statement). -/
@@ -246,26 +266,40 @@ noncomputable def rustRegistry {C} (I : Crypto C) (crypto : C) :
     if h : ∃ key : Hash, ∃ iu ju : U64, iu.val = i ∧ ju.val = j ∧ I.key_for crypto iu ju = ok key
     then Classical.choose h else ⟨0#u64, 0#u64, 0#u64, 0#u64⟩
 
-/-- Mode 1 (and Theorem 1): the signed, formed history `bs` folds from the
-genesis `G` to the public state `stO` with floors `out`. -/
-def AttestsK {C} (I : CryptoD C) (crypto : C) (n q : U64) (G : Block) (bs : List Block)
-    (stO : CertStateG U64) (out : FloorsG U64) : Prop :=
-  (∀ b ∈ bs, DSigned I crypto n (toModelBlock b)) ∧
-  FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) bs stO out
+/-- The signed history after the genesis, as the fold circuit checks it: each
+block's signature verifies for it, and its id hashes the previous signature
+(`ps`, the genesis signature for the first block). `ts` is the last
+signature (`ps` if the history is empty): the certificate's tip signature. -/
+def SigHist {C} (I : CryptoD C) (crypto : C) (n : U64) :
+    Hash → List (Block × Hash) → Hash → Prop
+  | ps, [], ts => ts = ps
+  | ps, (b, s) :: rest, ts =>
+      SigOn I.CryptoInst crypto n b s ∧
+      I.block_id crypto b.slot b.height b.prev (some ps) b.contents_hash b.key_index = ok b.id ∧
+      SigHist I crypto n s rest ts
+
+/-- Mode 1 (and Theorem 1): the signed history `bs` (blocks with their
+signatures) chains its ids from the genesis signature `sG` to the tip
+signature `ts`, and its blocks fold from the genesis `G` to the public state
+`stO` with floors `out`. -/
+def AttestsK {C} (I : CryptoD C) (crypto : C) (n q : U64) (G : Block) (sG : Hash)
+    (bs : List (Block × Hash)) (stO : CertStateG U64) (out : FloorsG U64) (ts : Hash) : Prop :=
+  SigHist I crypto n sG bs ts ∧
+  FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) (bs.map Prod.fst) stO out
 
 /-- Mode 2, schedule `slot / era`. -/
-def AttestsSched {C} (I : CryptoD C) (crypto : C) (n q era : U64) (G : Block)
-    (bs : List Block) (stO : CertStateG U64) : Prop :=
-  (∀ b ∈ bs, DSigned I crypto n (toModelBlock b)) ∧
-  FoldSchedOut n q era (genesisState n.val G) bs stO
+def AttestsSched {C} (I : CryptoD C) (crypto : C) (n q era : U64) (G : Block) (sG : Hash)
+    (bs : List (Block × Hash)) (stO : CertStateG U64) (ts : Hash) : Prop :=
+  SigHist I crypto n sG bs ts ∧
+  FoldSchedOut n q era (genesisState n.val G) (bs.map Prod.fst) stO
 
 /-- Mode 3, with the final generation `gO`. -/
-def AttestsLock {C} (I : CryptoD C) (crypto : C) (n q : U64) (G : Block)
-    (bs : List Block) (stO : CertStateG U64) (gO : U64) : Prop :=
-  (∀ b ∈ bs, DSigned I crypto n (toModelBlock b)) ∧
-  FoldLockOut n q (genesisState n.val G) G.key_index bs stO gO
+def AttestsLock {C} (I : CryptoD C) (crypto : C) (n q : U64) (G : Block) (sG : Hash)
+    (bs : List (Block × Hash)) (stO : CertStateG U64) (gO : U64) (ts : Hash) : Prop :=
+  SigHist I crypto n sG bs ts ∧
+  FoldLockOut n q (genesisState n.val G) G.key_index (bs.map Prod.fst) stO gO
 
 /-- The full chain a client acts on: the attested history, then the tail. -/
-def fullChain (G : Block) (bs : List Block) (tl : Chain) : MoltPetit.Model.Chain :=
-  (G :: bs).map toModelBlock ++ toModelChain tl
+def fullChain (G : Block) (bs : List (Block × Hash)) (tl : Chain) : MoltPetit.Model.Chain :=
+  (G :: bs.map Prod.fst).map toModelBlock ++ toModelChain tl
 end Rust

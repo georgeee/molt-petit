@@ -350,12 +350,13 @@ identical on every chain, pinned at the verifier, never peer-supplied. -/
 def schedPin (schedule : Nat → Nat) (c : Chain) : Bool :=
   c.all (fun b => decide (schedule b.slot ≤ b.keyIndex))
 
-/-- Mode 2's signed validator: signatures + indexed validity + the
-scheduled pin. No confirmation depth, no floor. -/
+/-- Mode 2's signed validator: signatures + structural validity + the
+scheduled pin. No confirmation depth, no floor, no monotone rule: the pin
+replaces it. -/
 def validSignedChainSched {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat)
     (ops : SigOps σ sk pk) (registry : KeyRegistry pk)
     (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChainK n (stripSigs sc)
+  sigsOk n ops registry sc && validChain n (stripSigs sc)
     && schedPin schedule (stripSigs sc)
 
 /-- Mode 2's unforgeability surface. -/

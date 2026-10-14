@@ -1257,7 +1257,6 @@ def thm_sched_liveness_produce_block : Prop :=
     (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
       HonestBlocksCover bad record
         (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
-    (hFloor    : keyFloor n (stripSigs sc) me ≤ keyIndex)
     (hSched    : schedule slot ≤ keyIndex)
     (hSig      : ops.verify (registry me keyIndex)
       (nextBlock slot newId contentsHash keyIndex tip) sig = true),
@@ -1487,23 +1486,25 @@ def thm_rust_deployed_agreement : Prop :=
     {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
     {G : Block} {R : Nat}
     (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
-    (hSigG : DSigned I crypto n (toModelBlock G))
-    (hexec : MoltPetit.Model.SigningExecutionOn (DSigned I crypto n) exposed log (toModelBlock G))
-    (hClock : MoltPetit.Model.HonestClockOn (DSigned I crypto n) σ exposed log)
+    {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hexec : MoltPetit.Model.SigningExecutionOn (DSigned I crypto n G) exposed log (toModelBlock G))
+    (hClock : MoltPetit.Model.HonestClockOn (DSigned I crypto n G) σ exposed log)
     (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ exposed)
     (hL : n.val ≤ ℓ + 1)
     (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
-    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n B → ∃ r ≤ R, B ∈ log r)
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → ∃ r ≤ R, B ∈ log r)
     (hφ : Δ.val + δ ≤ φ)
     {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R ≤ now'.val + δ)
     {cert cert' : Hash} {suffix suffix' : SignedChain}
     (hval  : validate_deployed I n now  Δ crypto cert  suffix  = ok true)
     (hval' : validate_deployed I n now' Δ crypto cert' suffix' = ok true)
     {tl tl' : Chain} (hstr : strip_sigs suffix = ok tl) (hstr' : strip_sigs suffix' = ok tl')
-    {bs bs' : List Block} {stO stO' : CertStateG U64} {out out' : FloorsG U64}
+    {bs bs' : List (Block × Hash)} {ts ts' : Hash}
+    (hts : I.cert_tip_sig crypto cert = ok ts) (hts' : I.cert_tip_sig crypto cert' = ok ts')
+    {stO stO' : CertStateG U64} {out out' : FloorsG U64}
     (hst  : I.cert_state crypto cert  = ok stO) (hst' : I.cert_state crypto cert' = ok stO')
-    (hA  : AttestsK I crypto n q G bs  stO  out)
-    (hA' : AttestsK I crypto n q G bs' stO' out')
+    (hA  : AttestsK I crypto n q G sG bs  stO  out ts)
+    (hA' : AttestsK I crypto n q G sG bs' stO' out' ts')
     {h : Nat}
     (hDeep  : h + n.val < (fullChain G bs  tl ).length)
     (hDeep' : h + n.val < (fullChain G bs' tl').length),
@@ -1518,25 +1519,27 @@ def thm_rust_deployed_k_agreement : Prop :=
     {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
     {G : Block} {R : Nat}
     (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
-    (hSigG : DSigned I crypto n (toModelBlock G))
-    (hexec : MoltPetit.Model.SigningExecutionOn (DSigned I crypto n) exposed log (toModelBlock G))
-    (hClock : MoltPetit.Model.HonestClockOn (DSigned I crypto n) σ exposed log)
+    {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hexec : MoltPetit.Model.SigningExecutionOn (DSigned I crypto n G) exposed log (toModelBlock G))
+    (hClock : MoltPetit.Model.HonestClockOn (DSigned I crypto n G) σ exposed log)
     (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ exposed)
     (hL : n.val ≤ ℓ + 1)
     (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
-    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n B → ∃ r ≤ R, B ∈ log r)
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → ∃ r ≤ R, B ∈ log r)
     (hφ : Δ.val + δ ≤ φ)
     {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R ≤ now'.val + δ)
     {cert cert' : Hash} {suffix suffix' : SignedChain}
     (hval  : validate_deployed_k I n now  Δ crypto cert  suffix  = ok true)
     (hval' : validate_deployed_k I n now' Δ crypto cert' suffix' = ok true)
     {tl tl' : Chain} (hstr : strip_sigs suffix = ok tl) (hstr' : strip_sigs suffix' = ok tl')
-    {bs bs' : List Block} {stO stO' : CertStateG U64} {out out' : FloorsG U64}
+    {bs bs' : List (Block × Hash)} {ts ts' : Hash}
+    (hts : I.cert_tip_sig crypto cert = ok ts) (hts' : I.cert_tip_sig crypto cert' = ok ts')
+    {stO stO' : CertStateG U64} {out out' : FloorsG U64}
     (hst  : I.cert_state crypto cert  = ok stO) (hst' : I.cert_state crypto cert' = ok stO')
     (hfl  : I.cert_floors_state crypto cert  = ok out)
     (hfl' : I.cert_floors_state crypto cert' = ok out')
-    (hA  : AttestsK I crypto n q G bs  stO  out)
-    (hA' : AttestsK I crypto n q G bs' stO' out')
+    (hA  : AttestsK I crypto n q G sG bs  stO  out ts)
+    (hA' : AttestsK I crypto n q G sG bs' stO' out' ts')
     {h : Nat}
     (hDeep  : h + n.val < (fullChain G bs  tl ).length)
     (hDeep' : h + n.val < (fullChain G bs' tl').length),
@@ -1554,18 +1557,18 @@ def thm_rust_deployed_sched_agreement : Prop :=
     {Controlled : Nat → Nat → Prop} {Stolen : Nat → Nat → Nat → Prop}
     {log : MoltPetit.Model.TimedLog} {G : Block} {R : Nat}
     (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
-    (hSigG : DSigned I crypto n (toModelBlock G))
+    {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
     (hexec : MoltPetit.Model.SigningExecutionOn
-      (fun B => DSigned I crypto n B ∧ B.slot / era.val ≤ B.keyIndex)
+      (fun B => DSigned I crypto n G B ∧ B.slot / era.val ≤ B.keyIndex)
       (MoltPetit.Model.schedExposed n.val (fun s => s / era.val) Controlled Stolen) log (toModelBlock G))
     (hClock : MoltPetit.Model.HonestClockOn
-      (fun B => DSigned I crypto n B ∧ B.slot / era.val ≤ B.keyIndex) σ
+      (fun B => DSigned I crypto n G B ∧ B.slot / era.val ≤ B.keyIndex) σ
       (MoltPetit.Model.schedExposed n.val (fun s => s / era.val) Controlled Stolen) log)
     (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ
       (MoltPetit.Model.schedExposed n.val (fun s => s / era.val) Controlled Stolen))
     (hL : n.val ≤ ℓ + 1)
     (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
-    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n B → B.slot / era.val ≤ B.keyIndex →
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → B.slot / era.val ≤ B.keyIndex →
       ∃ r ≤ R, B ∈ log r)
     (hφ : Δ.val + δ ≤ φ)
     {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R ≤ now'.val + δ)
@@ -1573,10 +1576,12 @@ def thm_rust_deployed_sched_agreement : Prop :=
     (hval  : validate_deployed_sched I n era now  Δ crypto cert  suffix  = ok true)
     (hval' : validate_deployed_sched I n era now' Δ crypto cert' suffix' = ok true)
     {tl tl' : Chain} (hstr : strip_sigs suffix = ok tl) (hstr' : strip_sigs suffix' = ok tl')
-    {bs bs' : List Block} {stO stO' : CertStateG U64}
+    {bs bs' : List (Block × Hash)} {ts ts' : Hash}
+    (hts : I.cert_tip_sig crypto cert = ok ts) (hts' : I.cert_tip_sig crypto cert' = ok ts')
+    {stO stO' : CertStateG U64}
     (hst  : I.cert_state crypto cert  = ok stO) (hst' : I.cert_state crypto cert' = ok stO')
-    (hA  : AttestsSched I crypto n q era G bs  stO)
-    (hA' : AttestsSched I crypto n q era G bs' stO')
+    (hA  : AttestsSched I crypto n q era G sG bs  stO ts)
+    (hA' : AttestsSched I crypto n q era G sG bs' stO' ts')
     {h : Nat}
     (hDeep  : h + n.val < (fullChain G bs  tl ).length)
     (hDeep' : h + n.val < (fullChain G bs' tl').length),
@@ -1586,7 +1591,7 @@ def thm_rust_deployed_sched_agreement : Prop :=
 
 /-- Paper: mode 3 end to end (Theorem thm:lock-gen on the shipped validator).
 The package is over the Rust signature check (`rustOps`, `rustRegistry`) with
-`Formed := RustFormed`, at the earlier of the two clock readings. Agreement
+`Formed := RustFormed I crypto n G`, at the earlier of the two clock readings. Agreement
 at depth `2n` in the full chains. -/
 def thm_rust_deployed_lock_agreement : Prop :=
   ∀ {n q Δ : U64} (hn : 1 ≤ n.val) (hq : quorum n = ok q)
@@ -1595,19 +1600,21 @@ def thm_rust_deployed_lock_agreement : Prop :=
     {Stolen : Nat → Nat → Prop} {honestSigned : Nat → Nat → Option MoltPetit.Model.Block}
     {G : Block} {R T : Nat} {now now' : U64}
     (hP : MoltPetit.Model.LockstepPackageGen n.val rosterGen
-      (rustOps I.CryptoInst crypto) (rustRegistry I.CryptoInst crypto) (RustFormed I crypto)
+      (rustOps I.CryptoInst crypto) (rustRegistry I.CryptoInst crypto) (RustFormed I crypto n G)
       rented Stolen honestSigned (min now.val now'.val) Δ.val (toModelBlock G) R T)
     (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
-    (hSigG : DSigned I crypto n (toModelBlock G))
+    {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
     {cert cert' : Hash} {suffix suffix' : SignedChain}
     (hval  : validate_deployed_lock I n now  Δ crypto cert  suffix  = ok true)
     (hval' : validate_deployed_lock I n now' Δ crypto cert' suffix' = ok true)
     {tl tl' : Chain} (hstr : strip_sigs suffix = ok tl) (hstr' : strip_sigs suffix' = ok tl')
-    {bs bs' : List Block} {stO stO' : CertStateG U64} {gO gO' : U64}
+    {bs bs' : List (Block × Hash)} {ts ts' : Hash}
+    (hts : I.cert_tip_sig crypto cert = ok ts) (hts' : I.cert_tip_sig crypto cert' = ok ts')
+    {stO stO' : CertStateG U64} {gO gO' : U64}
     (hst  : I.cert_state crypto cert  = ok stO) (hst' : I.cert_state crypto cert' = ok stO')
     (hgen : I.cert_gen crypto cert = ok gO) (hgen' : I.cert_gen crypto cert' = ok gO')
-    (hA  : AttestsLock I crypto n q G bs  stO  gO)
-    (hA' : AttestsLock I crypto n q G bs' stO' gO')
+    (hA  : AttestsLock I crypto n q G sG bs  stO  gO ts)
+    (hA' : AttestsLock I crypto n q G sG bs' stO' gO' ts')
     {h : Nat}
     (hDeep  : h + 2 * n.val < (fullChain G bs  tl ).length)
     (hDeep' : h + 2 * n.val < (fullChain G bs' tl').length),
@@ -1615,19 +1622,47 @@ def thm_rust_deployed_lock_agreement : Prop :=
 
 /-- Paper: sec:impl. Knowledge soundness supplies an attested history: given
 the circuit's knowledge soundness (`hFold`: a verifying certificate's public
-state is the output of a fold of some signed, formed history), a certificate
-that verifies has an attested history, so the deployed theorems apply. -/
+state, and tip signature, are the output of a fold of some signed history
+chained from the genesis signature `sG`), a certificate that the deployed
+client accepts has an attested history, so the deployed theorems apply. -/
 def thm_rust_deployed_ks : Prop :=
-  ∀ {n q : U64} {C} (I : CryptoD C) (crypto : C) {G : Block}
+  ∀ {n q : U64} {C} (I : CryptoD C) (crypto : C) {G : Block} {sG : Hash}
     (hFold : ∀ cert : Hash, I.CryptoInst.cert_verify crypto cert = ok true →
-      ∃ (bs : List Block) (stO : CertStateG U64) (out : FloorsG U64),
-        AttestsK I crypto n q G bs stO out ∧ I.cert_state crypto cert = ok stO ∧
-        I.cert_floors_state crypto cert = ok out)
+      ∃ (bs : List (Block × Hash)) (stO : CertStateG U64) (out : FloorsG U64) (ts : Hash),
+        AttestsK I crypto n q G sG bs stO out ts ∧ I.cert_state crypto cert = ok stO ∧
+        I.cert_floors_state crypto cert = ok out ∧ I.cert_tip_sig crypto cert = ok ts)
     {now Δ : U64} {cert : Hash} {suffix : SignedChain}
-    (hval : validate_deployed I n now Δ crypto cert suffix = ok true),
-    ∃ (bs : List Block) (stO : CertStateG U64) (out : FloorsG U64),
-      AttestsK I crypto n q G bs stO out ∧ I.cert_state crypto cert = ok stO ∧
-      I.cert_floors_state crypto cert = ok out
+    (hval : validate_deployed I n now Δ crypto cert suffix = ok true ∨
+      validate_deployed_k I n now Δ crypto cert suffix = ok true),
+    ∃ (bs : List (Block × Hash)) (stO : CertStateG U64) (out : FloorsG U64) (ts : Hash),
+      AttestsK I crypto n q G sG bs stO out ts ∧ I.cert_state crypto cert = ok stO ∧
+      I.cert_floors_state crypto cert = ok out ∧ I.cert_tip_sig crypto cert = ok ts
+
+/-- Paper: sec:impl. As `rust_deployed_ks`, for the mode-2 fold and client. -/
+def thm_rust_deployed_sched_ks : Prop :=
+  ∀ {n q era : U64} {C} (I : CryptoD C) (crypto : C) {G : Block} {sG : Hash}
+    (hFold : ∀ cert : Hash, I.CryptoInst.cert_verify crypto cert = ok true →
+      ∃ (bs : List (Block × Hash)) (stO : CertStateG U64) (ts : Hash),
+        AttestsSched I crypto n q era G sG bs stO ts ∧ I.cert_state crypto cert = ok stO ∧
+        I.cert_tip_sig crypto cert = ok ts)
+    {now Δ : U64} {cert : Hash} {suffix : SignedChain}
+    (hval : validate_deployed_sched I n era now Δ crypto cert suffix = ok true),
+    ∃ (bs : List (Block × Hash)) (stO : CertStateG U64) (ts : Hash),
+      AttestsSched I crypto n q era G sG bs stO ts ∧ I.cert_state crypto cert = ok stO ∧
+      I.cert_tip_sig crypto cert = ok ts
+
+/-- Paper: sec:impl. As `rust_deployed_ks`, for the mode-3 fold and client. -/
+def thm_rust_deployed_lock_ks : Prop :=
+  ∀ {n q : U64} {C} (I : CryptoD C) (crypto : C) {G : Block} {sG : Hash}
+    (hFold : ∀ cert : Hash, I.CryptoInst.cert_verify crypto cert = ok true →
+      ∃ (bs : List (Block × Hash)) (stO : CertStateG U64) (gO : U64) (ts : Hash),
+        AttestsLock I crypto n q G sG bs stO gO ts ∧ I.cert_state crypto cert = ok stO ∧
+        I.cert_gen crypto cert = ok gO ∧ I.cert_tip_sig crypto cert = ok ts)
+    {now Δ : U64} {cert : Hash} {suffix : SignedChain}
+    (hval : validate_deployed_lock I n now Δ crypto cert suffix = ok true),
+    ∃ (bs : List (Block × Hash)) (stO : CertStateG U64) (gO : U64) (ts : Hash),
+      AttestsLock I crypto n q G sG bs stO gO ts ∧ I.cert_state crypto cert = ok stO ∧
+      I.cert_gen crypto cert = ok gO ∧ I.cert_tip_sig crypto cert = ok ts
 
 /-- Paper: sec:liveness. The deployed producer does not stop an honest
 validator: in its own slot after the tip, with a correct signing key, a total
@@ -1726,20 +1761,22 @@ def thm_ts_deployed_agreement : Prop :=
     {n : Nat} (hn : 1 ≤ n)
     {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
     {sigOps : MoltPetit.SigOps}
-    (hexec : SigningExecutionOn (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) exposed log G)
-    (hClock : HonestClockOn (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) σ exposed log)
+    (hexec : SigningExecutionOn (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) exposed log G)
+    (hClock : HonestClockOn (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) σ exposed log)
     (hBudget : ExposureBounded n ℓ φ exposed)
     (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
-    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → TSFormed sigOps B → ∃ r ≤ R, B ∈ log r)
+    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → TSFormed n sigOps G B → ∃ r ≤ R, B ∈ log r)
     {Δ now now' : Int} (hφ : Δ + δ ≤ φ)
     (hNow : (R : Int) ≤ now + δ) (hNow' : (R : Int) ≤ now' + δ)
     {certOps certOps' : MoltPetit.CertOps}
     (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
     ∃ cl : CertClaim, certOps.claim hc = toTSClaim cl ∧
-    GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) G cl)
+    GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl ∧
+    TSTipSigned n sigOps G cl (certOps.tipSig hc))
     (hUnf' : ∀ hc : MoltPetit.RawCertificate, certOps'.verify hc = true →
     ∃ cl : CertClaim, certOps'.claim hc = toTSClaim cl ∧
-    GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) G cl)
+    GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl ∧
+    TSTipSigned n sigOps G cl (certOps'.tipSig hc))
     {h h' : MoltPetit.RawCertificate} {sc sc' : SignedChain MoltPetit.RawSignature}
     (hval : MoltPetit.validateDeployed n now Δ sigOps certOps
     (.cc h (toTSSigned sc)) = true)
@@ -1749,8 +1786,8 @@ def thm_ts_deployed_agreement : Prop :=
     (hcl : certOps.claim h = toTSClaim cl)
     (hcl' : certOps'.claim h' = toTSClaim cl')
     {c c' : Chain}
-    (hc : GroundedHistory n (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) G cl c)
-    (hc' : GroundedHistory n (fun B => TSSigned n sigOps B ∧ TSFormed sigOps B) G cl' c')
+    (hc : GroundedHistory n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl c)
+    (hc' : GroundedHistory n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl' c')
     {k : Nat}
     (hDeep : k + n < (c ++ stripSigs sc).length)
     (hDeep' : k + n < (c' ++ stripSigs sc').length),

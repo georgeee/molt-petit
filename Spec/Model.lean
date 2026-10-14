@@ -318,11 +318,30 @@ def TSSigned (n : Nat) (sigOps : MoltPetit.SigOps) (B : Block) : Prop :=
     sigOps.verify (sigOps.keyFor (producerForSlot n B.slot) B.keyIndex)
       B.slot B.height (B.prev.map Int.ofNat) B.id sig = true
 
-/-- Block `B`'s id is the TS dictionary's id hash of its fields and some
-parent signature: the per-block residue of a passing `idsOk` run. -/
-def TSFormed (sigOps : MoltPetit.SigOps) (B : Block) : Prop :=
-  ∃ ps : MoltPetit.RawSignature,
-    sigOps.blockId B.slot B.height (B.prev.map Int.ofNat) ps B.contentsHash B.keyIndex = B.id
+/-- `sig` verifies for `B` under its slot producer's key at the version `B`
+states, under the TS dictionary. -/
+def TSSigOn (n : Nat) (sigOps : MoltPetit.SigOps) (B : Block)
+    (sig : MoltPetit.RawSignature) : Prop :=
+  sigOps.verify (sigOps.keyFor (producerForSlot n B.slot) B.keyIndex)
+    B.slot B.height (B.prev.map Int.ofNat) B.id sig = true
+
+/-- Block `B` is **formed from the genesis** `G` under the TS dictionary
+(Pass 29): it is `G`, or its id is the id hash of its fields and a signature
+that verifies for a parent formed from `G`, whose id it names. -/
+inductive TSFormed (n : Nat) (sigOps : MoltPetit.SigOps) (G : Block) : Block → Prop
+  | genesis : TSFormed n sigOps G G
+  | step {P B : Block} {ps : MoltPetit.RawSignature} :
+      TSFormed n sigOps G P → TSSigOn n sigOps P ps → B.prev = some P.id →
+      sigOps.blockId B.slot B.height (B.prev.map Int.ofNat) ps B.contentsHash B.keyIndex = B.id →
+      TSFormed n sigOps G B
+
+/-- The certificate's tip signature `s` verifies for a block formed from the
+genesis that is the claim's tip (part of the TS client's certificate
+assumption: the fold exposes the tip's signature). -/
+def TSTipSigned (n : Nat) (sigOps : MoltPetit.SigOps) (G : Block) (cl : CertClaim)
+    (s : MoltPetit.RawSignature) : Prop :=
+  ∃ T : Block, T.id = cl.tipId ∧ T.slot = cl.tipSlot ∧ T.height = cl.tipHeight ∧
+    TSFormed n sigOps G T ∧ TSSigOn n sigOps T s
 
 /--
 A certificate claim is **grounded in genesis `G`** when it arose from the
@@ -725,10 +744,12 @@ def schedPinned (schedule : Nat → Nat) (c : Chain) : Bool :=
   c.all (fun b => decide (schedule b.slot ≤ b.keyIndex))
 
 /-- The scheduled index-pinned **signed** validator: versioned-registry
-signatures + structural/monotone validity + the scheduled pin. -/
+signatures + structural validity + the scheduled pin. No monotone key rule
+(Pass 29): the schedule pin replaces it, as in the certificate and the
+deployed client. -/
 def validSignedChainSched {σ sk pk : Type} (n : Nat) (schedule : Nat → Nat)
     (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChainK n (stripSigs sc)
+  sigsOk n ops registry sc && validChain n (stripSigs sc)
     && schedPinned schedule (stripSigs sc)
 
 /-- **Registry-level EUF-CMA over the scheduled validator** — the same
