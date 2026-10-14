@@ -10,7 +10,7 @@ Build one module at a time, in the background:
 
 At the scaffold, a full `lake build` fails first in `MoltPetit.TS.TimedResults` and `MoltPetit.Model.KeyStealingSchedule`. Modules downstream of these (including `Rust.Deployed`) were not reached and will show further errors once they build.
 
-In progress: 6. History formedness
+In progress: 7. rust_deployed_agreement
 
 ## Stage A: model (mode 2 without the monotone rule)
 
@@ -32,7 +32,7 @@ In progress: 6. History formedness
   - the head of `tl` has `prev = some T.id`, and consecutive blocks of `tl` link (`prev = some` the previous id).
 
   Then every `b` in `tl` is `FormedFrom … G b`. Induct on `sc` generalising `T ts`. Then rebuild `dsigned_of_sigs_ok_ids_ok` with the new hypotheses. Its conclusion is `DSigned I crypto n G`.
-- [ ] 6. **History formedness** (SPEC item 1). Assume `SigOn … G sG`, `SigHist I crypto n sG bs ts` and `FoldKOut n q (genesisState n.val G) (initFloors …) (bs.map Prod.fst) stO out`. Then:
+- [x] 6. **History formedness** (SPEC item 1). Assume `SigOn … G sG`, `SigHist I crypto n sG bs ts` and `FoldKOut n q (genesisState n.val G) (initFloors …) (bs.map Prod.fst) stO out`. Then:
   - every block of `G :: bs.map Prod.fst` is `FormedFrom … G`;
   - there is `T`, the last block of `G :: bs.map Prod.fst`, with `FormedFrom … G T`, `SigOn … T ts`, `T.id = stO.tip_id`, `T.slot = stO.tip_slot` and `T.height = stO.tip_height`.
 
