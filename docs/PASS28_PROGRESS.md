@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 6. cert_fold_sched_complete
+In progress: 7. cert_fold_lock_complete
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -37,7 +37,7 @@ In progress: 6. cert_fold_sched_complete
   - Each `_be` primitive returns `ok` (no overflow) under the bounds.
   - Its boolean result equals the model's.
   - Reuse the `*_corr` lemmas in `Rust/Equiv.lean`.
-- [ ] 6. **`cert_fold_sched_complete`**. Induct on `bs`, reusing `TailRepr` from `Rust/FoldStep.lean`. Each step must show four things:
+- [x] 6. **`cert_fold_sched_complete`**. Induct on `bs`, reusing `TailRepr` from `Rust/FoldStep.lean`. Each step must show four things:
   - `cert_step_core_be` returns `ok true`. Links come from `linksOk`. Density: every window the fold checks is a window `validChain` checks; this is the converse of `fold_window_ok_be_sound` and `fold_anchors_ok_be_sound`.
   - The pin.
   - `cert_next_tail_be` returns `ok`.

@@ -963,4 +963,171 @@ lemma getElem?_append_head {α : Type} (A : List α) (b : α) (B : List α) :
     simp only [List.cons_append, List.length_cons]
     exact ih
 
+lemma strictSlots_append_mem {A : MoltPetit.Model.Chain} {b : MoltPetit.Model.Block} {B : MoltPetit.Model.Chain}
+    (hS : MoltPetit.Model.StrictSlots (A ++ b :: B)) {x : MoltPetit.Model.Block} (hx : x ∈ B) :
+    b.slot < x.slot := by
+  have hpw := (List.pairwise_append.mp hS).2.1
+  have hpw' := List.pairwise_cons.mp hpw
+  exact hpw'.1 x hx
+
+lemma windowCount_claim_extend_eq {n : Nat} {G : Block} {pre : List Block} {b : Block}
+    {u : Nat} (hu : (modelClaimOf n (toModelBlock G) (pre.map toModelBlock)).tipSlot + 2 ≤ u + n) :
+    MoltPetit.Model.windowCount ((modelClaimOf n (toModelBlock G) (pre.map toModelBlock)).tail ++ [toModelBlock b]) u n =
+    MoltPetit.Model.windowCount (((G :: pre).map toModelBlock) ++ [toModelBlock b]) u n := by
+  rw [MoltPetit.Model.windowCount_append, MoltPetit.Model.windowCount_append]
+  congr 1
+  dsimp [modelClaimOf] at hu ⊢
+  have hlo : ((toModelBlock G :: pre.map toModelBlock).getLast (List.cons_ne_nil _ _)).slot + 2 - n ≤ u := by omega
+  exact MoltPetit.Model.windowCount_filter_low hlo ((G :: pre).map toModelBlock) n
+
+lemma foldSched_complete_aux {n q era : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hsmall : n.val < 2 ^ 62) (hq : quorum n = ok q) (hera : 0 < era.val) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64),
+    (∀ b ∈ G :: pre ++ bs, b.slot.val < 2 ^ 62 ∧ b.height.val < 2 ^ 62) →
+    MoltPetit.Model.validChain n.val ((G :: pre ++ bs).map toModelBlock) = true →
+    (∀ b ∈ bs, b.slot.val / era.val ≤ b.key_index.val) →
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    (∀ s ∈ entrySlots st.tail, s < 2 ^ 62) →
+    FoldSched n q era st bs := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st hbound hV hPin hrep hrest_bound
+    dsimp [FoldSched]
+  | cons b rest ih =>
+    intro pre st hbound hV hPin hrep hrest_bound
+    let cl := modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)
+    let A := (G :: pre).map toModelBlock
+    let ch := (G :: pre ++ b :: rest).map toModelBlock
+    let t := A.getLast (List.cons_ne_nil _ _)
+    have ht_mem_A : t ∈ A := List.getLast_mem (List.cons_ne_nil _ _)
+    obtain ⟨b₀, hb₀_pre, ht_eq⟩ := List.mem_map.mp ht_mem_A
+    have hb₀_all : b₀ ∈ G :: pre ++ b :: rest := by
+      exact List.mem_append_left (b :: rest) hb₀_pre
+    have ⟨hb₀_s, hb₀_h⟩ := hbound b₀ hb₀_all
+    have htip_s : st.tip_slot.val < 2 ^ 62 := by
+      rw [hrep.tip_slot]
+      change t.slot < 2 ^ 62
+      rw [← ht_eq]
+      exact hb₀_s
+    have htip_h : st.tip_height.val < 2 ^ 62 := by
+      rw [hrep.tip_height]
+      change t.height < 2 ^ 62
+      rw [← ht_eq]
+      exact hb₀_h
+    have hb_all : b ∈ G :: pre ++ b :: rest := by
+      simp only [List.mem_cons, List.mem_append, List.mem_cons, true_or, or_true]
+    have ⟨hb_s, hb_h⟩ := hbound b hb_all
+    have hVS := MoltPetit.Model.validChain_sound hV
+    have hSeq := hVS.1
+    have hStrict := hVS.2.1
+    have hParent := hVS.2.2.1
+    have hDense := hVS.2.2.2
+    have hlen_pos : 0 < A.length := by
+      dsimp [A]
+      simp only [List.length_map, List.length_cons, Nat.succ_pos]
+    have hch_eq : ch = A ++ toModelBlock b :: rest.map toModelBlock := by
+      dsimp [ch, A]
+      simp only [List.map_cons, List.map_append]
+    have hAt_b : MoltPetit.Model.blockAt? ch A.length = some (toModelBlock b) := by
+      unfold MoltPetit.Model.blockAt?
+      rw [hch_eq]
+      exact getElem?_append_head A (toModelBlock b) (rest.map toModelBlock)
+    have hAt_t : MoltPetit.Model.blockAt? ch (A.length - 1) = some t := by
+      unfold MoltPetit.Model.blockAt?
+      rw [hch_eq, List.getElem?_append_left (by omega)]
+      rw [← List.getLast?_eq_getElem?]
+      exact List.getLast?_eq_some_getLast (List.cons_ne_nil _ _)
+    have hBh : (toModelBlock b).height = A.length := hSeq hAt_b
+    have hTh : t.height = A.length - 1 := hSeq hAt_t
+    have hcl_h : cl.tipHeight = t.height := rfl
+    have hcl_s : cl.tipSlot = t.slot := rfl
+    have hcl_id : cl.tipId = t.id := rfl
+    have hchild_h : (toModelBlock b).height = cl.tipHeight + 1 := by
+      rw [hcl_h, hBh, hTh]
+      omega
+    have hchild_s : cl.tipSlot < (toModelBlock b).slot := by
+      rw [hcl_s]
+      exact MoltPetit.Model.strictSlots_lt hStrict hAt_t hAt_b (by omega)
+    have hchild_prev : (toModelBlock b).prev = some cl.tipId := by
+      have hsucc_len : A.length = (A.length - 1) + 1 := by omega
+      have hAt_b' : MoltPetit.Model.blockAt? ch ((A.length - 1) + 1) = some (toModelBlock b) := by
+        rwa [← hsucc_len]
+      obtain ⟨P, hP_at, hP_prev⟩ := MoltPetit.Model.parentLinked_at_succ hParent hAt_b'
+      have hP_eq : P = t := Option.some.inj (hP_at.symm.trans hAt_t)
+      rw [hcl_id, ← hP_eq]
+      exact hP_prev
+    have hdense : ∀ u : Nat, cl.tipSlot + 2 ≤ u + n.val → u + n.val ≤ (toModelBlock b).slot + 1 →
+        q.val ≤ MoltPetit.Model.windowCount (cl.tail ++ [toModelBlock b]) u n.val := by
+      intro u huT huB
+      rw [quorum_val_of_ok hq]
+      rw [windowCount_claim_extend_eq huT]
+      have hStrict' : MoltPetit.Model.StrictSlots (A ++ toModelBlock b :: rest.map toModelBlock) := by
+        rw [← hch_eq]; exact hStrict
+      have hrest_gt : ∀ x ∈ rest.map toModelBlock, (toModelBlock b).slot < x.slot := by
+        intro x hx
+        exact strictSlots_append_mem hStrict' hx
+      have hwc_rest : MoltPetit.Model.windowCount ((A ++ [toModelBlock b]) ++ rest.map toModelBlock) u n.val =
+          MoltPetit.Model.windowCount (A ++ [toModelBlock b]) u n.val := by
+        apply MoltPetit.Model.windowCount_append_high
+        intro x hx
+        have := hrest_gt x hx
+        omega
+      rw [← hwc_rest]
+      have hch_app : ch = (A ++ [toModelBlock b]) ++ rest.map toModelBlock := by
+        rw [hch_eq, List.append_assoc, List.singleton_append]
+      rw [← hch_app]
+      exact hDense hAt_b u huB
+    have hcore := cert_step_core_be_complete hn hsmall hq hrep htip_h htip_s hb_h hb_s hrest_bound hchild_h hchild_s hchild_prev hdense
+    have hpin_b := hPin b (by simp)
+    have hsched := cert_step_sched_be_complete hera hcore hpin_b
+    obtain ⟨t', ht'⟩ : ∃ t', cert_next_tail_be UB () st.tail b.slot = ok t' := ⟨_, cert_next_tail_be_corr _ _⟩
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := (cl.tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hchild_s
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by simp
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hrest_bound_step := entrySlots_cert_next_tail_bound hrest_bound hb_s ht'
+    have hassoc : G :: (pre ++ [b]) ++ rest = G :: pre ++ b :: rest := by
+      simp
+    have hbound' : ∀ x ∈ G :: (pre ++ [b]) ++ rest, x.slot.val < 2 ^ 62 ∧ x.height.val < 2 ^ 62 := by
+      rw [hassoc]; exact hbound
+    have hV' : MoltPetit.Model.validChain n.val ((G :: (pre ++ [b]) ++ rest).map toModelBlock) = true := by
+      rw [hassoc]; exact hV
+    have hPin' : ∀ x ∈ rest, x.slot.val / era.val ≤ x.key_index.val := by
+      intro x hx
+      exact hPin x (by simp [hx])
+    have hrest_sched := ih (pre ++ [b]) (stepState b t') hbound' hV' hPin' hrep_step hrest_bound_step
+    exact ⟨hsched, t', ht', hrest_sched⟩
+
+theorem cert_fold_sched_complete : MoltPaper.thm_cert_fold_sched_complete := by
+  intro n q era G bs hn hsmall hq hera hbound hG hV hPin
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hbase_tail_bound : ∀ s ∈ entrySlots (genesisState n.val G).tail, s < 2 ^ 62 := by
+    dsimp [genesisState]
+    have hG_bound := hbound G (by simp)
+    exact entrySlots_initTail_bound hG_bound.1
+  have hbound' : ∀ b ∈ G :: [] ++ bs, b.slot.val < 2 ^ 62 ∧ b.height.val < 2 ^ 62 := by
+    intro b hb
+    apply hbound
+    simp only [List.cons_append, List.nil_append] at hb
+    exact hb
+  have hV' : MoltPetit.Model.validChain n.val ((G :: [] ++ bs).map toModelBlock) = true := by
+    have : (G :: [] ++ bs) = G :: bs := by simp only [List.cons_append, List.nil_append]
+    rw [this]
+    exact hV
+  exact foldSched_complete_aux hn hsmall hq hera bs [] (genesisState n.val G)
+    hbound' hV' hPin hbase_rep hbase_tail_bound
+
 end Rust
