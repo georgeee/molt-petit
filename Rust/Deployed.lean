@@ -2,6 +2,10 @@ import Rust.Equiv
 import Rust.FoldStep
 import MoltPetit.Model.Soundness
 import MoltPetit.Model.Pass28
+import MoltPetit.Model.KeyStealingCert
+import MoltPetit.Model.KeyStealingScheduleCert
+import MoltPetit.Model.KeyStealingLockstepCert
+import MoltPetit.Model.ExposureCert
 import Spec.Statements
 
 open Aeneas Std Result
@@ -2294,4 +2298,249 @@ theorem validate_deployed_lock_sound {C} {I : CryptoD C} {n now delta : U64} {cr
     exact ⟨hb, st, g, stripped, hst, hg, hstrip, h⟩
   · simp at h
 
+
+/-! ## Step 12: History reconstruction from Attests -/
+
+lemma groundedCert_of_groundedCertK {n : Nat} {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    {cl : MoltPetit.Model.CertClaim} {fl : Nat → Nat}
+    (h : MoltPetit.Model.GroundedCertK n Signed G cl fl) :
+    MoltPetit.Model.GroundedCert n Signed G cl := by
+  induction h with
+  | genesis hG hSlot _ => exact MoltPetit.Model.GroundedCert.genesis hG hSlot
+  | extend cl fl b _ hh hs hp hSig _ hd ih =>
+    exact MoltPetit.Model.GroundedCert.extend cl b ih hh hs hp hSig hd
+
+lemma groundedCert_of_groundedCertSched {n : Nat} {schedule : Nat → Nat}
+    {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    {cl : MoltPetit.Model.CertClaim}
+    (h : MoltPetit.Model.GroundedCertSched n schedule Signed G cl) :
+    MoltPetit.Model.GroundedCert n Signed G cl := by
+  induction h with
+  | genesis hG hSlot _ _ => exact MoltPetit.Model.GroundedCert.genesis hG hSlot
+  | extend cl b _ hh hs hp hSig _ hd ih =>
+    exact MoltPetit.Model.GroundedCert.extend cl b ih hh hs hp hSig hd
+
+lemma groundedCert_of_groundedCertLock {n : Nat}
+    {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    {cl : MoltPetit.Model.CertClaim} {g : Nat}
+    (h : MoltPetit.Model.GroundedCertLock n Signed G cl g) :
+    MoltPetit.Model.GroundedCert n Signed G cl := by
+  induction h with
+  | genesis hG hSlot _ => exact MoltPetit.Model.GroundedCert.genesis hG hSlot
+  | extend cl g b _ hh hs hp hSig _ _ hd ih =>
+    exact MoltPetit.Model.GroundedCert.extend cl b ih hh hs hp hSig hd
+
+lemma groundedHistory_of_groundedHistoryK {n : Nat} {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    {cl : MoltPetit.Model.CertClaim} {fl : Nat → Nat} {c : MoltPetit.Model.Chain}
+    (h : MoltPetit.Model.GroundedHistoryK n Signed G cl fl c) :
+    MoltPetit.Model.GroundedHistory n Signed G cl c := by
+  have hcK := h.valid
+  rw [MoltPetit.Model.validChainK, Bool.and_eq_true] at hcK
+  exact {
+    valid := hcK.1
+    head := h.head
+    tip := h.tip
+    tail_eq := h.tail_eq
+    len_eq := h.len_eq
+    signed := fun B hB => Or.inr (h.signed B hB)
+  }
+
+lemma groundedHistory_of_groundedHistorySched {n : Nat} {schedule : Nat → Nat}
+    {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    {cl : MoltPetit.Model.CertClaim} {c : MoltPetit.Model.Chain}
+    (h : MoltPetit.Model.GroundedHistorySched n schedule Signed G cl c) :
+    MoltPetit.Model.GroundedHistory n Signed G cl c := by
+  exact {
+    valid := h.valid
+    head := h.head
+    tip := h.tip
+    tail_eq := h.tail_eq
+    len_eq := h.len_eq
+    signed := fun B hB => Or.inr (h.signed B hB)
+  }
+
+lemma groundedHistory_of_groundedHistoryLock {n : Nat}
+    {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    {cl : MoltPetit.Model.CertClaim} {g : Nat} {c : MoltPetit.Model.Chain}
+    (h : MoltPetit.Model.GroundedHistoryLock n Signed G cl g c) :
+    MoltPetit.Model.GroundedHistory n Signed G cl c := by
+  obtain ⟨t, ht_last, ht_id, ht_slot, ht_h, _⟩ := h.tip
+  exact {
+    valid := h.valid
+    head := h.head
+    tip := ⟨t, ht_last, ht_id, ht_slot, ht_h⟩
+    tail_eq := h.tail_eq
+    len_eq := h.len_eq
+    signed := fun B hB => Or.inr (h.signed B hB)
+  }
+
+lemma groundedHistoryK_genesis {n : Nat} (hn : 1 ≤ n) {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    (hG : MoltPetit.Model.genesisOk G = true) (hSlot : G.slot = 0) (hSig : Signed G) :
+    MoltPetit.Model.GroundedHistoryK n Signed G
+      { tipId := G.id, tipSlot := G.slot, tipHeight := G.height,
+        tail := [G].filter fun x => decide (G.slot + 2 - n ≤ x.slot) }
+      (fun i => if MoltPetit.Model.producerForSlot n G.slot = i then max 0 G.keyIndex else 0)
+      [G] := by
+  refine ⟨?_, by simp [MoltPetit.Model.blockAt?], ⟨G, by simp, rfl, rfl, rfl⟩, rfl, ?_,
+    fun B hB => by rw [List.mem_singleton] at hB; exact hB ▸ hSig, ?_⟩
+  · rw [MoltPetit.Model.validChainK, Bool.and_eq_true]
+    refine ⟨?_, rfl⟩
+    rw [MoltPetit.Model.validChain, show ([G] : MoltPetit.Model.Chain).getLast? = some G from rfl,
+      Bool.and_eq_true, Bool.and_eq_true]
+    refine ⟨⟨hG, rfl⟩, ?_⟩
+    show MoltPetit.Model.maturedWindowsDense n [G] G.slot = true
+    rw [MoltPetit.Model.maturedWindowsDense, List.all_eq_true]
+    intro u hu
+    have hu' := List.mem_range.mp hu
+    have hn1 : n = 1 ∧ u = 0 := by omega
+    obtain ⟨rfl, rfl⟩ := hn1
+    rw [MoltPetit.Model.windowDense, decide_eq_true_eq]
+    have : MoltPetit.Model.windowCount [G] 0 1 = 1 := by
+      simp [MoltPetit.Model.windowCount, MoltPetit.Model.blockInWindow, hSlot]
+    rw [this]
+    unfold MoltPetit.Model.quorum
+    omega
+  · have : G.height = 0 := by
+      rw [MoltPetit.Model.genesisOk, decide_eq_true_eq] at hG
+      exact hG.1
+    simp [this]
+  · intro i
+    unfold MoltPetit.Model.keyFloor
+    by_cases hp : MoltPetit.Model.producerForSlot n G.slot = i
+    · simp [hp]
+    · simp [hp]
+
+lemma groundedHistoryK_step {n : Nat} {Signed : MoltPetit.Model.Block → Prop} {G : MoltPetit.Model.Block}
+    {cl : MoltPetit.Model.CertClaim} {fl : Nat → Nat} {c : MoltPetit.Model.Chain} {b : MoltPetit.Model.Block}
+    (hist : MoltPetit.Model.GroundedHistoryK n Signed G cl fl c)
+    (hH : b.height = cl.tipHeight + 1)
+    (hS : cl.tipSlot < b.slot)
+    (hP : b.prev = some cl.tipId)
+    (hSig : Signed b)
+    (hKI : fl (MoltPetit.Model.producerForSlot n b.slot) ≤ b.keyIndex)
+    (hD : ∀ u : Nat, cl.tipSlot + 2 ≤ u + n → u + n ≤ b.slot + 1 →
+      MoltPetit.Model.quorum n ≤ MoltPetit.Model.windowCount (cl.tail ++ [b]) u n) :
+    MoltPetit.Model.GroundedHistoryK n Signed G
+      { tipId := b.id, tipSlot := b.slot, tipHeight := b.height,
+        tail := (cl.tail ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot) }
+      (fun i => if MoltPetit.Model.producerForSlot n b.slot = i then max (fl i) b.keyIndex else fl i)
+      (c ++ [b]) := by
+  have hcK := hist.valid
+  rw [MoltPetit.Model.validChainK, Bool.and_eq_true] at hcK
+  obtain ⟨hcV, hcM⟩ := hcK
+  obtain ⟨t, hTipEq, htId, htSlot, htHeight⟩ := hist.tip
+  have hChild : MoltPetit.Model.childOk t b = true := by
+    rw [MoltPetit.Model.childOk, decide_eq_true_eq]
+    exact ⟨by omega, by omega, by rw [hP, htId]⟩
+  have hMat := (MoltPetit.Model.validChain_sound hcV).2.2.2
+  have hTipAt : MoltPetit.Model.blockAt? c (c.length - 1) = some t := MoltPetit.Model.blockAt_getLast hTipEq
+  have hAllDense : ∀ u : Nat, u + n ≤ b.slot + 1 →
+      MoltPetit.Model.windowDense n (c ++ [b]) u = true := by
+    intro u hu
+    rw [MoltPetit.Model.windowDense, decide_eq_true_eq]
+    by_cases hOld : u + n ≤ t.slot + 1
+    · calc MoltPetit.Model.quorum n ≤ MoltPetit.Model.windowCount c u n := hMat hTipAt u hOld
+        _ ≤ MoltPetit.Model.windowCount (c ++ [b]) u n :=
+            MoltPetit.Model.windowCount_mono (List.sublist_append_left c [b])
+    · have hcount := hD u (by omega) hu
+      have heq : MoltPetit.Model.windowCount (cl.tail ++ [b]) u n = MoltPetit.Model.windowCount (c ++ [b]) u n := by
+        rw [MoltPetit.Model.windowCount_append, MoltPetit.Model.windowCount_append, hist.tail_eq,
+          MoltPetit.Model.windowCount_filter_low (by omega)]
+      omega
+  refine ⟨?_, ?_, ⟨b, by simp, rfl, rfl, rfl⟩, ?_, ?_, ?_, ?_⟩
+  · rw [MoltPetit.Model.validChainK, Bool.and_eq_true]
+    refine ⟨MoltPetit.Model.validChain_append_one hcV hTipEq hChild hAllDense, ?_⟩
+    refine MoltPetit.Model.keyMonoOk_append_of_from hcM ?_
+    rw [MoltPetit.Model.keyMonoFrom, Bool.and_eq_true, decide_eq_true_eq]
+    exact ⟨by rw [hist.floors]; exact hKI, rfl⟩
+  · have hcLen : 0 < c.length := by
+      have := hist.len_eq
+      omega
+    have hHead := hist.head
+    unfold MoltPetit.Model.blockAt? at hHead ⊢
+    rw [List.getElem?_append_left hcLen]
+    exact hHead
+  · show (cl.tail ++ [b]).filter (fun x => decide (b.slot + 2 - n ≤ x.slot)) =
+      (c ++ [b]).filter fun x => decide (b.slot + 2 - n ≤ x.slot)
+    rw [List.filter_append, List.filter_append, hist.tail_eq, List.filter_filter]
+    congr 1
+    apply List.filter_congr
+    intro x _
+    by_cases hx : b.slot + 2 - n ≤ x.slot
+    · have hlo : cl.tipSlot + 2 - n ≤ x.slot := by omega
+      simp [hx, hlo]
+    · simp [hx]
+  · simp [hist.len_eq, hH]
+  · intro B hB
+    rcases List.mem_append.mp hB with hBc | hBb
+    · exact hist.signed B hBc
+    · rw [List.mem_singleton] at hBb
+      exact hBb ▸ hSig
+  · intro i
+    rw [MoltPetit.Model.keyFloor_append_one]
+    by_cases hp : MoltPetit.Model.producerForSlot n b.slot = i
+    · rw [if_pos hp, if_pos hp, hist.floors]
+    · rw [if_neg hp, if_neg hp, hist.floors]
+
+lemma foldK_history_aux {n q : U64} {G : Block}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64) (fl out : FloorsG U64),
+    (∀ b ∈ bs, Signed (toModelBlock b)) →
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    floorsLen fl = n.val →
+    MoltPetit.Model.GroundedHistoryK n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) (floorsFun fl)
+      ((G :: pre).map toModelBlock) →
+    FoldK n q st fl bs out →
+    MoltPetit.Model.GroundedHistoryK n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock)) (floorsFun out)
+      ((G :: pre ++ bs).map toModelBlock) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st fl out hSig hrep hlen hhist hfold
+    simp only [List.append_nil]
+    dsimp [FoldK] at hfold
+    subst hfold
+    exact hhist
+  | cons b rest ih =>
+    intro pre st fl out hSig hrep hlen hhist hfold
+    obtain ⟨hstep, t', fl', ht', hfl', hfold_rest⟩ := hfold
+    obtain ⟨hcore, hle⟩ := cert_step_k_be_sound hn hstep
+    obtain ⟨hheight, hslot, hprev, hdense⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hSig_b : Signed (toModelBlock b) := hSig b (by simp)
+    have hSig_rest : ∀ x ∈ rest, Signed (toModelBlock x) :=
+      fun x hx => hSig x (by simp [hx])
+    let cl := modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)
+    have hstep_hist := groundedHistoryK_step hhist hheight hslot hprev hSig_b hle hdense
+    have ⟨hlen', hfun'⟩ := cert_next_floors_be_sound hn hlen hfl'
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := (cl.tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hhist_step : MoltPetit.Model.GroundedHistoryK n.val Signed
+        (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock))
+        (floorsFun fl') ((G :: (pre ++ [b])).map toModelBlock) := by
+      have hchain_eq : (G :: (pre ++ [b])).map toModelBlock = ((G :: pre).map toModelBlock) ++ [toModelBlock b] := by
+        simp
+      rw [hchain_eq, hmap_app, hcl_eq, hfun']
+      exact hstep_hist
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hrec := ih (pre ++ [b]) (stepState b t') fl' out hSig_rest hrep_step hlen' hhist_step hfold_rest
+    have h1 : (pre ++ [b]) ++ rest = pre ++ b :: rest := by simp
+    have h2 : G :: (pre ++ [b]) ++ rest = G :: (pre ++ b :: rest) := by simp
+    rw [h1, h2] at hrec
+    exact hrec
+
 end Rust
+
