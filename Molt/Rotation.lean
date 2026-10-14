@@ -97,7 +97,7 @@ theorem validSignedChainSched_eq_core {σ sk pk : Type} :
       = MoltPetit.Model.validSignedChainSched := by
   funext n schedule ops registry sc
   simp only [validSignedChainSched, MoltPetit.Model.validSignedChainSched,
-    sigsOk_eq_core, validChainK_eq_core, schedPin_eq_core, stripSigs_eq_core]
+    sigsOk_eq_core, validChain_eq_core, schedPin_eq_core, stripSigs_eq_core]
 
 theorem noMixing_eq_core : noMixing = MoltPetit.Model.lockstepOk := by
   funext n c

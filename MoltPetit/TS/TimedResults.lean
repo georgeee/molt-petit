@@ -151,27 +151,66 @@ theorem lengthOfSigned_toTSSigned (sc : SignedChain MoltPetit.RawSignature) :
     rw [ih]
     omega
 
-theorem ts_idsOk_formed {sigOps : MoltPetit.SigOps} :
-    ∀ (sc : SignedChain MoltPetit.RawSignature) (ps : MoltPetit.RawSignature),
-      MoltPetit.idsOk sigOps ps (toTSSigned sc) = true →
-      ∀ B ∈ stripSigs sc, TSFormed sigOps B := by
-  intro sc
-  induction sc with
+/-- Consecutive blocks of `tl` link backwards, starting from `prevId`. -/
+def TSChainLinks (prevId : Nat) : Chain → Prop
+  | [] => True
+  | b :: tl => b.prev = some prevId ∧ TSChainLinks b.id tl
+
+theorem ts_chainLinks_of_linksOk {s1 : Block} {tipId : Nat} :
+    ∀ (tl_sub : Chain),
+    s1.prev = some tipId →
+    linksOk (s1 :: tl_sub) = true →
+    TSChainLinks tipId (s1 :: tl_sub)
+  | [], hprev, _ => ⟨hprev, trivial⟩
+  | s2 :: rest, hprev, hlinks => by
+    dsimp [linksOk] at hlinks
+    rw [Bool.and_eq_true] at hlinks
+    have hchild := of_decide_eq_true hlinks.1
+    have hs2_prev := hchild.2.2
+    refine ⟨hprev, ?_⟩
+    exact ts_chainLinks_of_linksOk rest hs2_prev hlinks.2
+
+theorem ts_sigsOk_cons {n : Nat} {sigOps : MoltPetit.SigOps}
+    {sb : SignedBlock MoltPetit.RawSignature} {rest : SignedChain MoltPetit.RawSignature}
+    (h : MoltPetit.sigsOk n sigOps (toTSSigned (sb :: rest)) = true) :
+    TSSigOn n sigOps sb.block sb.sig ∧ MoltPetit.sigsOk n sigOps (toTSSigned rest) = true := by
+  rw [show toTSSigned (sb :: rest) =
+    .cons sb.block.slot sb.block.height (sb.block.prev.map Int.ofNat)
+      sb.block.id sb.block.contentsHash sb.block.keyIndex sb.sig (toTSSigned rest) from rfl,
+    MoltPetit.sigsOk] at h
+  rw [Bool.and_eq_true, ts_producerForSlot] at h
+  exact ⟨h.1, h.2⟩
+
+theorem ts_idsOk_formed {n : Nat} {sigOps : MoltPetit.SigOps} {G : Block} :
+    ∀ (T : Block) (ts : MoltPetit.RawSignature) (sc : SignedChain MoltPetit.RawSignature),
+      TSFormed n sigOps G T →
+      TSSigOn n sigOps T ts →
+      MoltPetit.sigsOk n sigOps (toTSSigned sc) = true →
+      MoltPetit.idsOk sigOps ts (toTSSigned sc) = true →
+      TSChainLinks T.id (stripSigs sc) →
+      ∀ B ∈ stripSigs sc, TSFormed n sigOps G B := by
+  intro T ts sc
+  induction sc generalizing T ts with
   | nil =>
-    intro ps _ B hB
+    intro _ _ _ _ _ B hB
     cases hB
   | cons sb rest ih =>
-    intro ps hids B hB
+    intro hT hSigT hsig hids hlinks B hB
     rw [show toTSSigned (sb :: rest) =
       .cons sb.block.slot sb.block.height (sb.block.prev.map Int.ofNat)
-        sb.block.id sb.block.contentsHash sb.block.keyIndex sb.sig (toTSSigned rest) from rfl] at hids
+        sb.block.id sb.block.contentsHash sb.block.keyIndex sb.sig
+        (toTSSigned rest) from rfl] at hids
     dsimp [MoltPetit.idsOk] at hids
     simp only [Bool.and_eq_true, beq_iff_eq] at hids
-    obtain ⟨hid, hrest⟩ := hids
+    obtain ⟨hid, hids_rest⟩ := hids
+    obtain ⟨hSig_b, hsig_rest⟩ := ts_sigsOk_cons hsig
+    obtain ⟨hprev, hlinks_rest⟩ := hlinks
+    have hb_formed : TSFormed n sigOps G sb.block :=
+      TSFormed.step hT hSigT hprev hid
     simp only [stripSigs, List.map_cons, List.mem_cons] at hB
     rcases hB with rfl | hB_rest
-    · exact ⟨ps, hid⟩
-    · exact ih sb.sig hrest B hB_rest
+    · exact hb_formed
+    · exact ih sb.block sb.sig hb_formed hSig_b hsig_rest hids_rest hlinks_rest B hB_rest
 
 private theorem getD_getLast_cons {g tip : Block} {rest : Chain}
     (f : Block → Nat) (hTip : (g :: rest).getLast? = some tip) :
@@ -214,41 +253,83 @@ theorem ts_deployed_agreement : MoltPaper.thm_ts_deployed_agreement := by
   let s₁' := sb'.block
   let srest' := stripSigs sbrest'
   have ⟨sTip, hTipS⟩ : ∃ t, (s₁ :: srest).getLast? = some t := by
-    cases h : (s₁ :: srest).getLast? with
+    cases h_t : (s₁ :: srest).getLast? with
     | some t => exact ⟨t, rfl⟩
-    | none => simp at h
+    | none => simp at h_t
   have ⟨sTip', hTipS'⟩ : ∃ t, (s₁' :: srest').getLast? = some t := by
-    cases h : (s₁' :: srest').getLast? with
+    cases h_t : (s₁' :: srest').getLast? with
     | some t => exact ⟨t, rfl⟩
-    | none => simp at h
-  have hFormedS : ∀ B ∈ s₁ :: srest, TSFormed sigOps B := by
+    | none => simp at h_t
+  obtain ⟨hcv, hsig, hsfx⟩ := ts_validateCertifiedChain_sound hvalCC
+  obtain ⟨hcv', hsig', hsfx'⟩ := ts_validateCertifiedChain_sound hvalCC'
+  obtain ⟨cl0, hcl0_eq, hG, hTipSig⟩ := hUnf h hcv
+  have hcl_same : cl0 = cl := toTSClaim_injective (hcl0_eq.symm.trans hcl)
+  cases hcl_same
+  obtain ⟨cl0', hcl0'_eq, hG', hTipSig'⟩ := hUnf' h' hcv'
+  have hcl'_same : cl0' = cl' := toTSClaim_injective (hcl0'_eq.symm.trans hcl')
+  cases hcl'_same
+  obtain ⟨T, hT_id, -, -, hT_formed, hT_sig⟩ := hTipSig
+  obtain ⟨T', hT'_id, -, -, hT'_formed, hT'_sig⟩ := hTipSig'
+  rw [hcl] at hsfx
+  rw [hcl'] at hsfx'
+  obtain ⟨hLink, hLinks, -⟩ := ts_validateSuffix_sound hTipS hsfx
+  obtain ⟨hLink', hLinks', -⟩ := ts_validateSuffix_sound hTipS' hsfx'
+  have hs1_prev : s₁.prev = some T.id := by
+    rw [hLink.2.2, hT_id]
+  have hs1'_prev : s₁'.prev = some T'.id := by
+    rw [hLink'.2.2, hT'_id]
+  have hlinks : TSChainLinks T.id (s₁ :: srest) :=
+    ts_chainLinks_of_linksOk srest hs1_prev hLinks
+  have hlinks' : TSChainLinks T'.id (s₁' :: srest') :=
+    ts_chainLinks_of_linksOk srest' hs1'_prev hLinks'
+  have hFormedS : ∀ B ∈ s₁ :: srest, TSFormed n sigOps G B := by
     intro B hB
-    exact ts_idsOk_formed (sb :: sbrest) (certOps.tipSig h) hids B hB
-  have hFormedS' : ∀ B ∈ s₁' :: srest', TSFormed sigOps B := by
+    exact ts_idsOk_formed T (certOps.tipSig h) (sb :: sbrest)
+      hT_formed hT_sig hsig hids hlinks B hB
+  have hFormedS' : ∀ B ∈ s₁' :: srest', TSFormed n sigOps G B := by
     intro B hB
-    exact ts_idsOk_formed (sb' :: sbrest') (certOps'.tipSig h') hids' B hB
+    exact ts_idsOk_formed T' (certOps'.tipSig h') (sb' :: sbrest')
+      hT'_formed hT'_sig hsig' hids' hlinks' B hB
   have hRecent : R ≤ sTip.slot + φ := by
     simp only [MoltPetit.recentOk] at hrec
-    have hrec_le : now ≤ MoltPetit.tipSlotFrom (certOps.claim h).tipSlot (MoltPetit.stripSigs (toTSSigned (sb :: sbrest))) + Δ :=
+    have hrec_le :
+        now ≤ MoltPetit.tipSlotFrom (certOps.claim h).tipSlot
+          (MoltPetit.stripSigs (toTSSigned (sb :: sbrest))) + Δ :=
       of_decide_eq_true hrec
     rw [show toTSSigned (sb :: sbrest) =
       .cons sb.block.slot sb.block.height (sb.block.prev.map Int.ofNat)
-        sb.block.id sb.block.contentsHash sb.block.keyIndex sb.sig (toTSSigned sbrest) from rfl] at hrec_le
+        sb.block.id sb.block.contentsHash sb.block.keyIndex sb.sig
+        (toTSSigned sbrest) from rfl] at hrec_le
     dsimp [MoltPetit.stripSigs, MoltPetit.tipSlotFrom] at hrec_le
     rw [ts_stripSigs, ts_tipSlotFrom, getD_getLast_cons Block.slot hTipS] at hrec_le
     omega
   have hRecent' : R ≤ sTip'.slot + φ := by
     simp only [MoltPetit.recentOk] at hrec'
-    have hrec'_le : now' ≤ MoltPetit.tipSlotFrom (certOps'.claim h').tipSlot (MoltPetit.stripSigs (toTSSigned (sb' :: sbrest'))) + Δ :=
+    have hrec'_le :
+        now' ≤ MoltPetit.tipSlotFrom (certOps'.claim h').tipSlot
+          (MoltPetit.stripSigs (toTSSigned (sb' :: sbrest'))) + Δ :=
       of_decide_eq_true hrec'
     rw [show toTSSigned (sb' :: sbrest') =
       .cons sb'.block.slot sb'.block.height (sb'.block.prev.map Int.ofNat)
-        sb'.block.id sb'.block.contentsHash sb'.block.keyIndex sb'.sig (toTSSigned sbrest') from rfl] at hrec'_le
+        sb'.block.id sb'.block.contentsHash sb'.block.keyIndex sb'.sig
+        (toTSSigned sbrest') from rfl] at hrec'_le
     dsimp [MoltPetit.stripSigs, MoltPetit.tipSlotFrom] at hrec'_le
     rw [ts_stripSigs, ts_tipSlotFrom, getD_getLast_cons Block.slot hTipS'] at hrec'_le
     omega
+  have hUnf_weak : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
+      ∃ cl : CertClaim, certOps.claim hc = toTSClaim cl ∧
+        GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl := by
+    intro hc hcv
+    obtain ⟨cl_u, hcl_u, hG_u, _⟩ := hUnf hc hcv
+    exact ⟨cl_u, hcl_u, hG_u⟩
+  have hUnf'_weak : ∀ hc : MoltPetit.RawCertificate, certOps'.verify hc = true →
+      ∃ cl : CertClaim, certOps'.claim hc = toTSClaim cl ∧
+        GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl := by
+    intro hc hcv
+    obtain ⟨cl_u, hcl_u, hG_u, _⟩ := hUnf' hc hcv
+    exact ⟨cl_u, hcl_u, hG_u⟩
   exact ts_timed_certified_agreement hn hexec hClock hBudget hL hL' hbridge
-    hUnf hUnf' hvalCC hvalCC' rfl rfl hTipS hTipS' hFormedS hFormedS'
+    hUnf_weak hUnf'_weak hvalCC hvalCC' rfl rfl hTipS hTipS' hFormedS hFormedS'
     hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
 
 end MoltPetit.Model
