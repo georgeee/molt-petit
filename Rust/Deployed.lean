@@ -4039,4 +4039,227 @@ theorem links_from_tip_slot_le : ∀ (tl : Chain) (parent : Block) (tipS : U64),
         · exact ih'.1 b (by simp only [toModelChain_cons, List.mem_cons]; exact hb)
     · simp at hlinks
 
+theorem claim_tip_slot_le_tipS {n : U64} {cl : CertClaim} {tl : Chain} {tipS : U64}
+    (hsuf : validate_suffix n cl tl = ok true)
+    (htipS : tip_slot_from cl.tip_slot tl = ok tipS) :
+    cl.tip_slot.val ≤ tipS.val ∧ (∀ b ∈ toModelChain tl, b.slot ≤ tipS.val) := by
+  cases tl with
+  | Nil =>
+    rw [tip_slot_from] at htipS
+    injection htipS with htipS; subst htipS
+    exact ⟨Nat.le_refl _, by simp [toModelChain]⟩
+  | Cons b0 rest_tl =>
+    rw [validate_suffix] at hsuf
+    obtain ⟨link, hlink, hsuf⟩ := bind_inv hsuf
+    obtain ⟨links, hlinks, hsuf⟩ := bind_inv hsuf
+    obtain ⟨ts, hts, hsuf⟩ := bind_inv hsuf
+    obtain ⟨buf, hbuf, hsuf⟩ := bind_inv hsuf
+    obtain ⟨lo, hlo, hsuf⟩ := bind_inv hsuf
+    split at hsuf; rotate_right
+    · simp at hsuf
+    rename_i hlinkt
+    split at hsuf; rotate_right
+    · simp at hsuf
+    rename_i hlinkst
+    rw [hlinkt] at hlink
+    rw [hlinkst] at hlinks
+    rw [tip_slot_from] at htipS
+    have hts_eq : ts = tipS := by
+      rw [hts] at htipS; cases htipS; rfl
+    have hlt1 := links_to_claim_slot_lt hlink
+    have hle2 := links_from_tip_slot_le rest_tl b0 ts hlinks hts
+    rw [hts_eq] at hle2
+    refine ⟨?_, ?_⟩
+    · cases rest_tl with
+      | Nil =>
+        rw [tip_slot_from] at hts
+        injection hts with hts; subst hts
+        rw [hts_eq] at hlt1
+        exact Nat.le_of_lt hlt1
+      | Cons b1 tl' =>
+        have hne : Chain.Cons b1 tl' ≠ Chain.Nil := by intro; contradiction
+        have := hle2.2 hne
+        omega
+    · intro b hb
+      simp only [toModelChain_cons, List.mem_cons] at hb
+      rcases hb with rfl | hb
+      · cases rest_tl with
+        | Nil =>
+          rw [tip_slot_from] at hts
+          injection hts with hts; subst hts
+          rw [show (toModelBlock b0).slot = b0.slot.val by rfl]
+          rw [hts_eq]
+        | Cons b1 tl' =>
+          have hne : Chain.Cons b1 tl' ≠ Chain.Nil := by intro; contradiction
+          have := hle2.2 hne
+          have : (toModelBlock b0).slot = b0.slot.val := rfl
+          omega
+      · exact hle2.1 b hb
+
+theorem validate_suffix_append
+    {n at_slot tipS tipH : U64} {cl : CertClaim} {suffix : SignedChain} {tl : Chain}
+    {tipI : Hash} {nb : Block}
+    (hn : 1 ≤ n.val)
+    (hsmall : n.val < 2 ^ 62)
+    (hS : at_slot.val < 2 ^ 62)
+    (hstr : strip_sigs suffix = ok tl)
+    (hsuf : validate_suffix n cl tl = ok true)
+    (htipS : tip_slot_from cl.tip_slot tl = ok tipS)
+    (htipH : signed_tip_height_from cl.tip_height suffix = ok tipH)
+    (htipI : signed_tip_id_from cl.tip_id suffix = ok tipI)
+    (hLt : tipS.val < at_slot.val)
+    (hH : tipH.val + 1 < 2 ^ 64)
+    (htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val)
+    (hlen : (toModelChain cl.tail).length + (toModelChain tl).length < 2 ^ 62)
+    (hnb_slot : nb.slot = at_slot)
+    (hnb_prev : nb.prev = some tipI)
+    (hnb_height : tipH + 1#u64 = ok nb.height)
+    (hDense : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
+        ((toModelClaim cl).tail ++ toModelChain tl ++
+          [{ slot := at_slot.val, height := 0, prev := none, id := 0, contentsHash := 0,
+             keyIndex := 0 }]) u n.val) :
+    validate_suffix n cl (chain_append tl nb) = ok true := by
+  have h_cl_tip := claim_tip_slot_le_tipS hsuf htipS
+  have hcl_tip_lt_S : cl.tip_slot.val < at_slot.val := by omega
+  have hcl_tip_bound : cl.tip_slot.val < 2 ^ 62 := by omega
+  obtain ⟨lo, hlo⟩ := suffix_lo_total n cl.tip_slot (by omega)
+  have hlov : lo.val = cl.tip_slot.val + 2 - n.val := suffix_lo_val hlo
+  have hlo_bound : lo.val < 2 ^ 62 := by omega
+  have hLt_u64 : tipS < nb.slot := by
+    rw [hnb_slot]
+    scalar_tac
+  cases suffix with
+  | SNil =>
+    rw [strip_sigs] at hstr
+    injection hstr with hstr; subst hstr
+    rw [signed_tip_height_from] at htipH
+    injection htipH with htipH; subst htipH
+    rw [signed_tip_id_from] at htipI
+    injection htipI with htipI; subst htipI
+    rw [tip_slot_from] at htipS
+    injection htipS with htipS_eq
+    have hlink_nb : links_to_claim cl nb = ok true := by
+      refine links_to_claim_intro hnb_prev hnb_height ?_
+      rw [hnb_slot]
+      have : cl.tip_slot.val < at_slot.val := by omega
+      scalar_tac
+    have hlinks_nb : links_from nb Chain.Nil = ok true := by rw [links_from]
+    have htip_nb : tip_slot_from nb.slot Chain.Nil = ok nb.slot := by rw [tip_slot_from]
+    obtain ⟨buf, hbuf⟩ := append_suffix_to_buffer_total cl.tail (Chain.Cons nb Chain.Nil)
+    have hbuf_corr := append_suffix_corr cl.tail (Chain.Cons nb Chain.Nil) hbuf
+    simp only [chain_append, validate_suffix, bind_tc_ok, hlink_nb, hlinks_nb, htip_nb, hbuf, hlo, ite_true]
+    have hbuf_model : toModelChain buf = toModelChain cl.tail ++ [toModelBlock nb] := by
+      rw [hbuf_corr, toModelChain_cons, toModelChain_nil]
+    have hbound : ∀ b ∈ toModelChain buf, b.slot < 2 ^ 62 := by
+      intro b hb
+      rw [hbuf_model] at hb
+      simp only [List.mem_append, List.mem_singleton] at hb
+      rcases hb with htail_b | rfl
+      · have := htail b htail_b
+        omega
+      · have : (toModelBlock nb).slot = nb.slot.val := rfl
+        rw [this, hnb_slot]
+        exact hS
+    have hwc : ∀ u, MoltPetit.Model.windowCount (toModelChain buf) u n.val < 2 ^ 64 := by
+      intro u
+      have hwcle := windowCount_le_length (toModelChain buf) u n.val
+      have hlen_buf : (toModelChain buf).length = (toModelChain cl.tail).length + 1 := by
+        rw [hbuf_model]
+        simp only [List.length_append, List.length_cons, List.length_nil]
+      omega
+    have hdense_all : ∀ u, lo.val ≤ u → u + n.val ≤ nb.slot.val + 1 →
+        MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain buf) u n.val := by
+      intro u hlo_u hu_nb
+      rw [hbuf_model]
+      rw [windowCount_append_singleton_eq (toModelChain cl.tail) u n.val (toModelBlock nb)
+        { slot := at_slot.val, height := 0, prev := none, id := 0, contentsHash := 0, keyIndex := 0 }
+        (by show (toModelBlock nb).slot = at_slot.val; rw [show (toModelBlock nb).slot = nb.slot.val by rfl, hnb_slot])]
+      have hsub_add : cl.tip_slot.val + 2 ≤ lo.val + n.val := by
+        rw [hlov]
+        omega
+      have hu_dense : tipS.val + 2 ≤ u + n.val := by
+        rw [← htipS_eq]
+        omega
+      have hu_dense2 : u + n.val ≤ at_slot.val + 1 := by rw [hnb_slot] at hu_nb; exact hu_nb
+      have hd := hDense u hu_dense hu_dense2
+      rw [show (toModelChain Chain.Nil : List MoltPetit.Model.Block) = [] by rfl, List.append_nil] at hd
+      exact hd
+    have hnb_slot_bound : nb.slot.val < 2 ^ 62 := by rw [hnb_slot]; exact hS
+    exact matured_dense_complete hbound hwc hlo_bound hnb_slot_bound hsmall hdense_all
+  | SCons b0 sig0 rest_sc =>
+    rw [strip_sigs] at hstr
+    obtain ⟨rest_tl, hrest_tl, hstr⟩ := bind_inv hstr
+    injection hstr with hstr; subst hstr
+    rw [validate_suffix] at hsuf
+    obtain ⟨link0, hlink0, hsuf⟩ := bind_inv hsuf
+    obtain ⟨links0, hlinks0, hsuf⟩ := bind_inv hsuf
+    obtain ⟨ts0, hts0, hsuf⟩ := bind_inv hsuf
+    obtain ⟨buf0, hbuf0, hsuf⟩ := bind_inv hsuf
+    obtain ⟨lo0, hlo0, hsuf⟩ := bind_inv hsuf
+    split at hsuf; rotate_right
+    · simp at hsuf
+    rename_i hlink0_t
+    split at hsuf; rotate_right
+    · simp at hsuf
+    rename_i hlinks0_t
+    rw [hlink0_t] at hlink0
+    rw [hlinks0_t] at hlinks0
+    have htipS_saved := htipS
+    rw [tip_slot_from] at htipS
+    have hts0_eq : ts0 = tipS := by
+      rw [hts0] at htipS; cases htipS; rfl
+    have hlo0_eq : lo0 = lo := by
+      rw [hlo] at hlo0; cases hlo0; rfl
+    rw [hts0_eq, hlo0_eq] at hsuf
+    have hbuf0_corr := append_suffix_corr cl.tail (Chain.Cons b0 rest_tl) hbuf0
+    have hlinks_app : links_from b0 (chain_append rest_tl nb) = ok true := by
+      exact signed_chain_tip_links rest_sc b0 sig0 rest_tl hrest_tl cl.tip_height cl.tip_id cl.tip_slot
+        tipH tipI tipS nb htipH htipI htipS_saved hnb_prev hnb_height hLt_u64 hlinks0
+    have htip_app := tip_slot_from_chain_append rest_tl b0.slot nb
+    obtain ⟨buf, hbuf⟩ := append_suffix_to_buffer_total cl.tail (Chain.Cons b0 (chain_append rest_tl nb))
+    have hbuf_corr := append_suffix_corr cl.tail (Chain.Cons b0 (chain_append rest_tl nb)) hbuf
+    simp only [chain_append, validate_suffix, bind_tc_ok, hlink0, hlinks_app, htip_app, hbuf, hlo, ite_true]
+    have hbuf_model : toModelChain buf = toModelChain cl.tail ++ toModelChain (Chain.Cons b0 rest_tl) ++ [toModelBlock nb] := by
+      rw [hbuf_corr, toModelChain_cons, toModelChain_chain_append, toModelChain_cons]
+      rw [← List.cons_append, List.append_assoc]
+    have hbound : ∀ b ∈ toModelChain buf, b.slot < 2 ^ 62 := by
+      intro b hb
+      rw [hbuf_model] at hb
+      simp only [List.mem_append, List.mem_singleton] at hb
+      rcases hb with (htail_b | htl_b) | rfl
+      · have := htail b htail_b; omega
+      · have := h_cl_tip.2 b htl_b; omega
+      · have : (toModelBlock nb).slot = nb.slot.val := rfl
+        rw [this, hnb_slot]
+        exact hS
+    have hwc : ∀ u, MoltPetit.Model.windowCount (toModelChain buf) u n.val < 2 ^ 64 := by
+      intro u
+      have hwcle := windowCount_le_length (toModelChain buf) u n.val
+      have hlen_buf : (toModelChain buf).length = (toModelChain cl.tail).length + (toModelChain (Chain.Cons b0 rest_tl)).length + 1 := by
+        rw [hbuf_model]
+        simp only [List.length_append, List.length_cons, List.length_nil]
+      omega
+    have hdense_all : ∀ u, lo.val ≤ u → u + n.val ≤ nb.slot.val + 1 →
+        MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount (toModelChain buf) u n.val := by
+      intro u hlo_u hu_nb
+      by_cases hu_tip : tipS.val + 2 ≤ u + n.val
+      · rw [hbuf_model]
+        rw [windowCount_append_singleton_eq (toModelChain cl.tail ++ toModelChain (Chain.Cons b0 rest_tl)) u n.val (toModelBlock nb)
+          { slot := at_slot.val, height := 0, prev := none, id := 0, contentsHash := 0, keyIndex := 0 }
+          (by show (toModelBlock nb).slot = at_slot.val; rw [show (toModelBlock nb).slot = nb.slot.val by rfl, hnb_slot])]
+        have hu_dense2 : u + n.val ≤ at_slot.val + 1 := by rw [hnb_slot] at hu_nb; exact hu_nb
+        exact hDense u hu_tip hu_dense2
+      · have hu_tip_le : u + n.val ≤ tipS.val + 1 := by omega
+        have hmd0 := matured_dense_sound hsuf u hlo_u hu_tip_le
+        rw [hbuf0_corr] at hmd0
+        rw [hbuf_model]
+        have hmono : MoltPetit.Model.windowCount (toModelChain cl.tail ++ toModelChain (Chain.Cons b0 rest_tl)) u n.val ≤
+            MoltPetit.Model.windowCount (toModelChain cl.tail ++ toModelChain (Chain.Cons b0 rest_tl) ++ [toModelBlock nb]) u n.val := by
+          conv_rhs => rw [MoltPetit.Model.windowCount_append]
+          exact Nat.le_add_right _ _
+        exact Nat.le_trans hmd0 hmono
+    have hnb_slot_bound : nb.slot.val < 2 ^ 62 := by rw [hnb_slot]; exact hS
+    exact matured_dense_complete hbound hwc hlo_bound hnb_slot_bound hsmall hdense_all
+
 end Rust

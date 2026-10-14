@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 19b. validate_suffix_append.
+In progress: 19c. rust_produce_block_deployed_live.
 
 **Rescaffold (reviewer, after step 18).** The scaffold moved; the pin is now the commit "pass28 rescaffold 5" (`git log --grep "pass28 rescaffold 5"`), and `git diff <that commit> -- Spec/ rust/ rust-keyrot/` must stay empty. What changed:
 - Block ids hash the parent block's signature. `CryptoD.block_id` gains `parent_sig : Option Hash`; `CryptoD.cert_tip_sig` is new. `ids_ok` now walks the SIGNED chain: `ids_ok I crypto ps suffix`, passing each block's signature as the next block's `ps`. `validate_deployed` starts it at `some ts` with `I.cert_tip_sig crypto cert = ok ts`. `RustFormed I crypto B` is now `∃ b ps, toModelBlock b = B ∧ I.block_id crypto b.slot b.height b.prev ps b.contents_hash b.key_index = ok b.id`.
@@ -96,7 +96,7 @@ In progress: 19b. validate_suffix_append.
 - [x] 18. **`rust_deployed_ks`**. Immediate from `hFold` and the first conjunct of `validate_deployed`.
 - [ ] 19. **`rust_produce_block_deployed_live`**.
   - [x] 19a. **`ids_ok_append_signed` and `sigs_ok_append_signed`**: signature and id chains preserved across `append_signed`.
-  - [ ] 19b. **`validate_suffix_append`**: suffix links and density checks for the appended block.
+  - [x] 19b. **`validate_suffix_append`**: suffix links and density checks for the appended block.
   - [ ] 19c. **`rust_produce_block_deployed_live`**: unfold `produce_block_deployed` and assemble the conjuncts.
 - [ ] 20. **`ts_deployed_agreement`** (next to `ts_timed_certified_agreement`). Reduce to `ts_timed_certified_agreement` with `Formed := TSFormed sigOps`.
   - `validateDeployed` unfolds to `validateCertifiedChain`, a non-empty suffix (`0 < lengthOfSigned`), `idsOk`, and `recentOk`.
