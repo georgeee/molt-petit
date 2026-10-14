@@ -3972,4 +3972,71 @@ theorem signed_chain_tip_links : ∀ (rest_sc : SignedChain) (b0 : Block) (sig0 
       exact links_from_chain_append_cons b1 tl' b0 nb hlinks_cons hrest
     · simp at hlinks_rest
 
+
+theorem blockInWindow_eq_of_slot_eq {u len : Nat} {b1 b2 : MoltPetit.Model.Block}
+    (h : b1.slot = b2.slot) :
+    MoltPetit.Model.blockInWindow u len b1 = MoltPetit.Model.blockInWindow u len b2 := by
+  unfold MoltPetit.Model.blockInWindow
+  rw [h]
+
+theorem windowCount_append_singleton_eq (c : MoltPetit.Model.Chain) (u len : Nat)
+    (b1 b2 : MoltPetit.Model.Block) (h : b1.slot = b2.slot) :
+    MoltPetit.Model.windowCount (c ++ [b1]) u len = MoltPetit.Model.windowCount (c ++ [b2]) u len := by
+  unfold MoltPetit.Model.windowCount
+  simp only [List.filter_append, List.length_append]
+  congr 1
+  simp only [List.filter_cons, List.filter_nil]
+  rw [blockInWindow_eq_of_slot_eq h]
+  split <;> rfl
+
+theorem child_ok_slot_lt {p c : Block} (h : child_ok p c = ok true) :
+    p.slot.val < c.slot.val := by
+  have hch := child_ok_sound h
+  exact (MoltPetit.Model.childOk_iff.mp hch).2.1
+
+theorem links_to_claim_slot_lt {cl : CertClaim} {s1 : Block} (h : links_to_claim cl s1 = ok true) :
+    cl.tip_slot.val < s1.slot.val := by
+  have hl := links_to_claim_sound h
+  exact hl.2.1
+
+theorem links_from_tip_slot_le : ∀ (tl : Chain) (parent : Block) (tipS : U64),
+    links_from parent tl = ok true →
+    tip_slot_from parent.slot tl = ok tipS →
+    (∀ b ∈ toModelChain tl, b.slot ≤ tipS.val) ∧ (tl ≠ Chain.Nil → parent.slot.val < tipS.val) := by
+  intro tl
+  induction tl with
+  | Nil =>
+    intro parent tipS _ htipS
+    rw [tip_slot_from] at htipS
+    injection htipS with htipS; subst htipS
+    refine ⟨by simp [toModelChain], fun h => (h rfl).elim⟩
+  | Cons b1 tl' ih =>
+    intro parent tipS hlinks htipS
+    rw [links_from] at hlinks
+    obtain ⟨ch, hch, hlinks⟩ := bind_inv hlinks
+    split at hlinks
+    · rename_i hcht; subst hcht
+      have hslot_lt : parent.slot.val < b1.slot.val := child_ok_slot_lt hch
+      rw [tip_slot_from] at htipS
+      have ih' := ih b1 tipS hlinks htipS
+      cases tl' with
+      | Nil =>
+        rw [tip_slot_from] at htipS
+        injection htipS with htipS; subst htipS
+        refine ⟨?_, fun _ => hslot_lt⟩
+        intro b hb
+        simp only [toModelChain_cons, toModelChain_nil, List.mem_cons, List.not_mem_nil, or_false] at hb
+        subst hb
+        rfl
+      | Cons b2 tl'' =>
+        have hne : Chain.Cons b2 tl'' ≠ Chain.Nil := by intro; contradiction
+        have hb1_lt : b1.slot.val < tipS.val := ih'.2 hne
+        refine ⟨?_, fun _ => by omega⟩
+        intro b hb
+        simp only [toModelChain_cons, List.mem_cons] at hb
+        rcases hb with rfl | hb
+        · exact Nat.le_of_lt hb1_lt
+        · exact ih'.1 b (by simp only [toModelChain_cons, List.mem_cons]; exact hb)
+    · simp at hlinks
+
 end Rust
