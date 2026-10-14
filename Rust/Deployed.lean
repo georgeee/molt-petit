@@ -3809,4 +3809,101 @@ theorem matured_dense_complete {c : Chain} {lo t n : U64}
   · simp only [bind_tc_ok, ite_true]
     exact hanch
 
+
+theorem clone_chain_total (c : Chain) : ∃ r, clone_chain c = ok r := by
+  induction c with
+  | Nil =>
+    rw [clone_chain]
+    exact ⟨Chain.Nil, rfl⟩
+  | Cons b tl ih =>
+    obtain ⟨r, hr⟩ := ih
+    rw [clone_chain, hr]
+    exact ⟨Chain.Cons b r, rfl⟩
+
+theorem append_suffix_to_buffer_total (buf sfx : Chain) : ∃ r, append_suffix_to_buffer buf sfx = ok r := by
+  induction buf with
+  | Nil =>
+    obtain ⟨r, hr⟩ := clone_chain_total sfx
+    rw [append_suffix_to_buffer, hr]
+    exact ⟨r, rfl⟩
+  | Cons b tl ih =>
+    obtain ⟨r, hr⟩ := ih
+    rw [append_suffix_to_buffer, hr]
+    exact ⟨Chain.Cons b r, rfl⟩
+
+theorem child_ok_intro {p c : Block}
+    (hp : c.prev = some p.id)
+    (hh : p.height + 1#u64 = ok c.height)
+    (hs : p.slot < c.slot) :
+    child_ok p c = ok true := by
+  rw [child_ok, hp]
+  simp only [bind_tc_ok, hash_eq_self]
+  change (do
+    let i ← p.height + 1#u64
+    if c.height = i then if p.slot < c.slot then ok true else ok false else ok false) = ok true
+  rw [hh]
+  simp only [bind_tc_ok, hs, ite_true]
+
+theorem links_to_claim_intro {cl : CertClaim} {s1 : Block}
+    (hp : s1.prev = some cl.tip_id)
+    (hh : cl.tip_height + 1#u64 = ok s1.height)
+    (hs : cl.tip_slot < s1.slot) :
+    links_to_claim cl s1 = ok true := by
+  rw [links_to_claim, hp]
+  simp only [bind_tc_ok, hash_eq_self]
+  change (do
+    let i ← cl.tip_height + 1#u64
+    if s1.height = i then if cl.tip_slot < s1.slot then ok true else ok false else ok false) = ok true
+  rw [hh]
+  simp only [bind_tc_ok, hs, ite_true]
+
+
+def chain_append : Chain → Block → Chain
+  | Chain.Nil, nb => Chain.Cons nb Chain.Nil
+  | Chain.Cons b tl, nb => Chain.Cons b (chain_append tl nb)
+
+theorem toModelChain_chain_append (tl : Chain) (nb : Block) :
+    toModelChain (chain_append tl nb) = toModelChain tl ++ [toModelBlock nb] := by
+  induction tl with
+  | Nil => rfl
+  | Cons b rest ih =>
+    simp only [chain_append, toModelChain_cons, ih, List.cons_append]
+
+theorem strip_sigs_append_signed_eq : ∀ (sc : SignedChain) (nb : Block) (sig : Hash) (tl : Chain) (sc' : SignedChain),
+    strip_sigs sc = ok tl →
+    append_signed sc nb sig = ok sc' →
+    strip_sigs sc' = ok (chain_append tl nb) := by
+  intro sc
+  induction sc with
+  | SNil =>
+    intro nb sig tl sc' hstr happ
+    rw [strip_sigs] at hstr
+    injection hstr with hstr; subst hstr
+    rw [append_signed] at happ
+    injection happ with happ; subst happ
+    rw [chain_append, strip_sigs, strip_sigs]
+    rfl
+  | SCons b s rest ih =>
+    intro nb sig tl sc' hstr happ
+    rw [strip_sigs] at hstr
+    obtain ⟨c, hc, hstr⟩ := bind_inv hstr
+    injection hstr with hstr; subst hstr
+    rw [append_signed] at happ
+    obtain ⟨sc1, hsc1, happ⟩ := bind_inv happ
+    injection happ with happ; subst happ
+    rw [strip_sigs, ih nb sig c sc1 hc hsc1]
+    rfl
+
+theorem tip_slot_from_chain_append : ∀ (c : Chain) (cur : U64) (nb : Block),
+    tip_slot_from cur (chain_append c nb) = ok nb.slot := by
+  intro c
+  induction c with
+  | Nil =>
+    intro cur nb
+    rw [chain_append, tip_slot_from, tip_slot_from]
+  | Cons b tl ih =>
+    intro cur nb
+    rw [chain_append, tip_slot_from]
+    exact ih b.slot nb
+
 end Rust
