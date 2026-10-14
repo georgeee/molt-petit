@@ -1086,7 +1086,7 @@ lemma foldSched_complete_aux {n q era : U64} {G : Block}
     have hDense := hVS.2.2.2
     have hlen_pos : 0 < A.length := by
       dsimp [A]
-      simp only [List.length_map, List.length_cons, Nat.succ_pos]
+      simp only [List.length_map, Nat.succ_pos]
     have hch_eq : ch = A ++ toModelBlock b :: rest.map toModelBlock := by
       dsimp [ch, A]
       simp only [List.map_cons, List.map_append]
@@ -1238,7 +1238,7 @@ lemma foldLock_complete_aux {n q : U64} {G : Block}
     have hDense := hVS.2.2.2
     have hlen_pos : 0 < A.length := by
       dsimp [A]
-      simp only [List.length_map, List.length_cons, Nat.succ_pos]
+      simp only [List.length_map, Nat.succ_pos]
     have hch_eq : ch = A ++ toModelBlock b :: rest.map toModelBlock := by
       dsimp [ch, A]
       simp only [List.map_cons, List.map_append]
@@ -1377,5 +1377,441 @@ theorem cert_fold_lock_complete : MoltPaper.thm_cert_fold_lock_complete := by
   have hg : G.key_index = ((G :: []).getLast (List.cons_ne_nil _ _)).key_index := rfl
   exact foldLock_complete_aux hn hsmall hq bs [] (genesisState n.val G) G.key_index
     hbound' hV' hLock' hbase_rep hbase_tail_bound hg
+
+lemma foldl_max_le : ∀ (L : List Nat) (a b : Nat),
+    L.foldl max a ≤ b ↔ a ≤ b ∧ ∀ x ∈ L, x ≤ b := by
+  intro L
+  induction L with
+  | nil =>
+    intro a b
+    simp
+  | cons x xs ih =>
+    intro a b
+    simp only [List.foldl_cons, List.mem_cons]
+    rw [ih (max a x) b]
+    constructor
+    · rintro ⟨hmax, hxs⟩
+      have ha : a ≤ b := by omega
+      have hx : x ≤ b := by omega
+      exact ⟨ha, fun y hy => hy.elim (fun h => by subst h; exact hx) (hxs y)⟩
+    · rintro ⟨ha, hall⟩
+      have hx : x ≤ b := hall x (Or.inl rfl)
+      have hmax : max a x ≤ b := by omega
+      refine ⟨hmax, fun y hy => hall y (Or.inr hy)⟩
+
+lemma keyFloor_le_iff (n : Nat) (c : MoltPetit.Model.Chain) (i b : Nat) :
+    MoltPetit.Model.keyFloor n c i ≤ b ↔
+      ∀ B ∈ c, MoltPetit.Model.producerForSlot n B.slot = i → B.keyIndex ≤ b := by
+  unfold MoltPetit.Model.keyFloor
+  rw [foldl_max_le]
+  simp only [Nat.zero_le, true_and, List.mem_map, List.mem_filter, decide_eq_true_eq]
+  constructor
+  · intro h B hB hprod
+    exact h B.keyIndex ⟨B, ⟨hB, hprod⟩, rfl⟩
+  · rintro h x ⟨B, ⟨hB, hprod⟩, rfl⟩
+    exact h B hB hprod
+
+lemma keyFloor_snoc (n : Nat) (c : MoltPetit.Model.Chain) (b : MoltPetit.Model.Block) (i : Nat) :
+    MoltPetit.Model.keyFloor n (c ++ [b]) i =
+      if MoltPetit.Model.producerForSlot n b.slot = i then
+        max (MoltPetit.Model.keyFloor n c i) b.keyIndex
+      else
+        MoltPetit.Model.keyFloor n c i := by
+  unfold MoltPetit.Model.keyFloor
+  rw [List.filter_append, List.map_append, List.foldl_append]
+  dsimp [List.filter]
+  by_cases hprod : MoltPetit.Model.producerForSlot n b.slot = i
+  · have hdec : decide (MoltPetit.Model.producerForSlot n b.slot = i) = true := decide_eq_true hprod
+    rw [hdec]
+    simp only [List.filter_cons, List.filter_nil, List.map_cons, List.map_nil, List.foldl_cons, List.foldl_nil]
+    rw [if_pos hprod]
+  · have hdec : decide (MoltPetit.Model.producerForSlot n b.slot = i) = false := decide_eq_false hprod
+    rw [hdec]
+    simp only [List.filter_cons, List.filter_nil, List.map_nil, List.foldl_nil]
+    rw [if_neg hprod]
+
+lemma keyFloor_singleton (n : Nat) (G : MoltPetit.Model.Block) (h0 : G.slot = 0) (hn : 1 ≤ n) :
+    MoltPetit.Model.keyFloor n [G] = fun i => if i = 0 then G.keyIndex else 0 := by
+  funext i
+  unfold MoltPetit.Model.keyFloor
+  dsimp [List.filter]
+  have hprod : MoltPetit.Model.producerForSlot n G.slot = 0 := by
+    dsimp [MoltPetit.Model.producerForSlot]
+    rw [h0]
+    exact Nat.zero_mod n
+  by_cases hi : i = 0
+  · subst hi
+    have hdec : decide (MoltPetit.Model.producerForSlot n G.slot = 0) = true := by
+      simp [hprod]
+    rw [hdec]
+    simp
+  · have hdec : decide (MoltPetit.Model.producerForSlot n G.slot = i) = false := by
+      rw [hprod]
+      simp [hi]
+    rw [hdec]
+    simp [hi]
+
+lemma floors_bump_be_complete : ∀ (fl : FloorsG U64) (i p ki : U64),
+    i.val + floorsLen fl < 2 ^ 64 →
+    ∃ fl', floors_bump_be UBK () fl i p ki = ok fl' := by
+  intro fl
+  induction fl with
+  | FNil =>
+    intro i p ki _
+    refine ⟨FloorsG.FNil, ?_⟩
+    rw [floors_bump_be]
+  | FCons f tl ih =>
+    intro i p ki hbound
+    have h1 : (1#u64 : U64).val = 1 := rfl
+    have hlt : i.val + 1 < 2 ^ 64 := by
+      change i.val + (floorsLen tl + 1) < 2 ^ 64 at hbound
+      omega
+    have hi1 : ∃ i1 : U64, i + 1#u64 = ok i1 ∧ i1.val = i.val + 1 :=
+      u64_add_ok (by rw [h1]; exact hlt)
+    obtain ⟨i1, hi1_eq, hi1_val⟩ := hi1
+    have hbound_tl : i1.val + floorsLen tl < 2 ^ 64 := by
+      rw [hi1_val]
+      change i.val + 1 + floorsLen tl < 2 ^ 64
+      change i.val + (floorsLen tl + 1) < 2 ^ 64 at hbound
+      omega
+    obtain ⟨fg, hfg⟩ := ih i1 p ki hbound_tl
+    rw [floors_bump_be]
+    dsimp [UB, U64Backend.Insts.Molt_petitBackendU64Bool.eq,
+      U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+      U64Backend.Insts.Molt_petitBackendU64Bool.and,
+      U64Backend.Insts.Molt_petitBackendKU64Bool.select,
+      BackendK.select,
+      U64Backend.Insts.Molt_petitBackendU64Bool.one,
+      U64Backend.Insts.Molt_petitBackendU64Bool.add]
+    simp only [bind_tc_ok]
+    rw [hi1_eq]
+    simp only [bind_tc_ok]
+    rw [hfg]
+    simp only [bind_tc_ok]
+    by_cases hip : i = p
+    · have hdec : decide (i = p) = true := decide_eq_true hip
+      rw [hdec]
+      by_cases hfk : f < ki
+      · have hdec2 : decide (f < ki) = true := decide_eq_true hfk
+        rw [hdec2]
+        exact ⟨_, rfl⟩
+      · have hdec2 : decide (f < ki) = false := decide_eq_false hfk
+        rw [hdec2]
+        exact ⟨_, rfl⟩
+    · have hdec : decide (i = p) = false := decide_eq_false hip
+      rw [hdec]
+      exact ⟨_, rfl⟩
+
+lemma floors_ok_be_complete : ∀ (fl : FloorsG U64) (i p ki : U64),
+    i.val + floorsLen fl < 2 ^ 64 →
+    (∀ (k : Nat), p.val = i.val + k → k < floorsLen fl → floorsFun fl k ≤ ki.val) →
+    floors_ok_be UBK () fl i p ki = ok true := by
+  intro fl
+  induction fl with
+  | FNil =>
+    intro i p ki _ _
+    rw [floors_ok_be]
+    simp [UB, U64Backend.Insts.Molt_petitBackendU64Bool.bool_const]
+  | FCons f tl ih =>
+    intro i p ki hbound hle
+    have h1 : (1#u64 : U64).val = 1 := rfl
+    have hlt : i.val + 1 < 2 ^ 64 := by
+      change i.val + (floorsLen tl + 1) < 2 ^ 64 at hbound
+      omega
+    have hi1 : ∃ i1 : U64, i + 1#u64 = ok i1 ∧ i1.val = i.val + 1 :=
+      u64_add_ok (by rw [h1]; exact hlt)
+    obtain ⟨i1, hi1_eq, hi1_val⟩ := hi1
+    have hbound_tl : i1.val + floorsLen tl < 2 ^ 64 := by
+      rw [hi1_val]
+      change i.val + 1 + floorsLen tl < 2 ^ 64
+      change i.val + (floorsLen tl + 1) < 2 ^ 64 at hbound
+      omega
+    have hle_tl : ∀ (k : Nat), p.val = i1.val + k → k < floorsLen tl → floorsFun tl k ≤ ki.val := by
+      intro k hk hlen
+      have hk' : p.val = i.val + (k + 1) := by
+        rw [hk, hi1_val]
+        omega
+      have hlen' : k + 1 < floorsLen (FloorsG.FCons f tl) := by
+        dsimp [floorsLen]
+        omega
+      have := hle (k + 1) hk' hlen'
+      exact this
+    have hmore := ih i1 p ki hbound_tl hle_tl
+    rw [floors_ok_be]
+    dsimp [UB, U64Backend.Insts.Molt_petitBackendU64Bool.eq,
+      U64Backend.Insts.Molt_petitBackendU64Bool.lt,
+      U64Backend.Insts.Molt_petitBackendU64Bool.and,
+      U64Backend.Insts.Molt_petitBackendU64Bool.not,
+      U64Backend.Insts.Molt_petitBackendU64Bool.one,
+      U64Backend.Insts.Molt_petitBackendU64Bool.add]
+    simp only [bind_tc_ok]
+    rw [hi1_eq]
+    simp only [bind_tc_ok]
+    rw [hmore]
+    simp only [bind_tc_ok]
+    by_cases hip : i = p
+    · have h0 : p.val = i.val + 0 := by rw [hip]; omega
+      have hlen0 : 0 < floorsLen (FloorsG.FCons f tl) := by
+        dsimp [floorsLen]; omega
+      have hf_le := hle 0 h0 hlen0
+      change f.val ≤ ki.val at hf_le
+      have hnot_lt : ¬ (ki < f) := by
+        intro hlt'
+        change ki.val < f.val at hlt'
+        omega
+      have hdec : decide (i = p) = true := decide_eq_true hip
+      have hdec2 : decide (ki < f) = false := decide_eq_false hnot_lt
+      rw [hdec, hdec2]
+      rfl
+    · have hdec : decide (i = p) = false := decide_eq_false hip
+      rw [hdec]
+      rfl
+
+theorem cert_step_k_be_complete {n q : U64} {st : CertStateG U64} {fl : FloorsG U64} {b : Block}
+    (hn : 1 ≤ n.val)
+    (hsmall : n.val < 2 ^ 62)
+    (hb_s : b.slot.val < 2 ^ 62)
+    (hlen : floorsLen fl = n.val)
+    (hcore : cert_step_core_be UBK () n q st (toBlockG b) = ok true)
+    (hle : floorsFun fl (b.slot.val % n.val) ≤ b.key_index.val) :
+    cert_step_k_be UBK () n q st fl (toBlockG b) b.key_index = ok true := by
+  obtain ⟨p, hp, hp_val⟩ := ubk_rem b.slot n (by omega)
+  have hbound_fl : (0#u64 : U64).val + floorsLen fl < 2 ^ 64 := by
+    rw [hlen]
+    change 0 + n.val < 2 ^ 64
+    omega
+  have hfl_ok := floors_ok_be_complete fl 0#u64 p b.key_index hbound_fl (by
+    intro k hk hklen
+    have hk_eq : k = b.slot.val % n.val := by
+      have h0 : (0#u64 : U64).val = 0 := rfl
+      rw [h0, Nat.zero_add] at hk
+      rw [← hk, hp_val]
+    rw [hk_eq]
+    exact hle)
+  dsimp [cert_step_k_be]
+  rw [hcore]
+  simp only [bind_tc_ok]
+  change U64Backend.Insts.Molt_petitBackendKU64Bool.rem () b.slot n = ok p at hp
+  rw [hp]
+  simp only [bind_tc_ok]
+  dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.zero]
+  simp only [bind_tc_ok]
+  rw [hfl_ok]
+  simp only [bind_tc_ok]
+  rfl
+
+theorem cert_next_floors_be_complete {n : U64} {fl : FloorsG U64} (b : Block)
+    (hn : 1 ≤ n.val)
+    (hlen : floorsLen fl = n.val)
+    (hsmall : n.val < 2 ^ 62) :
+    ∃ fl', cert_next_floors_be UBK () n fl (toBlockG b) b.key_index = ok fl' := by
+  obtain ⟨p, hp, _⟩ := ubk_rem b.slot n (by omega)
+  have hbound_fl : (0#u64 : U64).val + floorsLen fl < 2 ^ 64 := by
+    rw [hlen]
+    change 0 + n.val < 2 ^ 64
+    omega
+  obtain ⟨fl', hfl'⟩ := floors_bump_be_complete fl 0#u64 p b.key_index hbound_fl
+  dsimp [cert_next_floors_be]
+  change U64Backend.Insts.Molt_petitBackendKU64Bool.rem () b.slot n = ok p at hp
+  rw [hp]
+  simp only [bind_tc_ok]
+  dsimp [UBK, UB, U64Backend.Insts.Molt_petitBackendU64Bool.zero]
+  simp only [bind_tc_ok]
+  exact ⟨fl', hfl'⟩
+
+lemma foldK_complete_aux {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hsmall : n.val < 2 ^ 62) (hq : quorum n = ok q) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64) (fl : FloorsG U64),
+    (∀ b ∈ G :: pre ++ bs, b.slot.val < 2 ^ 62 ∧ b.height.val < 2 ^ 62) →
+    MoltPetit.Model.validChain n.val ((G :: pre ++ bs).map toModelBlock) = true →
+    MoltPetit.Model.keyMonoOk n.val ((G :: pre ++ bs).map toModelBlock) = true →
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    (∀ s ∈ entrySlots st.tail, s < 2 ^ 62) →
+    floorsLen fl = n.val →
+    floorsFun fl = MoltPetit.Model.keyFloor n.val ((G :: pre).map toModelBlock) →
+    ∃ out, FoldK n q st fl bs out := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st fl hbound hV hMono hrep hrest_bound hlen hfun
+    exact ⟨fl, rfl⟩
+  | cons b rest ih =>
+    intro pre st fl hbound hV hMono hrep hrest_bound hlen hfun
+    let cl := modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)
+    let A := (G :: pre).map toModelBlock
+    let ch := (G :: pre ++ b :: rest).map toModelBlock
+    let t := A.getLast (List.cons_ne_nil _ _)
+    have ht_mem_A : t ∈ A := List.getLast_mem (List.cons_ne_nil _ _)
+    obtain ⟨b₀, hb₀_pre, ht_eq⟩ := List.mem_map.mp ht_mem_A
+    have hb₀_all : b₀ ∈ G :: pre ++ b :: rest := by
+      exact List.mem_append_left (b :: rest) hb₀_pre
+    have ⟨hb₀_s, hb₀_h⟩ := hbound b₀ hb₀_all
+    have htip_s : st.tip_slot.val < 2 ^ 62 := by
+      rw [hrep.tip_slot]
+      change t.slot < 2 ^ 62
+      rw [← ht_eq]
+      exact hb₀_s
+    have htip_h : st.tip_height.val < 2 ^ 62 := by
+      rw [hrep.tip_height]
+      change t.height < 2 ^ 62
+      rw [← ht_eq]
+      exact hb₀_h
+    have hb_all : b ∈ G :: pre ++ b :: rest := by
+      simp only [List.mem_cons, List.mem_append, List.mem_cons, true_or, or_true]
+    have ⟨hb_s, hb_h⟩ := hbound b hb_all
+    have hVS := MoltPetit.Model.validChain_sound hV
+    have hSeq := hVS.1
+    have hStrict := hVS.2.1
+    have hParent := hVS.2.2.1
+    have hDense := hVS.2.2.2
+    have hlen_pos : 0 < A.length := by
+      dsimp [A]
+      simp only [List.length_map, Nat.succ_pos]
+    have hch_eq : ch = A ++ toModelBlock b :: rest.map toModelBlock := by
+      dsimp [ch, A]
+      simp only [List.map_cons, List.map_append]
+    have hAt_b : MoltPetit.Model.blockAt? ch A.length = some (toModelBlock b) := by
+      unfold MoltPetit.Model.blockAt?
+      rw [hch_eq]
+      exact getElem?_append_head A (toModelBlock b) (rest.map toModelBlock)
+    have hAt_t : MoltPetit.Model.blockAt? ch (A.length - 1) = some t := by
+      unfold MoltPetit.Model.blockAt?
+      rw [hch_eq, List.getElem?_append_left (by omega)]
+      rw [← List.getLast?_eq_getElem?]
+      exact List.getLast?_eq_some_getLast (List.cons_ne_nil _ _)
+    have hBh : (toModelBlock b).height = A.length := hSeq hAt_b
+    have hTh : t.height = A.length - 1 := hSeq hAt_t
+    have hcl_h : cl.tipHeight = t.height := rfl
+    have hcl_s : cl.tipSlot = t.slot := rfl
+    have hcl_id : cl.tipId = t.id := rfl
+    have hchild_h : (toModelBlock b).height = cl.tipHeight + 1 := by
+      rw [hcl_h, hBh, hTh]
+      omega
+    have hchild_s : cl.tipSlot < (toModelBlock b).slot := by
+      rw [hcl_s]
+      exact MoltPetit.Model.strictSlots_lt hStrict hAt_t hAt_b (by omega)
+    have hchild_prev : (toModelBlock b).prev = some cl.tipId := by
+      have hsucc_len : A.length = (A.length - 1) + 1 := by omega
+      have hAt_b' : MoltPetit.Model.blockAt? ch ((A.length - 1) + 1) = some (toModelBlock b) := by
+        rwa [← hsucc_len]
+      obtain ⟨P, hP_at, hP_prev⟩ := MoltPetit.Model.parentLinked_at_succ hParent hAt_b'
+      have hP_eq : P = t := Option.some.inj (hP_at.symm.trans hAt_t)
+      rw [hcl_id, ← hP_eq]
+      exact hP_prev
+    have hdense : ∀ u : Nat, cl.tipSlot + 2 ≤ u + n.val → u + n.val ≤ (toModelBlock b).slot + 1 →
+        q.val ≤ MoltPetit.Model.windowCount (cl.tail ++ [toModelBlock b]) u n.val := by
+      intro u huT huB
+      rw [quorum_val_of_ok hq]
+      rw [windowCount_claim_extend_eq huT]
+      have hStrict' : MoltPetit.Model.StrictSlots (A ++ toModelBlock b :: rest.map toModelBlock) := by
+        rw [← hch_eq]; exact hStrict
+      have hrest_gt : ∀ x ∈ rest.map toModelBlock, (toModelBlock b).slot < x.slot := by
+        intro x hx
+        exact strictSlots_append_mem hStrict' hx
+      have hwc_rest : MoltPetit.Model.windowCount ((A ++ [toModelBlock b]) ++ rest.map toModelBlock) u n.val =
+          MoltPetit.Model.windowCount (A ++ [toModelBlock b]) u n.val := by
+        apply MoltPetit.Model.windowCount_append_high
+        intro x hx
+        have := hrest_gt x hx
+        omega
+      rw [← hwc_rest]
+      have hch_app : ch = (A ++ [toModelBlock b]) ++ rest.map toModelBlock := by
+        rw [hch_eq, List.append_assoc, List.singleton_append]
+      rw [← hch_app]
+      exact hDense hAt_b u huB
+    have hcore := cert_step_core_be_complete hn hsmall hq hrep htip_h htip_s hb_h hb_s hrest_bound hchild_h hchild_s hchild_prev hdense
+    have hMono_sound := MoltPetit.Model.keyMonoOk_sound hMono
+    have hle_floor : MoltPetit.Model.keyFloor n.val A (MoltPetit.Model.producerForSlot n.val (toModelBlock b).slot) ≤ (toModelBlock b).keyIndex := by
+      rw [keyFloor_le_iff]
+      intro B hB hprod
+      rcases List.mem_iff_getElem.mp hB with ⟨k, hk_lt, hk_get⟩
+      have hAt_B : MoltPetit.Model.blockAt? ch k = some B := by
+        unfold MoltPetit.Model.blockAt?
+        rw [hch_eq, List.getElem?_append_left hk_lt, List.getElem?_eq_getElem hk_lt, hk_get]
+      have hk_le : k ≤ A.length := by omega
+      exact hMono_sound hAt_B hAt_b hk_le hprod
+    have hle : floorsFun fl (b.slot.val % n.val) ≤ b.key_index.val := by
+      rw [hfun]
+      change MoltPetit.Model.keyFloor n.val A (MoltPetit.Model.producerForSlot n.val (toModelBlock b).slot) ≤ (toModelBlock b).keyIndex
+      exact hle_floor
+    have hk_step := cert_step_k_be_complete hn hsmall hb_s hlen hcore hle
+    obtain ⟨t', ht'⟩ : ∃ t', cert_next_tail_be UB () st.tail b.slot = ok t' := ⟨_, cert_next_tail_be_corr _ _⟩
+    obtain ⟨fl', hfl'⟩ := cert_next_floors_be_complete b hn hlen hsmall
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := (cl.tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hchild_s
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by simp
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hrest_bound_step := entrySlots_cert_next_tail_bound hrest_bound hb_s ht'
+    have ⟨hlen', hfun'⟩ := cert_next_floors_be_sound hn hlen hfl'
+    have hfun_step : floorsFun fl' = MoltPetit.Model.keyFloor n.val ((G :: (pre ++ [b])).map toModelBlock) := by
+      rw [hfun']
+      have hA_app : (G :: (pre ++ [b])).map toModelBlock = A ++ [toModelBlock b] := by
+        dsimp [A]
+        simp
+      rw [hA_app]
+      funext i
+      rw [keyFloor_snoc, hfun]
+    have hassoc : G :: (pre ++ [b]) ++ rest = G :: pre ++ b :: rest := by
+      simp
+    have hbound' : ∀ x ∈ G :: (pre ++ [b]) ++ rest, x.slot.val < 2 ^ 62 ∧ x.height.val < 2 ^ 62 := by
+      rw [hassoc]; exact hbound
+    have hV' : MoltPetit.Model.validChain n.val ((G :: (pre ++ [b]) ++ rest).map toModelBlock) = true := by
+      rw [hassoc]; exact hV
+    have hMono' : MoltPetit.Model.keyMonoOk n.val ((G :: (pre ++ [b]) ++ rest).map toModelBlock) = true := by
+      rw [hassoc]; exact hMono
+    obtain ⟨out, hrest_fold⟩ := ih (pre ++ [b]) (stepState b t') fl' hbound' hV' hMono' hrep_step hrest_bound_step hlen' hfun_step
+    exact ⟨out, hk_step, t', fl', ht', hfl', hrest_fold⟩
+
+theorem cert_fold_k_complete : MoltPaper.thm_cert_fold_k_complete := by
+  intro n q G bs hn hsmall hq hbound hG hV
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hbase_tail_bound : ∀ s ∈ entrySlots (genesisState n.val G).tail, s < 2 ^ 62 := by
+    dsimp [genesisState]
+    have hG_bound := hbound G (by simp)
+    exact entrySlots_initTail_bound hG_bound.1
+  have hbound' : ∀ b ∈ G :: [] ++ bs, b.slot.val < 2 ^ 62 ∧ b.height.val < 2 ^ 62 := by
+    intro b hb
+    apply hbound
+    simp only [List.cons_append, List.nil_append] at hb
+    exact hb
+  dsimp [MoltPetit.Model.validChainK] at hV
+  simp only [Bool.and_eq_true] at hV
+  obtain ⟨hV_chain, hV_mono⟩ := hV
+  have hV' : MoltPetit.Model.validChain n.val ((G :: [] ++ bs).map toModelBlock) = true := by
+    have : (G :: [] ++ bs) = G :: bs := by simp only [List.cons_append, List.nil_append]
+    rw [this]
+    exact hV_chain
+  have hMono' : MoltPetit.Model.keyMonoOk n.val ((G :: [] ++ bs).map toModelBlock) = true := by
+    have : (G :: [] ++ bs) = G :: bs := by simp only [List.cons_append, List.nil_append]
+    rw [this]
+    exact hV_mono
+  have hlen0 : floorsLen (initFloors n.val G.key_index) = n.val :=
+    floorsLen_initFloors n.val G.key_index
+  have ⟨_, hslot0⟩ := cert_genesis_ok_be_sound hG
+  have hfun0 : floorsFun (initFloors n.val G.key_index) =
+      MoltPetit.Model.keyFloor n.val ((G :: []).map toModelBlock) := by
+    have hinit := floorsFun_initFloors n.val hn G.key_index
+    rw [hinit]
+    have hmap : (G :: []).map toModelBlock = [toModelBlock G] := rfl
+    rw [hmap]
+    have hslot0_m : (toModelBlock G).slot = 0 := hslot0
+    have hfloor_sing := keyFloor_singleton n.val (toModelBlock G) hslot0_m hn
+    rw [hfloor_sing]
+    have hki : (toModelBlock G).keyIndex = G.key_index.val := rfl
+    rw [hki]
+  exact foldK_complete_aux hn hsmall hq bs [] (genesisState n.val G) (initFloors n.val G.key_index)
+    hbound' hV' hMono' hbase_rep hbase_tail_bound hlen0 hfun0
 
 end Rust
