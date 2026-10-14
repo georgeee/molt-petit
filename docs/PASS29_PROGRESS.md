@@ -10,7 +10,7 @@ Build one module at a time, in the background:
 
 At the scaffold, a full `lake build` fails first in `MoltPetit.TS.TimedResults` and `MoltPetit.Model.KeyStealingSchedule`. Modules downstream of these (including `Rust.Deployed`) were not reached and will show further errors once they build.
 
-In progress: 14. Close-out
+In progress: none (Pass 29 complete)
 
 ## Stage A: model (mode 2 without the monotone rule)
 
@@ -55,7 +55,7 @@ In progress: 14. Close-out
   - History blocks: admissible from `hUnf`'s `GroundedCert`.
   - Tail blocks: `TSTipSigned` gives the tip `T`. `idsOk` from `certOps.tipSig hc` and `sigsOk` give `TSFormed n sigOps G` by the same induction as step 5.
   - Any lemma that built the old `TSFormed` (`∃ ps`) is replaced.
-- [ ] 14. **Close-out.** `bash tools/check.sh` ends with "check: all green". No `sorry`; the pins are unchanged.
+- [x] 14. **Close-out.** `bash tools/check.sh` ends with "check: all green". No `sorry`; the pins are unchanged.
   - Delete any scratch `.py`/`.json` files in the repo root.
   - Write "In progress: none (Pass 29 complete)".
 
