@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 7. cert_fold_lock_complete
+In progress: 8. cert_fold_k_complete
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -42,7 +42,7 @@ In progress: 7. cert_fold_lock_complete
   - The pin.
   - `cert_next_tail_be` returns `ok`.
   - `TailRepr` is preserved (reuse `cert_next_tail_be_repr`).
-- [ ] 7. **`cert_fold_lock_complete`**. Like step 6. The generation check comes from `lockstepOk`: consecutive blocks have `g ≤ ki`, and in the same window `g = ki`.
+- [x] 7. **`cert_fold_lock_complete`**. Like step 6. The generation check comes from `lockstepOk`: consecutive blocks have `g ≤ ki`, and in the same window `g = ki`.
 - [ ] 8. **`cert_fold_k_complete`**. Like step 6.
   - Floors: `floorsFun` of the threaded floors is the maximum key index per producer so far. This is the invariant `cert_fold_k_sound` uses, in reverse.
   - `keyMonoOk` gives `floor ≤ ki`.
