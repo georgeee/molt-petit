@@ -14,7 +14,7 @@ Build one module at a time, in the background:
 
     lake build Rust.Deployed > /tmp/p28.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p28.log | head -60
 
-In progress: 15. rust_deployed_sched_agreement.
+In progress: 16. rustOps.
 
 ## Stage B: model statements and circuit completeness (independent; any order)
 
@@ -78,7 +78,7 @@ In progress: 15. rust_deployed_sched_agreement.
     - the history is monotone (`GroundedCertK` floors);
     - the tail passes `keyMonoFrom` against `floorsFun out` (`key_mono_from_corr`, `floors_of_state`);
     - glue the two, since `floorsFun out` is the per-producer maximum over the history.
-- [ ] 15. **`rust_deployed_sched_agreement`**. Apply `exposure_certified_agreement_on` with `Signed := fun B => DSigned … B ∧ B.slot / era ≤ B.keyIndex`.
+- [x] 15. **`rust_deployed_sched_agreement`**. Apply `exposure_certified_agreement_on` with `Signed := fun B => DSigned … B ∧ B.slot / era ≤ B.keyIndex`.
   - History blocks are pinned by the fold.
   - Tail blocks are pinned by `sched_pin_ok`.
   - The genesis has slot 0, so `0 ≤ keyIndex`.
