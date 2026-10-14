@@ -1068,7 +1068,8 @@ the untimed mode-2 results carry over. But theft is not time-stamped and
 the counter starts at its genesis value, so window~$0$ already counts
 every validator that \emph{ever} has a key of a used generation stolen:
 $T$ caps key losses over the deployment's life, two at $n = 7$.
-Rotation does not reset it. The first budget gives the second
+Rotation does not reset it. The first budget gives the second, if the
+same cap holds for generations below the genesis counter
 (\code{LockstepPackage.toGen\_of\_low}), so the per-generation one is
 the weaker requirement and the one to plan with.
 
@@ -1161,9 +1162,8 @@ Rust file, \code{rust/src/lib.rs}, in the subset of Rust that Charon +
 Aeneas translates to Lean~4.
 
 \emph{The native validator.} Its translation is proved sound against the
-model: if the code accepts a chain, the chain is valid in the model
-(\code{rust\_valid\_chain\_sound} and companions; mode~1:
-\code{rust\_valid\_chain\_k\_sound}).
+model: a chain the code accepts is valid in the model
+(\code{rust\_valid\_chain\_sound}; mode~1: \code{rust\_valid\_chain\_k\_sound}).
 
 \emph{The deployed client.} \code{validate\_deployed} is what a light
 client runs. It verifies the certificate and decodes its claim from the
@@ -1243,8 +1243,7 @@ outside review; no theorem covered that function. The TypeScript
 
 \paragraph{What is trusted.} The Lean kernel; the pinned translators
 (Charon + Aeneas, Thales with its hand corrections) and the circuit
-gadgets, with the Rust crate built with overflow checks on, as its
-release profile sets; the node's signing loop (the once-per-slot record,
+gadgets, with the Rust crate built with overflow checks on; the node's signing loop (the once-per-slot record,
 the clock), whose guarantees every safety theorem assumes; and that the
 named assumptions, the only way cryptography enters, match the deployed
 primitives.
@@ -1290,8 +1289,8 @@ the signature is $2^{13}$ rows and about $2\times$ the floor; with the
 SPHINCS+ subproof and registry path, $2^{14}$ rows and $2$--$4\times$.
 A fold proof verifies in about 5\,ms and is 130\,KiB at any chain
 length. Scaled by Table~\ref{tab:bench}'s floor, a step would cost about
-$0.4$--$0.8$\,s on the reference machine plus the $0.36$\,s subproof, an
-estimate, not a measurement.
+$0.4$--$0.8$\,s on the reference machine plus the $0.36$\,s subproof
+(estimated, not measured).
 
 So consensus is nearly free next to the signatures, and the slot time
 follows: $\tau \ge \mathit{perBlock} + 2\,\mathit{baseline}/n$
