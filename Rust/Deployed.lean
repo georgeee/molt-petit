@@ -3569,4 +3569,74 @@ theorem strip_sigs_append_signed : ∀ (sc : SignedChain) (nb : Block) (sig : Ha
       rfl
     · rw [toModelChain_cons, toModelChain_cons, hmodel, List.cons_append]
 
+
+theorem ids_ok_append_signed {C} {I : CryptoD C} {crypto : C} :
+    ∀ (sc : SignedChain) (nb : Block) (sig : Hash) (ts : Hash) (last_sig : Hash) (sc' : SignedChain),
+      append_signed sc nb sig = ok sc' →
+      signed_tip_sig_from ts sc = ok last_sig →
+      I.block_id crypto nb.slot nb.height nb.prev (some last_sig) nb.contents_hash nb.key_index = ok nb.id →
+      ids_ok I crypto (some ts) sc = ok true →
+      ids_ok I crypto (some ts) sc' = ok true := by
+  intro sc
+  induction sc with
+  | SNil =>
+    intro nb sig ts last_sig sc' happ hts hbid hids
+    rw [append_signed] at happ
+    injection happ with happ; subst happ
+    rw [signed_tip_sig_from] at hts
+    injection hts with hts; subst hts
+    rw [ids_ok.eq_def]
+    simp only [bind_tc_ok, hbid, hash_eq_self]
+    rw [ids_ok.eq_def]
+    rfl
+  | SCons b s rest ih =>
+    intro nb sig ts last_sig sc' happ hts hbid hids
+    rw [append_signed] at happ
+    obtain ⟨sc1, hsc1, happ⟩ := bind_inv happ
+    injection happ with happ; subst happ
+    rw [signed_tip_sig_from] at hts
+    rw [ids_ok.eq_def] at hids
+    obtain ⟨id, hid, hids⟩ := bind_inv hids
+    obtain ⟨b1, hb1, hids⟩ := bind_inv hids
+    split at hids
+    · rename_i hb1t; subst hb1t
+      rw [ids_ok.eq_def]
+      simp only [bind_tc_ok, hid, hb1]
+      exact ih nb sig s last_sig sc1 hsc1 hts hbid hids
+    · simp at hids
+
+theorem sigs_ok_append_signed {C} {I : Crypto C} {n : U64} {crypto : C} :
+    ∀ (sc : SignedChain) (nb : Block) (sig : Hash) (me : U64) (key : Hash) (sc' : SignedChain),
+      append_signed sc nb sig = ok sc' →
+      producer_for_slot n nb.slot = ok me →
+      I.key_for crypto me nb.key_index = ok key →
+      I.verify crypto key nb sig = ok true →
+      sigs_ok I n crypto sc = ok true →
+      sigs_ok I n crypto sc' = ok true := by
+  intro sc
+  induction sc with
+  | SNil =>
+    intro nb sig me key sc' happ hprod hkey hver hsig
+    rw [append_signed] at happ
+    injection happ with happ; subst happ
+    rw [sigs_ok]
+    simp only [bind_tc_ok, hprod, hkey, hver]
+    rw [sigs_ok]
+    rfl
+  | SCons b s rest ih =>
+    intro nb sig me key sc' happ hprod hkey hver hsig
+    rw [append_signed] at happ
+    obtain ⟨sc1, hsc1, happ⟩ := bind_inv happ
+    injection happ with happ; subst happ
+    rw [sigs_ok] at hsig
+    obtain ⟨i, hi, hsig⟩ := bind_inv hsig
+    obtain ⟨k, hk, hsig⟩ := bind_inv hsig
+    obtain ⟨v, hv, hsig⟩ := bind_inv hsig
+    split at hsig
+    · rename_i hvt; subst hvt
+      rw [sigs_ok]
+      simp only [bind_tc_ok, hi, hk, hv]
+      exact ih nb sig me key sc1 hsc1 hprod hkey hver hsig
+    · simp at hsig
+
 end Rust
