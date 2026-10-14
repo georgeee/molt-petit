@@ -1,7 +1,7 @@
 ---
 id: 0002
 kind: task
-status: active
+status: done
 title: Independent phased review of the paper vs Lean (MEMO)
 owner: session 375f62fc (Molt Petit driver), host bare1
 created: 2026-10-14
