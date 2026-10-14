@@ -2038,6 +2038,29 @@ theorem u64_div_ok {x y z : U64} (h : x / y = ok z) :
   subst z'
   exact ⟨hnz, hzv⟩
 
+/-- A passing `sigs_ok` on `SCons b s rest` gives `SigOn` and `sigs_ok rest`. -/
+theorem sigs_ok_cons {C} {I : Crypto C} {n : U64} {crypto : C}
+    {b : Block} {s : Hash} {rest : SignedChain}
+    (h : sigs_ok I n crypto (SignedChain.SCons b s rest) = ok true) :
+    SigOn I crypto n b s ∧ sigs_ok I n crypto rest = ok true := by
+  rw [sigs_ok] at h
+  obtain ⟨i, hi, h⟩ := bind_inv h
+  obtain ⟨key, hkey, h⟩ := bind_inv h
+  obtain ⟨vb, hvb, h⟩ := bind_inv h
+  split at h
+  · rename_i hvbt
+    rw [hvbt] at hvb
+    exact ⟨⟨i, key, hi, hkey, hvb⟩, h⟩
+  · simp at h
+
+/-- Signature verification implies the projected model block is `RustSigned`. -/
+theorem rustSigned_of_sigOn {C} {I : Crypto C} {crypto : C} {n : U64}
+    {b : Block} {s : Hash}
+    (h : SigOn I crypto n b s) :
+    RustSigned I crypto n (toModelBlock b) := by
+  obtain ⟨i, key, hi, hkey, hver⟩ := h
+  exact ⟨b, i, key, s, rfl, hi, hkey, hver⟩
+
 /-- A passing `ids_ok` makes every block of the model chain `RustFormed`. -/
 theorem ids_ok_formed {C} {I : CryptoD C} {crypto : C} :
     ∀ (ps : Option Hash) (sc : molt_petit.SignedChain) (tl : molt_petit.Chain),
