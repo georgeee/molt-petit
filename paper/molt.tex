@@ -155,9 +155,10 @@ certificate it verifies to the blocks it accepts, with signature checking
 modelled as an ideal functionality (Section~\ref{sec:assumptions}). The
 other key-rotation results are proved for the model. The same source
 holds the recursive certificate's step: per block, it checks links,
-density and the mode's key rule, recomputes the block's id, and is proved
-to build exactly the claims the theorems assume. We trust the proof
-system and the circuit's gadgets to run it faithfully. A TypeScript
+density and the mode's key rule, and is proved to build exactly the
+claims the theorems assume; the circuit around it recomputes the block's
+id and verifies its signature. We trust the proof system and the
+circuit's gadgets to run it faithfully. A TypeScript
 client is proved sound against the same model, which keeps the model
 independent of any one implementation. No theorem assumes anything
 beyond classical logic.
@@ -278,8 +279,9 @@ no theft, any mode & any of the three &
   \code{sched\_exposure\_certified\_agreement} \\
 \addlinespace
 3 lockstep & the roster's counter &
-  genesis + clock (clock only: Thm.~\ref{thm:lock-gen}, depth $2n$) & yes &
-  Thm.~\ref{thm:lock-gen}: \code{lockstep\_client\_safety\_gen};
+  genesis + clock & yes &
+  Thm.~\ref{thm:lock-gen}: \code{lockstep\_client\_safety\_gen}
+  (certified: \code{lockstepGen\_recent\_certified\_history\_agreement});
   Thm.~\ref{thm:lock} (theft budget is lifetime):
   \code{lockstep\_client\_safety} \\
 \bottomrule
@@ -298,8 +300,8 @@ proved as \code{MoltPaper.xxx} in the file \code{Paper/Proofs.lean}. Its
 exact statement is \code{thm\_xxx}, in the file
 \code{Spec/Statements.lean}. Unless stated otherwise, results assume a
 non-empty roster, $n \ge 1$; the liveness and sanity statements, the
-full-chain soundness statements of the Rust validator and the lockstep
-package conversions need no roster hypothesis, and
+Rust validator's links-and-density soundness and the timed lockstep
+package conversion need no roster hypothesis, and
 \code{groundedCertLock\_gen\_of\_tail} needs $n \ge 2$. Every cited
 definition is in \code{Spec/}: a few files that hold the definitions and
 statements only, and that the rest of the development imports. The
@@ -508,8 +510,9 @@ minute old.
 
 A node does three things with its certified chain: validate, produce and
 select. All three are pure functions, with no I/O and no hidden state.
-That is what lets one source serve as the reference implementation, the
-Lean model and the circuit of the proof (Section~\ref{sec:impl}).
+That is what lets one Rust source of validation and production serve as
+the reference implementation, the Lean model and the circuit's step
+(Section~\ref{sec:impl}); selection is specified in the model only.
 
 \paragraph{Validate} (\code{validCertifiedChain}). Accept a certified
 chain only if:
