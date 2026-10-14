@@ -16,9 +16,9 @@ Build one module at a time, in the background:
 
 In progress: 19b. validate_suffix_append.
 
-**Rescaffold (reviewer, after step 18).** The scaffold moved; the pin is now the commit "pass28 rescaffold 4" (`git log --grep "pass28 rescaffold 4"`), and `git diff <that commit> -- Spec/ rust/ rust-keyrot/` must stay empty. What changed:
+**Rescaffold (reviewer, after step 18).** The scaffold moved; the pin is now the commit "pass28 rescaffold 5" (`git log --grep "pass28 rescaffold 5"`), and `git diff <that commit> -- Spec/ rust/ rust-keyrot/` must stay empty. What changed:
 - Block ids hash the parent block's signature. `CryptoD.block_id` gains `parent_sig : Option Hash`; `CryptoD.cert_tip_sig` is new. `ids_ok` now walks the SIGNED chain: `ids_ok I crypto ps suffix`, passing each block's signature as the next block's `ps`. `validate_deployed` starts it at `some ts` with `I.cert_tip_sig crypto cert = ok ts`. `RustFormed I crypto B` is now `∃ b ps, toModelBlock b = B ∧ I.block_id crypto b.slot b.height b.prev ps b.contents_hash b.key_index = ok b.id`.
-- `thm_rust_produce_block_deployed_live` gains `hts`, the signed form of `hids`, `hId` over six arguments, the bounds `hsmall : n.val < 2 ^ 62`, `hS : at_slot.val < 2 ^ 62`, and (rescaffold 4) `htail`: the decoded claim's tail lies at or below its tip slot. Both STOP counterexamples are resolved by these.
+- `thm_rust_produce_block_deployed_live` gains `hts`, the signed form of `hids`, `hId` over six arguments, the bounds `hsmall : n.val < 2 ^ 62`, `hS : at_slot.val < 2 ^ 62`, (rescaffold 4) `htail`: the decoded claim's tail lies at or below its tip slot, and (rescaffold 5) `hlen`: the decoded tail plus the suffix hold fewer than `2^62` blocks, which bounds every window count. All three STOP counterexamples are resolved by these.
 - TypeScript: `validateDeployed`, `idsOk`, `recentOk` in `Spec/TS.lean`; `TSFormed` in `Spec/Model.lean`; statement `thm_ts_deployed_agreement` (step 20).
 
 ## Stage B: model statements and circuit completeness (independent; any order)
@@ -107,60 +107,4 @@ In progress: 19b. validate_suffix_append.
 
 STOP:
 
-Counterexample to pinned statement `Spec/Statements.lean:1637` (`thm_rust_produce_block_deployed_live`):
-
-The statement asserts that under honest production hypotheses, `produce_block_deployed` produces a certified chain accepted by `validate_deployed`. Rescaffold 4 added `htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val` to bound the slot numbers of `cl.tail`. However, `st : CertStateG U64` (and hence `cl.tail`) remains unconstrained in length / block count. When `suffix = SignedChain.SNil` (so `tl = Chain.Nil`), `hsuf : validate_suffix n cl tl = ok true` trivially returns `ok true` without inspecting `cl.tail`. Consequently, `st.tail` can contain `2^64` entries with `slot = 0#u64`. When `produce_block_deployed` produces the new block `nb`, it validates `new_suffix = [nb]` via `validate_deployed`, which runs `validate_suffix n cl [nb]`. This calls `matured_dense (cl.tail ++ [nb]) lo nb.slot n`, which calls `window_dense n (cl.tail ++ [nb]) lo`. In `window_dense`, `window_count (cl.tail ++ [nb]) lo n` counts blocks in `[lo, lo + n)`. Because all `2^64` blocks of `cl.tail` have `slot = 0#u64 ∈ [lo, lo + n)`, `window_count` accumulates `1#u64` across all `2^64` entries. On the `2^64`-th addition, `(2^64 - 1)#u64 + 1#u64` overflows `U64` and returns `Result.fail Error.integerOverflow`. Thus `produce_block_deployed` returns `Result.fail Error.integerOverflow` instead of `ok (CertifiedChain.CC cert suffix')`.
-
-Concrete counterexample assignment:
-- `C := Unit`, `crypto := ()`
-- `n := 2#u64` (so `hn : 1 ≤ n.val` and `hsmall : n.val < 2 ^ 62` hold)
-- `me := 1#u64`
-- `at_slot := 1#u64` (so `hS : at_slot.val < 2 ^ 62` holds)
-- `Δ := 0#u64`
-- `key_index := 0#u64`
-- `contents := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
-- `sk := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
-- `cert := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
-- `ts := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩`
-- `suffix := SignedChain.SNil`
-- `tl := Chain.Nil` (so `hstr : strip_sigs suffix = ok tl` holds)
-- `tipS := 0#u64`
-- `tipH := 0#u64`
-- Let `bigTail : Nat → TailG U64` be defined by `bigTail 0 = TailG.TNil`, `bigTail (k + 1) = TailG.TCons 1#u64 0#u64 (bigTail k)`.
-- `st := { tip_slot := 0#u64, tip_height := 0#u64, tip_id := ⟨0#u64, 0#u64, 0#u64, 0#u64⟩, tail := bigTail (2 ^ 64) }`
-- `I : CryptoD Unit` returning `ok` for all operations (`cert_state _ _ = ok st`, `cert_tip_sig _ _ = ok ts`, `cert_verify _ _ = ok true`, `key_for _ _ _ = ok ⟨0,0,0,0⟩`, `sign _ _ _ = ok ⟨0,0,0,0⟩`, `verify _ _ _ _ = ok true`, `block_id _ _ _ _ _ _ _ = ok ⟨0,0,0,0⟩`, `cert_floors_state _ _ = ok FloorsG.FNil`, `cert_gen _ _ = ok 0#u64`).
-
-Verification of all hypotheses:
-- `hn : 1 ≤ n.val`: `1 ≤ 2` holds.
-- `hst : I.cert_state crypto cert = ok st`: holds by definition of `I`.
-- `hts : I.cert_tip_sig crypto cert = ok ts`: holds by definition of `I`.
-- `hcl : claim_of_state n st = ok cl`: `suffix_lo 2#u64 0#u64 = ok 0#u64` (since `0 + 2 - 2 = 0`). In `tail_of_buffer`, `0#u64 ≤ 0#u64` holds for all nodes, returning `cl` with `cl.tip_slot = 0#u64`, `cl.tip_height = 0#u64`, and `cl.tail` containing `2^64` blocks with `slot := 0#u64`.
-- `hcv : I.CryptoInst.cert_verify crypto cert = ok true`: holds by definition of `I`.
-- `hstr : strip_sigs suffix = ok tl`: `strip_sigs SNil = ok Nil` holds.
-- `hsig : sigs_ok I.CryptoInst n crypto suffix = ok true`: holds for `SNil`.
-- `hids : ids_ok I crypto (some ts) suffix = ok true`: holds for `SNil`.
-- `hsuf : validate_suffix n cl tl = ok true`: holds for `Chain.Nil` by definition (`match suffix with | Nil => ok true`).
-- `hMine : producer_for_slot n at_slot = ok me`: `1 % 2 = 1` holds.
-- `htipS : tip_slot_from cl.tip_slot tl = ok tipS`: `tip_slot_from 0#u64 Nil = ok 0#u64`.
-- `htipH : signed_tip_height_from cl.tip_height suffix = ok tipH`: `signed_tip_height_from 0#u64 SNil = ok 0#u64`.
-- `hLt : tipS.val < at_slot.val`: `0 < 1` holds.
-- `hH : tipH.val + 1 < 2 ^ 64`: `0 + 1 < 2^64` holds.
-- `hsmall : n.val < 2 ^ 62`: `2 < 2^62` holds.
-- `hS : at_slot.val < 2 ^ 62`: `1 < 2^62` holds.
-- `htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val`: each block in `cl.tail` has `slot = 0 ≤ 0 = cl.tip_slot.val`.
-- `hSign`: holds by definition of `I`.
-- `hId`: holds by definition of `I`.
-- `hDense`: For `u` with `0 + 2 ≤ u + 2 ≤ 1 + 1`, we have `u = 0`. In window `[0, 2)`, all `2^64` blocks from `cl.tail` (with `slot = 0`) and the appended block (with `slot = 1`) lie in `[0, 2)`. So `windowCount = 2^64 + 1 ≥ quorum 2 = 1`.
-
-Failure of conclusion:
-When `produce_block_deployed` runs, it creates `nb` with `nb.slot = 1#u64` and `new_suffix = SCons nb sig SNil`.
-It then calls `validate_deployed` on `new_suffix`, which calls `validate_suffix 2#u64 cl [nb]`.
-`validate_suffix` matches `Chain.Cons nb Nil` and calls `matured_dense (cl.tail ++ [nb]) 0#u64 1#u64 2#u64`.
-`matured_dense` evaluates `lo + n = 0 + 2 = 2` and `t + 1 = 1 + 1 = 2`.
-Since `lo + n ≤ t + 1`, it calls `window_dense 2#u64 (cl.tail ++ [nb]) 0#u64`.
-`window_dense` calls `window_count (cl.tail ++ [nb]) 0#u64 2#u64`.
-In `window_count`, every block of `cl.tail` satisfies `0 ≤ 0 ∧ 0 < 2`, so `here = 1#u64`.
-`window_count` accumulates `1#u64` across all `2^64` entries of `cl.tail`.
-On the `2^64`-th addition of `1#u64`, checked U64 addition `(2^64 - 1)#u64 + 1#u64` overflows `2^64` and returns `Result.fail Error.integerOverflow`.
-This failure propagates out: `produce_block_deployed` returns `Result.fail Error.integerOverflow` instead of `ok (CertifiedChain.CC cert new_suffix)`.
-Hence no `suffix'`, `tl'`, `nb` can satisfy `produce_block_deployed ... = ok (CertifiedChain.CC cert suffix')`.
+(Resolved by rescaffold 5: the counterexample with a `2^64`-entry tail is excluded by `hlen`. Every counter in `window_count` is at most the length of `tail ++ suffix ++ [nb]`, so below `2^62 + 1`.)
