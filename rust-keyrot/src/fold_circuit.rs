@@ -76,6 +76,7 @@ pub struct FoldBlock {
     pub height: u64,
     pub prev: [u64; 4],
     pub id: [u64; 4],
+    pub sig: [u64; 4],
     pub contents_hash: [u64; 4],
     pub key_index: u64,
 }
@@ -86,6 +87,7 @@ pub struct FoldState {
     pub tip_id: [u64; 4],
     pub tip_slot: u64,
     pub tip_height: u64,
+    pub tip_sig: [u64; 4],
     /// `(flag, slot)`, oldest first, length `n - 1`.
     pub tail: Vec<(u64, u64)>,
     /// Mode 1: the `n` floors; mode 3: `[g]`; mode 2: empty.
@@ -94,7 +96,7 @@ pub struct FoldState {
 
 impl FoldState {
     /// The genesis state (the genesis block has slot 0, height 0).
-    pub fn genesis(n: usize, mode: Mode, g: &FoldBlock) -> Self {
+    pub fn genesis(n: usize, mode: Mode, g: &FoldBlock, genesis_sig: [u64; 4]) -> Self {
         let mut tail = vec![(0u64, 0u64); n.saturating_sub(1)];
         if let Some(last) = tail.last_mut() {
             *last = (1, g.slot);
@@ -104,7 +106,14 @@ impl FoldState {
             Mode::Sched { .. } => vec![],
             Mode::Lock => vec![g.key_index],
         };
-        Self { tip_id: g.id, tip_slot: g.slot, tip_height: g.height, tail, extra }
+        Self {
+            tip_id: g.id,
+            tip_slot: g.slot,
+            tip_height: g.height,
+            tip_sig: genesis_sig,
+            tail,
+            extra,
+        }
     }
 
     /// Field encoding, in public-input order.
@@ -112,6 +121,7 @@ impl FoldState {
         let mut v: Vec<u64> = self.tip_id.to_vec();
         v.push(self.tip_slot);
         v.push(self.tip_height);
+        v.extend_from_slice(&self.tip_sig);
         for (f, s) in &self.tail {
             v.push(*f);
             v.push(*s);
@@ -121,7 +131,7 @@ impl FoldState {
     }
 
     fn len_for(n: usize, mode: Mode) -> usize {
-        6 + 2 * n.saturating_sub(1)
+        10 + 2 * n.saturating_sub(1)
             + match mode {
                 Mode::K => n,
                 Mode::Sched { .. } => 0,
@@ -190,7 +200,7 @@ pub fn native_step(n: u64, mode: Mode, st: &FoldState, b: &FoldBlock) -> Option<
         return None;
     }
     let tail = tail_vec(&cert_next_tail_be(&be, &cs.tail, b.slot));
-    Some(FoldState { tip_id: b.id, tip_slot: b.slot, tip_height: b.height, tail, extra })
+    Some(FoldState { tip_id: b.id, tip_slot: b.slot, tip_height: b.height, tip_sig: b.sig, tail, extra })
 }
 
 /// `CommonCircuitData` for a cyclic circuit of `2^bits` gates: a recursive
@@ -297,7 +307,7 @@ impl FoldProver {
             sig,
             n,
             mode,
-            genesis: FoldState::genesis(n, mode, genesis_block),
+            genesis: FoldState::genesis(n, mode, genesis_block, genesis_block.sig),
             common: common_data_for_recursion(bits),
             digest: None,
             step_gates: 0,
@@ -306,12 +316,13 @@ impl FoldProver {
         };
         let g = fp.genesis.clone();
         let probe_ch = [0u64; 4];
-        let probe_id = fold_block_id(g.tip_slot + 1, g.tip_height + 1, true, g.tip_id, probe_ch, 0);
+        let probe_id = fold_block_id(g.tip_slot + 1, g.tip_height + 1, true, g.tip_id, true, g.tip_sig, probe_ch, 0);
         let probe = FoldBlock {
             slot: g.tip_slot + 1,
             height: g.tip_height + 1,
             prev: g.tip_id,
             id: probe_id,
+            sig: [0u64; 4],
             contents_hash: probe_ch,
             key_index: 0,
         };
@@ -424,7 +435,7 @@ impl FoldProver {
         let tail_m: TailG<MNum> = {
             let mut t = TailG::TNil;
             for j in (0..n.saturating_sub(1)).rev() {
-                t = TailG::TCons(prev_m[6 + 2 * j], prev_m[6 + 2 * j + 1], Box::new(t));
+                t = TailG::TCons(prev_m[10 + 2 * j], prev_m[10 + 2 * j + 1], Box::new(t));
             }
             t
         };
@@ -434,7 +445,7 @@ impl FoldProver {
             tip_height: prev_m[5],
             tail: tail_m,
         };
-        let extra0 = 6 + 2 * n.saturating_sub(1);
+        let extra0 = 10 + 2 * n.saturating_sub(1);
 
         // (3) The block (prover's witness) and the circuit constants.
         let inp = |v: u64| be.input(F::from_canonical_u64(v));
@@ -445,6 +456,12 @@ impl FoldProver {
             prev: HashG { a: inp(b.prev[0]), b: inp(b.prev[1]), c: inp(b.prev[2]), d: inp(b.prev[3]) },
             id: HashG { a: inp(b.id[0]), b: inp(b.id[1]), c: inp(b.id[2]), d: inp(b.id[3]) },
         };
+        let sig_w = [
+            inp(b.sig[0]),
+            inp(b.sig[1]),
+            inp(b.sig[2]),
+            inp(b.sig[3]),
+        ];
         let ki = inp(b.key_index);
         let ch = [
             inp(b.contents_hash[0]),
@@ -470,11 +487,18 @@ impl FoldProver {
                 bl.connect(bad, zero);
                 [lo, hi]
             };
-            let mut hash_targets = Vec::with_capacity(23);
+            for limb in &sig_w {
+                split_canonical(&mut bl, MpCircuit::target(limb));
+            }
+            let mut hash_targets = Vec::with_capacity(32);
             hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(&bg.slot)));
             hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(&bg.height)));
             hash_targets.push(bl.one());
             for limb in [&bg.prev.a, &bg.prev.b, &bg.prev.c, &bg.prev.d] {
+                hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(limb)));
+            }
+            hash_targets.push(bl.one());
+            for limb in [&prev_m[6], &prev_m[7], &prev_m[8], &prev_m[9]] {
                 hash_targets.extend_from_slice(&split_canonical(&mut bl, MpCircuit::target(limb)));
             }
             for limb in &ch {
@@ -503,6 +527,9 @@ impl FoldProver {
             let pk = st.public_inputs[..sb.n_fe].to_vec();
             for (i, x) in [&bg.id.a, &bg.id.b, &bg.id.c, &bg.id.d].into_iter().enumerate() {
                 bl.connect(st.public_inputs[sb.n_fe + i], MpCircuit::target(x));
+            }
+            for (i, x) in sig_w.iter().enumerate() {
+                bl.connect(st.public_inputs[sb.n_fe + 4 + i], MpCircuit::target(x));
             }
             bl.range_check(MpCircuit::target(&ki), sb.kbits);
             let shift = bl.constant(F::from_canonical_u64(1 << sb.kbits));
@@ -553,7 +580,11 @@ impl FoldProver {
         };
         be.assert(ok);
         let next_tail = cert_next_tail_be(&be, &st.tail, bg.slot);
-        let mut next: Vec<MNum> = vec![bg.id.a, bg.id.b, bg.id.c, bg.id.d, bg.slot, bg.height];
+        let mut next: Vec<MNum> = vec![
+            bg.id.a, bg.id.b, bg.id.c, bg.id.d,
+            bg.slot, bg.height,
+            sig_w[0], sig_w[1], sig_w[2], sig_w[3],
+        ];
         let mut cur = next_tail;
         while let TailG::TCons(f, s, tl) = cur {
             next.push(f);
@@ -595,28 +626,34 @@ struct Built {
 /// `era = n` in mode 2). Ids are computed natively with `fold_block_id`.
 pub fn demo_chain(n: usize, len: u64) -> (FoldBlock, Vec<FoldBlock>) {
     let contents_hash = [0u64; 4];
+    let g_sig = [0u64; 4];
     let g = FoldBlock {
         slot: 0,
         height: 0,
         prev: [0; 4],
-        id: fold_block_id(0, 0, false, [0; 4], contents_hash, 0),
+        id: fold_block_id(0, 0, false, [0; 4], false, [0; 4], contents_hash, 0),
+        sig: g_sig,
         contents_hash,
         key_index: 0,
     };
     let mut bs = Vec::with_capacity(len as usize);
     let mut prev = g.id;
+    let mut prev_sig = g.sig;
     for s in 1..=len {
         let ki = s / n as u64;
-        let id = fold_block_id(s, s, true, prev, contents_hash, ki);
+        let sig = [s, 0, 0, 0];
+        let id = fold_block_id(s, s, true, prev, true, prev_sig, contents_hash, ki);
         let b = FoldBlock {
             slot: s,
             height: s,
             prev,
             id,
+            sig,
             contents_hash,
             key_index: ki,
         };
         prev = id;
+        prev_sig = sig;
         bs.push(b);
     }
     (g, bs)
@@ -653,8 +690,9 @@ pub fn exposed_state(n: usize, mode: Mode, proof: &ProofWithPublicInputs<F, C, D
         tip_id: [v[0], v[1], v[2], v[3]],
         tip_slot: v[4],
         tip_height: v[5],
-        tail: (0..tl).map(|j| (v[6 + 2 * j], v[7 + 2 * j])).collect(),
-        extra: v[6 + 2 * tl..].to_vec(),
+        tip_sig: [v[6], v[7], v[8], v[9]],
+        tail: (0..tl).map(|j| (v[10 + 2 * j], v[11 + 2 * j])).collect(),
+        extra: v[10 + 2 * tl..].to_vec(),
     })
 }
 
@@ -665,22 +703,40 @@ mod tests {
     /// Recursion shape used by the tests and the bench.
     pub const BITS: usize = 13;
 
-    fn blk(slot: u64, height: u64, prev: [u64; 4], key_index: u64) -> FoldBlock {
-        let contents_hash = [slot * 7 + 1, height + 11, key_index + 3, 0xabc];
-        let has_prev = slot > 0;
-        let id = fold_block_id(slot, height, has_prev, prev, contents_hash, key_index);
-        FoldBlock { slot, height, prev, id, contents_hash, key_index }
-    }
-
     /// A chain of `len` blocks after genesis, slots 1, 2, ..., with key
     /// indices from `kis`.
     fn chain(kis: &[u64]) -> (FoldBlock, Vec<FoldBlock>) {
-        let g = blk(0, 0, [0; 4], 0);
+        let g_ch = [1, 11, 3, 0xabc];
+        let g_sig = [100, 200, 300, 400];
+        let g = FoldBlock {
+            slot: 0,
+            height: 0,
+            prev: [0; 4],
+            id: fold_block_id(0, 0, false, [0; 4], false, [0; 4], g_ch, 0),
+            sig: g_sig,
+            contents_hash: g_ch,
+            key_index: 0,
+        };
         let mut out = vec![];
         let mut prev = g.id;
+        let mut parent_sig = g.sig;
         for (i, ki) in kis.iter().enumerate() {
-            let b = blk(i as u64 + 1, i as u64 + 1, prev, *ki);
+            let slot = i as u64 + 1;
+            let height = i as u64 + 1;
+            let contents_hash = [slot * 7 + 1, height + 11, *ki + 3, 0xabc];
+            let sig = [slot * 10 + 1, 2, 3, 4];
+            let id = fold_block_id(slot, height, true, prev, true, parent_sig, contents_hash, *ki);
+            let b = FoldBlock {
+                slot,
+                height,
+                prev,
+                id,
+                sig,
+                contents_hash,
+                key_index: *ki,
+            };
             prev = b.id;
+            parent_sig = b.sig;
             out.push(b);
         }
         (g, out)
@@ -753,7 +809,7 @@ mod tests {
         forged.tip_height += 1;
         let mut b = bs[1];
         b.height += 1;
-        b.id = fold_block_id(b.slot, b.height, true, b.prev, b.contents_hash, b.key_index);
+        b.id = fold_block_id(b.slot, b.height, true, b.prev, true, st1.tip_sig, b.contents_hash, b.key_index);
         assert!(native_step(3, mode, &forged, &b).is_some());
         assert!(fails(|| fp.step(&forged, Some(&p1), &b, None)));
     }
@@ -781,10 +837,17 @@ mod tests {
     }
 
     /// Signature evidence for `b`, signed by key `(pr, ki)` over `msg`.
-    fn evidence(k: &Keys, pr: usize, ki: u64, msg: [u64; 4]) -> BlockSig {
+    fn evidence(k: &Keys, pr: usize, ki: u64, msg: [u64; 4]) -> (BlockSig, [u64; 4]) {
         let key = &k.keys[pr][ki as usize];
         let sig = key.sign(&dig(msg), 0);
-        BlockSig { proof: k.vc.prove(&key.public_key(), &dig(msg), &sig).unwrap(), path: k.reg.path(pr, ki) }
+        let sdig = crate::xmss::sig_digest(&sig, &k.vc.p);
+        (
+            BlockSig {
+                proof: k.vc.prove(&key.public_key(), &dig(msg), &sig).unwrap(),
+                path: k.reg.path(pr, ki),
+            },
+            sdig,
+        )
     }
 
     #[test]
@@ -792,7 +855,40 @@ mod tests {
         let (n, kbits) = (3usize, 2usize);
         let k = keys(n, kbits);
         let mode = Mode::Sched { era: 3 };
-        let (g, bs) = demo_chain(n, 4);
+        let g_ch = [0u64; 4];
+        let g_sig = [0u64; 4];
+        let g = FoldBlock {
+            slot: 0,
+            height: 0,
+            prev: [0; 4],
+            id: fold_block_id(0, 0, false, [0; 4], false, [0; 4], g_ch, 0),
+            sig: g_sig,
+            contents_hash: g_ch,
+            key_index: 0,
+        };
+        let mut bs = Vec::new();
+        let mut evs = Vec::new();
+        let mut prev = g.id;
+        let mut prev_sig = g.sig;
+        for s in 1..=4u64 {
+            let ki = s / n as u64;
+            let pr = (s % n as u64) as usize;
+            let id = fold_block_id(s, s, true, prev, true, prev_sig, g_ch, ki);
+            let (ev, sdig) = evidence(&k, pr, ki, id);
+            let b = FoldBlock {
+                slot: s,
+                height: s,
+                prev,
+                id,
+                sig: sdig,
+                contents_hash: g_ch,
+                key_index: ki,
+            };
+            prev = b.id;
+            prev_sig = b.sig;
+            bs.push(b);
+            evs.push(ev);
+        }
         let binding = |k: &Keys| SigBinding {
             verifier: crate::xmss::VerifierCircuit::build(crate::sphincs::Params::xmss("t", 2, 3)).data,
             n_fe: 2,
@@ -803,11 +899,9 @@ mod tests {
         let mut fp = FoldProver::new(n, mode, &g, BITS, Some(binding(&k))).unwrap();
         let mut st = fp.genesis_state().clone();
         let mut proof = None;
-        for b in &bs[..3] {
-            let pr = (b.slot % n as u64) as usize;
+        for (b, ev) in bs[..3].iter().zip(&evs[..3]) {
             let next = native_step(n as u64, mode, &st, b).unwrap();
-            let ev = evidence(&k, pr, b.key_index, b.id);
-            let (_, p) = fp.step(&st, proof.as_ref(), b, Some(&ev)).expect("signed step");
+            let (_, p) = fp.step(&st, proof.as_ref(), b, Some(ev)).expect("signed step");
             assert_eq!(exposed_state(n, mode, &p).unwrap(), next);
             st = next;
             proof = Some(p);
@@ -816,17 +910,17 @@ mod tests {
         let pr = (b.slot % n as u64) as usize;
         assert!(native_step(n as u64, mode, &st, &b).is_some());
         // Signed by the producer's key at another index: no proof.
-        let wrong_key = evidence(&k, pr, b.key_index + 1, b.id);
+        let (wrong_key, _) = evidence(&k, pr, b.key_index + 1, b.id);
         assert!(fails(|| fp.step(&st, proof.as_ref(), &b, Some(&wrong_key))));
         // Signed by another producer's key at the right index: no proof.
-        let wrong_prod = evidence(&k, (pr + 1) % n, b.key_index, b.id);
+        let (wrong_prod, _) = evidence(&k, (pr + 1) % n, b.key_index, b.id);
         assert!(fails(|| fp.step(&st, proof.as_ref(), &b, Some(&wrong_prod))));
         // The right key, over another message: no proof.
-        let wrong_msg = evidence(&k, pr, b.key_index, [9, 9, 9, 9]);
+        let (wrong_msg, _) = evidence(&k, pr, b.key_index, [9, 9, 9, 9]);
         assert!(fails(|| fp.step(&st, proof.as_ref(), &b, Some(&wrong_msg))));
         // The right evidence: proof.
-        let ok = evidence(&k, pr, b.key_index, b.id);
-        fp.step(&st, proof.as_ref(), &b, Some(&ok)).expect("signed step");
+        let ok = &evs[3];
+        fp.step(&st, proof.as_ref(), &b, Some(ok)).expect("signed step");
     }
 
     #[test]
@@ -845,7 +939,17 @@ mod tests {
         let (n, kbits) = (3usize, 2usize);
         let k = keys(n, kbits);
         let mode = Mode::Sched { era: 3 };
-        let (g, bs) = demo_chain(n, 4);
+        let g_ch = [0u64; 4];
+        let g_sig = [0u64; 4];
+        let g = FoldBlock {
+            slot: 0,
+            height: 0,
+            prev: [0; 4],
+            id: fold_block_id(0, 0, false, [0; 4], false, [0; 4], g_ch, 0),
+            sig: g_sig,
+            contents_hash: g_ch,
+            key_index: 0,
+        };
         let binding = |k: &Keys| SigBinding {
             verifier: crate::xmss::VerifierCircuit::build(crate::sphincs::Params::xmss("t", 2, 3)).data,
             n_fe: 2,
@@ -856,26 +960,37 @@ mod tests {
         let mut fp = FoldProver::new(n, mode, &g, BITS, Some(binding(&k))).unwrap();
         let st0 = fp.genesis_state().clone();
 
-        let b = bs[0];
-        let pr = (b.slot % n as u64) as usize;
-        let honest_ki = b.key_index;
+        let honest_ki = 0;
         let forged_ki = honest_ki + 1;
+        let pr = (1 % n as u64) as usize;
+        let honest_id = fold_block_id(1, 1, true, g.id, true, g.sig, g_ch, honest_ki);
+        let (honest_ev, honest_sdig) = evidence(&k, pr, honest_ki, honest_id);
+
+        let honest_b = FoldBlock {
+            slot: 1,
+            height: 1,
+            prev: g.id,
+            id: honest_id,
+            sig: honest_sdig,
+            contents_hash: g_ch,
+            key_index: honest_ki,
+        };
 
         // Block whose id was hashed with honest_ki, but step ki is forged_ki
+        let (forged_ev, forged_sdig) = evidence(&k, pr, forged_ki, honest_id);
         let forged_b = FoldBlock {
-            slot: b.slot,
-            height: b.height,
-            prev: b.prev,
-            id: b.id,
-            contents_hash: b.contents_hash,
+            slot: 1,
+            height: 1,
+            prev: g.id,
+            id: honest_id,
+            sig: forged_sdig,
+            contents_hash: g_ch,
             key_index: forged_ki,
         };
-        let forged_ev = evidence(&k, pr, forged_ki, forged_b.id);
         assert!(fails(|| fp.step(&st0, None, &forged_b, Some(&forged_ev))));
 
         // Honest block proves
-        let honest_ev = evidence(&k, pr, honest_ki, b.id);
-        fp.step(&st0, None, &b, Some(&honest_ev)).expect("honest signed step proves");
+        fp.step(&st0, None, &honest_b, Some(&honest_ev)).expect("honest signed step proves");
     }
 
     #[test]
@@ -887,8 +1002,91 @@ mod tests {
         let b = bs[0];
         let (_, p) = fp.step(&st0, None, &b, None).unwrap();
         let state = exposed_state(3, mode, &p).unwrap();
-        let expected_id = fold_block_id(b.slot, b.height, true, b.prev, b.contents_hash, b.key_index);
+        let expected_id = fold_block_id(b.slot, b.height, true, b.prev, true, g.sig, b.contents_hash, b.key_index);
         assert_eq!(state.tip_id, expected_id, "circuit tip_id matches native fold_block_id");
         assert_eq!(state.tip_id, b.id, "circuit tip_id matches block id");
+    }
+
+    #[test]
+    fn parent_sig_bound() {
+        let (g, bs) = chain(&[0, 0]);
+        let mode = Mode::K;
+        let mut fp = FoldProver::new(3, mode, &g, BITS, None).unwrap();
+        let st0 = fp.genesis_state().clone();
+        let (_, p0) = fp.step(&st0, None, &bs[0], None).unwrap();
+        let st1 = exposed_state(3, mode, &p0).unwrap();
+
+        // Block 1 with id hashed with wrong parent_sig
+        let mut bad_b = bs[1];
+        let mut wrong_parent_sig = st1.tip_sig;
+        wrong_parent_sig[0] ^= 1;
+        bad_b.id = fold_block_id(bad_b.slot, bad_b.height, true, bad_b.prev, true, wrong_parent_sig, bad_b.contents_hash, bad_b.key_index);
+
+        assert!(fails(|| fp.step(&st1, Some(&p0), &bad_b, None)));
+
+        // Honest block proves
+        fp.step(&st1, Some(&p0), &bs[1], None).expect("honest block proves");
+    }
+
+    #[test]
+    fn tip_sig_chained() {
+        let (g, bs) = chain(&[0]);
+        let mode = Mode::K;
+        let mut fp = FoldProver::new(3, mode, &g, BITS, None).unwrap();
+        let st0 = fp.genesis_state().clone();
+        let b = bs[0];
+        let (_, p) = fp.step(&st0, None, &b, None).unwrap();
+        let state = exposed_state(3, mode, &p).unwrap();
+        assert_eq!(state.tip_sig, b.sig, "exposed tip_sig equals block sig");
+    }
+
+    #[test]
+    fn sig_digest_bound() {
+        let (n, kbits) = (3usize, 2usize);
+        let k = keys(n, kbits);
+        let mode = Mode::Sched { era: 3 };
+        let g_ch = [0u64; 4];
+        let g_sig = [0u64; 4];
+        let g = FoldBlock {
+            slot: 0,
+            height: 0,
+            prev: [0; 4],
+            id: fold_block_id(0, 0, false, [0; 4], false, [0; 4], g_ch, 0),
+            sig: g_sig,
+            contents_hash: g_ch,
+            key_index: 0,
+        };
+        let binding = |k: &Keys| SigBinding {
+            verifier: crate::xmss::VerifierCircuit::build(crate::sphincs::Params::xmss("t", 2, 3)).data,
+            n_fe: 2,
+            root: k.reg.root(),
+            pbits: k.reg.pbits,
+            kbits,
+        };
+        let mut fp = FoldProver::new(n, mode, &g, BITS, Some(binding(&k))).unwrap();
+        let st0 = fp.genesis_state().clone();
+
+        let ki = 0;
+        let pr = (1 % n as u64) as usize;
+        let id = fold_block_id(1, 1, true, g.id, true, g.sig, g_ch, ki);
+        let (ev, sdig) = evidence(&k, pr, ki, id);
+
+        let honest_b = FoldBlock {
+            slot: 1,
+            height: 1,
+            prev: g.id,
+            id,
+            sig: sdig,
+            contents_hash: g_ch,
+            key_index: ki,
+        };
+
+        // Block whose sig wire differs from signature subproof digest
+        let mut forged_b = honest_b;
+        forged_b.sig[0] ^= 1;
+        assert!(fails(|| fp.step(&st0, None, &forged_b, Some(&ev))));
+
+        // Honest block proves
+        fp.step(&st0, None, &honest_b, Some(&ev)).expect("honest signed step proves");
     }
 }

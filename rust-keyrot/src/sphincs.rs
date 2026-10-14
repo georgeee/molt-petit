@@ -469,11 +469,41 @@ pub fn set_signature(pw: &mut PartialWitness<F>, s: &SigTargets, sig: &Sig) -> a
     Ok(())
 }
 
+pub fn sig_digest(sig: &Sig) -> [u64; 4] {
+    let mut elements = Vec::new();
+    for sk in &sig.fors_sk {
+        elements.extend_from_slice(sk);
+    }
+    for tree in &sig.fors_auth {
+        for node in tree {
+            elements.extend_from_slice(node);
+        }
+    }
+    for layer in &sig.wots_sig {
+        for dig in layer {
+            elements.extend_from_slice(dig);
+        }
+    }
+    for layer in &sig.hyper_auth {
+        for node in layer {
+            elements.extend_from_slice(node);
+        }
+    }
+    let d = PoseidonHash::hash_no_pad(&elements).elements;
+    [
+        d[0].to_canonical_u64(),
+        d[1].to_canonical_u64(),
+        d[2].to_canonical_u64(),
+        d[3].to_canonical_u64(),
+    ]
+}
+
 pub struct VerifierCircuit {
     pub data: CircuitData<F, C, D>,
     pk: Vec<Target>,
     digest: [Target; 4],
     sig: SigTargets,
+    pub p: Params,
 }
 
 impl VerifierCircuit {
@@ -488,10 +518,31 @@ impl VerifierCircuit {
         ];
         let sig = add_signature_targets(&mut builder, &p);
         verify_signature(&mut builder, &pk, HashOutTarget { elements: digest }, &sig, &p);
+        let mut sig_targets = Vec::new();
+        for sk in &sig.fors_sk {
+            sig_targets.extend_from_slice(sk);
+        }
+        for tree in &sig.fors_auth {
+            for node in tree {
+                sig_targets.extend_from_slice(node);
+            }
+        }
+        for layer in &sig.wots_sig {
+            for dig in layer {
+                sig_targets.extend_from_slice(dig);
+            }
+        }
+        for layer in &sig.hyper_auth {
+            for node in layer {
+                sig_targets.extend_from_slice(node);
+            }
+        }
+        let sig_digest = builder.hash_n_to_hash_no_pad::<PoseidonHash>(sig_targets);
         builder.register_public_inputs(&pk);
         builder.register_public_inputs(&digest);
+        builder.register_public_inputs(&sig_digest.elements);
         let data = builder.build::<C>();
-        Self { data, pk, digest, sig }
+        Self { data, pk, digest, sig, p }
     }
 
     pub fn prove(&self, pk: &[F], digest: &[F; 4], sig: &Sig) -> anyhow::Result<ProofWithPublicInputs<F, C, D>> {

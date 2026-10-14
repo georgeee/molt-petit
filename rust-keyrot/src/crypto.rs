@@ -236,11 +236,16 @@ impl CryptoD for KeyRotCrypto {
         slot: u64,
         height: u64,
         prev: Option<Hash>,
+        parent_sig: Option<Hash>,
         contents_hash: &Hash,
         key_index: u64,
     ) -> Hash {
         let prev_raw = match prev {
             Some(p) => [p.a, p.b, p.c, p.d],
+            None => [0; 4],
+        };
+        let psig_raw = match parent_sig {
+            Some(s) => [s.a, s.b, s.c, s.d],
             None => [0; 4],
         };
         let ch_raw = [
@@ -249,13 +254,27 @@ impl CryptoD for KeyRotCrypto {
             contents_hash.c,
             contents_hash.d,
         ];
-        let id_raw = fold_block_id(slot, height, prev.is_some(), prev_raw, ch_raw, key_index);
+        let id_raw = fold_block_id(
+            slot,
+            height,
+            prev.is_some(),
+            prev_raw,
+            parent_sig.is_some(),
+            psig_raw,
+            ch_raw,
+            key_index,
+        );
         Hash {
             a: id_raw[0],
             b: id_raw[1],
             c: id_raw[2],
             d: id_raw[3],
         }
+    }
+
+    fn cert_tip_sig(&self, _cert: &Hash) -> Hash {
+        // KeyRotCrypto manages no fold certificates; this is the same as the cert_state stubs.
+        Hash { a: 0, b: 0, c: 0, d: 0 }
     }
 
     fn cert_state(&self, _cert: &Hash) -> CertStateG<u64> {

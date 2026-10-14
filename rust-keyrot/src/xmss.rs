@@ -128,11 +128,36 @@ pub fn set_signature(pw: &mut PartialWitness<F>, s: &SigTargets, sig: &Sig) -> a
     Ok(())
 }
 
+use plonky2::field::types::PrimeField64;
+use plonky2::hash::poseidon::PoseidonHash;
+use plonky2::plonk::config::Hasher;
+
+pub fn sig_digest(sig: &Sig, p: &Params) -> [u64; 4] {
+    let mut elements = Vec::new();
+    for w in &sig.wots_sig {
+        elements.extend_from_slice(w);
+    }
+    for a in &sig.auth {
+        elements.extend_from_slice(a);
+    }
+    for j in 0..p.sub_h {
+        elements.push(F::from_canonical_u64((sig.leaf >> j) & 1));
+    }
+    let d = PoseidonHash::hash_no_pad(&elements).elements;
+    [
+        d[0].to_canonical_u64(),
+        d[1].to_canonical_u64(),
+        d[2].to_canonical_u64(),
+        d[3].to_canonical_u64(),
+    ]
+}
+
 pub struct VerifierCircuit {
     pub data: CircuitData<F, C, D>,
     pk: Vec<Target>,
     digest: [Target; 4],
     sig: SigTargets,
+    pub p: Params,
 }
 
 impl VerifierCircuit {
@@ -147,10 +172,22 @@ impl VerifierCircuit {
         ];
         let sig = add_signature_targets(&mut builder, &p);
         verify_signature(&mut builder, &pk, HashOutTarget { elements: digest }, &sig, &p);
+        let mut sig_targets = Vec::new();
+        for w in &sig.wots_sig {
+            sig_targets.extend_from_slice(w);
+        }
+        for a in &sig.auth {
+            sig_targets.extend_from_slice(a);
+        }
+        for b in &sig.leaf_bits {
+            sig_targets.push(b.target);
+        }
+        let sig_digest = builder.hash_n_to_hash_no_pad::<PoseidonHash>(sig_targets);
         builder.register_public_inputs(&pk);
         builder.register_public_inputs(&digest);
+        builder.register_public_inputs(&sig_digest.elements);
         let data = builder.build::<C>();
-        Self { data, pk, digest, sig }
+        Self { data, pk, digest, sig, p }
     }
 
     pub fn prove(

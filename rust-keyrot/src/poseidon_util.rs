@@ -98,22 +98,28 @@ fn u64_halves(x: u64) -> [F; 2] {
     ]
 }
 
-/// Deterministic Poseidon block id for a fold block over 23 canonical Goldilocks field elements:
+/// Deterministic Poseidon block id for a fold block over 32 canonical Goldilocks field elements:
 /// each u64 input as two 32-bit halves (lo, hi):
-/// `[slot (lo, hi), height (lo, hi), has_prev as 0/1, prev[0..4] (lo, hi each), contents_hash[0..4] (lo, hi each), key_index (lo, hi)]`.
+/// `[slot (lo, hi), height (lo, hi), has_prev as 0/1, prev[0..4] (lo, hi each), has_psig as 0/1, parent_sig[0..4] (lo, hi each), contents_hash[0..4] (lo, hi each), key_index (lo, hi)]`.
 pub fn fold_block_id(
     slot: u64,
     height: u64,
     has_prev: bool,
     prev: [u64; 4],
+    has_psig: bool,
+    parent_sig: [u64; 4],
     contents_hash: [u64; 4],
     key_index: u64,
 ) -> [u64; 4] {
-    let mut inputs = Vec::with_capacity(23);
+    let mut inputs = Vec::with_capacity(32);
     inputs.extend_from_slice(&u64_halves(slot));
     inputs.extend_from_slice(&u64_halves(height));
     inputs.push(F::from_canonical_u64(if has_prev { 1 } else { 0 }));
     for limb in prev {
+        inputs.extend_from_slice(&u64_halves(limb));
+    }
+    inputs.push(F::from_canonical_u64(if has_psig { 1 } else { 0 }));
+    for limb in parent_sig {
         inputs.extend_from_slice(&u64_halves(limb));
     }
     for limb in contents_hash {
@@ -152,8 +158,8 @@ mod tests {
         let x = 5u64;
         let ch0 = [x, 0, 0, 0];
         let ch1 = [x + p, 0, 0, 0];
-        let id0 = fold_block_id(1, 1, true, [0; 4], ch0, 0);
-        let id1 = fold_block_id(1, 1, true, [0; 4], ch1, 0);
+        let id0 = fold_block_id(1, 1, true, [0; 4], true, [0; 4], ch0, 0);
+        let id1 = fold_block_id(1, 1, true, [0; 4], true, [0; 4], ch1, 0);
         assert_ne!(id0, id1, "x and x+p must not collide in fold_block_id");
     }
 }
