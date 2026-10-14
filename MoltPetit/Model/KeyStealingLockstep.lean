@@ -435,8 +435,9 @@ theorem lockstep_validSignedChainSched
     unfold blockAt? at hHead
     exact List.mem_of_getElem? hHead
   have hGmin := head_slot_min hS hHead
+  rw [validChainK, Bool.and_eq_true] at hVK
   rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true]
-  refine ⟨⟨hSigs, hVK⟩, ?_⟩
+  refine ⟨⟨hSigs, hVK.1⟩, ?_⟩
   rw [schedPinned, List.all_eq_true]
   intro B hB
   rw [decide_eq_true_eq]
