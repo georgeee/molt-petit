@@ -571,11 +571,7 @@ timely delivery matters only for liveness (Assumption~\ref{ass:delivery}).
 It obtains signing keys, by theft or by controlling a signer for a while,
 at any time, within the budget of Assumption~\ref{ass:budget}, and a
 leaked key signs anything, for any slot, at any time. Its timing is
-unconstrained. Two clocks matter: the verifier's
-(Assumption~\ref{ass:clock}) and the honest signers', which run at most
-$\sigma$ slots ahead (Assumption~\ref{ass:sig}(c)). It cannot sign with
-keys that have not leaked, find hash collisions between real blocks, or
-forge certificates (Assumptions~\ref{ass:sig}--\ref{ass:cert}).
+unconstrained.
 
 \begin{assumption}[Exposure budget]\label{ass:budget}
 A key is \emph{exposed} at a given moment if someone other than its
@@ -1376,6 +1372,7 @@ the pinned translators and runs the \code{rust-keyrot/} tests.
 
 {\small
 \begin{thebibliography}{99}
+\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}\setlength{\parsep}{0pt}
 
 \bibitem{ouroboros}
 A.~Kiayias, A.~Russell, B.~David, R.~Oliynykov.
@@ -1409,18 +1406,17 @@ IACR ePrint 2020/352.
 \bibitem{plumo}
 P.~Vesely, K.~G\"urkan, M.~Straka, A.~Gabizon, P.~Jovanovic,
 G.~Konstantopoulos, A.~Oines, M.~Olszewski, E.~Tromer.
-\emph{Plumo: An Ultralight Blockchain Client}. Financial Cryptography
+\emph{Plumo: An Ultralight Blockchain Client}. FC
 2022.
 
 \bibitem{nipopow}
 A.~Kiayias, A.~Miller, D.~Zindros.
-\emph{Non-Interactive Proofs of Proof-of-Work}. Financial Cryptography
+\emph{Non-Interactive Proofs of Proof-of-Work}. FC
 2020.
 
 \bibitem{flyclient}
 B.~B\"unz, L.~Kiffer, L.~Luu, M.~Zamani.
-\emph{FlyClient: Super-Light Clients for Cryptocurrencies}. IEEE S\&P
-2020.
+\emph{FlyClient: Super-Light Clients for Cryptocurrencies}. S\&P 2020.
 
 \bibitem{tendermint}
 E.~Buchman, J.~Kwon, Z.~Milosevic.
@@ -1458,7 +1454,7 @@ P.~Schwabe.
 \emph{The SPHINCS+ Signature Framework}. ACM CCS 2019.
 
 \bibitem{fips205}
-National Institute of Standards and Technology.
+NIST.
 \emph{Stateless Hash-Based Digital Signature Standard}. FIPS 205, 2024.
 
 \bibitem{xmssrfc}
