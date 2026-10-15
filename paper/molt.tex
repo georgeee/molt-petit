@@ -115,36 +115,27 @@ given, \code{ts\_deployed\_agreement}), under the
 assumptions of Section~\ref{sec:assumptions}. That code checks the
 certificate, the block ids and the recency itself.
 
-\paragraph{A small protocol.} A fixed roster of $n$ validators takes turns
-producing blocks, one per time slot, in a public order. There are no
-votes and no view changes. A chain is valid only if every past window of
-$n$ slots contains blocks from at least two thirds of the validators. We
-call this the \emph{density} rule (Section~\ref{sec:protocol}).
-
-Density makes deep forks impossible while the fault budget holds, so a
-block $n$ deep is final; finality is a fixed depth, not a probability.
-Fork choice matters only for liveness: a node simply follows the highest
-valid tip. A node never stores history. It holds a recursive proof that
-the chain so far is valid, plus a tail of signed blocks
-(Section~\ref{sec:rules}).
-
-\paragraph{Recent certificates matter.} Over a deployment's lifetime,
-keys leak: machines are broken into and later cleaned, keys are stolen.
-An attacker can use old leaked keys to sign a fake history; this is the
-classic long-range attack. Molt Petit's fault budget counts, for each
-window of $n$ slots, only the keys exposed during a short stretch of real
-time around that window. A client that rejects certificates older than
-$\varphi$ slots is exactly the client for whom later leaks do not matter.
-And no attacker can prepare a valid chain that runs far ahead of real time to
-get around this check (Section~\ref{sec:timed}).
-
-\paragraph{Key rotation is part of consensus.} Every block says which
-version of its producer's key signed it, so the chain orders key
-rotations like any other event. All three rotation modes recover from
-lost keys; two, a public schedule and a lockstep counter with key
-erasure, are safe against an attacker who steals keys and keeps them,
-each with a short list of operator duties and clients that may sleep as
-long as they like (Section~\ref{sec:opmodel}).
+\paragraph{The design.} A fixed roster of $n$ validators takes turns
+producing blocks, one per time slot, in a public order, with no votes and
+no view changes. A chain is valid only if every past window of $n$ slots
+holds blocks from at least two thirds of the validators, the
+\emph{density} rule (Section~\ref{sec:protocol}). While the fault budget
+holds, this makes deep forks impossible: a block $n$ deep is final, at a
+fixed depth, not a probability, and fork choice matters only for
+liveness. A node keeps no history, only a recursive proof that the chain
+so far is valid plus a tail of signed blocks (Section~\ref{sec:rules}).
+Over a deployment's life keys leak, and old leaked keys can sign a fake
+history: the classic long-range attack. The fault budget counts, per
+window, only keys exposed in a short stretch of real time around it, so
+a client that rejects certificates older than $\varphi$ slots is exactly
+the client for whom later leaks do not matter, and no attacker can
+prepare a valid chain that runs far ahead of real time
+(Section~\ref{sec:timed}). Every block states its key version, so the
+chain orders rotations like any other event. All three rotation modes
+recover from lost keys; two, a public schedule and a lockstep counter
+with key erasure, are safe against an attacker who steals keys and keeps
+them, each with a short list of operator duties and clients that may
+sleep as long as they like (Section~\ref{sec:opmodel}).
 
 \paragraph{Proofs about the shipped client.} The client is one Rust
 file. We translate it into Lean~4 (with Charon and Aeneas) and prove the
@@ -348,15 +339,11 @@ A block has six fields:
 B = (\mathit{slot},\ \mathit{height},\ \mathit{prev},\ \mathit{id},\
 \mathit{contentsHash},\ \mathit{keyIndex}).
 \]
-\begin{itemize}
-\item \code{contentsHash} commits to the payload (the transactions),
-  which travels separately. No consensus rule looks inside it.
-\item \code{keyIndex} is the version of the key that signed the block.
-  Key rotation is therefore part of the chain itself.
-\item \code{prev} is the parent's id, and \code{id} is the block's own
-  hash.
-\end{itemize}
-The producer's signature travels next to the block, not inside it.
+\code{contentsHash} commits to the payload (the transactions), which
+travels separately; no consensus rule looks inside it. \code{keyIndex}
+is the version of the key that signed the block, so key rotation is part
+of the chain itself. \code{prev} is the parent's id, and \code{id} is
+the block's own hash. The producer's signature travels next to the block, not inside it.
 
 Ids follow a fixed rule, which the deployed client and the
 certificate's circuit both recompute:
@@ -365,15 +352,12 @@ certificate's circuit both recompute:
 \mathit{parentSig},\ \mathit{contentsHash},\ \mathit{keyIndex}).
 \]
 The model's rules treat ids as opaque, but two inputs of the hash
-matter later:
-\begin{itemize}
-\item The \emph{parent's signature} is hashed in. So anyone building a
-  fake chain must produce its signatures one after another, never all at
-  once. Section~\ref{sec:timed} turns this into a bound in real time.
-\item The \emph{key version} is hashed in. Otherwise two blocks that
-  differ only in key version would have the same id as soon as anyone
-  rotated a key.
-\end{itemize}
+matter later. The \emph{parent's signature} is hashed in, so anyone
+building a fake chain must produce its signatures one after another,
+never all at once; Section~\ref{sec:timed} turns this into a bound in
+real time. The \emph{key version} is hashed in; otherwise two blocks
+that differ only in key version would have the same id as soon as anyone
+rotated a key.
 
 A \emph{chain} is a sequence of blocks starting at a genesis block
 (height zero, no parent). Heights go up by one, slots strictly increase,
@@ -431,14 +415,9 @@ deployment provides:
 
 There is no key directory to trust: a verifier looks nothing up. Each
 validator has one offline master key (a \emph{cold root}), created at the
-deployment ceremony. A block's signature is really a bundle:
-\begin{itemize}
-\item the signing public key,
-\item a delegation certificate, signed by the cold root, that binds this
-  key to validator $i$ \emph{and version $j$}, and
-\item the signature itself.
-\end{itemize}
-The delegation must name the version. A key that could answer for
+deployment ceremony. A block's signature is really a bundle: the signing public key, a
+delegation certificate, signed by the cold root, that binds this key to
+validator $i$ \emph{and version $j$}, and the signature itself. The delegation must name the version. A key that could answer for
 several versions is exactly the key reuse that Section~\ref{sec:results}
 must rule out.
 
@@ -512,12 +491,9 @@ chain only if:
   mode 3 the lockstep rule. This is the only check that depends on the
   mode, and Theorem~\ref{thm:lc} uses none of it.
 \end{enumerate}
-Check~5 is not part of \code{validCertifiedChain}, which runs checks 1
-to~4 only. The key-version checks are stated for full chains
-(\code{validSignedChainK$'$} and its mode 2 and 3 variants), and appear
-in the certificate theorems as hypotheses on the tail. At a certificate
-boundary, mode 1's check needs each validator's version floor, which the
-fold certificate carries and the Rust client takes from it
+Check~5 is not part of \code{validCertifiedChain} (checks 1--4); it is
+part of the full-chain validators (\code{validSignedChainK$'$} and
+twins) and a tail hypothesis in the certificate theorems
 (Section~\ref{sec:rotation}).
 
 The model re-checks density from the genesis (\code{validChain}). A
