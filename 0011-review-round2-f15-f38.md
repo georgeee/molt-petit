@@ -8,7 +8,7 @@ created: 2026-10-15
 updated: 2026-10-15
 needs_george: "75ed6a9 is a [FOR GEORGE REVIEW] commit (pre-assumption sections): F19/F21/F22/F30 + cuts F31-F34"
 data: [bare1:/srv/agent-cage/etheron-bare/agent/etheron-bare/work/review-moltpetit/review-5.md, bare1:/srv/agent-cage/etheron-bare/agent/etheron-bare/work/review-moltpetit/memo-6.md]
-commits: [molt-petit@ac6a2e5, molt-petit@f179dbe, molt-petit@75ed6a9 (local; gate queued with Diane apps 18)]
+commits: [molt-petit@ac6a2e5, molt-petit@f179dbe, molt-petit@75ed6a9 (pushed main+publish-prep 11:31Z, gate green)]
 ---
 
 George 10-15 mandate: iterate with the reviewer on three axes (paper text faithful to the Lean, no carve-outs,
