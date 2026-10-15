@@ -669,12 +669,6 @@ about: a fork-choice property, which we do not model
 \section{What the theorems guarantee}
 \label{sec:results}
 
-This section states the results in plain words; each name in brackets
-points to the exact statement. We cover light-client safety
-(Theorem~\ref{thm:lc}), the fact it rests on, that no valid chain runs
-ahead of real time (Theorem~\ref{thm:forge}), the rotation modes, and
-liveness.
-
 \paragraph{Two kinds of attacker.} The \emph{exposure} attacker of
 Section~\ref{sec:assumptions} obtains keys at any real time, within the
 budget. Theorems~\ref{thm:lc} and~\ref{thm:forge} face it, counting a
@@ -698,12 +692,12 @@ the model only.
 Fix $n \ge 1$, a genesis $G$, a freshness $\varphi$, an honest clock
 lead $\sigma$, and a lookback $\ell$ with $\ell \ge n - 1$ and
 $\ell \ge n + \fmax + \sigma + 1 - \quorum$. Assume:
-\begin{itemize}
+\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}\setlength{\parsep}{0pt}
 \item \emph{Signing} (\code{SigningExecutionOn}): Assumption~\ref{ass:sig}
   (a) and (c) and Assumption~\ref{ass:hash}, for admissible blocks:
   while a key is unexposed it signs at most one admissible block per slot
   (\code{honest\_once}); a block is signed only after its parent exists
-  (\code{chain\_order}); no two admissible blocks share an id
+  (\code{chain\_order}); admissible blocks have distinct ids
   (\code{id\_inj});
 \item \emph{Clocks} (\code{HonestClockOn}): honest clocks run at most
   $\sigma$ slots ahead;
@@ -778,13 +772,11 @@ window. Either way, too few blocks remain to reach $\quorum$.
 \subsection{Key rotation}
 \label{sec:rotation}
 
-Each block states its key version (\code{keyIndex}). A deployment adds
-one rule, the \emph{pin}: a lower bound on the version a block may state
-(exact per grid window in mode 3). The pin is what makes a retired key
-\emph{dead} rather than merely old. The modes differ only in what sets
-it: the chain itself (mode 1), the slot number through a fixed schedule
-(mode 2), or a roster-wide counter read off the signatures (mode 3).
-That choice decides what a light client must hold.
+A deployment's \emph{pin} bounds the \code{keyIndex} a block may state
+(exact per grid window in mode~3), and makes a retired key \emph{dead}
+rather than merely old. It comes from the chain (mode~1), a fixed
+schedule (mode~2), or a roster counter read off the signatures (mode~3);
+that choice decides what a light client must hold.
 
 \paragraph{Lost keys, in every mode.} A destroyed key is held by no one,
 so losing it exposes nothing and charges nothing to the budget, provided
@@ -1123,10 +1115,8 @@ less than a slot (\code{slot\_time\_sufficient},
 
 \paragraph{One source, three uses.} The reference implementation is one
 Rust file, \code{rust/src/lib.rs}, in the subset of Rust that Charon +
-Aeneas translates to Lean~4.
-
-\emph{The native validator.} Its translation is proved sound against the
-model: a chain the code accepts is valid in the model
+Aeneas translates to Lean~4. Its native validator is proved sound
+against the model: a chain the code accepts is valid in the model
 (\code{rust\_valid\_chain\_sound}; mode~1, with monotone versions:
 \code{rust\_valid\_chain\_k\_sound}).
 
@@ -1376,12 +1366,10 @@ Subjectivity}. Ethereum blog, 2014.
 
 \bibitem{mina}
 J.~Bonneau, I.~Meckler, V.~Rao, E.~Shapiro.
-\emph{Mina: Decentralized Cryptocurrency at Scale}. Whitepaper, 2020.
-IACR ePrint 2020/352.
+\emph{Mina: Decentralized Cryptocurrency at Scale}. IACR ePrint 2020/352.
 
 \bibitem{plumo}
-P.~Vesely, K.~G\"urkan, M.~Straka, A.~Gabizon, P.~Jovanovic,
-G.~Konstantopoulos, A.~Oines, M.~Olszewski, E.~Tromer.
+P.~Vesely et al.
 \emph{Plumo: An Ultralight Blockchain Client}. FC
 2022.
 
@@ -1399,7 +1387,7 @@ E.~Buchman, J.~Kwon, Z.~Milosevic.
 \emph{The latest gossip on BFT consensus}. arXiv:1807.04938, 2018.
 
 \bibitem{hotstuff}
-M.~Yin, D.~Malkhi, M.~K.~Reiter, G.~Golan~Gueta, I.~Abraham.
+M.~Yin et al.
 \emph{HotStuff: BFT Consensus in the Lens of Blockchain}. PODC 2019.
 
 \bibitem{canettisig}
@@ -1421,12 +1409,10 @@ Y.~Dodis, J.~Katz, S.~Xu, M.~Yung.
 
 \bibitem{stakebleeding}
 P.~Ga\v{z}i, A.~Kiayias, A.~Russell.
-\emph{Stake-Bleeding Attacks on Proof-of-Stake Blockchains}. Crypto Valley
-Conference on Blockchain Technology (CVCBT) 2018.
+\emph{Stake-Bleeding Attacks on Proof-of-Stake Blockchains}. CVCBT 2018.
 
 \bibitem{sphincsplus}
-D.~J.~Bernstein, A.~H\"ulsing, S.~K\"olbl, R.~Niederhagen, J.~Rijneveld,
-P.~Schwabe.
+D.~J.~Bernstein et al.
 \emph{The SPHINCS+ Signature Framework}. ACM CCS 2019.
 
 \bibitem{fips205}
@@ -1434,11 +1420,11 @@ NIST.
 \emph{Stateless Hash-Based Digital Signature Standard}. FIPS 205, 2024.
 
 \bibitem{xmssrfc}
-A.~H\"ulsing, D.~Butin, S.~Gazdag, J.~Rijneveld, A.~Mohaisen.
+A.~H\"ulsing et al.
 \emph{XMSS: eXtended Merkle Signature Scheme}. RFC 8391, 2018.
 
 \bibitem{poseidon}
-L.~Grassi, D.~Khovratovich, C.~Rechberger, A.~Roy, M.~Schofnegger.
+L.~Grassi et al.
 \emph{Poseidon: A New Hash Function for Zero-Knowledge Proof Systems}.
 USENIX Security 2021.
 
@@ -1448,14 +1434,12 @@ V.~Rahli, I.~Vukoti\'c, M.~V\"olp, P.~Esteves-Verissimo.
 ESOP 2018.
 
 \bibitem{verdi}
-J.~R.~Wilcox, D.~Woos, P.~Panchekha, Z.~Tatlock, X.~Wang, M.~D.~Ernst,
-T.~Anderson.
+J.~R.~Wilcox et al.
 \emph{Verdi: A Framework for Implementing and Formally Verifying
 Distributed Systems}. PLDI 2015.
 
 \bibitem{ironfleet}
-C.~Hawblitzel, J.~Howell, M.~Kapritsos, J.~R.~Lorch, B.~Parno,
-M.~L.~Roberts, S.~Setty, B.~Zill.
+C.~Hawblitzel et al.
 \emph{IronFleet: Proving Practical Distributed Systems Correct}. SOSP
 2015.
 
@@ -1473,12 +1457,11 @@ J.~Alama. \emph{Thales: a TypeScript-to-Lean compiler}.
 
 \bibitem{aeneas}
 S.~Ho, J.~Protzenko. \emph{Aeneas: Rust Verification by Functional
-Translation}. ICFP 2022. (With the Charon frontend,
-\url{https://github.com/AeneasVerif}.)
+Translation}. ICFP 2022.
 
 \bibitem{plonky2}
 Polygon Zero. \emph{Plonky2: Fast Recursive Arguments with PLONK and
-FRI}. \url{https://github.com/0xPolygonZero/plonky2}.
+FRI}. \url{github.com/0xPolygonZero/plonky2}.
 
 \end{thebibliography}
 }
