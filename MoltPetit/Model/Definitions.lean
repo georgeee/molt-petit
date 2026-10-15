@@ -63,40 +63,6 @@ def genesisBlock (id : Nat) : Block :=
 -- ---------------------------------------------------------------------------
 
 /--
-Full validation of a signed chain: signature check + structural validity.
-
-`sigsOk` is checked first so invalid-signature blocks are rejected before
-the more expensive structural replay.
--/
-def validSignedChain {σ sk pk : Type} (n : Nat) (ops : SigOps σ sk pk)
-    (registry : KeyRegistry pk) (sc : SignedChain σ) : Bool :=
-  sigsOk n ops registry sc && validChain n (stripSigs sc)
-
-/--
-Honest signed block production.
-
-Signs the candidate block with `myKey`, then returns `some sb` only if:
-- the slot belongs to `me` under the rotation,
-- the signature verifies against the registry entry for this slot, and
-- the extended chain is structurally valid.
-
-The block is signed *before* the validity check so the signature is part of
-what the chain validator sees (matching exactly what other participants
-receive on the wire).
--/
-def produceSignedBlock? {σ sk pk : Type} (n me slot newId : Nat) (contentsHash keyIndex : Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (myKey : sk)
-    (sc : SignedChain σ) : Option (SignedBlock σ) :=
-  if producerForSlot n slot ≠ me then none
-  else
-    match (stripSigs sc).getLast? with
-    | none => none
-    | some tip =>
-      let b  := nextBlock slot newId contentsHash keyIndex tip
-      let sb : SignedBlock σ := { block := b, sig := ops.sign myKey b }
-      if validSignedChain n ops registry (sc ++ [sb]) then some sb else none
-
-/--
 Signed chain selection: adopt `candidate` if it is valid and strictly longer.
 -/
 def selectSignedChain {σ sk pk : Type} (n : Nat) (ops : SigOps σ sk pk)
@@ -272,19 +238,6 @@ def chainSlotsIn (c : Chain) (u len : Nat) : Finset Nat :=
 -- ===========================================================================
 -- 4. The signing model
 -- ===========================================================================
-
-/--
-Correctness of the signature scheme: a signature produced with `sk_i`
-verifies under the registry entry `registry[i]`, whenever `i` is the
-designated producer of the block's slot.
--/
-structure SigCorrect {σ sk pk : Type} (n : Nat)
-    (ops : SigOps σ sk pk) (registry : KeyRegistry pk) (keyPair : Nat → Nat → sk) :
-    Prop where
-  verify_sign :
-    ∀ (i j : Nat) (b : Block),
-      producerForSlot n b.slot = i → b.keyIndex = j →
-      ops.verify (registry i j) b (ops.sign (keyPair i j) b) = true
 
 -- ===========================================================================
 -- 5. TS bridge injections and the per-block signature predicate

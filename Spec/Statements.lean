@@ -1293,6 +1293,53 @@ def thm_lockstep_liveness_produce_block : Prop :=
     validSignedChainLock n ops registry
       (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip, sig⟩]) = true
 
+/-- Paper: sec:liveness. Signed liveness under the mode-free validator: with a
+correct signature scheme, the honest producer's signed block is produced. -/
+def thm_liveness_produce_signed_block : Prop :=
+  ∀ {σ sk pk : Type} {n me slot newId : Nat} {contentsHash keyIndex : Nat} (hn : 1 ≤ n)
+    {ops : SigOps σ sk pk} {registry : KeyRegistry pk} {keyPair : Nat → Nat → sk}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain σ} {tip : Block}
+    (hSig      : SigCorrect n ops registry keyPair)
+    (hBudget   : ByzantineBounded n bad)
+    (hValid    : validSignedChain n ops registry sc = true)
+    (hTipEq    : (stripSigs sc).getLast? = some tip)
+    (hTipLt    : tip.slot < slot)
+    (hMine     : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+        HonestBlocksCover bad record
+          (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n),
+    produceSignedBlock? n me slot newId contentsHash keyIndex ops registry (keyPair me keyIndex) sc =
+      some ⟨nextBlock slot newId contentsHash keyIndex tip,
+            ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩
+
+/-- Paper: sec:liveness. Mode 1, signed: with a correct signature scheme and
+a version at least the producer's floor, the signed block is produced and the
+signed extension passes mode 1's signed validator. -/
+def thm_liveness_produce_signed_blockK : Prop :=
+  ∀ {σ sk pk : Type} {n Δconf me slot newId : Nat} {contentsHash keyIndex : Nat} (hn : 1 ≤ n)
+    {ops : SigOps σ sk pk} {registry : KeyRegistry pk} {keyPair : Nat → Nat → sk}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain σ} {tip : Block}
+    (hSig      : SigCorrect n ops registry keyPair)
+    (hBudget   : ByzantineBounded n bad)
+    (hValidK'  : validSignedChainK' n Δconf ops registry sc = true)
+    (hTipEq    : (stripSigs sc).getLast? = some tip)
+    (hTipLt    : tip.slot < slot)
+    (hMine     : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+        HonestBlocksCover bad record
+          (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hFloor    : keyFloor n (stripSigs sc) me ≤ keyIndex),
+    produceSignedBlock? n me slot newId contentsHash keyIndex ops registry (keyPair me keyIndex) sc =
+      some ⟨nextBlock slot newId contentsHash keyIndex tip,
+            ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩ ∧
+    validSignedChainK' n Δconf ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip,
+              ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩]) = true
+
 /-- Paper: cited in sec:rotation. The timed lockstep package gives the
 per-generation one, so every per-generation theorem (unequal heights,
 genesis agreement, certificate and history forms) applies to it. -/
@@ -1477,14 +1524,14 @@ section
 open Aeneas Std Result Rust molt_petit
 
 /-- Paper: Theorem thm:lc, end to end. Two clients that accept with
-`validate_deployed` at clock readings `now`, `now'` (each at most `δ` behind
-real time `R`, recency bound `Δ`, `Δ + δ ≤ φ`) agree on every block `n` deep
+`validate_deployed` at clock readings `now`, `now'` (at most `δ` behind real
+times `R`, `R'` at most `d` apart, recency bound `Δ`, `Δ + δ + d ≤ φ`) agree on every block `n` deep
 in the full chains: the attested history, then the tail. -/
 def thm_rust_deployed_agreement : Prop :=
   ∀ {σ ℓ φ δ : Nat} {n q Δ : U64} (hn : 1 ≤ n.val) (hq : quorum n = ok q)
     {C} (I : CryptoD C) (crypto : C)
     {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
-    {G : Block} {R : Nat}
+    {G : Block} {R R' d : Nat}
     (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
     {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
     (hexec : MoltPetit.Model.SigningExecutionOn (DSigned I crypto n G) exposed log (toModelBlock G))
@@ -1492,9 +1539,10 @@ def thm_rust_deployed_agreement : Prop :=
     (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ exposed)
     (hL : n.val ≤ ℓ + 1)
     (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
-    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → ∃ r ≤ R, B ∈ log r)
-    (hφ : Δ.val + δ ≤ φ)
-    {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R ≤ now'.val + δ)
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → ∃ r ≤ max R R', B ∈ log r)
+    (hφ : Δ.val + δ + d ≤ φ)
+    {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R' ≤ now'.val + δ)
+    (hRR : R ≤ R' + d ∧ R' ≤ R + d)
     {cert cert' : Hash} {suffix suffix' : SignedChain}
     (hval  : validate_deployed I n now  Δ crypto cert  suffix  = ok true)
     (hval' : validate_deployed I n now' Δ crypto cert' suffix' = ok true)
@@ -1517,7 +1565,7 @@ def thm_rust_deployed_k_agreement : Prop :=
   ∀ {σ ℓ φ δ : Nat} {n q Δ : U64} (hn : 1 ≤ n.val) (hq : quorum n = ok q)
     {C} (I : CryptoD C) (crypto : C)
     {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
-    {G : Block} {R : Nat}
+    {G : Block} {R R' d : Nat}
     (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
     {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
     (hexec : MoltPetit.Model.SigningExecutionOn (DSigned I crypto n G) exposed log (toModelBlock G))
@@ -1525,9 +1573,10 @@ def thm_rust_deployed_k_agreement : Prop :=
     (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ exposed)
     (hL : n.val ≤ ℓ + 1)
     (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
-    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → ∃ r ≤ R, B ∈ log r)
-    (hφ : Δ.val + δ ≤ φ)
-    {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R ≤ now'.val + δ)
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → ∃ r ≤ max R R', B ∈ log r)
+    (hφ : Δ.val + δ + d ≤ φ)
+    {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R' ≤ now'.val + δ)
+    (hRR : R ≤ R' + d ∧ R' ≤ R + d)
     {cert cert' : Hash} {suffix suffix' : SignedChain}
     (hval  : validate_deployed_k I n now  Δ crypto cert  suffix  = ok true)
     (hval' : validate_deployed_k I n now' Δ crypto cert' suffix' = ok true)
@@ -1555,7 +1604,7 @@ def thm_rust_deployed_sched_agreement : Prop :=
     (hera : 0 < era.val)
     {C} (I : CryptoD C) (crypto : C)
     {Controlled : Nat → Nat → Prop} {Stolen : Nat → Nat → Nat → Prop}
-    {log : MoltPetit.Model.TimedLog} {G : Block} {R : Nat}
+    {log : MoltPetit.Model.TimedLog} {G : Block} {R R' d : Nat}
     (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
     {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
     (hexec : MoltPetit.Model.SigningExecutionOn
@@ -1569,9 +1618,10 @@ def thm_rust_deployed_sched_agreement : Prop :=
     (hL : n.val ≤ ℓ + 1)
     (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
     (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → B.slot / era.val ≤ B.keyIndex →
-      ∃ r ≤ R, B ∈ log r)
-    (hφ : Δ.val + δ ≤ φ)
-    {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R ≤ now'.val + δ)
+      ∃ r ≤ max R R', B ∈ log r)
+    (hφ : Δ.val + δ + d ≤ φ)
+    {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R' ≤ now'.val + δ)
+    (hRR : R ≤ R' + d ∧ R' ≤ R + d)
     {cert cert' : Hash} {suffix suffix' : SignedChain}
     (hval  : validate_deployed_sched I n era now  Δ crypto cert  suffix  = ok true)
     (hval' : validate_deployed_sched I n era now' Δ crypto cert' suffix' = ok true)
@@ -1705,6 +1755,176 @@ def thm_rust_produce_block_deployed_live : Prop :=
       strip_sigs suffix' = ok tl' ∧
       toModelChain tl' = toModelChain tl ++ [toModelBlock nb] ∧
       nb.slot = at_slot ∧ nb.key_index = key_index ∧ nb.contents_hash = contents
+
+/-- Paper: sec:impl. As `rust_produce_block_deployed_live`, with the density
+derived: at most `maxByzantine n` bad slots in any `n` (`hBudget`), and every
+honest slot of each window the new block completes holds a block of the chain
+the producer has, or is the new slot (`hCover`, Assumption ass:delivery). -/
+def thm_rust_produce_block_deployed_live_budget : Prop :=
+  ∀ {n me at_slot Δ key_index : U64} {contents sk cert : Hash} {suffix : SignedChain}
+    {C} (I : CryptoD C) (crypto : C)
+    {st : CertStateG U64} {cl : CertClaim} {tl : Chain} {tipS tipH : U64} {ts : Hash}
+    (hn : 1 ≤ n.val)
+    (hst : I.cert_state crypto cert = ok st)
+    (hts : I.cert_tip_sig crypto cert = ok ts)
+    (hcl : claim_of_state n st = ok cl)
+    (hcv : I.CryptoInst.cert_verify crypto cert = ok true)
+    (hstr : strip_sigs suffix = ok tl)
+    (hsig : sigs_ok I.CryptoInst n crypto suffix = ok true)
+    (hids : ids_ok I crypto (some ts) suffix = ok true)
+    (hsuf : validate_suffix n cl tl = ok true)
+    (hMine : producer_for_slot n at_slot = ok me)
+    (htipS : tip_slot_from cl.tip_slot tl = ok tipS)
+    (htipH : signed_tip_height_from cl.tip_height suffix = ok tipH)
+    (hLt : tipS.val < at_slot.val)
+    (hH : tipH.val + 1 < 2 ^ 64)
+    (hsmall : n.val < 2 ^ 62) (hS : at_slot.val < 2 ^ 62)
+    (htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val)
+    (hlen : (toModelChain cl.tail).length + (toModelChain tl).length < 2 ^ 62)
+    (hSign : ∀ b : Block, ∃ key s, I.CryptoInst.key_for crypto me key_index = ok key ∧
+      I.CryptoInst.sign crypto sk b = ok s ∧ I.CryptoInst.verify crypto key b s = ok true)
+    (hId : ∀ s h p ps c k, ∃ id, I.block_id crypto s h p ps c k = ok id)
+    {bad : MoltPetit.Model.ByzantineSlots}
+    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    (hCover : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      ∀ s, ¬ bad s → u ≤ s → s < u + n.val →
+        s = at_slot.val ∨ ∃ B ∈ (toModelClaim cl).tail ++ toModelChain tl, B.slot = s)
+    ∃ (suffix' : SignedChain) (tl' : Chain) (nb : Block),
+      produce_block_deployed I n me at_slot Δ contents key_index sk crypto cert suffix =
+        ok (CertifiedChain.CC cert suffix') ∧
+      validate_deployed I n at_slot Δ crypto cert suffix' = ok true ∧
+      strip_sigs suffix' = ok tl' ∧
+      toModelChain tl' = toModelChain tl ++ [toModelBlock nb] ∧
+      nb.slot = at_slot ∧ nb.key_index = key_index ∧ nb.contents_hash = contents
+
+/-- Paper: sec:impl. Mode 2: the producer runs the mode-free check only, but
+with the schedule pin on the tail and on the new version, its output passes
+`validate_deployed_sched`. -/
+def thm_rust_produce_block_deployed_sched_live : Prop :=
+  ∀ {n me at_slot Δ key_index : U64} {contents sk cert : Hash} {suffix : SignedChain}
+    {C} (I : CryptoD C) (crypto : C)
+    {st : CertStateG U64} {cl : CertClaim} {tl : Chain} {tipS tipH : U64} {ts : Hash}
+    (hn : 1 ≤ n.val)
+    (hst : I.cert_state crypto cert = ok st)
+    (hts : I.cert_tip_sig crypto cert = ok ts)
+    (hcl : claim_of_state n st = ok cl)
+    (hcv : I.CryptoInst.cert_verify crypto cert = ok true)
+    (hstr : strip_sigs suffix = ok tl)
+    (hsig : sigs_ok I.CryptoInst n crypto suffix = ok true)
+    (hids : ids_ok I crypto (some ts) suffix = ok true)
+    (hsuf : validate_suffix n cl tl = ok true)
+    (hMine : producer_for_slot n at_slot = ok me)
+    (htipS : tip_slot_from cl.tip_slot tl = ok tipS)
+    (htipH : signed_tip_height_from cl.tip_height suffix = ok tipH)
+    (hLt : tipS.val < at_slot.val)
+    (hH : tipH.val + 1 < 2 ^ 64)
+    (hsmall : n.val < 2 ^ 62) (hS : at_slot.val < 2 ^ 62)
+    (htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val)
+    (hlen : (toModelChain cl.tail).length + (toModelChain tl).length < 2 ^ 62)
+    (hSign : ∀ b : Block, ∃ key s, I.CryptoInst.key_for crypto me key_index = ok key ∧
+      I.CryptoInst.sign crypto sk b = ok s ∧ I.CryptoInst.verify crypto key b s = ok true)
+    (hId : ∀ s h p ps c k, ∃ id, I.block_id crypto s h p ps c k = ok id)
+    {bad : MoltPetit.Model.ByzantineSlots}
+    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    (hCover : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      ∀ s, ¬ bad s → u ≤ s → s < u + n.val →
+        s = at_slot.val ∨ ∃ B ∈ (toModelClaim cl).tail ++ toModelChain tl, B.slot = s)
+    {era : U64} (hera : 0 < era.val)
+    (hPinOld : sched_pin_ok era tl = ok true)
+    (hPinNew : at_slot.val / era.val ≤ key_index.val),
+    ∃ suffix' : SignedChain,
+      produce_block_deployed I n me at_slot Δ contents key_index sk crypto cert suffix =
+        ok (CertifiedChain.CC cert suffix') ∧
+      validate_deployed_sched I n era at_slot Δ crypto cert suffix' = ok true
+
+/-- Paper: sec:impl. Mode 3: with the lockstep rule on the tail, and the new
+version at least the certificate's generation and every tail version, and equal
+to those in its own grid window, the output passes `validate_deployed_lock`. -/
+def thm_rust_produce_block_deployed_lock_live : Prop :=
+  ∀ {n me at_slot Δ key_index : U64} {contents sk cert : Hash} {suffix : SignedChain}
+    {C} (I : CryptoD C) (crypto : C)
+    {st : CertStateG U64} {cl : CertClaim} {tl : Chain} {tipS tipH : U64} {ts : Hash}
+    (hn : 1 ≤ n.val)
+    (hst : I.cert_state crypto cert = ok st)
+    (hts : I.cert_tip_sig crypto cert = ok ts)
+    (hcl : claim_of_state n st = ok cl)
+    (hcv : I.CryptoInst.cert_verify crypto cert = ok true)
+    (hstr : strip_sigs suffix = ok tl)
+    (hsig : sigs_ok I.CryptoInst n crypto suffix = ok true)
+    (hids : ids_ok I crypto (some ts) suffix = ok true)
+    (hsuf : validate_suffix n cl tl = ok true)
+    (hMine : producer_for_slot n at_slot = ok me)
+    (htipS : tip_slot_from cl.tip_slot tl = ok tipS)
+    (htipH : signed_tip_height_from cl.tip_height suffix = ok tipH)
+    (hLt : tipS.val < at_slot.val)
+    (hH : tipH.val + 1 < 2 ^ 64)
+    (hsmall : n.val < 2 ^ 62) (hS : at_slot.val < 2 ^ 62)
+    (htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val)
+    (hlen : (toModelChain cl.tail).length + (toModelChain tl).length < 2 ^ 62)
+    (hSign : ∀ b : Block, ∃ key s, I.CryptoInst.key_for crypto me key_index = ok key ∧
+      I.CryptoInst.sign crypto sk b = ok s ∧ I.CryptoInst.verify crypto key b s = ok true)
+    (hId : ∀ s h p ps c k, ∃ id, I.block_id crypto s h p ps c k = ok id)
+    {bad : MoltPetit.Model.ByzantineSlots}
+    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    (hCover : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      ∀ s, ¬ bad s → u ≤ s → s < u + n.val →
+        s = at_slot.val ∨ ∃ B ∈ (toModelClaim cl).tail ++ toModelChain tl, B.slot = s)
+    {g : U64} (hgen : I.cert_gen crypto cert = ok g)
+    (hLockOld : lockstep_from n st.tip_slot g tl = ok true)
+    (hLockNew : g.val ≤ key_index.val ∧
+      (st.tip_slot.val / n.val = at_slot.val / n.val → g = key_index) ∧
+      ∀ B ∈ toModelChain tl, B.keyIndex ≤ key_index.val ∧
+        (B.slot / n.val = at_slot.val / n.val → B.keyIndex = key_index.val)),
+    ∃ suffix' : SignedChain,
+      produce_block_deployed I n me at_slot Δ contents key_index sk crypto cert suffix =
+        ok (CertifiedChain.CC cert suffix') ∧
+      validate_deployed_lock I n at_slot Δ crypto cert suffix' = ok true
+
+/-- Paper: sec:impl. Mode 1: with the certificate's floors well shaped and the
+monotone rule on the tail, and the new version at least the producer's floor
+and every version it stated on the tail, the output passes `validate_deployed_k`. -/
+def thm_rust_produce_block_deployed_k_live : Prop :=
+  ∀ {n me at_slot Δ key_index : U64} {contents sk cert : Hash} {suffix : SignedChain}
+    {C} (I : CryptoD C) (crypto : C)
+    {st : CertStateG U64} {cl : CertClaim} {tl : Chain} {tipS tipH : U64} {ts : Hash}
+    (hn : 1 ≤ n.val)
+    (hst : I.cert_state crypto cert = ok st)
+    (hts : I.cert_tip_sig crypto cert = ok ts)
+    (hcl : claim_of_state n st = ok cl)
+    (hcv : I.CryptoInst.cert_verify crypto cert = ok true)
+    (hstr : strip_sigs suffix = ok tl)
+    (hsig : sigs_ok I.CryptoInst n crypto suffix = ok true)
+    (hids : ids_ok I crypto (some ts) suffix = ok true)
+    (hsuf : validate_suffix n cl tl = ok true)
+    (hMine : producer_for_slot n at_slot = ok me)
+    (htipS : tip_slot_from cl.tip_slot tl = ok tipS)
+    (htipH : signed_tip_height_from cl.tip_height suffix = ok tipH)
+    (hLt : tipS.val < at_slot.val)
+    (hH : tipH.val + 1 < 2 ^ 64)
+    (hsmall : n.val < 2 ^ 62) (hS : at_slot.val < 2 ^ 62)
+    (htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val)
+    (hlen : (toModelChain cl.tail).length + (toModelChain tl).length < 2 ^ 62)
+    (hSign : ∀ b : Block, ∃ key s, I.CryptoInst.key_for crypto me key_index = ok key ∧
+      I.CryptoInst.sign crypto sk b = ok s ∧ I.CryptoInst.verify crypto key b s = ok true)
+    (hId : ∀ s h p ps c k, ∃ id, I.block_id crypto s h p ps c k = ok id)
+    {bad : MoltPetit.Model.ByzantineSlots}
+    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    (hCover : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      ∀ s, ¬ bad s → u ≤ s → s < u + n.val →
+        s = at_slot.val ∨ ∃ B ∈ (toModelClaim cl).tail ++ toModelChain tl, B.slot = s)
+    {fg : FloorsG U64} {fl : FloorList} {f : U64}
+    (hfg : I.cert_floors_state crypto cert = ok fg)
+    (hfl : floors_of_state 0#u64 fg = ok fl)
+    (hshape : floors_shape_ok n fl = ok true)
+    (hKOld : key_mono_from n fl tl = ok true)
+    (hf : floor_lookup fl me = ok f)
+    (hKNew : f.val ≤ key_index.val ∧
+      ∀ B ∈ toModelChain tl, MoltPetit.Model.producerForSlot n.val B.slot = me.val →
+        B.keyIndex ≤ key_index.val),
+    ∃ suffix' : SignedChain,
+      produce_block_deployed I n me at_slot Δ contents key_index sk crypto cert suffix =
+        ok (CertifiedChain.CC cert suffix') ∧
+      validate_deployed_k I n at_slot Δ crypto cert suffix' = ok true
 
 /-- Paper: sec:impl. Completeness of the whole-chain circuit's validator: a
 chain the model accepts, with small slots and heights, is accepted. -/
