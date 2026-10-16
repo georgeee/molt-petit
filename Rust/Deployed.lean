@@ -5178,4 +5178,102 @@ theorem rust_produce_block_deployed_sched_live : MoltPaper.thm_rust_produce_bloc
 
 #print axioms Rust.rust_produce_block_deployed_sched_live
 
+
+theorem lockstep_from_chain_append {n : U64} (hn : 1 ≤ n.val) :
+    ∀ (tl : Chain) (ts g : U64) (nb : Block),
+    lockstep_from n ts g tl = ok true →
+    g.val ≤ nb.key_index.val →
+    (ts.val / n.val = nb.slot.val / n.val → g = nb.key_index) →
+    (∀ B ∈ toModelChain tl, B.keyIndex ≤ nb.key_index.val ∧
+      (B.slot / n.val = nb.slot.val / n.val → B.keyIndex = nb.key_index.val)) →
+    lockstep_from n ts g (chain_append tl nb) = ok true := by
+  intro tl
+  induction tl with
+  | Nil =>
+    intro ts g nb _ hgle hgeq _
+    rw [chain_append, lockstep_from]
+    have hnz : n.val ≠ 0 := by omega
+    obtain ⟨i, hi, hival⟩ := UScalar.div_spec ts hnz
+    obtain ⟨i1, hi1, hival1⟩ := UScalar.div_spec nb.slot hnz
+    rw [hi, hi1]
+    simp only [bind_tc_ok]
+    have hle : g ≤ nb.key_index := by scalar_tac
+    rw [if_pos hle]
+    by_cases heq : i = i1
+    · rw [if_pos heq]
+      have hval_eq : ts.val / n.val = nb.slot.val / n.val := by
+        rw [← hival, ← hival1, heq]
+      have hg_eq : g = nb.key_index := hgeq hval_eq
+      subst hg_eq
+      simp only [bind_tc_ok, decide_true, ite_true]
+      rw [lockstep_from]
+    · rw [if_neg heq]
+      simp only [bind_tc_ok, ite_true]
+      rw [lockstep_from]
+  | Cons b rest ih =>
+    intro ts g nb hOld hgle hgeq htl
+    rw [chain_append, lockstep_from]
+    rw [lockstep_from] at hOld
+    obtain ⟨i, hi, hOld⟩ := bind_inv hOld
+    obtain ⟨i1, hi1, hOld⟩ := bind_inv hOld
+    obtain ⟨ok1, hok1, hOld⟩ := bind_inv hOld
+    rw [hi, hi1]
+    simp only [bind_tc_ok]
+    rw [hok1]
+    simp only [bind_tc_ok]
+    split at hOld
+    · rename_i hok1_true
+      rw [if_pos hok1_true]
+      have hb_mem : toModelBlock b ∈ toModelChain (Chain.Cons b rest) := by
+        simp [toModelChain]
+      have hb_prop := htl (toModelBlock b) hb_mem
+      have hb_key : b.key_index.val ≤ nb.key_index.val := by
+        show (toModelBlock b).keyIndex ≤ nb.key_index.val
+        exact hb_prop.1
+      have hb_eq : b.slot.val / n.val = nb.slot.val / n.val → b.key_index = nb.key_index := by
+        intro hdiv
+        have hki : (toModelBlock b).keyIndex = nb.key_index.val := by
+          apply hb_prop.2
+          show (toModelBlock b).slot / n.val = nb.slot.val / n.val
+          exact hdiv
+        exact UScalar.eq_of_val_eq hki
+      have hrest_prop : ∀ B ∈ toModelChain rest, B.keyIndex ≤ nb.key_index.val ∧
+          (B.slot / n.val = nb.slot.val / n.val → B.keyIndex = nb.key_index.val) := by
+        intro B hB
+        have : B ∈ toModelChain (Chain.Cons b rest) := by
+          simp only [toModelChain, List.mem_cons]
+          exact Or.inr hB
+        exact htl B this
+      exact ih b.slot b.key_index nb hOld hb_key hb_eq hrest_prop
+    · simp at hOld
+
+/-- **Theorem (deployed producer live, lockstep mode)**: mode 3 deployed block production
+succeeds given the Byzantine budget, honest slot coverage, and lockstep rule. -/
+theorem rust_produce_block_deployed_lock_live :
+    MoltPaper.thm_rust_produce_block_deployed_lock_live := by
+  intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
+    hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH
+    hsmall hS htail hlen hSign hId bad hBudget hCover
+    g hgen hLockOld hLockNew
+  obtain ⟨new_suffix, nb, hprod, hval, hstrip', hmodel', hslot, hkey, hcont⟩ :=
+    rust_produce_block_deployed_live_budget_explicit I crypto hn hst hts hcl hcv hstr hsig hids hsuf
+      hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId hBudget hCover
+  refine ⟨new_suffix, hprod, ?_⟩
+  rw [validate_deployed_lock]
+  rw [hst, hgen, hstrip']
+  simp only [bind_tc_ok, hval, ite_true]
+  have hgle : g.val ≤ nb.key_index.val := by
+    rw [hkey]
+    exact hLockNew.1
+  have hgeq : st.tip_slot.val / n.val = nb.slot.val / n.val → g = nb.key_index := by
+    rw [hslot, hkey]
+    exact hLockNew.2.1
+  have htl : ∀ B ∈ toModelChain tl, B.keyIndex ≤ nb.key_index.val ∧
+      (B.slot / n.val = nb.slot.val / n.val → B.keyIndex = nb.key_index.val) := by
+    rw [hslot, hkey]
+    exact hLockNew.2.2
+  exact lockstep_from_chain_append hn tl st.tip_slot g nb hLockOld hgle hgeq htl
+
+#print axioms Rust.rust_produce_block_deployed_lock_live
+
 end Rust

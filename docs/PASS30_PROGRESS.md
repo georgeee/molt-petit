@@ -14,6 +14,6 @@ In progress: 5. S3 lock rust_produce_block_deployed_lock_live.
 - [x] 2. **S4** two check times: `Rust.Deployed` agreement theorems (SPEC S4).
 - [x] 3. **S2** `rust_produce_block_deployed_live_budget` in `Rust/Deployed.lean`.
 - [x] 4. **S3 sched** `rust_produce_block_deployed_sched_live`.
-- [ ] 5. **S3 lock** `rust_produce_block_deployed_lock_live`.
+- [x] 5. **S3 lock** `rust_produce_block_deployed_lock_live`.
 - [ ] 6. **S3 k** `rust_produce_block_deployed_k_live`.
 - [ ] 7. **Close-out:** `Paper/Proofs.lean` entries for the 6 new theorems (S1 x2, S2, S3 x3); `lake build Paper.Proofs`; then a full `lake build` with no sorry.
