@@ -2282,14 +2282,32 @@ theorem cert_step_lock_be_core {n q : U64} {st : CertStateG U64} {g : U64}
   · simp at h
 
 /-- A core fold step sequence: each step passes `cert_step_core_be`. -/
-def FoldCoreOut (n q : U64) : CertStateG U64 → List Block → CertStateG U64 → Prop
+def FoldCoreLoose (n q : U64) : CertStateG U64 → List Block → CertStateG U64 → Prop
   | st, [], stO => stO = st
   | st, b :: bs, stO =>
       cert_step_core_be UBK () n q st (toBlockG b) = ok true ∧
-      ∃ t', FoldCoreOut n q (stepState b t') bs stO
+      ∃ t', FoldCoreLoose n q (stepState b t') bs stO
+
+/-- `FoldCoreOut` implies `FoldCoreLoose`. -/
+theorem foldCoreOut_to_loose {n q : U64} :
+    ∀ {st bs stO},
+    FoldCoreOut n q st bs stO → FoldCoreLoose n q st bs stO := by
+  intro st bs
+  induction bs generalizing st with
+  | nil =>
+    intro stO h
+    dsimp [FoldCoreOut] at h
+    dsimp [FoldCoreLoose]
+    exact h
+  | cons b rest ih =>
+    intro stO h
+    dsimp [FoldCoreOut] at h
+    obtain ⟨hstep, t', ht', hrest⟩ := h
+    dsimp [FoldCoreLoose]
+    refine ⟨hstep, t', ih hrest⟩
 
 /-- `FoldKOut` implies `FoldCoreOut`. -/
-theorem foldKOut_to_core {n q : U64} :
+theorem foldKOut_to_coreOut {n q : U64} :
     ∀ {st fl bs stO out},
     FoldKOut n q st fl bs stO out → FoldCoreOut n q st bs stO := by
   intro st fl bs
@@ -2304,10 +2322,28 @@ theorem foldKOut_to_core {n q : U64} :
     dsimp [FoldKOut] at h
     obtain ⟨hstep, t', fl', ht', hfl', hrest⟩ := h
     dsimp [FoldCoreOut]
+    refine ⟨cert_step_k_be_core hstep, t', ht', ih hrest⟩
+
+/-- `FoldKOut` implies `FoldCoreLoose`. -/
+theorem foldKOut_to_core {n q : U64} :
+    ∀ {st fl bs stO out},
+    FoldKOut n q st fl bs stO out → FoldCoreLoose n q st bs stO := by
+  intro st fl bs
+  induction bs generalizing st fl with
+  | nil =>
+    intro stO out h
+    dsimp [FoldKOut] at h
+    dsimp [FoldCoreLoose]
+    exact h.1
+  | cons b rest ih =>
+    intro stO out h
+    dsimp [FoldKOut] at h
+    obtain ⟨hstep, t', fl', ht', hfl', hrest⟩ := h
+    dsimp [FoldCoreLoose]
     refine ⟨cert_step_k_be_core hstep, t', ih hrest⟩
 
 /-- `FoldSchedOut` implies `FoldCoreOut`. -/
-theorem foldSchedOut_to_core {n q era : U64} :
+theorem foldSchedOut_to_coreOut {n q era : U64} :
     ∀ {st bs stO},
     FoldSchedOut n q era st bs stO → FoldCoreOut n q st bs stO := by
   intro st bs
@@ -2322,10 +2358,28 @@ theorem foldSchedOut_to_core {n q era : U64} :
     dsimp [FoldSchedOut] at h
     obtain ⟨hstep, t', ht', hrest⟩ := h
     dsimp [FoldCoreOut]
+    refine ⟨cert_step_sched_be_core hstep, t', ht', ih hrest⟩
+
+/-- `FoldSchedOut` implies `FoldCoreLoose`. -/
+theorem foldSchedOut_to_core {n q era : U64} :
+    ∀ {st bs stO},
+    FoldSchedOut n q era st bs stO → FoldCoreLoose n q st bs stO := by
+  intro st bs
+  induction bs generalizing st with
+  | nil =>
+    intro stO h
+    dsimp [FoldSchedOut] at h
+    dsimp [FoldCoreLoose]
+    exact h
+  | cons b rest ih =>
+    intro stO h
+    dsimp [FoldSchedOut] at h
+    obtain ⟨hstep, t', ht', hrest⟩ := h
+    dsimp [FoldCoreLoose]
     refine ⟨cert_step_sched_be_core hstep, t', ih hrest⟩
 
 /-- `FoldLockOut` implies `FoldCoreOut`. -/
-theorem foldLockOut_to_core {n q : U64} :
+theorem foldLockOut_to_coreOut {n q : U64} :
     ∀ {st g bs stO gO},
     FoldLockOut n q st g bs stO gO → FoldCoreOut n q st bs stO := by
   intro st g bs
@@ -2340,6 +2394,24 @@ theorem foldLockOut_to_core {n q : U64} :
     dsimp [FoldLockOut] at h
     obtain ⟨hstep, t', ht', hrest⟩ := h
     dsimp [FoldCoreOut]
+    refine ⟨cert_step_lock_be_core hstep, t', ht', ih hrest⟩
+
+/-- `FoldLockOut` implies `FoldCoreLoose`. -/
+theorem foldLockOut_to_core {n q : U64} :
+    ∀ {st g bs stO gO},
+    FoldLockOut n q st g bs stO gO → FoldCoreLoose n q st bs stO := by
+  intro st g bs
+  induction bs generalizing st g with
+  | nil =>
+    intro stO gO h
+    dsimp [FoldLockOut] at h
+    dsimp [FoldCoreLoose]
+    exact h.1
+  | cons b rest ih =>
+    intro stO gO h
+    dsimp [FoldLockOut] at h
+    obtain ⟨hstep, t', ht', hrest⟩ := h
+    dsimp [FoldCoreLoose]
     refine ⟨cert_step_lock_be_core hstep, t', ih hrest⟩
 
 /-- Soundness of history formedness along `FoldCoreOut`:
@@ -2353,7 +2425,7 @@ lemma foldCoreOut_history_formed_aux {C} {I : CryptoD C} {crypto : C} {n q : U64
     st.tip_slot = T.slot →
     st.tip_height = T.height →
     SigHist I crypto n sT bs ts →
-    FoldCoreOut n q st (bs.map Prod.fst) stO →
+    FoldCoreLoose n q st (bs.map Prod.fst) stO →
     (∀ b ∈ bs.map Prod.fst, FormedFrom I crypto n G b) ∧
     ∃ T' : Block,
       FormedFrom I crypto n G T' ∧
@@ -2367,14 +2439,14 @@ lemma foldCoreOut_history_formed_aux {C} {I : CryptoD C} {crypto : C} {n q : U64
     intro T sT st stO ts hT hSigT hst_id hst_slot hst_height hSigHist hFold
     dsimp [SigHist] at hSigHist
     subst hSigHist
-    dsimp [FoldCoreOut] at hFold
+    dsimp [FoldCoreLoose] at hFold
     subst hFold
     refine ⟨by simp, ⟨T, hT, hSigT, hst_id, hst_slot, hst_height⟩⟩
   | cons pair rest ih =>
     obtain ⟨b, s⟩ := pair
     intro T sT st stO ts hT hSigT hst_id hst_slot hst_height hSigHist hFold
     dsimp [List.map] at hFold
-    dsimp [FoldCoreOut] at hFold
+    dsimp [FoldCoreLoose] at hFold
     obtain ⟨hstep, t', hfold_rest⟩ := hFold
     dsimp [SigHist] at hSigHist
     obtain ⟨hSig_b, hid_b, hSigHist_rest⟩ := hSigHist
@@ -2398,7 +2470,7 @@ theorem foldCoreOut_history_formed {C} {I : CryptoD C} {crypto : C} {n q : U64} 
     {bs : List (Block × Hash)} {stO : CertStateG U64} {ts : Hash}
     (hSigG : SigOn I.CryptoInst crypto n G sG)
     (hSig : SigHist I crypto n sG bs ts)
-    (hFold : FoldCoreOut n q (genesisState n.val G) (bs.map Prod.fst) stO) :
+    (hFold : FoldCoreLoose n q (genesisState n.val G) (bs.map Prod.fst) stO) :
     (∀ b ∈ G :: bs.map Prod.fst, FormedFrom I crypto n G b) ∧
     ∃ T : Block,
       FormedFrom I crypto n G T ∧
@@ -2486,7 +2558,7 @@ theorem foldCoreOut_history_dsigned {C} {I : CryptoD C} {crypto : C} {n q : U64}
     {bs : List (Block × Hash)} {stO : CertStateG U64} {ts : Hash}
     (hSigG : SigOn I.CryptoInst crypto n G sG)
     (hSig : SigHist I crypto n sG bs ts)
-    (hFold : FoldCoreOut n q (genesisState n.val G) (bs.map Prod.fst) stO) :
+    (hFold : FoldCoreLoose n q (genesisState n.val G) (bs.map Prod.fst) stO) :
     ∀ B ∈ (G :: bs.map Prod.fst).map toModelBlock, DSigned I crypto n G B := by
   intro B hB
   simp only [List.map_cons, List.mem_cons] at hB
