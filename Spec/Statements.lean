@@ -1788,7 +1788,7 @@ def thm_rust_produce_block_deployed_live_budget : Prop :=
     (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
     (hCover : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
       ∀ s, ¬ bad s → u ≤ s → s < u + n.val →
-        s = at_slot.val ∨ ∃ B ∈ (toModelClaim cl).tail ++ toModelChain tl, B.slot = s)
+        s = at_slot.val ∨ ∃ B ∈ (toModelClaim cl).tail ++ toModelChain tl, B.slot = s),
     ∃ (suffix' : SignedChain) (tl' : Chain) (nb : Block),
       produce_block_deployed I n me at_slot Δ contents key_index sk crypto cert suffix =
         ok (CertifiedChain.CC cert suffix') ∧
