@@ -7,6 +7,7 @@ import MoltPetit.Model.KeyStealingScheduleCert
 import MoltPetit.Model.KeyStealingLockstepCert
 import MoltPetit.Model.ExposureCert
 import MoltPetit.Model.Liveness
+import Rust.BridgeK
 import Spec.Statements
 
 open Aeneas Std Result
@@ -5275,5 +5276,204 @@ theorem rust_produce_block_deployed_lock_live :
   exact lockstep_from_chain_append hn tl st.tip_slot g nb hLockOld hgle hgeq htl
 
 #print axioms Rust.rust_produce_block_deployed_lock_live
+
+theorem floor_bump_total : ∀ (fl : FloorList) (i v : U64),
+    ∃ bumped, floor_bump fl i v = ok bumped
+  | .FNil, i, v => ⟨.FNil, by rw [floor_bump]⟩
+  | .FCons p f tl, i, v => by
+    rw [floor_bump]
+    by_cases hp : p = i
+    · rw [if_pos hp, if_pos hp]
+      by_cases hfv : f < v
+      · rw [if_pos hfv]
+        simp only [bind_tc_ok, clone_floors_eq tl]
+        exact ⟨.FCons p v tl, rfl⟩
+      · rw [if_neg hfv]
+        simp only [bind_tc_ok, clone_floors_eq tl]
+        exact ⟨.FCons p f tl, rfl⟩
+    · rw [if_neg hp, if_neg hp]
+      simp only [bind_tc_ok]
+      obtain ⟨rest, hrest⟩ := floor_bump_total tl i v
+      rw [hrest]
+      simp only [bind_tc_ok]
+      exact ⟨.FCons p f rest, rfl⟩
+
+theorem floor_lookup_bump_le :
+    ∀ (fl : FloorList) (i me v : U64) (bumped : FloorList),
+    floor_bump fl i v = ok bumped →
+    ∀ (f : U64), floor_lookup fl me = ok f →
+    ∃ f', floor_lookup bumped me = ok f' ∧
+      f'.val ≤ (if i = me then max f.val v.val else f.val)
+  | .FNil => by
+    intro i me v bumped hbump f hf
+    rw [floor_bump] at hbump
+    injection hbump with hbump; subst hbump
+    rw [floor_lookup] at hf
+    injection hf with hf; subst hf
+    refine ⟨0#u64, by rw [floor_lookup], ?_⟩
+    split <;> omega
+  | .FCons p f0 tl => by
+    intro i me v bumped hbump f hf
+    rw [floor_bump] at hbump
+    obtain ⟨nf, hnf, hbump⟩ := bind_inv hbump
+    obtain ⟨rest, hrest, hbump⟩ := bind_inv hbump
+    injection hbump with hbump; subst hbump
+    rw [floor_lookup] at hf
+    by_cases hme : p = me
+    · rw [if_pos hme] at hf
+      injection hf with hf; subst hf
+      have hlookup : floor_lookup (FloorList.FCons p nf rest) me = ok nf := by
+        rw [floor_lookup, if_pos hme]
+      refine ⟨nf, hlookup, ?_⟩
+      by_cases hp : p = i
+      · have hi_me : i = me := by subst hp; exact hme
+        rw [if_pos hi_me]
+        rw [if_pos hp] at hnf
+        by_cases hfv : f0 < v
+        · rw [if_pos hfv] at hnf
+          injection hnf with hnf; subst hnf
+          omega
+        · rw [if_neg hfv] at hnf
+          injection hnf with hnf; subst hnf
+          omega
+      · have hi_me : i ≠ me := by intro hc; subst hc; exact hp hme
+        rw [if_neg hi_me]
+        rw [if_neg hp] at hnf
+        injection hnf with hnf; subst hnf
+        omega
+    · rw [if_neg hme] at hf
+      have hlookup : floor_lookup (FloorList.FCons p nf rest) me = floor_lookup rest me := by
+        rw [floor_lookup, if_neg hme]
+      by_cases hp : p = i
+      · have hi_me : i ≠ me := by intro hc; subst hc; exact hme hp
+        rw [if_neg hi_me]
+        rw [if_pos hp] at hrest
+        rw [clone_floors_eq tl] at hrest
+        injection hrest with hrest; subst hrest
+        rw [hlookup, hf]
+        exact ⟨f, rfl, by omega⟩
+      · rw [if_neg hp] at hrest
+        obtain ⟨f', hf', hle⟩ := floor_lookup_bump_le tl i me v rest hrest f hf
+        rw [hlookup, hf']
+        refine ⟨f', rfl, ?_⟩
+        by_cases hi_me : i = me
+        · rw [if_pos hi_me] at hle ⊢
+          exact hle
+        · rw [if_neg hi_me] at hle ⊢
+          exact hle
+
+theorem key_mono_from_chain_append {n : U64} (hn : 1 ≤ n.val) :
+    ∀ (tl : Chain) (fl : FloorList) (me : U64) (nb : Block),
+    producer_for_slot n nb.slot = ok me →
+    key_mono_from n fl tl = ok true →
+    (∀ f, floor_lookup fl me = ok f → f.val ≤ nb.key_index.val) →
+    (∀ B ∈ toModelChain tl, MoltPetit.Model.producerForSlot n.val B.slot = me.val →
+      B.keyIndex ≤ nb.key_index.val) →
+    key_mono_from n fl (chain_append tl nb) = ok true := by
+  intro tl
+  induction tl with
+  | Nil =>
+    intro fl me nb hMine _ hfl_le _
+    rw [chain_append, key_mono_from]
+    rw [hMine]
+    simp only [bind_tc_ok]
+    obtain ⟨f, hf⟩ := floor_lookup_total fl me
+    rw [hf]
+    simp only [bind_tc_ok]
+    obtain ⟨bumped, hbump⟩ := floor_bump_total fl me nb.key_index
+    rw [hbump]
+    simp only [bind_tc_ok]
+    have hle : f ≤ nb.key_index := by
+      have := hfl_le f hf
+      scalar_tac
+    rw [if_pos hle]
+    rw [key_mono_from]
+  | Cons b rest ih =>
+    intro fl me nb hMine hOld hfl_le htl
+    rw [chain_append, key_mono_from]
+    rw [key_mono_from] at hOld
+    obtain ⟨i, hi, hOld⟩ := bind_inv hOld
+    obtain ⟨i1, hi1, hOld⟩ := bind_inv hOld
+    obtain ⟨bumped, hbump, hOld⟩ := bind_inv hOld
+    rw [hi]
+    simp only [bind_tc_ok]
+    rw [hi1]
+    simp only [bind_tc_ok]
+    rw [hbump]
+    simp only [bind_tc_ok]
+    split at hOld
+    · rename_i hle_b
+      rw [if_pos hle_b]
+      have hrest_fl : ∀ f', floor_lookup bumped me = ok f' → f'.val ≤ nb.key_index.val := by
+        intro f' hf'
+        obtain ⟨f, hf⟩ := floor_lookup_total fl me
+        obtain ⟨f'_bump, hf'_bump, hle_bump⟩ := floor_lookup_bump_le fl i me b.key_index bumped hbump f hf
+        have hf'_eq : f' = f'_bump := by
+          rw [hf'] at hf'_bump; injection hf'_bump
+        subst hf'_eq
+        have hf_le : f.val ≤ nb.key_index.val := hfl_le f hf
+        by_cases hi_me : i = me
+        · rw [if_pos hi_me] at hle_bump
+          have hb_mem : toModelBlock b ∈ toModelChain (Chain.Cons b rest) := by simp [toModelChain]
+          have hb_slot : (toModelBlock b).slot = b.slot.val := rfl
+          have hb_key : (toModelBlock b).keyIndex = b.key_index.val := rfl
+          have hn_pos : 0 < n.val := by omega
+          have hc := producer_for_slot_corr n b.slot hn_pos
+          rw [hi] at hc
+          have hiv : MoltPetit.Model.producerForSlot n.val b.slot.val = i.val := by simpa using hc.symm
+          have hprod_b : MoltPetit.Model.producerForSlot n.val (toModelBlock b).slot = me.val := by
+            rw [hb_slot, hiv, hi_me]
+          have hb_le := htl (toModelBlock b) hb_mem hprod_b
+          rw [hb_key] at hb_le
+          omega
+        · rw [if_neg hi_me] at hle_bump
+          omega
+      have hrest_tl : ∀ B ∈ toModelChain rest, MoltPetit.Model.producerForSlot n.val B.slot = me.val →
+          B.keyIndex ≤ nb.key_index.val := by
+        intro B hB
+        have hB' : B ∈ toModelChain (Chain.Cons b rest) := by
+          simp only [toModelChain, List.mem_cons]
+          exact Or.inr hB
+        exact htl B hB'
+      exact ih bumped me nb hMine hOld hrest_fl hrest_tl
+    · simp at hOld
+
+/-- **Theorem (deployed producer live, key rotation mode)**: mode 1 deployed block production
+succeeds given the Byzantine budget, honest slot coverage, and key monotonicity rule. -/
+theorem rust_produce_block_deployed_k_live :
+    MoltPaper.thm_rust_produce_block_deployed_k_live := by
+  intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
+    hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH
+    hsmall hS htail hlen hSign hId bad hBudget hCover
+    fg fl f hfg hfl hshape hKOld hf hKNew
+  obtain ⟨new_suffix, nb, hprod, hval, hstrip', hmodel', hslot, hkey, hcont⟩ :=
+    rust_produce_block_deployed_live_budget_explicit I crypto hn hst hts hcl hcv hstr hsig hids hsuf
+      hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId hBudget hCover
+  refine ⟨new_suffix, hprod, ?_⟩
+  rw [validate_deployed_k]
+  rw [hfg]
+  simp only [bind_tc_ok]
+  rw [hfl]
+  simp only [bind_tc_ok]
+  rw [hstrip']
+  simp only [bind_tc_ok, hval, ite_true, hshape]
+  have hMine_nb : producer_for_slot n nb.slot = ok me := by
+    rw [hslot]
+    exact hMine
+  have hfl_le : ∀ f0, floor_lookup fl me = ok f0 → f0.val ≤ nb.key_index.val := by
+    intro f0 hf0
+    rw [hf] at hf0
+    injection hf0 with hf0
+    subst hf0
+    rw [hkey]
+    exact hKNew.1
+  have htl_prop : ∀ B ∈ toModelChain tl, MoltPetit.Model.producerForSlot n.val B.slot = me.val →
+      B.keyIndex ≤ nb.key_index.val := by
+    intro B hB hprod_B
+    rw [hkey]
+    exact hKNew.2 B hB hprod_B
+  exact key_mono_from_chain_append hn tl fl me nb hMine_nb hKOld hfl_le htl_prop
+
+#print axioms Rust.rust_produce_block_deployed_k_live
 
 end Rust
