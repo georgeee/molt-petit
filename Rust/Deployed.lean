@@ -6,6 +6,7 @@ import MoltPetit.Model.KeyStealingCert
 import MoltPetit.Model.KeyStealingScheduleCert
 import MoltPetit.Model.KeyStealingLockstepCert
 import MoltPetit.Model.ExposureCert
+import MoltPetit.Model.Liveness
 import Spec.Statements
 
 open Aeneas Std Result
@@ -4943,5 +4944,94 @@ theorem rust_produce_block_deployed_live : MoltPaper.thm_rust_produce_block_depl
   refine ⟨new_suffix, chain_append tl nb, nb, hprod, hval, hstrip', hmodel', rfl, rfl, rfl⟩
 
 #print axioms Rust.rust_produce_block_deployed_live
+
+
+lemma window_dense_of_budget_cover
+    {n : U64} {bad : MoltPetit.Model.ByzantineSlots}
+    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    {tipS at_slot : U64}
+    {cl : CertClaim} {tl : Chain}
+    (hCover : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      ∀ s, ¬ bad s → u ≤ s → s < u + n.val →
+        s = at_slot.val ∨ ∃ B ∈ (toModelClaim cl).tail ++ toModelChain tl, B.slot = s)
+    {u : Nat} (hu1 : tipS.val + 2 ≤ u + n.val) (hu2 : u + n.val ≤ at_slot.val + 1) :
+    MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
+      ((toModelClaim cl).tail ++ toModelChain tl ++
+        [{ slot := at_slot.val, height := 0, prev := none, id := 0, contentsHash := 0,
+           keyIndex := 0 }]) u n.val := by
+  classical
+  let dummy : MoltPetit.Model.Block := { slot := at_slot.val, height := 0, prev := none, id := 0, contentsHash := 0, keyIndex := 0 }
+  let c : MoltPetit.Model.Chain := (toModelClaim cl).tail ++ toModelChain tl ++ [dummy]
+  have hSubset : Finset.Ico u (u + n.val) \ MoltPetit.Model.badSlotsIn bad u n.val ⊆
+      (((c.filter (MoltPetit.Model.blockInWindow u n.val)).map MoltPetit.Model.Block.slot).toFinset) := by
+    intro s hs
+    rw [Finset.mem_sdiff] at hs
+    obtain ⟨hIco, hNotBad⟩ := hs
+    rw [Finset.mem_Ico] at hIco
+    have hHonest : ¬ bad s := by
+      intro hbad
+      apply hNotBad
+      unfold MoltPetit.Model.badSlotsIn
+      exact Finset.mem_filter.mpr ⟨Finset.mem_Ico.mpr hIco, hbad⟩
+    have hcov := hCover u hu1 hu2 s hHonest hIco.1 hIco.2
+    cases hcov with
+    | inl hs_at =>
+      rw [List.mem_toFinset, List.mem_map]
+      refine ⟨dummy, ?_, by simp [dummy, hs_at]⟩
+      rw [List.mem_filter]
+      refine ⟨by simp [c], ?_⟩
+      rw [MoltPetit.Model.blockInWindow, decide_eq_true_iff]
+      simp only [dummy]
+      omega
+    | inr hs_chain =>
+      obtain ⟨B, hBmem, hBslot⟩ := hs_chain
+      rw [List.mem_toFinset, List.mem_map]
+      refine ⟨B, ?_, hBslot⟩
+      rw [List.mem_filter]
+      refine ⟨by simp only [c, List.mem_append, hBmem, true_or], ?_⟩
+      rw [MoltPetit.Model.blockInWindow, decide_eq_true_iff]
+      omega
+  have hCard := Finset.card_le_card hSubset
+  have hToFinset : (((c.filter (MoltPetit.Model.blockInWindow u n.val)).map MoltPetit.Model.Block.slot).toFinset).card ≤
+      ((c.filter (MoltPetit.Model.blockInWindow u n.val)).map MoltPetit.Model.Block.slot).length := List.toFinset_card_le _
+  rw [List.length_map] at hToFinset
+  change _ ≤ MoltPetit.Model.windowCount c u n.val at hToFinset
+  have hTarget : MoltPetit.Model.windowCount c u n.val =
+      MoltPetit.Model.windowCount
+        ((toModelClaim cl).tail ++ toModelChain tl ++
+          [{ slot := at_slot.val, height := 0, prev := none, id := 0, contentsHash := 0,
+             keyIndex := 0 }]) u n.val := rfl
+  rw [hTarget] at hToFinset
+  have hSdiff : (Finset.Ico u (u + n.val) \ MoltPetit.Model.badSlotsIn bad u n.val).card =
+      (Finset.Ico u (u + n.val)).card -
+        (MoltPetit.Model.badSlotsIn bad u n.val ∩ Finset.Ico u (u + n.val)).card :=
+    Finset.card_sdiff
+  have hInter : (MoltPetit.Model.badSlotsIn bad u n.val ∩ Finset.Ico u (u + n.val)).card ≤
+      (MoltPetit.Model.badSlotsIn bad u n.val).card :=
+    Finset.card_le_card Finset.inter_subset_left
+  have hIcoCard : (Finset.Ico u (u + n.val)).card = n.val := by
+    rw [Nat.card_Ico]
+    omega
+  have hBad := hBudget u
+  have hArith := MoltPetit.Model.quorum_plus_byzantine_le n.val
+  omega
+
+/-- **Theorem (deployed producer live with budget)**: mode 0 deployed block production succeeds
+given the Byzantine budget and honest slot coverage. -/
+theorem rust_produce_block_deployed_live_budget : MoltPaper.thm_rust_produce_block_deployed_live_budget := by
+  intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
+    hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId bad hBudget hCover
+  have hDense : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
+        ((toModelClaim cl).tail ++ toModelChain tl ++
+          [{ slot := at_slot.val, height := 0, prev := none, id := 0, contentsHash := 0,
+             keyIndex := 0 }]) u n.val := by
+    intro u hu1 hu2
+    exact window_dense_of_budget_cover hBudget hCover hu1 hu2
+  exact rust_produce_block_deployed_live I crypto hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH
+    hsmall hS htail hlen hSign hId hDense
+
+
+#print axioms Rust.rust_produce_block_deployed_live_budget
 
 end Rust
