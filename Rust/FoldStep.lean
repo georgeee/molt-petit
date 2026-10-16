@@ -1263,6 +1263,83 @@ theorem cert_fold_sched_sound : MoltPaper.thm_cert_fold_sched_sound := by
   simp only [List.nil_append] at hsound
   exact hsound
 
+lemma foldCore_sound_aux {n q : U64} {G : Block}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64) (stO : CertStateG U64),
+    (∀ b ∈ bs, Signed (toModelBlock b)) →
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    MoltPetit.Model.GroundedCert n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    FoldCoreOut n q st bs stO →
+    MoltPetit.Model.GroundedCert n.val Signed (toModelBlock G)
+      (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock)) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st stO hSig hrep hcert hfold
+    simp only [List.append_nil]
+    exact hcert
+  | cons b rest ih =>
+    intro pre st stO hSig hrep hcert hfold
+    dsimp [FoldCoreOut] at hfold
+    obtain ⟨hcore, t', ht', hfold_rest⟩ := hfold
+    obtain ⟨hheight, hslot, hprev, hdense⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hSig_b : Signed (toModelBlock b) := hSig b (by simp)
+    have hSig_rest : ∀ x ∈ rest, Signed (toModelBlock x) := fun x hx => hSig x (by simp [hx])
+    let cl := modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)
+    have hcert' := MoltPetit.Model.GroundedCert.extend cl (toModelBlock b)
+      hcert hheight hslot hprev hSig_b hdense
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := (cl.tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hcert_step : MoltPetit.Model.GroundedCert n.val Signed
+        (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hcert'
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hres := ih (pre ++ [b]) (stepState b t') stO hSig_rest hrep_step hcert_step hfold_rest
+    rw [List.append_assoc, List.singleton_append] at hres
+    exact hres
+
+abbrev foldCoreOut_sound_aux := @foldCore_sound_aux
+
+theorem cert_fold_core_sound {n q : U64} {G : Block} {bs : List Block} {stO : CertStateG U64}
+    {Signed : MoltPetit.Model.Block → Prop}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    (hSig : ∀ b ∈ bs, Signed (toModelBlock b))
+    (hFold : FoldCoreOut n q (genesisState n.val G) bs stO) :
+    MoltPetit.Model.GroundedCert n.val Signed
+      (toModelBlock G) (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) := by
+  have ⟨hgen, hslot0⟩ := cert_genesis_ok_be_sound hG
+  have hbase_cert : MoltPetit.Model.GroundedCert n.val Signed
+      (toModelBlock G) (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    have hnil := modelClaimOf_nil n.val (toModelBlock G)
+    rw [hnil]
+    exact MoltPetit.Model.GroundedCert.genesis hgen hslot0
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hsound := foldCore_sound_aux hn hq bs [] (genesisState n.val G) stO
+    hSig hbase_rep hbase_cert hFold
+  simp only [List.nil_append] at hsound
+  exact hsound
+
+abbrev cert_fold_core := @cert_fold_core_sound
+
 theorem cert_step_lock_be_sound {n q : U64} {st : CertStateG U64} {g : U64} {b : molt_petit.Block}
     (hn : 1 ≤ n.val)
     (h : cert_step_lock_be UBK () n q st g (toBlockG b) b.key_index = ok true) :
@@ -2036,6 +2113,68 @@ theorem stateView_of_foldLockOut {n q : U64} {G : Block}
     {g bs stO gO} (hFold : FoldLockOut n q (genesisState n.val G) g bs stO gO) :
     stateView n.val stO = MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) :=
   stateView_eq_claimView_of_tailRepr (tailRepr_of_foldLockOut hn hq hG hFold)
+
+lemma foldCoreOut_tailRepr_aux {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q) :
+    ∀ (bs : List Block) (pre : List Block) (st : CertStateG U64)
+      (stO : CertStateG U64),
+    TailRepr n.val st (modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)) →
+    FoldCoreOut n q st bs stO →
+    TailRepr n.val stO (modelClaimOf n.val (toModelBlock G) ((pre ++ bs).map toModelBlock)) := by
+  intro bs
+  induction bs with
+  | nil =>
+    intro pre st stO hrep hfold
+    dsimp [FoldCoreOut] at hfold
+    subst hfold
+    simp only [List.append_nil]
+    exact hrep
+  | cons b bs ih =>
+    intro pre st stO hrep hfold
+    dsimp [FoldCoreOut] at hfold
+    obtain ⟨hcore, t', ht', hfold_rest⟩ := hfold
+    have ⟨_, hslot, _, _⟩ := cert_step_core_be_sound b hq hn hrep hcore
+    have hcl_eq : modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock ++ [toModelBlock b]) =
+        { tipId := (toModelBlock b).id,
+          tipSlot := (toModelBlock b).slot,
+          tipHeight := (toModelBlock b).height,
+          tail := ((modelClaimOf n.val (toModelBlock G) (pre.map toModelBlock)).tail ++ [toModelBlock b]).filter
+            fun x => decide ((toModelBlock b).slot + 2 - n.val ≤ x.slot) } :=
+      modelClaimOf_step_lt n.val (toModelBlock G) (pre.map toModelBlock) (toModelBlock b) hslot
+    have hmap_app : (pre ++ [b]).map toModelBlock = pre.map toModelBlock ++ [toModelBlock b] := by
+      simp
+    have hrep' := cert_next_tail_be_repr b hq hn hrep hcore ht'
+    have hrep_step : TailRepr n.val (stepState b t')
+        (modelClaimOf n.val (toModelBlock G) ((pre ++ [b]).map toModelBlock)) := by
+      rw [hmap_app, hcl_eq]
+      exact hrep'
+    have hres := ih (pre ++ [b]) (stepState b t') stO hrep_step hfold_rest
+    rw [List.append_assoc, List.singleton_append] at hres
+    exact hres
+
+/-- The final state of `FoldCoreOut` represents the folded chain's claim. -/
+theorem tailRepr_of_foldCoreOut {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (_hG : cert_genesis_ok_be UB () (toBlockG G) = ok true) :
+    ∀ {bs stO}, FoldCoreOut n q (genesisState n.val G) bs stO →
+      TailRepr n.val stO (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) := by
+  intro bs stO hFold
+  have hbase_rep : TailRepr n.val (genesisState n.val G)
+      (modelClaimOf n.val (toModelBlock G) ([].map toModelBlock)) := by
+    simp only [List.map_nil]
+    exact tailRepr_genesisState n.val G
+  have hres := foldCoreOut_tailRepr_aux hn hq bs [] (genesisState n.val G) stO hbase_rep hFold
+  simp only [List.nil_append] at hres
+  exact hres
+
+/-- Public state view of `FoldCoreOut` agrees with `modelClaimOf`'s view. -/
+theorem stateView_of_foldCoreOut {n q : U64} {G : Block}
+    (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    {bs stO} (hFold : FoldCoreOut n q (genesisState n.val G) bs stO) :
+    stateView n.val stO =
+      MoltPetit.Model.claimView (modelClaimOf n.val (toModelBlock G) (bs.map toModelBlock)) :=
+  stateView_eq_claimView_of_tailRepr (tailRepr_of_foldCoreOut hn hq hG hFold)
 
 
 
