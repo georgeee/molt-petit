@@ -1087,11 +1087,11 @@ slots after the genesis's passes the validator if at most $\fmax$ slots of every
 from the list.
 \end{theorem}
 
-Each mode's validator also lets an honest producer through: mode 1
-unsigned, at a version at least its floor on the chain
-(\code{liveness\_produce\_blockK}); mode 2 signed, if the
+Each mode's signed validator also lets an honest producer through: mode 1
+under a correct signature scheme, at a version at least its floor on the chain
+(\code{liveness\_produce\_signed\_blockK}); mode 2, if the
 signature verifies at the stated version and that version meets the schedule
-(\code{sched\_liveness\_produce\_block}); mode 3 signed, if it is at
+(\code{sched\_liveness\_produce\_block}); mode 3, if it is at
 least every version on the chain and equals those already in the
 producer's grid window (\code{lockstep\_liveness\_produce\_block}). An attacker
 can still slow a mode down through these conditions (in modes 1 and 3,
@@ -1131,8 +1131,9 @@ add the mode's key rule on the tail: the floors decoded from the
 certificate (mode~1), the schedule pin (mode~2), or the lockstep rule
 (mode~3). The theorems of Section~\ref{sec:results} hold for it with
 nothing assumed about the claim, the ids, the recency or the tail's key
-rule. Both clients read their clocks at one real time $R$, with
-$R \le \mathit{now} + \delta$ and $\Delta + \delta \le \varphi$ (\code{rust\_deployed\_agreement},
+rule. The clients read their clocks at real times $R$, $R'$ at most $d$
+apart, with $R \le \mathit{now} + \delta$, $R' \le \mathit{now}' + \delta$ and
+$\Delta + \delta + d \le \varphi$ (\code{rust\_deployed\_agreement},
 \code{rust\_deployed\_k\_agreement},
 \code{rust\_deployed\_sched\_agreement}); mode~3's form
 (\code{rust\_deployed\_lock\_agreement}) is untimed, with
@@ -1140,14 +1141,17 @@ Assumption~\ref{ass:rotation-honest} read at the earlier of the two
 clock readings. All these and the fold theorems assume $n < 2^{63}-1$
 (\code{hq}), mode~2's $E \ge 1$; mode~2's also pins the schedule on both
 full chains. The producer,
-\code{produce\_block\_deployed}, runs no mode's key rule (there is no
-per-mode producer yet); it extends a tail the client accepts to
-one it accepts again, given the slot is its own and after the tip, and
-every window the new block completes is dense
-(\code{rust\_produce\_block\_deployed\_live}): the density is assumed,
-not derived from the budget, for the mode-free validator at the new
-slot's clock reading, given that key lookup, signing and hashing
-succeed. It needs size
+\code{produce\_block\_deployed}, checks the mode-free rule. It extends
+a tail the client accepts to one it accepts again at the new slot's
+clock reading, given the slot is its own and after the tip, the budget
+(\code{ByzantineBounded}), every honest slot of each window the new
+block completes filled on its chain (Assumption~\ref{ass:delivery}),
+and that key lookup, signing and hashing succeed
+(\code{rust\_produce\_block\_deployed\_live\_budget}). With the mode's
+key rule on the tail and on its version, each mode's client accepts it
+too (\code{rust\_produce\_block\_deployed\_k\_live},
+\code{rust\_produce\_block\_deployed\_sched\_live},
+\code{rust\_produce\_block\_deployed\_lock\_live}). It needs size
 bounds: slots, the roster, and the decoded tail plus the suffix below
 $2^{62}$, the tip height below $2^{64}-1$, and a decoded tail no newer than its tip. Each excludes a
 64-bit overflow, which the checked arithmetic turns into a rejection.
