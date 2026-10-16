@@ -8,7 +8,7 @@ Build one module at a time:
 
     lake build <Module> > /tmp/p31.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p31.log | head -60
 
-In progress: none
+In progress: 5. S3.3–S3.4 attestsCore_history, the theorem and its callers
 
 - [x] 1. **S1** signed liveness, modes 2 and 3: `lake build MoltPetit.Model.KeyRotationLiveness`.
 - [x] 2. **S2** TypeScript two check times: `lake build MoltPetit.TS.TimedResults`.
