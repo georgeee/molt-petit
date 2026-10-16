@@ -196,4 +196,17 @@ theorem rust_produce_block_deployed_live : thm_rust_produce_block_deployed_live 
 theorem ts_deployed_agreement : thm_ts_deployed_agreement :=
   @MoltPetit.Model.ts_deployed_agreement
 
+theorem liveness_produce_signed_block : thm_liveness_produce_signed_block :=
+  @MoltPetit.Model.liveness_produce_signed_block
+theorem liveness_produce_signed_blockK : thm_liveness_produce_signed_blockK :=
+  @MoltPetit.Model.liveness_produce_signed_blockK
+theorem rust_produce_block_deployed_live_budget : thm_rust_produce_block_deployed_live_budget :=
+  @Rust.rust_produce_block_deployed_live_budget
+theorem rust_produce_block_deployed_sched_live : thm_rust_produce_block_deployed_sched_live :=
+  @Rust.rust_produce_block_deployed_sched_live
+theorem rust_produce_block_deployed_lock_live : thm_rust_produce_block_deployed_lock_live :=
+  @Rust.rust_produce_block_deployed_lock_live
+theorem rust_produce_block_deployed_k_live : thm_rust_produce_block_deployed_k_live :=
+  @Rust.rust_produce_block_deployed_k_live
+
 end MoltPaper
