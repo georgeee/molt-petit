@@ -1,7 +1,7 @@
 ---
 id: 0012
 kind: task
-status: in_progress
+status: done
 title: Pass 30, disclosed carve-outs removed in Lean (signed liveness, density from budget, per-mode producer, two check times)
 owner: session 375f62fc (Molt Petit driver), host bare1
 created: 2026-10-15
@@ -21,4 +21,4 @@ Archon proved all 7 steps in 31 minutes (run a52c4928). An earlier 6-minute run 
 scaffold. The paper drops "mode 1 unsigned", "one real time R", "no per-mode producer yet" and "density assumed".
 Gate: check.sh all green, nix flake check passed. The page count stays at 15.
 
-Open: the reviewer's re-review (memo-11).
+Closed: review-11 Ack (F1–F38 closed); 09d771d (Produce wording) gated green, main = publish-prep = 09d771d 10-16 ~09:10Z.
