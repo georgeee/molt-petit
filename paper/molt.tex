@@ -785,8 +785,8 @@ deployment reads Assumption~\ref{ass:budget}, not a separate theorem:
 Theorem~\ref{thm:lc}'s assumptions are unchanged, and restricting it to
 each mode's validator gives \code{keyrot\_loss\_agreement} (mode 1,
 Theorem~\ref{thm:keyloss}), \code{sched\_loss\_agreement} and
-\code{lockstep\_loss\_agreement}. In mode 3's slot-by-slot count, with
-nothing stolen only rented slots count (\code{badSched\_lossOnly}).
+\code{lockstep\_loss\_agreement}. In the slot-by-slot count of mode 3 and the untimed
+mode 2, with nothing stolen only rented slots count (\code{badSched\_lossOnly}).
 
 \paragraph{Stolen keys.} A stolen key of \emph{any} version signs
 anything, for any slot, forever: we assume no forward
@@ -848,7 +848,7 @@ $\Delta_{\mathrm{conf}}$ matters only to the model's own certificate claim.
 
 A validator that loses its key signs its next block under a higher
 version, whose key the deployment must already have delegated from the
-cold root (\code{liveness\_produce\_blockK}).
+cold root (\code{liveness\_produce\_signed\_blockK}).
 
 \begin{theorem}[Mode 1 under key loss; Lean
 \code{keyrot\_loss\_agreement}]\label{thm:keyloss}
@@ -1058,18 +1058,9 @@ deployed Rust client checks the lockstep rule on the tail, and
 Theorem~\ref{thm:lock-gen} holds for that client end to end, at depth
 $2n$ in the full chains (\code{rust\_deployed\_lock\_agreement}).
 
-\paragraph{The limits of this subsection.} Mode 1 has no guarantee under
-theft, and its certified and deployed theorems
-(\code{rust\_deployed\_k\_agreement}) are Theorem~\ref{thm:lc} plus
-monotone versions on both full chains: exposure there counts producers,
-not versions. The TypeScript client runs no mode's key rule; the Rust client
-runs all three. Mode 3 and the untimed mode 2 rest on
-Assumption~\ref{ass:rotation-honest}; mode 2's theft theorem does not.
-Mode 3 has no timed theorem: its timed and deployed forms
-(\code{lockstep\_client\_safety\_timed},
-\code{rust\_deployed\_lock\_agreement}) time only thefts, and take
-Assumption~\ref{ass:rotation-honest} as given where mode 2 derives it
-from the clock and Theorem~\ref{thm:forge}.
+Mode 3's timed form (\code{lockstep\_client\_safety\_timed}) times only
+thefts: it takes Assumption~\ref{ass:rotation-honest} as given, where mode 2
+derives it from the clock and Theorem~\ref{thm:forge}.
 
 \subsection{Liveness, and the slot time}
 \label{sec:liveness}
@@ -1248,12 +1239,10 @@ length. Scaled by Table~\ref{tab:bench}'s floor, a step would cost about
 $0.4$--$0.8$\,s on the reference machine plus the $0.36$\,s subproof
 (estimated, not measured).
 
-So consensus is nearly free next to the signatures, and the slot time
-follows: $\tau \ge \mathit{perBlock} + 2\,\mathit{baseline}/n$
-(\code{recommendedSlot}). With the per-block cost one subproof plus its
-check ($0.55$\,s) and, conservatively, the whole certificate as the
-fixed part, $n = 7$ gives $\tau \ge 1.4$\,s with recursive signatures and
-$\tau \ge 2.4$\,s inline. We use $\tau = 4$\,s. Where stateful signatures
+So consensus is nearly free next to the signatures. With one subproof plus
+its check ($0.55$\,s) per block and, conservatively, the whole certificate
+as the fixed part, the slot-time threshold (\code{recommendedSlot}) at
+$n = 7$ is $1.4$\,s with recursive signatures and $2.4$\,s inline. We use $\tau = 4$\,s. Where stateful signatures
 are acceptable, XMSS~\cite{xmssrfc} over the same gadgets shrinks the
 in-circuit verifier from $2^{13}$ to $2^{10}$ rows and makes certificates
 about $10\times$ faster, with one-time keys whose bookkeeping the
