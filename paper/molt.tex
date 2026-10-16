@@ -506,7 +506,7 @@ exactly when every window the new block completes is dense
 validator builds the next block on its current tip, signs it and appends
 it. It ships the result only if it passes the same \code{validSuffix}
 check every other node runs. (The liveness theorems use the model's
-unsigned, full-chain form, which checks \code{validChain}.) So nothing malformed that production could
+full-chain form, which checks \code{validChain}.) So nothing malformed that production could
 emit needs to be trusted: it is rejected everywhere. The node's signing
 discipline is another matter. Signing at most once per slot, a clock at
 most $\sigma$ ahead, and a signing record that survives restarts are
