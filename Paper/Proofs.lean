@@ -200,6 +200,10 @@ theorem liveness_produce_signed_block : thm_liveness_produce_signed_block :=
   @MoltPetit.Model.liveness_produce_signed_block
 theorem liveness_produce_signed_blockK : thm_liveness_produce_signed_blockK :=
   @MoltPetit.Model.liveness_produce_signed_blockK
+theorem sched_liveness_produce_signed_block : thm_sched_liveness_produce_signed_block :=
+  @MoltPetit.Model.sched_liveness_produce_signed_block
+theorem lockstep_liveness_produce_signed_block : thm_lockstep_liveness_produce_signed_block :=
+  @MoltPetit.Model.lockstep_liveness_produce_signed_block
 theorem rust_produce_block_deployed_live_budget : thm_rust_produce_block_deployed_live_budget :=
   @Rust.rust_produce_block_deployed_live_budget
 theorem rust_produce_block_deployed_sched_live : thm_rust_produce_block_deployed_sched_live :=
