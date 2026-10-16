@@ -8,7 +8,7 @@ Build one module at a time:
 
     lake build <Module> > /tmp/p30.log 2>&1; echo rc=$?; grep -A8 "error" /tmp/p30.log | head -60
 
-In progress: 4. S3 sched rust_produce_block_deployed_sched_live.
+In progress: 5. S3 lock rust_produce_block_deployed_lock_live.
 
 - [x] 1. **Definitions move builds.** `lake build MoltPetit.Model.Definitions`, then `MoltPetit.Results.Results`, `MoltPetit.Model.KeyRotationLiveness`. Fix any name clash (the defs now come from Spec.Model).
 - [x] 2. **S4** two check times: `Rust.Deployed` agreement theorems (SPEC S4).
