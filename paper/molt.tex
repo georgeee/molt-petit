@@ -630,8 +630,9 @@ are composed (Section~\ref{sec:impl}): its theorems assume a history
 that folds to the certificate's public state, with signatures threaded
 from the genesis's to the tip's, and knowledge soundness supplies one
 (\code{rust\_deployed\_ks}, \code{rust\_deployed\_sched\_ks},
-\code{rust\_deployed\_lock\_ks}). The mode-free client's theorem reads
-the certificate as mode~1's fold. For that client the
+\code{rust\_deployed\_lock\_ks}). The mode-free client's theorem assumes
+only the fold's mode-free core (\code{AttestsCore}), which each mode's fold
+implies. For that client the
 assumption becomes the circuit's knowledge soundness, that its gadgets
 compute what the verified code computes, and that it routes each
 witness as the fold relation says. The model theorems and the
@@ -1078,13 +1079,12 @@ slots after the genesis's passes the validator if at most $\fmax$ slots of every
 from the list.
 \end{theorem}
 
-Each mode's signed validator also lets an honest producer through: mode 1
-under a correct signature scheme, at a version at least its floor on the chain
-(\code{liveness\_produce\_signed\_blockK}); mode 2, if the
-signature verifies at the stated version and that version meets the schedule
-(\code{sched\_liveness\_produce\_block}); mode 3, if it is at
-least every version on the chain and equals those already in the
-producer's grid window (\code{lockstep\_liveness\_produce\_block}). An attacker
+Under a correct signature scheme, each mode's signed validator also lets
+an honest producer through: mode 1 at a version at least its floor on the chain
+(\code{liveness\_produce\_signed\_blockK}); mode 2 at a version that meets
+the schedule (\code{sched\_liveness\_produce\_signed\_block}); mode 3 at
+one at least every version on the chain and equal to those already in the
+producer's grid window (\code{lockstep\_liveness\_produce\_signed\_block}). An attacker
 can still slow a mode down through these conditions (in modes 1 and 3,
 a stolen key used at a higher version raises the floor), but not break safety.
 
