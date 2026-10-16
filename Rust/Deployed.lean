@@ -4887,7 +4887,41 @@ theorem recent_ok_self (now delta : U64) :
   · exfalso
     exact hle (by scalar_tac)
 
-theorem rust_produce_block_deployed_live : MoltPaper.thm_rust_produce_block_deployed_live := by
+theorem rust_produce_block_deployed_live_explicit :
+  ∀ {n me at_slot Δ key_index : U64} {contents sk cert : Hash} {suffix : SignedChain}
+    {C} (I : CryptoD C) (crypto : C)
+    {st : CertStateG U64} {cl : CertClaim} {tl : Chain} {tipS tipH : U64} {ts : Hash}
+    (hn : 1 ≤ n.val)
+    (hst : I.cert_state crypto cert = ok st)
+    (hts : I.cert_tip_sig crypto cert = ok ts)
+    (hcl : claim_of_state n st = ok cl)
+    (hcv : I.CryptoInst.cert_verify crypto cert = ok true)
+    (hstr : strip_sigs suffix = ok tl)
+    (hsig : sigs_ok I.CryptoInst n crypto suffix = ok true)
+    (hids : ids_ok I crypto (some ts) suffix = ok true)
+    (hsuf : validate_suffix n cl tl = ok true)
+    (hMine : producer_for_slot n at_slot = ok me)
+    (htipS : tip_slot_from cl.tip_slot tl = ok tipS)
+    (htipH : signed_tip_height_from cl.tip_height suffix = ok tipH)
+    (hLt : tipS.val < at_slot.val)
+    (hH : tipH.val + 1 < 2 ^ 64)
+    (hsmall : n.val < 2 ^ 62) (hS : at_slot.val < 2 ^ 62)
+    (htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val)
+    (hlen : (toModelChain cl.tail).length + (toModelChain tl).length < 2 ^ 62)
+    (hSign : ∀ b : Block, ∃ key s, I.CryptoInst.key_for crypto me key_index = ok key ∧
+      I.CryptoInst.sign crypto sk b = ok s ∧ I.CryptoInst.verify crypto key b s = ok true)
+    (hId : ∀ s h p ps c k, ∃ id, I.block_id crypto s h p ps c k = ok id)
+    (hDense : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      MoltPetit.Model.quorum n.val ≤ MoltPetit.Model.windowCount
+        ((toModelClaim cl).tail ++ toModelChain tl ++
+          [{ slot := at_slot.val, height := 0, prev := none, id := 0, contentsHash := 0, keyIndex := 0 }]) u n.val),
+    ∃ (new_suffix : SignedChain) (nb : Block),
+      produce_block_deployed I n me at_slot Δ contents key_index sk crypto cert suffix =
+        ok (CertifiedChain.CC cert new_suffix) ∧
+      validate_deployed I n at_slot Δ crypto cert new_suffix = ok true ∧
+      strip_sigs new_suffix = ok (chain_append tl nb) ∧
+      toModelChain (chain_append tl nb) = toModelChain tl ++ [toModelBlock nb] ∧
+      nb.slot = at_slot ∧ nb.key_index = key_index ∧ nb.contents_hash = contents := by
   intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
     hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId hDense
   obtain ⟨tipI, htipI⟩ := signed_tip_id_from_total cl.tip_id suffix
@@ -4941,7 +4975,15 @@ theorem rust_produce_block_deployed_live : MoltPaper.thm_rust_produce_block_depl
     simp only [bind_tc_ok]
     rw [happ]
     simp only [bind_tc_ok, hval, ite_true]
-  refine ⟨new_suffix, chain_append tl nb, nb, hprod, hval, hstrip', hmodel', rfl, rfl, rfl⟩
+  refine ⟨new_suffix, nb, hprod, hval, hstrip', hmodel', rfl, rfl, rfl⟩
+
+theorem rust_produce_block_deployed_live : MoltPaper.thm_rust_produce_block_deployed_live := by
+  intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
+    hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId hDense
+  obtain ⟨new_suffix, nb, hprod, hval, hstrip', hmodel', hslot, hkey, hcont⟩ :=
+    rust_produce_block_deployed_live_explicit I crypto hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH
+      hsmall hS htail hlen hSign hId hDense
+  exact ⟨new_suffix, chain_append tl nb, nb, hprod, hval, hstrip', hmodel', hslot, hkey, hcont⟩
 
 #print axioms Rust.rust_produce_block_deployed_live
 
@@ -5018,7 +5060,42 @@ lemma window_dense_of_budget_cover
 
 /-- **Theorem (deployed producer live with budget)**: mode 0 deployed block production succeeds
 given the Byzantine budget and honest slot coverage. -/
-theorem rust_produce_block_deployed_live_budget : MoltPaper.thm_rust_produce_block_deployed_live_budget := by
+theorem rust_produce_block_deployed_live_budget_explicit :
+  ∀ {n me at_slot Δ key_index : U64} {contents sk cert : Hash} {suffix : SignedChain}
+    {C} (I : CryptoD C) (crypto : C)
+    {st : CertStateG U64} {cl : CertClaim} {tl : Chain} {tipS tipH : U64} {ts : Hash}
+    (hn : 1 ≤ n.val)
+    (hst : I.cert_state crypto cert = ok st)
+    (hts : I.cert_tip_sig crypto cert = ok ts)
+    (hcl : claim_of_state n st = ok cl)
+    (hcv : I.CryptoInst.cert_verify crypto cert = ok true)
+    (hstr : strip_sigs suffix = ok tl)
+    (hsig : sigs_ok I.CryptoInst n crypto suffix = ok true)
+    (hids : ids_ok I crypto (some ts) suffix = ok true)
+    (hsuf : validate_suffix n cl tl = ok true)
+    (hMine : producer_for_slot n at_slot = ok me)
+    (htipS : tip_slot_from cl.tip_slot tl = ok tipS)
+    (htipH : signed_tip_height_from cl.tip_height suffix = ok tipH)
+    (hLt : tipS.val < at_slot.val)
+    (hH : tipH.val + 1 < 2 ^ 64)
+    (hsmall : n.val < 2 ^ 62) (hS : at_slot.val < 2 ^ 62)
+    (htail : ∀ B ∈ toModelChain cl.tail, B.slot ≤ cl.tip_slot.val)
+    (hlen : (toModelChain cl.tail).length + (toModelChain tl).length < 2 ^ 62)
+    (hSign : ∀ b : Block, ∃ key s, I.CryptoInst.key_for crypto me key_index = ok key ∧
+      I.CryptoInst.sign crypto sk b = ok s ∧ I.CryptoInst.verify crypto key b s = ok true)
+    (hId : ∀ s h p ps c k, ∃ id, I.block_id crypto s h p ps c k = ok id)
+    {bad : MoltPetit.Model.ByzantineSlots}
+    (hBudget : MoltPetit.Model.ByzantineBounded n.val bad)
+    (hCover : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
+      ∀ s, ¬ bad s → u ≤ s → s < u + n.val →
+        s = at_slot.val ∨ ∃ B ∈ (toModelClaim cl).tail ++ toModelChain tl, B.slot = s),
+    ∃ (new_suffix : SignedChain) (nb : Block),
+      produce_block_deployed I n me at_slot Δ contents key_index sk crypto cert suffix =
+        ok (CertifiedChain.CC cert new_suffix) ∧
+      validate_deployed I n at_slot Δ crypto cert new_suffix = ok true ∧
+      strip_sigs new_suffix = ok (chain_append tl nb) ∧
+      toModelChain (chain_append tl nb) = toModelChain tl ++ [toModelBlock nb] ∧
+      nb.slot = at_slot ∧ nb.key_index = key_index ∧ nb.contents_hash = contents := by
   intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
     hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId bad hBudget hCover
   have hDense : ∀ u : Nat, tipS.val + 2 ≤ u + n.val → u + n.val ≤ at_slot.val + 1 →
@@ -5028,10 +5105,77 @@ theorem rust_produce_block_deployed_live_budget : MoltPaper.thm_rust_produce_blo
              keyIndex := 0 }]) u n.val := by
     intro u hu1 hu2
     exact window_dense_of_budget_cover hBudget hCover hu1 hu2
-  exact rust_produce_block_deployed_live I crypto hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH
+  exact rust_produce_block_deployed_live_explicit I crypto hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH
     hsmall hS htail hlen hSign hId hDense
 
+theorem rust_produce_block_deployed_live_budget : MoltPaper.thm_rust_produce_block_deployed_live_budget := by
+  intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
+    hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId bad hBudget hCover
+  obtain ⟨new_suffix, nb, hprod, hval, hstrip', hmodel', hslot, hkey, hcont⟩ :=
+    rust_produce_block_deployed_live_budget_explicit I crypto hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH
+      hsmall hS htail hlen hSign hId hBudget hCover
+  exact ⟨new_suffix, chain_append tl nb, nb, hprod, hval, hstrip', hmodel', hslot, hkey, hcont⟩
 
 #print axioms Rust.rust_produce_block_deployed_live_budget
+
+theorem sched_pin_ok_chain_append {era : U64} (hera : 0 < era.val) :
+    ∀ (tl : Chain) (nb : Block),
+    sched_pin_ok era tl = ok true →
+    nb.slot.val / era.val ≤ nb.key_index.val →
+    sched_pin_ok era (chain_append tl nb) = ok true := by
+  intro tl
+  induction tl with
+  | Nil =>
+    intro nb _ hPinNew
+    rw [chain_append, sched_pin_ok]
+    split_ifs with hera_gt
+    · have hnz : era.val ≠ 0 := by omega
+      obtain ⟨i, hi, hival⟩ := UScalar.div_spec nb.slot hnz
+      rw [hi]
+      simp only [bind_tc_ok]
+      split_ifs with hle
+      · rw [sched_pin_ok]
+      · have : nb.key_index.val < i.val := by scalar_tac
+        rw [hival] at this
+        omega
+    · exfalso
+      have : era.val ≤ 0 := by scalar_tac
+      omega
+  | Cons b rest ih =>
+    intro nb hPinOld hPinNew
+    rw [chain_append, sched_pin_ok]
+    rw [sched_pin_ok] at hPinOld
+    split_ifs at hPinOld with hera_gt
+    · rw [if_pos hera_gt]
+      obtain ⟨i, hi, hrest⟩ := bind_inv hPinOld
+      rw [hi]
+      simp only [bind_tc_ok]
+      split_ifs at hrest with hle
+      · rw [if_pos hle]
+        exact ih nb hrest hPinNew
+      · injection hrest with hrest
+        contradiction
+    · injection hPinOld with hPinOld
+      contradiction
+
+/-- **Theorem (deployed producer live, schedule mode)**: mode 2 deployed block production
+succeeds given the Byzantine budget, honest slot coverage, and schedule pin rule. -/
+theorem rust_produce_block_deployed_sched_live : MoltPaper.thm_rust_produce_block_deployed_sched_live := by
+  intro n me at_slot Δ key_index contents sk cert suffix C I crypto st cl tl tipS tipH ts
+    hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH hsmall hS htail hlen hSign hId bad hBudget hCover
+    era hera hPinOld hPinNew
+  obtain ⟨new_suffix, nb, hprod, hval, hstrip', hmodel', hslot, hkey, hcont⟩ :=
+    rust_produce_block_deployed_live_budget_explicit I crypto hn hst hts hcl hcv hstr hsig hids hsuf hMine htipS htipH hLt hH
+      hsmall hS htail hlen hSign hId hBudget hCover
+  refine ⟨new_suffix, hprod, ?_⟩
+  rw [validate_deployed_sched]
+  rw [hstrip']
+  simp only [bind_tc_ok, hval, ite_true]
+  have hPinNew' : nb.slot.val / era.val ≤ nb.key_index.val := by
+    rw [hslot, hkey]
+    exact hPinNew
+  exact sched_pin_ok_chain_append hera tl nb hPinOld hPinNew'
+
+#print axioms Rust.rust_produce_block_deployed_sched_live
 
 end Rust
