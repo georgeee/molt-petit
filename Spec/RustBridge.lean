@@ -287,6 +287,20 @@ def AttestsK {C} (I : CryptoD C) (crypto : C) (n q : U64) (G : Block) (sG : Hash
   SigHist I crypto n sG bs ts ∧
   FoldKOut n q (genesisState n.val G) (initFloors n.val G.key_index) (bs.map Prod.fst) stO out
 
+/-- The mode-free fold: each step passes the core rule and threads the tail. -/
+def FoldCoreOut (n q : U64) : CertStateG U64 → List Block → CertStateG U64 → Prop
+  | st, [], stO => stO = st
+  | st, b :: bs, stO =>
+      cert_step_core_be UBK () n q st (toBlockG b) = ok true ∧
+      ∃ t', cert_next_tail_be UB () st.tail b.slot = ok t' ∧
+        FoldCoreOut n q (stepState b t') bs stO
+
+/-- The mode-free certificate: the history's signatures and the core fold. -/
+def AttestsCore {C} (I : CryptoD C) (crypto : C) (n q : U64) (G : Block) (sG : Hash)
+    (bs : List (Block × Hash)) (stO : CertStateG U64) (ts : Hash) : Prop :=
+  SigHist I crypto n sG bs ts ∧
+  FoldCoreOut n q (genesisState n.val G) (bs.map Prod.fst) stO
+
 /-- Mode 2, schedule `slot / era`. -/
 def AttestsSched {C} (I : CryptoD C) (crypto : C) (n q era : U64) (G : Block) (sG : Hash)
     (bs : List (Block × Hash)) (stO : CertStateG U64) (ts : Hash) : Prop :=

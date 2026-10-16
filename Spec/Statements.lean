@@ -1340,6 +1340,61 @@ def thm_liveness_produce_signed_blockK : Prop :=
       (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip,
               ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩]) = true
 
+/-- Paper: sec:liveness. Mode 2, signed: with a correct signature scheme and a
+version that meets the schedule, the signed block is produced and the signed
+extension passes mode 2's signed validator. -/
+def thm_sched_liveness_produce_signed_block : Prop :=
+  ∀ {σ sk pk : Type} {n me slot newId : Nat} {contentsHash keyIndex : Nat} (hn : 1 ≤ n)
+    {schedule : Nat → Nat}
+    {ops : SigOps σ sk pk} {registry : KeyRegistry pk} {keyPair : Nat → Nat → sk}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain σ} {tip : Block}
+    (hSig      : SigCorrect n ops registry keyPair)
+    (hBudget   : ByzantineBounded n bad)
+    (hVal      : validSignedChainSched n schedule ops registry sc = true)
+    (hTipEq    : (stripSigs sc).getLast? = some tip)
+    (hTipLt    : tip.slot < slot)
+    (hMine     : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+        HonestBlocksCover bad record
+          (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hSched    : schedule slot ≤ keyIndex),
+    produceSignedBlock? n me slot newId contentsHash keyIndex ops registry (keyPair me keyIndex) sc =
+      some ⟨nextBlock slot newId contentsHash keyIndex tip,
+            ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩ ∧
+    validSignedChainSched n schedule ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip,
+              ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩]) = true
+
+/-- Paper: sec:liveness. Mode 3, signed: with a correct signature scheme and a
+version at least every version on the chain and equal to every version already
+stated in its own grid window, the signed block is produced and the signed
+extension passes mode 3's signed validator. -/
+def thm_lockstep_liveness_produce_signed_block : Prop :=
+  ∀ {σ sk pk : Type} {n me slot newId : Nat} {contentsHash keyIndex : Nat} (hn : 1 ≤ n)
+    {ops : SigOps σ sk pk} {registry : KeyRegistry pk} {keyPair : Nat → Nat → sk}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain σ} {tip : Block}
+    (hSig      : SigCorrect n ops registry keyPair)
+    (hBudget   : ByzantineBounded n bad)
+    (hVal      : validSignedChainLock n ops registry sc = true)
+    (hTipEq    : (stripSigs sc).getLast? = some tip)
+    (hTipLt    : tip.slot < slot)
+    (hMine     : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+        HonestBlocksCover bad record
+          (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hGen      : ∀ b ∈ stripSigs sc, b.keyIndex ≤ keyIndex ∧
+      (b.slot / n = slot / n → b.keyIndex = keyIndex)),
+    produceSignedBlock? n me slot newId contentsHash keyIndex ops registry (keyPair me keyIndex) sc =
+      some ⟨nextBlock slot newId contentsHash keyIndex tip,
+            ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩ ∧
+    validSignedChainLock n ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip,
+              ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩]) = true
+
 /-- Paper: cited in sec:rotation. The timed lockstep package gives the
 per-generation one, so every per-generation theorem (unequal heights,
 genesis agreement, certificate and history forms) applies to it. -/
@@ -1549,10 +1604,10 @@ def thm_rust_deployed_agreement : Prop :=
     {tl tl' : Chain} (hstr : strip_sigs suffix = ok tl) (hstr' : strip_sigs suffix' = ok tl')
     {bs bs' : List (Block × Hash)} {ts ts' : Hash}
     (hts : I.cert_tip_sig crypto cert = ok ts) (hts' : I.cert_tip_sig crypto cert' = ok ts')
-    {stO stO' : CertStateG U64} {out out' : FloorsG U64}
+    {stO stO' : CertStateG U64}
     (hst  : I.cert_state crypto cert  = ok stO) (hst' : I.cert_state crypto cert' = ok stO')
-    (hA  : AttestsK I crypto n q G sG bs  stO  out ts)
-    (hA' : AttestsK I crypto n q G sG bs' stO' out' ts')
+    (hA  : AttestsCore I crypto n q G sG bs  stO  ts)
+    (hA' : AttestsCore I crypto n q G sG bs' stO' ts')
     {h : Nat}
     (hDeep  : h + n.val < (fullChain G bs  tl ).length)
     (hDeep' : h + n.val < (fullChain G bs' tl').length),
@@ -1974,20 +2029,23 @@ open MoltPetit.Model
 /-- Paper: Theorem thm:lc for the TypeScript deployed client. As
 `ts_timed_certified_agreement`, with `validateDeployed`, which recomputes the
 tail's ids (threading parent signatures from the certificate's tip signature)
-and checks recency at the client's reading `now`: neither the tail's id
+and checks recency at the client's reading `now`; the clients read their clocks
+at real times `R`, `R'` at most `d` apart, with `Δ + δ + d ≤ φ`. Neither the tail's id
 formation nor its recency is a hypothesis. -/
 def thm_ts_deployed_agreement : Prop :=
   ∀ {σ ℓ φ δ : Nat}
     {n : Nat} (hn : 1 ≤ n)
-    {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
+    {exposed : Exposure} {log : TimedLog} {G : Block} {R R' d : Nat}
     {sigOps : MoltPetit.SigOps}
     (hexec : SigningExecutionOn (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) exposed log G)
     (hClock : HonestClockOn (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) σ exposed log)
     (hBudget : ExposureBounded n ℓ φ exposed)
     (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
-    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → TSFormed n sigOps G B → ∃ r ≤ R, B ∈ log r)
-    {Δ now now' : Int} (hφ : Δ + δ ≤ φ)
-    (hNow : (R : Int) ≤ now + δ) (hNow' : (R : Int) ≤ now' + δ)
+    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → TSFormed n sigOps G B →
+      ∃ r ≤ max R R', B ∈ log r)
+    {Δ now now' : Int} (hφ : Δ + δ + d ≤ φ)
+    (hNow : (R : Int) ≤ now + δ) (hNow' : (R' : Int) ≤ now' + δ)
+    (hRR : R ≤ R' + d ∧ R' ≤ R + d)
     {certOps certOps' : MoltPetit.CertOps}
     (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
     ∃ cl : CertClaim, certOps.claim hc = toTSClaim cl ∧
