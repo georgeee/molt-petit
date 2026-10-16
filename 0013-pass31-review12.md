@@ -1,14 +1,14 @@
 ---
 id: 0013
 kind: task
-status: in_progress
+status: done
 title: Pass 31, review-12 follow-up (F39-F41, three more Lean-removable limits, page cuts)
 owner: session 375f62fc (Molt Petit driver), host bare1
 created: 2026-10-16
 updated: 2026-10-16
 needs_george: ""
 data: [bare1:/srv/agent-cage/etheron-bare/agent/etheron-bare/work/review-moltpetit/review-12.md, bare1:/srv/agent-cage/etheron-bare/agent/etheron-bare/work/review-moltpetit/memo-13.md]
-commits: [molt-petit@9d61ccb (paper F39/F40, cuts), molt-petit@027b940 (pass31 scaffold)]
+commits: [molt-petit@9d61ccb (paper F39/F40, cuts), molt-petit@027b940 (pass31 scaffold), molt-petit@853505c (Archon proofs, run fe4faea1 23 min), molt-petit@06ef317 (paper F41 + AttestsCore; main+publish-prep 10-16 10:28Z, gate green, 15 pages)]
 ---
 
 review-12 found no math drift and no carve-outs, plus three wording items:
@@ -25,9 +25,11 @@ Pass 31 statements (scaffold 027b940):
 - S2: the TypeScript deployed client at two real check times.
 - S3: the mode-free deployed client reads its certificate through a core fold (AttestsCore) instead of mode 1's.
 
-Next:
-1. Archon run, on 18's BIG GO after the Yak ledger window.
-2. Paper: F41, and drop the "reads the certificate as mode 1's fold" clause.
-3. Gate.
-4. Fast-forward main.
-5. Reviewer approval of the statements (memo-13).
+Done:
+- Archon proved S1-S3.
+- The paper now cites the signed liveness theorems for all three modes (F41 closed).
+- The mode-free client assumes only AttestsCore.
+- review-13 approved the statements.
+- The gate is green; main = publish-prep = 06ef317.
+
+Open: memo-14 asks the reviewer to verify the new text and rank what is left on the three axes.
