@@ -1,7 +1,7 @@
 ---
 id: 0011
 kind: task
-status: in_progress
+status: done
 title: Reviewer round 2 (F15-F38): verbatim, carve-outs, length
 owner: session 375f62fc (Molt Petit driver), host bare1
 created: 2026-10-15
