@@ -276,6 +276,44 @@ theorem sched_liveness_produce_block
   exact ⟨⟨hSigsExt, hChainExt⟩, hSchedExt⟩
 
 
+theorem sched_liveness_produce_signed_block
+    {σ sk pk : Type} {n me slot newId : Nat} {contentsHash keyIndex : Nat} (hn : 1 ≤ n)
+    {schedule : Nat → Nat}
+    {ops : SigOps σ sk pk} {registry : KeyRegistry pk} {keyPair : Nat → Nat → sk}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain σ} {tip : Block}
+    (hSig      : SigCorrect n ops registry keyPair)
+    (hBudget   : ByzantineBounded n bad)
+    (hVal      : validSignedChainSched n schedule ops registry sc = true)
+    (hTipEq    : (stripSigs sc).getLast? = some tip)
+    (hTipLt    : tip.slot < slot)
+    (hMine     : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+        HonestBlocksCover bad record
+          (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hSched    : schedule slot ≤ keyIndex) :
+    produceSignedBlock? n me slot newId contentsHash keyIndex ops registry (keyPair me keyIndex) sc =
+      some ⟨nextBlock slot newId contentsHash keyIndex tip,
+            ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩ ∧
+    validSignedChainSched n schedule ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip,
+              ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩]) = true := by
+  set b := nextBlock slot newId contentsHash keyIndex tip
+  have hValid : validSignedChain n ops registry sc = true := by
+    rw [validSignedChainSched, Bool.and_eq_true, Bool.and_eq_true] at hVal
+    rw [validSignedChain, Bool.and_eq_true]
+    exact hVal.1
+  have hProd := liveness_produce_signed_block (n := n) hn hSig hBudget hValid
+    hTipEq hTipLt hMine hSCorrect hCover
+  have hSigVerify : ops.verify (registry me keyIndex) b (ops.sign (keyPair me keyIndex) b) = true := by
+    have hbProducer : producerForSlot n b.slot = me := hMine
+    have hbIndex : b.keyIndex = keyIndex := rfl
+    exact hSig.verify_sign me keyIndex b hbProducer hbIndex
+  obtain ⟨_, hExt⟩ := sched_liveness_produce_block hBudget hVal hTipEq hTipLt hMine hSCorrect hCover hSched hSigVerify
+  exact ⟨hProd, hExt⟩
+
+
 theorem lockstep_liveness_produce_block
     {n me slot newId : Nat} {contentsHash keyIndex : Nat}
     {Sig sk pk : Type} {ops : SigOps Sig sk pk} {registry : KeyRegistry pk} {sig : Sig}
@@ -343,5 +381,45 @@ theorem lockstep_liveness_produce_block
     exact ⟨this.2, this.1⟩
   rw [validSignedChainLock, Bool.and_eq_true, Bool.and_eq_true]
   exact ⟨⟨hSigsExt, hChainKExt⟩, hLockExt⟩
+
+
+theorem lockstep_liveness_produce_signed_block
+    {σ sk pk : Type} {n me slot newId : Nat} {contentsHash keyIndex : Nat} (hn : 1 ≤ n)
+    {ops : SigOps σ sk pk} {registry : KeyRegistry pk} {keyPair : Nat → Nat → sk}
+    {bad : ByzantineSlots} {record : SlotRecord}
+    {sc : SignedChain σ} {tip : Block}
+    (hSig      : SigCorrect n ops registry keyPair)
+    (hBudget   : ByzantineBounded n bad)
+    (hVal      : validSignedChainLock n ops registry sc = true)
+    (hTipEq    : (stripSigs sc).getLast? = some tip)
+    (hTipLt    : tip.slot < slot)
+    (hMine     : producerForSlot n slot = me)
+    (hSCorrect : ∀ s (B : Block), B ∈ record s → B.slot = s)
+    (hCover    : ∀ u, tip.slot + 1 < u + n → u + n ≤ slot + 1 →
+        HonestBlocksCover bad record
+          (stripSigs sc ++ [nextBlock slot newId contentsHash keyIndex tip]) u n)
+    (hGen      : ∀ b ∈ stripSigs sc, b.keyIndex ≤ keyIndex ∧
+      (b.slot / n = slot / n → b.keyIndex = keyIndex)) :
+    produceSignedBlock? n me slot newId contentsHash keyIndex ops registry (keyPair me keyIndex) sc =
+      some ⟨nextBlock slot newId contentsHash keyIndex tip,
+            ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩ ∧
+    validSignedChainLock n ops registry
+      (sc ++ [⟨nextBlock slot newId contentsHash keyIndex tip,
+              ops.sign (keyPair me keyIndex) (nextBlock slot newId contentsHash keyIndex tip)⟩]) = true := by
+  set b := nextBlock slot newId contentsHash keyIndex tip
+  have hValid : validSignedChain n ops registry sc = true := by
+    rw [validSignedChainLock, Bool.and_eq_true, Bool.and_eq_true] at hVal
+    obtain ⟨⟨hSigs, hChainK⟩, _⟩ := hVal
+    rw [validChainK, Bool.and_eq_true] at hChainK
+    rw [validSignedChain, Bool.and_eq_true]
+    exact ⟨hSigs, hChainK.1⟩
+  have hProd := liveness_produce_signed_block (n := n) hn hSig hBudget hValid
+    hTipEq hTipLt hMine hSCorrect hCover
+  have hSigVerify : ops.verify (registry me keyIndex) b (ops.sign (keyPair me keyIndex) b) = true := by
+    have hbProducer : producerForSlot n b.slot = me := hMine
+    have hbIndex : b.keyIndex = keyIndex := rfl
+    exact hSig.verify_sign me keyIndex b hbProducer hbIndex
+  obtain ⟨_, hExt⟩ := lockstep_liveness_produce_block hBudget hVal hTipEq hTipLt hMine hSCorrect hCover hGen hSigVerify
+  exact ⟨hProd, hExt⟩
 
 end MoltPetit.Model
