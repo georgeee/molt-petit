@@ -11,7 +11,7 @@ Build one module at a time:
 In progress: 2. S4 two check times: Rust.Deployed agreement theorems (SPEC S4).
 
 - [x] 1. **Definitions move builds.** `lake build MoltPetit.Model.Definitions`, then `MoltPetit.Results.Results`, `MoltPetit.Model.KeyRotationLiveness`. Fix any name clash (the defs now come from Spec.Model).
-- [ ] 2. **S4** two check times: `Rust.Deployed` agreement theorems (SPEC S4).
+- [x] 2. **S4** two check times: `Rust.Deployed` agreement theorems (SPEC S4).
 - [ ] 3. **S2** `rust_produce_block_deployed_live_budget` in `Rust/Deployed.lean`.
 - [ ] 4. **S3 sched** `rust_produce_block_deployed_sched_live`.
 - [ ] 5. **S3 lock** `rust_produce_block_deployed_lock_live`.

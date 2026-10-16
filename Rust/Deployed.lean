@@ -3479,9 +3479,35 @@ lemma attestsLock_history {C} {I : CryptoD C} {crypto : C} {n q : U64} {G : Bloc
   have hview := stateView_of_foldLockOut hn hq hG hFoldOut
   exact ⟨hcertLock, hhistLock, hhist, hview⟩
 
-/-- **Theorem 1 (deployed agreement)**: two clients that accept with `validate_deployed`
-at clock readings `now`, `now'` agree on every block `n` deep in their full chains. -/
-theorem rust_deployed_agreement : MoltPaper.thm_rust_deployed_agreement := by
+private theorem rust_deployed_agreement_one_time :
+  ∀ {σ ℓ φ δ : Nat} {n q Δ : U64} (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    {C} (I : CryptoD C) (crypto : C)
+    {exposed : MoltPetit.Model.Exposure} {log : MoltPetit.Model.TimedLog}
+    {G : Block} {R : Nat}
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hexec : MoltPetit.Model.SigningExecutionOn (DSigned I crypto n G) exposed log (toModelBlock G))
+    (hClock : MoltPetit.Model.HonestClockOn (DSigned I crypto n G) σ exposed log)
+    (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ exposed)
+    (hL : n.val ≤ ℓ + 1)
+    (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → ∃ r ≤ R, B ∈ log r)
+    (hφ : Δ.val + δ ≤ φ)
+    {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R ≤ now'.val + δ)
+    {cert cert' : Hash} {suffix suffix' : SignedChain}
+    (hval  : validate_deployed I n now  Δ crypto cert  suffix  = ok true)
+    (hval' : validate_deployed I n now' Δ crypto cert' suffix' = ok true)
+    {tl tl' : Chain} (hstr : strip_sigs suffix = ok tl) (hstr' : strip_sigs suffix' = ok tl')
+    {bs bs' : List (Block × Hash)} {ts ts' : Hash}
+    (hts : I.cert_tip_sig crypto cert = ok ts) (hts' : I.cert_tip_sig crypto cert' = ok ts')
+    {stO stO' : CertStateG U64} {out out' : FloorsG U64}
+    (hst  : I.cert_state crypto cert  = ok stO) (hst' : I.cert_state crypto cert' = ok stO')
+    (hA  : AttestsK I crypto n q G sG bs  stO  out ts)
+    (hA' : AttestsK I crypto n q G sG bs' stO' out' ts')
+    {h : Nat}
+    (hDeep  : h + n.val < (fullChain G bs  tl ).length)
+    (hDeep' : h + n.val < (fullChain G bs' tl').length),
+    MoltPetit.Model.blockAt? (fullChain G bs tl) h = MoltPetit.Model.blockAt? (fullChain G bs' tl') h := by
   intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R hG sG hSigG hexec hClock hBudget hL hL'
         hbridge hφ now now' hNow hNow' cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
         bs bs' ts ts' hts hts' stO stO' out out' hst hst' hA hA' h hDeep hDeep'
@@ -3564,6 +3590,18 @@ theorem rust_deployed_agreement : MoltPaper.thm_rust_deployed_agreement := by
     hcert hcert' hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'
     hSigned hSigned' hRecent hRecent' hhist hhist' hDeep hDeep'
   exact hagree
+
+/-- **Theorem 1 (deployed agreement)**: two clients that accept with `validate_deployed`
+at clock readings `now`, `now'` agree on every block `n` deep in their full chains. -/
+theorem rust_deployed_agreement : MoltPaper.thm_rust_deployed_agreement := by
+  intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R R' d hG sG hSigG hexec hClock hBudget hL hL'
+        hbridge hφ now now' hNow hNow' hRR cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+        bs bs' ts ts' hts hts' stO stO' out out' hst hst' hA hA' h hDeep hDeep'
+  exact @rust_deployed_agreement_one_time σ ℓ φ (δ + d) n q Δ hn hq C I crypto exposed log G (max R R')
+    hG sG hSigG hexec hClock hBudget hL hL'
+    hbridge (by omega) now now' (by omega) (by omega)
+    cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+    bs bs' ts ts' hts hts' stO stO' out out' hst hst' hA hA' h hDeep hDeep'
 
 /-- Pointwise agreement between `floorLookup` on `toTSFloors fl` (where `fl` is decoded by
 `floors_of_state k fg`) and `floorsFun fg`. -/
@@ -3667,21 +3705,57 @@ lemma rust_deployed_k_mono {C} (I : CryptoD C) (crypto : C) {n q Δ : U64}
 
 /-- **Theorem (deployed K agreement)**: mode 1 deployed agreement with monotone key indices. -/
 theorem rust_deployed_k_agreement : MoltPaper.thm_rust_deployed_k_agreement := by
-  intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R hG sG hSigG hexec hClock hBudget hL hL'
-        hbridge hφ now now' hNow hNow' cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+  intro σ ℓ φ δ n q Δ hn hq C I crypto exposed log G R R' d hG sG hSigG hexec hClock hBudget hL hL'
+        hbridge hφ now now' hNow hNow' hRR cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
         bs bs' ts ts' hts hts' stO stO' out out' hst hst' hfl hfl' hA hA' h hDeep hDeep'
   obtain ⟨hval_dep, _⟩ := validate_deployed_k_sound hval
   obtain ⟨hval'_dep, _⟩ := validate_deployed_k_sound hval'
   have hagree := rust_deployed_agreement hn hq I crypto
     hG hSigG hexec hClock hBudget hL hL' hbridge hφ
-    hNow hNow' hval_dep hval'_dep hstr hstr' hts hts' hst hst' hA hA' hDeep hDeep'
+    hNow hNow' hRR hval_dep hval'_dep hstr hstr' hts hts' hst hst' hA hA' hDeep hDeep'
   have hmono := rust_deployed_k_mono I crypto hn hq hG hSigG hval hstr hfl hA
   have hmono' := rust_deployed_k_mono I crypto hn hq hG hSigG hval' hstr' hfl' hA'
   exact ⟨hagree, hmono, hmono'⟩
 
 
-/-- **Theorem (deployed schedule agreement)**: mode 2 deployed agreement with schedule pin. -/
-theorem rust_deployed_sched_agreement : MoltPaper.thm_rust_deployed_sched_agreement := by
+private theorem rust_deployed_sched_agreement_one_time :
+  ∀ {σ ℓ φ δ : Nat} {n q era Δ : U64} (hn : 1 ≤ n.val) (hq : quorum n = ok q)
+    (hera : 0 < era.val)
+    {C} (I : CryptoD C) (crypto : C)
+    {Controlled : Nat → Nat → Prop} {Stolen : Nat → Nat → Nat → Prop}
+    {log : MoltPetit.Model.TimedLog} {G : Block} {R : Nat}
+    (hG : cert_genesis_ok_be UB () (toBlockG G) = ok true)
+    {sG : Hash} (hSigG : SigOn I.CryptoInst crypto n G sG)
+    (hexec : MoltPetit.Model.SigningExecutionOn
+      (fun B => DSigned I crypto n G B ∧ B.slot / era.val ≤ B.keyIndex)
+      (MoltPetit.Model.schedExposed n.val (fun s => s / era.val) Controlled Stolen) log (toModelBlock G))
+    (hClock : MoltPetit.Model.HonestClockOn
+      (fun B => DSigned I crypto n G B ∧ B.slot / era.val ≤ B.keyIndex) σ
+      (MoltPetit.Model.schedExposed n.val (fun s => s / era.val) Controlled Stolen) log)
+    (hBudget : MoltPetit.Model.ExposureBounded n.val ℓ φ
+      (MoltPetit.Model.schedExposed n.val (fun s => s / era.val) Controlled Stolen))
+    (hL : n.val ≤ ℓ + 1)
+    (hL' : n.val + MoltPetit.Model.maxByzantine n.val + σ + 1 ≤ MoltPetit.Model.quorum n.val + ℓ)
+    (hbridge : ∀ ⦃B : MoltPetit.Model.Block⦄, DSigned I crypto n G B → B.slot / era.val ≤ B.keyIndex →
+      ∃ r ≤ R, B ∈ log r)
+    (hφ : Δ.val + δ ≤ φ)
+    {now now' : U64} (hNow : R ≤ now.val + δ) (hNow' : R ≤ now'.val + δ)
+    {cert cert' : Hash} {suffix suffix' : SignedChain}
+    (hval  : validate_deployed_sched I n era now  Δ crypto cert  suffix  = ok true)
+    (hval' : validate_deployed_sched I n era now' Δ crypto cert' suffix' = ok true)
+    {tl tl' : Chain} (hstr : strip_sigs suffix = ok tl) (hstr' : strip_sigs suffix' = ok tl')
+    {bs bs' : List (Block × Hash)} {ts ts' : Hash}
+    (hts : I.cert_tip_sig crypto cert = ok ts) (hts' : I.cert_tip_sig crypto cert' = ok ts')
+    {stO stO' : CertStateG U64}
+    (hst  : I.cert_state crypto cert  = ok stO) (hst' : I.cert_state crypto cert' = ok stO')
+    (hA  : AttestsSched I crypto n q era G sG bs  stO ts)
+    (hA' : AttestsSched I crypto n q era G sG bs' stO' ts')
+    {h : Nat}
+    (hDeep  : h + n.val < (fullChain G bs  tl ).length)
+    (hDeep' : h + n.val < (fullChain G bs' tl').length),
+    MoltPetit.Model.blockAt? (fullChain G bs tl) h = MoltPetit.Model.blockAt? (fullChain G bs' tl') h ∧
+    (∀ B ∈ fullChain G bs tl, B.slot / era.val ≤ B.keyIndex) ∧
+    (∀ B ∈ fullChain G bs' tl', B.slot / era.val ≤ B.keyIndex) := by
   intro σ ℓ φ δ n q era Δ hn hq hera C I crypto Controlled Stolen log G R hG sG hSigG hexec hClock hBudget hL hL'
         hbridge hφ now now' hNow hNow' cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
         bs bs' ts ts' hts hts' stO stO' hst hst' hA hA' h hDeep hDeep'
@@ -3805,6 +3879,17 @@ theorem rust_deployed_sched_agreement : MoltPaper.thm_rust_deployed_sched_agreem
     hcert hcert' hTipS hTipS' hLink hLinks hDense hLink' hLinks' hDense'
     hSigned_sched hSigned_sched' hRecent hRecent' hhist hhist' hDeep hDeep'
   exact ⟨hagree, hPin_full, hPin_full'⟩
+
+/-- **Theorem (deployed schedule agreement)**: mode 2 deployed agreement with schedule pin. -/
+theorem rust_deployed_sched_agreement : MoltPaper.thm_rust_deployed_sched_agreement := by
+  intro σ ℓ φ δ n q era Δ hn hq hera C I crypto Controlled Stolen log G R R' d hG sG hSigG hexec hClock hBudget hL hL'
+        hbridge hφ now now' hNow hNow' hRR cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+        bs bs' ts ts' hts hts' stO stO' hst hst' hA hA' h hDeep hDeep'
+  exact @rust_deployed_sched_agreement_one_time σ ℓ φ (δ + d) n q era Δ hn hq hera C I crypto
+    Controlled Stolen log G (max R R') hG sG hSigG hexec hClock hBudget hL hL'
+    hbridge (by omega) now now' (by omega) (by omega)
+    cert cert' suffix suffix' hval hval' tl tl' hstr hstr'
+    bs bs' ts ts' hts hts' stO stO' hst hst' hA hA' h hDeep hDeep'
 
 /-! ## Step 16: rustOps and rustRegistry bridge -/
 
