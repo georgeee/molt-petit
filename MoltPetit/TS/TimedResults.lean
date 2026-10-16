@@ -223,8 +223,42 @@ private theorem getD_getLast_cons {g tip : Block} {rest : Chain}
     rw [List.getLast?_cons_cons] at hTip
     simp [hTip]
 
-/-- **Deployed certified light-client safety, TypeScript validator.** -/
-theorem ts_deployed_agreement : MoltPaper.thm_ts_deployed_agreement := by
+private theorem ts_deployed_agreement_one_time :
+  ∀ {σ ℓ φ δ : Nat}
+    {n : Nat} (hn : 1 ≤ n)
+    {exposed : Exposure} {log : TimedLog} {G : Block} {R : Nat}
+    {sigOps : MoltPetit.SigOps}
+    (hexec : SigningExecutionOn (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) exposed log G)
+    (hClock : HonestClockOn (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) σ exposed log)
+    (hBudget : ExposureBounded n ℓ φ exposed)
+    (hL : n ≤ ℓ + 1) (hL' : n + maxByzantine n + σ + 1 ≤ quorum n + ℓ)
+    (hbridge : ∀ ⦃B : Block⦄, TSSigned n sigOps B → TSFormed n sigOps G B → ∃ r ≤ R, B ∈ log r)
+    {Δ now now' : Int} (hφ : Δ + δ ≤ φ)
+    (hNow : (R : Int) ≤ now + δ) (hNow' : (R : Int) ≤ now' + δ)
+    {certOps certOps' : MoltPetit.CertOps}
+    (hUnf : ∀ hc : MoltPetit.RawCertificate, certOps.verify hc = true →
+    ∃ cl : CertClaim, certOps.claim hc = toTSClaim cl ∧
+    GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl ∧
+    TSTipSigned n sigOps G cl (certOps.tipSig hc))
+    (hUnf' : ∀ hc : MoltPetit.RawCertificate, certOps'.verify hc = true →
+    ∃ cl : CertClaim, certOps'.claim hc = toTSClaim cl ∧
+    GroundedCert n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl ∧
+    TSTipSigned n sigOps G cl (certOps'.tipSig hc))
+    {h h' : MoltPetit.RawCertificate} {sc sc' : SignedChain MoltPetit.RawSignature}
+    (hval : MoltPetit.validateDeployed n now Δ sigOps certOps
+    (.cc h (toTSSigned sc)) = true)
+    (hval' : MoltPetit.validateDeployed n now' Δ sigOps certOps'
+    (.cc h' (toTSSigned sc')) = true)
+    {cl cl' : CertClaim}
+    (hcl : certOps.claim h = toTSClaim cl)
+    (hcl' : certOps'.claim h' = toTSClaim cl')
+    {c c' : Chain}
+    (hc : GroundedHistory n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl c)
+    (hc' : GroundedHistory n (fun B => TSSigned n sigOps B ∧ TSFormed n sigOps G B) G cl' c')
+    {k : Nat}
+    (hDeep : k + n < (c ++ stripSigs sc).length)
+    (hDeep' : k + n < (c' ++ stripSigs sc').length),
+    blockAt? (c ++ stripSigs sc) k = blockAt? (c' ++ stripSigs sc') k := by
   intro σ ℓ φ δ n hn exposed log G R sigOps hexec hClock hBudget hL hL' hbridge
         Δ now now' hφ hNow hNow' certOps certOps' hUnf hUnf' h h' sc sc'
         hval hval' cl cl' hcl hcl' c c' hc hc' k hDeep hDeep'
@@ -331,5 +365,18 @@ theorem ts_deployed_agreement : MoltPaper.thm_ts_deployed_agreement := by
   exact ts_timed_certified_agreement hn hexec hClock hBudget hL hL' hbridge
     hUnf_weak hUnf'_weak hvalCC hvalCC' rfl rfl hTipS hTipS' hFormedS hFormedS'
     hRecent hRecent' hcl hcl' hc hc' hDeep hDeep'
+
+/-- **Deployed certified light-client safety, TypeScript validator.** -/
+theorem ts_deployed_agreement : MoltPaper.thm_ts_deployed_agreement := by
+  intro σ ℓ φ δ n hn exposed log G R R' d sigOps hexec hClock hBudget hL hL' hbridge
+        Δ now now' hφ hNow hNow' hRR certOps certOps' hUnf hUnf' h h' sc sc'
+        hval hval' cl cl' hcl hcl' c c' hc hc' k hDeep hDeep'
+  exact @ts_deployed_agreement_one_time σ ℓ φ (δ + d) n hn exposed log G (max R R')
+    sigOps hexec hClock hBudget hL hL'
+    hbridge Δ now now' (by omega)
+    (by push_cast; omega)
+    (by push_cast; omega)
+    certOps certOps' hUnf hUnf' h h' sc sc'
+    hval hval' cl cl' hcl hcl' c c' hc hc' k hDeep hDeep'
 
 end MoltPetit.Model
